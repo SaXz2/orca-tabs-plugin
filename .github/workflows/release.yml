@@ -40,14 +40,42 @@ jobs:
           echo "Build output:"
           ls -la dist/
           
+      - name: Create release package
+        run: |
+          # 创建发布目录
+          mkdir -p release-package
+          
+          # 复制必要文件到发布目录
+          cp dist/index.js release-package/
+          cp package.json release-package/
+          cp README.md release-package/
+          cp icon.png release-package/
+          
+          # 如果存在 source map，也复制
+          if [ -f "dist/index.js.map" ]; then
+            cp dist/index.js.map release-package/
+          fi
+          
+          # 创建压缩包
+          cd release-package
+          zip -r ../orca-tabs-plugin.zip .
+          tar -czf ../orca-tabs-plugin.tar.gz .
+          cd ..
+          
+          echo "Release package created:"
+          ls -la orca-tabs-plugin.*
+          
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
+            orca-tabs-plugin.zip
+            orca-tabs-plugin.tar.gz
             dist/index.js
             dist/index.js.map
             package.json
             README.md
+            icon.png
           generate_release_notes: true
           draft: false
           prerelease: false
