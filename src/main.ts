@@ -78,6 +78,11 @@ function getAllPanels(): Element[] {
   return Array.from(document.querySelectorAll(".orca-panel")).filter((el) => !isInsidePopup(el));
 }
 
+function getAllWindowsPanels(): Element[] {
+  // 仅返回 class="windows" 下的面板，忽略悬浮窗(.orca-popup)里的 .orca-panel
+  return Array.from(document.querySelectorAll(".windows .orca-panel")).filter((el) => !isInsidePopup(el));
+}
+
 function queryOpenHideables(panelRoot: Element | null): Element[] {
   if (!panelRoot) return [];
   // Both editing and non-editing cached pages are under .orca-panel.active
@@ -234,6 +239,30 @@ async function closeOtherPanels(): Promise<void> {
   await orca.commands.invokeCommand("core.closeOtherPanels");
 }
 
+async function switchToWindowsPanel(index: number): Promise<void> {
+  const windowsPanels = getAllWindowsPanels();
+  if (index < 0 || index >= windowsPanels.length) return;
+  
+  // 激活指定面板
+  const targetPanel = windowsPanels[index];
+  const panelId = targetPanel.getAttribute("data-panel-id") || String(index);
+  
+  try {
+    await orca.commands.invokeCommand("core.switchToPanel", { panelId });
+  } catch (error) {
+    console.warn("Failed to switch to panel:", error);
+    // 备用方案：直接激活面板
+    windowsPanels.forEach((panel, i) => {
+      if (i === index) {
+        panel.classList.add("active");
+      } else {
+        panel.classList.remove("active");
+      }
+    });
+    scheduleRefresh();
+  }
+}
+
 // Registered commands
 const registeredCommandIds: string[] = [];
 
@@ -316,7 +345,7 @@ function ensureTabBar(panel: Element): HTMLElement {
     bar.style.position = "fixed";
     bar.style.top = "12px";
     bar.style.left = "12px";
-    bar.style.zIndex = "9999";
+    bar.style.zIndex = "300";
     bar.style.userSelect = "none";
     bar.style.cursor = "grab"; // Change cursor to grab to indicate draggability
     (bar.style as any)["-webkit-app-region"] = "no-drag";
@@ -411,6 +440,29 @@ function renderTabsForPanel(panel: Element, tabs: OpenTabInfo[]) {
   const bar = ensureTabBar(panel);
   // Clear existing
   while (bar.firstChild) bar.removeChild(bar.firstChild);
+  
+  // 添加窗口切换按钮（如果有多个 windows 面板）
+  const windowsPanels = getAllWindowsPanels();
+  if (windowsPanels.length > 1) {
+    const switchBtn = document.createElement("button");
+    switchBtn.type = "button";
+    switchBtn.textContent = "🪟";
+    switchBtn.title = "切换窗口面板";
+    switchBtn.style.padding = "4px 8px";
+    switchBtn.style.marginRight = "8px";
+    switchBtn.style.cursor = "pointer";
+    switchBtn.style.borderRadius = "8px";
+    switchBtn.style.border = "none";
+    switchBtn.style.backgroundColor = "rgba(0,0,0,0.1)";
+    
+    switchBtn.addEventListener("click", async () => {
+      const currentIndex = windowsPanels.findIndex(p => p.classList.contains("active"));
+      const nextIndex = (currentIndex + 1) % windowsPanels.length;
+      await switchToWindowsPanel(nextIndex);
+    });
+    
+    bar.appendChild(switchBtn);
+  }
 
   const hideables = queryOpenHideables(panel);
   let activeIndex = hideables.findIndex((h) => !h.classList.contains("orca-hideable-hidden"));
@@ -753,14 +805,14 @@ function injectGlobalStyles() {
 /* 浅色模式 */
 @media (prefers-color-scheme: light) {
   .${TAB_BAR_CLASS} { border-bottom: 1px solid transparent; padding: 0; }
-  .${TAB_ITEM_CLASS} { color: #111; background: rgba(0,0,0,0.06); max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; backdrop-filter: blur(2px); }
+  .${TAB_ITEM_CLASS} { color: #111; background: rgba(0,0,0,0.06); max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; backdrop-filter: blur(2px); }
   .${TAB_ITEM_CLASS}.${TAB_ITEM_ACTIVE_CLASS} { background: #e5e7eb; backdrop-filter: blur(2px); }
 }
 
 /* 深色模式 */
 @media (prefers-color-scheme: dark) {
   .${TAB_BAR_CLASS} { border-bottom: 1px solid transparent; padding: 0; }
-  .${TAB_ITEM_CLASS} { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.06); max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; backdrop-filter: blur(2px); }
+  .${TAB_ITEM_CLASS} { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.06); max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; backdrop-filter: blur(2px); }
   .${TAB_ITEM_CLASS}.${TAB_ITEM_ACTIVE_CLASS} { background: rgba(255,255,255,0.12); backdrop-filter: blur(2px); }
 }
 
