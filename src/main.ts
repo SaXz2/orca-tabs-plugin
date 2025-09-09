@@ -62,6 +62,9 @@ class OrcaTabsPlugin {
   private draggingTab: TabInfo | null = null; // 当前正在拖拽的标签
   private dragEndListener: (() => void) | null = null; // 全局拖拽结束监听器
   private swapDebounceTimer: number | null = null; // 拖拽交换防抖计时器
+  private lastSwapTarget: string | null = null; // 上次交换的目标标签ID，防止重复交换
+  private dragOverTimer: number | null = null; // 拖拽悬停计时器
+  private isDragOverActive = false; // 是否正在拖拽悬停状态
   
   // 已关闭标签页跟踪
   private closedTabs: Set<string> = new Set(); // 已关闭的标签页blockId集合
@@ -142,7 +145,8 @@ class OrcaTabsPlugin {
       const tabs = this.tabContainer.querySelectorAll('.orca-tab');
       tabs.forEach(tab => {
         tab.removeAttribute('data-dragging');
-        tab.classList.remove('dragging');
+        tab.removeAttribute('data-drag-over');
+        tab.classList.remove('dragging', 'drag-over');
       });
       
       // 移除容器拖拽状态
@@ -151,22 +155,58 @@ class OrcaTabsPlugin {
   }
 
   /**
-   * 防抖的标签交换函数
+   * 添加拖拽悬停效果（优化版）
    */
-  debouncedSwapTab(targetTab: TabInfo, draggingTab: TabInfo) {
-    // 清除之前的计时器
-    if (this.swapDebounceTimer) {
-      clearTimeout(this.swapDebounceTimer);
+  addDragOverEffect(tabElement: HTMLElement) {
+    // 检查是否已经有拖拽悬停效果
+    if (tabElement.getAttribute('data-drag-over') === 'true') {
+      return; // 避免重复添加
     }
     
-    // 设置新的计时器
-    this.swapDebounceTimer = setTimeout(() => {
-      this.swapTab(targetTab, draggingTab);
-    }, 0); // 立即执行，但通过防抖避免频繁调用
+    tabElement.setAttribute('data-drag-over', 'true');
+    tabElement.classList.add('drag-over');
+    
+    // 清除之前的定时器
+    if (this.dragOverTimer) {
+      clearTimeout(this.dragOverTimer);
+    }
   }
 
   /**
-   * 交换两个标签的位置
+   * 移除拖拽悬停效果（优化版）
+   */
+  removeDragOverEffect(tabElement: HTMLElement) {
+    // 检查是否真的有拖拽悬停效果
+    if (tabElement.getAttribute('data-drag-over') !== 'true') {
+      return; // 避免重复移除
+    }
+    
+    tabElement.removeAttribute('data-drag-over');
+    tabElement.classList.remove('drag-over');
+    
+    // 清除定时器
+    if (this.dragOverTimer) {
+      clearTimeout(this.dragOverTimer);
+      this.dragOverTimer = null;
+    }
+  }
+
+  /**
+   * 防抖的标签交换函数（修复版）
+   */
+  debouncedSwapTab(targetTab: TabInfo, draggingTab: TabInfo) {
+    // 防止重复交换同一个目标
+    if (this.lastSwapTarget === targetTab.blockId) {
+      return;
+    }
+    
+    // 立即执行交换，不使用延迟
+    this.swapTab(targetTab, draggingTab);
+    this.lastSwapTarget = targetTab.blockId;
+  }
+
+  /**
+   * 交换两个标签的位置（优化版）
    */
   swapTab(targetTab: TabInfo, draggingTab: TabInfo) {
     if (this.currentPanelIndex !== 0) {
@@ -178,23 +218,37 @@ class OrcaTabsPlugin {
     const draggingIndex = this.firstPanelTabs.findIndex(tab => tab.blockId === draggingTab.blockId);
     
     if (targetIndex !== -1 && draggingIndex !== -1 && targetIndex !== draggingIndex) {
-      // 交换位置
-      [this.firstPanelTabs[targetIndex], this.firstPanelTabs[draggingIndex]] = 
-      [this.firstPanelTabs[draggingIndex], this.firstPanelTabs[targetIndex]];
+      // 智能交换：根据拖拽方向决定交换策略
+      const isMovingRight = draggingIndex < targetIndex;
+      
+      if (isMovingRight) {
+        // 向右拖拽：将拖拽标签插入到目标标签的右边
+        const draggedTab = this.firstPanelTabs.splice(draggingIndex, 1)[0];
+        const newTargetIndex = targetIndex > draggingIndex ? targetIndex - 1 : targetIndex;
+        this.firstPanelTabs.splice(newTargetIndex + 1, 0, draggedTab);
+      } else {
+        // 向左拖拽：将拖拽标签插入到目标标签的左边
+        const draggedTab = this.firstPanelTabs.splice(draggingIndex, 1)[0];
+        this.firstPanelTabs.splice(targetIndex, 0, draggedTab);
+      }
       
       // 更新order属性
       this.firstPanelTabs.forEach((tab, index) => {
         tab.order = index;
       });
       
-      console.log(`🔄 标签交换: ${draggingTab.title} <-> ${targetTab.title}`);
+      console.log(`🔄 标签交换: ${draggingTab.title} -> ${targetTab.title} (${isMovingRight ? '右移' : '左移'})`);
       
       // 重新排序（保持固定标签在前）
       this.sortTabsByPinStatus();
       
-      // 更新UI和保存数据
-      this.debouncedUpdateTabsUI();
+      // 优化：拖拽时只保存数据，不立即更新UI（避免干扰拖拽体验）
       this.saveFirstPanelTabs();
+      
+      // 如果不是正在拖拽，立即更新UI；否则延迟更新
+      if (!this.draggingTab) {
+        this.debouncedUpdateTabsUI();
+      }
     }
   }
 
@@ -760,27 +814,67 @@ class OrcaTabsPlugin {
       .orca-tab[data-dragging="true"] {
         border: 2px solid #ef4444 !important;
         margin: 0 12px !important;
-        transform: scale(1.05) !important;
-        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
+        transform: scale(1.05) rotate(2deg) !important;
+        box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4) !important;
         z-index: 1000 !important;
         position: relative !important;
+        opacity: 0.8 !important;
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05)) !important;
+      }
+
+      /* 拖拽悬停目标样式 */
+      .orca-tab[data-drag-over="true"] {
+        border: 2px solid #3b82f6 !important;
+        transform: scale(1.02) !important;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05)) !important;
+        position: relative !important;
+      }
+
+      /* 拖拽悬停目标指示器 */
+      .orca-tab[data-drag-over="true"]::before {
+        content: '';
+        position: absolute;
+        left: -2px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 4px;
+        height: 60%;
+        background: #3b82f6;
+        border-radius: 2px;
+        box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+        animation: dragIndicator 0.3s ease-in-out;
+      }
+
+      /* 拖拽指示器动画 */
+      @keyframes dragIndicator {
+        0% {
+          opacity: 0;
+          transform: translateY(-50%) scaleY(0);
+        }
+        100% {
+          opacity: 1;
+          transform: translateY(-50%) scaleY(1);
+        }
       }
 
       /* 拖拽容器状态 */
       .orca-tabs-container[data-dragging="true"] {
-        background: rgba(255, 255, 255, 0.2) !important;
-        border: 2px dashed rgba(239, 68, 68, 0.5) !important;
+        background: rgba(255, 255, 255, 0.15) !important;
+        border: 2px dashed rgba(239, 68, 68, 0.4) !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
       }
 
       /* 拖拽时的过渡动画 */
       .orca-tab {
-        transition: all 0.2s ease !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        will-change: transform, box-shadow, background;
       }
 
       /* 拖拽悬停效果 */
-      .orca-tab:hover:not([data-dragging="true"]) {
-        transform: scale(1.05) !important;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+      .orca-tab:hover:not([data-dragging="true"]):not([data-drag-over="true"]) {
+        transform: scale(1.02) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
       }
 
       /* 拖拽时的光标样式 */
@@ -791,6 +885,28 @@ class OrcaTabsPlugin {
       .orca-tab[draggable="true"]:active {
         cursor: grabbing !important;
       }
+
+      /* 拖拽时的标签容器动画 */
+      .orca-tabs-container[data-dragging="true"] .orca-tab:not([data-dragging="true"]) {
+        transition: all 0.2s ease !important;
+      }
+
+      /* 拖拽完成后的回弹效果 */
+      .orca-tab[data-dragging="true"] {
+        animation: dragBounce 0.3s ease-out;
+      }
+
+      @keyframes dragBounce {
+        0% {
+          transform: scale(1.05) rotate(2deg);
+        }
+        50% {
+          transform: scale(1.08) rotate(1deg);
+        }
+        100% {
+          transform: scale(1.05) rotate(2deg);
+        }
+      }
     `;
     
     document.head.appendChild(style);
@@ -798,18 +914,30 @@ class OrcaTabsPlugin {
   }
 
   /**
-   * 防抖更新标签页UI（防止闪烁）
+   * 防抖更新标签页UI（防止闪烁，优化版）
    */
   debouncedUpdateTabsUI() {
-    // 清除之前的计时器
-    if (this.updateDebounceTimer) {
-      clearTimeout(this.updateDebounceTimer);
+    // 如果正在拖拽，延迟更新UI以避免干扰拖拽体验
+    if (this.draggingTab) {
+      // 清除之前的计时器
+      if (this.updateDebounceTimer) {
+        clearTimeout(this.updateDebounceTimer);
+      }
+      
+      // 设置新的计时器，拖拽时使用更长的延迟
+      this.updateDebounceTimer = setTimeout(async () => {
+        await this.updateTabsUI();
+      }, 200); // 拖拽时200ms防抖
+    } else {
+      // 正常情况下的防抖
+      if (this.updateDebounceTimer) {
+        clearTimeout(this.updateDebounceTimer);
+      }
+      
+      this.updateDebounceTimer = setTimeout(async () => {
+        await this.updateTabsUI();
+      }, 100); // 正常情况100ms防抖
     }
-    
-    // 设置新的计时器
-    this.updateDebounceTimer = setTimeout(async () => {
-      await this.updateTabsUI();
-    }, 100); // 100ms防抖
   }
 
   async updateTabsUI() {
@@ -1015,6 +1143,7 @@ class OrcaTabsPlugin {
   createTabElement(tab: TabInfo): HTMLElement {
     const tabElement = document.createElement('div');
     tabElement.className = 'orca-tab';
+    tabElement.setAttribute('data-tab-id', tab.blockId); // 添加data属性用于重命名定位
     
     // 设置样式
     let backgroundColor = 'rgba(200, 200, 200, 0.6)';
@@ -1095,29 +1224,24 @@ class OrcaTabsPlugin {
       }
     });
 
-    // 添加右键菜单事件
-    tabElement.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-      this.showTabContextMenu(e, tab);
-    });
+    // 添加右键菜单事件（使用Orca原生ContextMenu）
+    this.addOrcaContextMenu(tabElement, tab);
 
     // 添加标签拖拽排序功能
     tabElement.draggable = true;
     
-    // 拖拽开始事件
+    // 拖拽开始事件（优化版）
     tabElement.addEventListener('dragstart', (e) => {
       e.dataTransfer!.effectAllowed = 'move'; // 声明拖拽类型为"移动"
       e.dataTransfer?.setData('text/plain', tab.blockId);
       
       // 记录当前被拖拽的标签
       this.draggingTab = tab;
+      this.lastSwapTarget = null; // 重置上次交换目标
       
       // 设置拖拽视觉反馈
       tabElement.setAttribute('data-dragging', 'true');
       tabElement.classList.add('dragging');
-      tabElement.style.opacity = '0.5';
       
       // 设置容器拖拽状态
       if (this.tabContainer) {
@@ -1127,20 +1251,66 @@ class OrcaTabsPlugin {
       console.log(`🔄 开始拖拽标签: ${tab.title} (${tab.blockId})`);
     });
 
-    // 拖拽结束事件
+    // 拖拽结束事件（修复版）
     tabElement.addEventListener('dragend', (e) => {
-      tabElement.style.opacity = '1';
+      // 清除所有拖拽状态
+      this.draggingTab = null;
+      this.lastSwapTarget = null;
+      
+      // 清除所有拖拽相关的定时器
+      if (this.swapDebounceTimer) {
+        clearTimeout(this.swapDebounceTimer);
+        this.swapDebounceTimer = null;
+      }
+      if (this.dragOverTimer) {
+        clearTimeout(this.dragOverTimer);
+        this.dragOverTimer = null;
+      }
+      
+      // 清除视觉反馈
+      this.clearDragVisualFeedback();
+      
+      // 拖拽结束后更新UI
+      setTimeout(() => {
+        this.debouncedUpdateTabsUI();
+      }, 50);
+      
       console.log(`🔄 结束拖拽标签: ${tab.title}`);
     });
 
-    // 拖拽经过事件
+    // 拖拽经过事件（修复版）
     tabElement.addEventListener('dragover', (e) => {
       if (this.draggingTab && this.draggingTab.blockId !== tab.blockId) {
         e.preventDefault(); // 允许放置（必须调用，否则无法触发后续逻辑）
         e.dataTransfer!.dropEffect = 'move';
         
-        // 调用防抖的交换函数
+        // 添加拖拽悬停效果
+        this.addDragOverEffect(tabElement);
+        
+        // 调用交换函数（已优化防抖）
         this.debouncedSwapTab(tab, this.draggingTab);
+      }
+    });
+
+    // 拖拽进入事件
+    tabElement.addEventListener('dragenter', (e) => {
+      if (this.draggingTab && this.draggingTab.blockId !== tab.blockId) {
+        e.preventDefault();
+        // 添加拖拽悬停效果
+        this.addDragOverEffect(tabElement);
+      }
+    });
+
+    // 拖拽离开事件
+    tabElement.addEventListener('dragleave', (e) => {
+      // 检查是否真的离开了元素（而不是进入子元素）
+      const rect = tabElement.getBoundingClientRect();
+      const x = e.clientX;
+      const y = e.clientY;
+      
+      if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+        // 移除拖拽悬停效果
+        this.removeDragOverEffect(tabElement);
       }
     });
 
@@ -1241,6 +1411,59 @@ class OrcaTabsPlugin {
   }
 
   /**
+   * 检查是否为当前激活的标签页
+   */
+  isCurrentActiveTab(tab: TabInfo): boolean {
+    const firstPanelId = this.panelIds[0];
+    const firstPanel = document.querySelector(`.orca-panel[data-panel-id="${firstPanelId}"]`);
+    if (!firstPanel) return false;
+    
+    // 获取当前激活的块编辑器
+    const activeBlockEditor = firstPanel.querySelector('.orca-hideable:not([style*="display: none"]) .orca-block-editor[data-block-id]');
+    if (!activeBlockEditor) return false;
+    
+    const activeBlockId = activeBlockEditor.getAttribute('data-block-id');
+    return activeBlockId === tab.blockId;
+  }
+
+  /**
+   * 切换到相邻标签页
+   */
+  async switchToAdjacentTab(closedTab: TabInfo) {
+    const currentIndex = this.firstPanelTabs.findIndex(tab => tab.blockId === closedTab.blockId);
+    if (currentIndex === -1) {
+      console.log("未找到要关闭的标签页");
+      return;
+    }
+    
+    let targetIndex = -1;
+    
+    // 根据位置决定切换到哪个相邻标签
+    if (currentIndex === 0) {
+      // 最左边：切换到右边
+      targetIndex = 1;
+    } else if (currentIndex === this.firstPanelTabs.length - 1) {
+      // 最右边：切换到左边
+      targetIndex = currentIndex - 1;
+    } else {
+      // 中间：优先切换到右边
+      targetIndex = currentIndex + 1;
+    }
+    
+    // 检查目标索引是否有效
+    if (targetIndex >= 0 && targetIndex < this.firstPanelTabs.length) {
+      const targetTab = this.firstPanelTabs[targetIndex];
+      console.log(`🔄 自动切换到相邻标签: "${targetTab.title}" (位置: ${targetIndex})`);
+      
+      // 导航到目标标签页（在第一个面板中打开）
+      const firstPanelId = this.panelIds[0];
+      await orca.nav.goTo("block", { blockId: parseInt(targetTab.blockId) }, firstPanelId);
+    } else {
+      console.log("没有可切换的相邻标签页");
+    }
+  }
+
+  /**
    * 切换标签固定状态
    */
   toggleTabPinStatus(tab: TabInfo) {
@@ -1265,6 +1488,59 @@ class OrcaTabsPlugin {
 
 
   /**
+   * 获取当前激活的标签
+   */
+  getCurrentActiveTab(): TabInfo | null {
+    if (this.currentPanelIndex !== 0) return null; // 只有第一个面板支持
+    
+    if (this.firstPanelTabs.length === 0) return null;
+    
+    // 获取第一个面板中当前激活的块编辑器
+    const firstPanelId = this.panelIds[0];
+    const panel = document.querySelector(`.orca-panel[data-panel-id="${firstPanelId}"]`);
+    if (!panel) return null;
+    
+    const activeBlockEditor = panel.querySelector('.orca-hideable:not([style*="display: none"]) .orca-block-editor[data-block-id]');
+    if (!activeBlockEditor) return null;
+    
+    const blockId = activeBlockEditor.getAttribute('data-block-id');
+    if (!blockId) return null;
+    
+    // 在固化标签中查找对应的标签
+    return this.firstPanelTabs.find(tab => tab.blockId === blockId) || null;
+  }
+
+  /**
+   * 获取相邻标签（用于关闭当前标签后自动切换）
+   */
+  getAdjacentTab(currentTab: TabInfo): TabInfo | null {
+    if (this.currentPanelIndex !== 0) return null; // 只有第一个面板支持
+    
+    const currentIndex = this.firstPanelTabs.findIndex(tab => tab.blockId === currentTab.blockId);
+    if (currentIndex === -1) return null;
+    
+    // 如果只有一个标签，返回null（无法切换）
+    if (this.firstPanelTabs.length <= 1) return null;
+    
+    // 如果当前标签在中间位置，优先选择右边的标签
+    if (currentIndex < this.firstPanelTabs.length - 1) {
+      return this.firstPanelTabs[currentIndex + 1];
+    }
+    
+    // 如果当前标签在最右边，选择左边的标签
+    if (currentIndex > 0) {
+      return this.firstPanelTabs[currentIndex - 1];
+    }
+    
+    // 如果当前标签在最左边且只有一个其他标签，选择右边的标签
+    if (currentIndex === 0 && this.firstPanelTabs.length > 1) {
+      return this.firstPanelTabs[1];
+    }
+    
+    return null;
+  }
+
+  /**
    * 关闭标签页
    */
   async closeTab(tab: TabInfo) {
@@ -1284,6 +1560,13 @@ class OrcaTabsPlugin {
     
     const tabIndex = this.firstPanelTabs.findIndex(t => t.blockId === tab.blockId);
     if (tabIndex !== -1) {
+      // 检查当前关闭的标签是否是激活的标签
+      const currentActiveTab = this.getCurrentActiveTab();
+      const isClosingActiveTab = currentActiveTab && currentActiveTab.blockId === tab.blockId;
+      
+      // 获取相邻标签（在移除当前标签之前）
+      const adjacentTab = isClosingActiveTab ? this.getAdjacentTab(tab) : null;
+      
       // 将标签添加到已关闭列表
       this.closedTabs.add(tab.blockId);
       
@@ -1296,6 +1579,14 @@ class OrcaTabsPlugin {
       this.saveClosedTabs();
       
       console.log(`🗑️ 标签 "${tab.title}" 已关闭，已添加到关闭列表`);
+      
+      // 如果关闭的是当前激活的标签，自动切换到相邻标签
+      if (isClosingActiveTab && adjacentTab) {
+        console.log(`🔄 自动切换到相邻标签: "${adjacentTab.title}"`);
+        await this.switchToTab(adjacentTab);
+      } else if (isClosingActiveTab && !adjacentTab) {
+        console.log(`⚠️ 关闭了激活标签但没有相邻标签可切换`);
+      }
     }
   }
 
@@ -1357,7 +1648,464 @@ class OrcaTabsPlugin {
   }
 
   /**
-   * 显示标签右键菜单
+   * 重命名标签（使用Orca原生InputBox）
+   */
+  renameTab(tab: TabInfo) {
+    if (this.currentPanelIndex !== 0) return; // 只有第一个面板支持重命名功能
+    
+    // 移除现有的右键菜单
+    const existingMenu = document.querySelector('.tab-context-menu');
+    if (existingMenu) {
+      existingMenu.remove();
+    }
+    
+    // 使用Orca原生InputBox进行重命名
+    this.showOrcaRenameInput(tab);
+  }
+
+  /**
+   * 使用Orca原生InputBox显示重命名输入框
+   */
+  showOrcaRenameInput(tab: TabInfo) {
+    // 创建临时的React元素来使用Orca组件
+    const React = (window as any).React;
+    const ReactDOM = (window as any).ReactDOM;
+    
+    if (!React || !ReactDOM || !orca.components.InputBox) {
+      console.warn("Orca组件不可用，回退到原生实现");
+      this.showRenameInput(tab);
+      return;
+    }
+
+    // 创建容器元素
+    const container = document.createElement('div');
+    container.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2000;
+      pointer-events: none;
+    `;
+    document.body.appendChild(container);
+
+    // 计算输入框位置（确保不被裁掉）
+    const tabElement = document.querySelector(`[data-tab-id="${tab.blockId}"]`) as HTMLElement;
+    let inputPosition = { x: '50%', y: '50%' };
+    
+    if (tabElement) {
+      const rect = tabElement.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      // 计算最佳位置，确保不被裁掉
+      let x = rect.left;
+      let y = rect.top - 80; // 在标签上方显示
+      
+      // 检查右边界
+      if (x + 300 > viewportWidth) {
+        x = viewportWidth - 320;
+      }
+      
+      // 检查左边界
+      if (x < 20) {
+        x = 20;
+      }
+      
+      // 检查上边界
+      if (y < 20) {
+        y = rect.bottom + 10; // 如果上方空间不够，显示在下方
+      }
+      
+      // 检查下边界
+      if (y + 100 > viewportHeight) {
+        y = viewportHeight - 120;
+      }
+      
+      inputPosition = { x: `${x}px`, y: `${y}px` };
+    }
+
+    // 创建InputBox组件
+    const InputBox = orca.components.InputBox;
+    const inputBoxElement = React.createElement(InputBox, {
+      label: "重命名标签",
+      defaultValue: tab.title,
+      onConfirm: (value: string | undefined, e: any, close: () => void) => {
+        if (value && value.trim() && value.trim() !== tab.title) {
+          this.updateTabTitle(tab, value.trim());
+        }
+        close();
+      },
+      onCancel: (close: () => void) => {
+        close();
+      }
+    }, (open: () => void) => {
+      // 创建一个触发按钮，但立即触发
+      const trigger = React.createElement('div', {
+        style: {
+          position: 'absolute',
+          left: inputPosition.x,
+          top: inputPosition.y,
+          pointerEvents: 'auto'
+        },
+        onClick: open
+      }, '');
+      return trigger;
+    });
+
+    // 渲染组件
+    ReactDOM.render(inputBoxElement, container);
+
+    // 立即触发打开
+    setTimeout(() => {
+      const triggerElement = container.querySelector('div');
+      if (triggerElement) {
+        triggerElement.click();
+      }
+    }, 0);
+
+    // 清理函数
+    const cleanup = () => {
+      setTimeout(() => {
+        ReactDOM.unmountComponentAtNode(container);
+        container.remove();
+      }, 100);
+    };
+
+    // 监听ESC键关闭
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        cleanup();
+        document.removeEventListener('keydown', handleKeyDown);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+  }
+
+  /**
+   * 显示重命名输入框（原生实现，作为备选）
+   */
+  showRenameInput(tab: TabInfo) {
+    // 移除现有的重命名输入框
+    const existingInput = document.querySelector('.tab-rename-input');
+    if (existingInput) {
+      existingInput.remove();
+    }
+
+    // 创建重命名输入框容器
+    const inputContainer = document.createElement('div');
+    inputContainer.className = 'tab-rename-input';
+    inputContainer.style.cssText = `
+      position: fixed;
+      z-index: 2000;
+      background: rgba(255, 255, 255, 0.98);
+      border: 2px solid #3b82f6;
+      border-radius: 8px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+      padding: 8px 12px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      min-width: 200px;
+    `;
+
+    // 创建输入框
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = tab.title;
+    input.style.cssText = `
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 14px;
+      color: #333;
+      width: 100%;
+      padding: 4px 0;
+    `;
+
+    // 创建按钮容器
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = `
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      justify-content: flex-end;
+    `;
+
+    // 创建确认按钮
+    const confirmBtn = document.createElement('button');
+    confirmBtn.textContent = '确认';
+    confirmBtn.style.cssText = `
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    `;
+
+    // 创建取消按钮
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = '取消';
+    cancelBtn.style.cssText = `
+      background: #6b7280;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    `;
+
+    // 添加按钮悬停效果
+    confirmBtn.addEventListener('mouseenter', () => {
+      confirmBtn.style.backgroundColor = '#2563eb';
+    });
+    confirmBtn.addEventListener('mouseleave', () => {
+      confirmBtn.style.backgroundColor = '#3b82f6';
+    });
+
+    cancelBtn.addEventListener('mouseenter', () => {
+      cancelBtn.style.backgroundColor = '#4b5563';
+    });
+    cancelBtn.addEventListener('mouseleave', () => {
+      cancelBtn.style.backgroundColor = '#6b7280';
+    });
+
+    // 组装元素
+    buttonContainer.appendChild(confirmBtn);
+    buttonContainer.appendChild(cancelBtn);
+    inputContainer.appendChild(input);
+    inputContainer.appendChild(buttonContainer);
+
+    // 定位输入框
+    const tabElement = document.querySelector(`[data-tab-id="${tab.blockId}"]`) as HTMLElement;
+    if (tabElement) {
+      const rect = tabElement.getBoundingClientRect();
+      inputContainer.style.left = `${rect.left}px`;
+      inputContainer.style.top = `${rect.top - 60}px`;
+    } else {
+      // 如果找不到标签元素，使用鼠标位置
+      inputContainer.style.left = '50%';
+      inputContainer.style.top = '50%';
+      inputContainer.style.transform = 'translate(-50%, -50%)';
+    }
+
+    document.body.appendChild(inputContainer);
+
+    // 自动聚焦并选中文本
+    input.focus();
+    input.select();
+
+    // 确认重命名
+    const confirmRename = () => {
+      const newTitle = input.value.trim();
+      if (newTitle && newTitle !== tab.title) {
+        this.updateTabTitle(tab, newTitle);
+      }
+      inputContainer.remove();
+    };
+
+    // 取消重命名
+    const cancelRename = () => {
+      inputContainer.remove();
+    };
+
+    // 绑定事件
+    confirmBtn.addEventListener('click', confirmRename);
+    cancelBtn.addEventListener('click', cancelRename);
+
+    // 回车确认，ESC取消
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        confirmRename();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        cancelRename();
+      }
+    });
+
+    // 点击外部关闭
+    const closeOnOutsideClick = (e: MouseEvent) => {
+      if (!inputContainer.contains(e.target as Node)) {
+        cancelRename();
+        document.removeEventListener('click', closeOnOutsideClick);
+      }
+    };
+
+    setTimeout(() => {
+      document.addEventListener('click', closeOnOutsideClick);
+    }, 100);
+  }
+
+  /**
+   * 更新标签标题
+   */
+  async updateTabTitle(tab: TabInfo, newTitle: string) {
+    try {
+      // 更新本地标签数据
+      const tabIndex = this.firstPanelTabs.findIndex(t => t.blockId === tab.blockId);
+      if (tabIndex !== -1) {
+        this.firstPanelTabs[tabIndex].title = newTitle;
+        
+        // 保存数据
+        this.saveFirstPanelTabs();
+        
+        // 更新UI
+        this.debouncedUpdateTabsUI();
+        
+        console.log(`📝 标签重命名: "${tab.title}" -> "${newTitle}"`);
+        
+        // 可选：同时更新块的别名（如果需要同步到Orca）
+        // await this.updateBlockAlias(tab.blockId, newTitle);
+      }
+    } catch (e) {
+      console.error("重命名标签失败:", e);
+    }
+  }
+
+  /**
+   * 为标签添加Orca原生ContextMenu
+   */
+  addOrcaContextMenu(tabElement: HTMLElement, tab: TabInfo) {
+    // 检查Orca组件是否可用
+    const React = (window as any).React;
+    const ReactDOM = (window as any).ReactDOM;
+    
+    if (!React || !ReactDOM || !orca.components.ContextMenu || !orca.components.Menu || !orca.components.MenuText) {
+      console.warn("Orca组件不可用，回退到原生右键菜单");
+      // 回退到原生实现
+      tabElement.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        this.showTabContextMenu(e, tab);
+      });
+      return;
+    }
+
+    // 创建ContextMenu容器
+    const menuContainer = document.createElement('div');
+    menuContainer.style.cssText = `
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    `;
+    tabElement.appendChild(menuContainer);
+
+    // 创建ContextMenu组件
+    const ContextMenu = orca.components.ContextMenu;
+    const Menu = orca.components.Menu;
+    const MenuText = orca.components.MenuText;
+    const MenuSeparator = orca.components.MenuSeparator;
+
+    const contextMenuElement = React.createElement(ContextMenu, {
+      menu: (close: () => void) => {
+        return React.createElement(Menu, {}, [
+          React.createElement(MenuText, {
+            key: 'rename',
+            title: '重命名标签',
+            preIcon: 'ti ti-edit',
+            onClick: () => {
+              close();
+              this.renameTab(tab);
+            }
+          }),
+          React.createElement(MenuText, {
+            key: 'pin',
+            title: tab.isPinned ? '取消固定' : '固定标签',
+            preIcon: tab.isPinned ? 'ti ti-pin-off' : 'ti ti-pin',
+            onClick: () => {
+              close();
+              this.toggleTabPinStatus(tab);
+            }
+          }),
+          React.createElement(MenuSeparator, { key: 'separator1' }),
+          React.createElement(MenuText, {
+            key: 'close',
+            title: '关闭标签',
+            preIcon: 'ti ti-x',
+            disabled: this.firstPanelTabs.length <= 1,
+            onClick: () => {
+              close();
+              this.closeTab(tab);
+            }
+          }),
+          React.createElement(MenuText, {
+            key: 'closeOthers',
+            title: '关闭其他标签',
+            preIcon: 'ti ti-x',
+            disabled: this.firstPanelTabs.length <= 1,
+            onClick: () => {
+              close();
+              this.closeOtherTabs(tab);
+            }
+          }),
+          React.createElement(MenuText, {
+            key: 'closeAll',
+            title: '关闭全部标签',
+            preIcon: 'ti ti-x',
+            disabled: this.firstPanelTabs.length <= 1,
+            onClick: () => {
+              close();
+              this.closeAllTabs();
+            }
+          })
+        ]);
+      }
+    }, (openMenu: (e: React.UIEvent) => void, closeMenu: () => void) => {
+      // 创建一个透明的覆盖层来捕获右键事件
+      const overlay = React.createElement('div', {
+        style: {
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: 'auto',
+          background: 'transparent'
+        },
+        onContextMenu: (e: React.MouseEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openMenu(e);
+        }
+      });
+      return overlay;
+    });
+
+    // 渲染ContextMenu
+    ReactDOM.render(contextMenuElement, menuContainer);
+
+    // 清理函数
+    const cleanup = () => {
+      ReactDOM.unmountComponentAtNode(menuContainer);
+      menuContainer.remove();
+    };
+
+    // 在标签元素被移除时清理
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.removedNodes.forEach((node) => {
+          if (node === tabElement) {
+            cleanup();
+            observer.disconnect();
+          }
+        });
+      });
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
+  /**
+   * 显示标签右键菜单（原生实现，作为备选）
    */
   showTabContextMenu(e: MouseEvent, tab: TabInfo) {
     // 移除现有的右键菜单
@@ -1385,6 +2133,10 @@ class OrcaTabsPlugin {
 
     // 菜单项
     const menuItems = [
+      {
+        text: '重命名标签',
+        action: () => this.renameTab(tab)
+      },
       {
         text: tab.isPinned ? '取消固定' : '固定标签',
         action: () => this.toggleTabPinStatus(tab)
