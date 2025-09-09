@@ -42,6 +42,8 @@ type OpenTabInfo = {
   element: Element;
   blockId: number | null;
   title?: string;
+  color?: string;
+  icon?: string;
 };
 
 function formatDateYMD(d: Date | string | undefined | null): string {
@@ -120,7 +122,7 @@ async function readOpenTabs(panelRoot?: Element | null): Promise<OpenTabInfo[]> 
   if (ids.length > 0) {
     try {
       // Prefer batch fetch when available
-      const blocks: Array<{ id: number; text?: string; content?: any; created?: Date | string } | null> = await orca.invokeBackend(
+      const blocks: Array<{ id: number; text?: string; content?: any; created?: Date | string; aliases?: string[] } | null> = await orca.invokeBackend(
         "get-blocks" as any,
         ids
       );
@@ -138,7 +140,23 @@ async function readOpenTabs(panelRoot?: Element | null): Promise<OpenTabInfo[]> 
       });
       infos.forEach((info) => {
         if (info.blockId != null) {
-          info.title = idToTitle.get(info.blockId) || undefined;
+          // 优先读取别名块的名称
+          const block = blocks.find((b) => b?.id === info.blockId);
+          if (block) {
+            // 检查是否为别名块（有 aliases 数组且不为空）
+            if (block.aliases && block.aliases.length > 0) {
+              info.title = block.aliases[0]; // 使用第一个别名作为标题
+            } else {
+              info.title = idToTitle.get(info.blockId) || undefined;
+            }
+            
+            if ((block as any).properties) {
+              const colorProp = (block as any).properties.find((p: any) => p.name === "_color" && p.type === 1);
+              if (colorProp) info.color = colorProp.value;
+              const iconProp = (block as any).properties.find((p: any) => p.name === "_icon" && p.type === 1);
+              if (iconProp) info.icon = iconProp.value;
+            }
+          }
         }
       });
       // 仅保留后端确认存在的块，避免幽灵标签
@@ -300,7 +318,7 @@ function ensureTabBar(panel: Element): HTMLElement {
     bar.style.left = "12px";
     bar.style.zIndex = "9999";
     bar.style.userSelect = "none";
-    bar.style.cursor = "default";
+    bar.style.cursor = "grab"; // Change cursor to grab to indicate draggability
     (bar.style as any)["-webkit-app-region"] = "no-drag";
     document.body.appendChild(bar);
     // 载入已保存位置
@@ -309,6 +327,15 @@ function ensureTabBar(panel: Element): HTMLElement {
     enableDrag(bar);
   }
   return bar;
+}
+
+
+// Helper to convert hex to rgba with desired opacity
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 function extractJournalTitleFromDOM(container: HTMLElement): string {
@@ -394,10 +421,38 @@ function renderTabsForPanel(panel: Element, tabs: OpenTabInfo[]) {
   tabs.forEach((tab, index) => {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.textContent = tab.title && tab.title.trim().length > 0 ? tab.title : `未命名 ${tab.blockId ?? ""}`;
+
+    // Create a container for icon and text
+    const contentSpan = document.createElement("span");
+    contentSpan.style.display = "flex";
+    contentSpan.style.alignItems = "center";
+    contentSpan.style.gap = "4px";
+
+    if (tab.icon) {
+      const iconEl = document.createElement("span");
+      iconEl.textContent = tab.icon.startsWith("ti ") ? "" : tab.icon;
+      iconEl.style.fontSize = "14px";
+      iconEl.style.marginRight = "auto";
+      contentSpan.appendChild(iconEl);
+    }
+
+    const textNode = document.createTextNode(tab.title && tab.title.trim().length > 0 ? tab.title : `未命名 ${tab.blockId ?? ""}`);
+    contentSpan.appendChild(textNode);
+    btn.appendChild(contentSpan);
+
     btn.title = tab.title || "";
     btn.classList.add(TAB_ITEM_CLASS);
     btn.style.padding = "4px 8px";
+    // Apply background color with 50% transparency if available
+    if (tab.color) {
+      btn.style.backgroundColor = hexToRgba(tab.color, 0.2);
+      btn.style.color = tab.color; // 直接使用读取到的颜色
+      btn.style.fontWeight = "700"; // 带有颜色的标签页字体加粗
+    } else {
+      btn.style.backgroundColor = ""; // Reset to default
+      btn.style.color = ""; // Reset to default
+      btn.style.fontWeight = ""; // Reset font weight
+    }
     // 外观交由 CSS 控制，避免被主题覆盖
     if (index === activeIndex) btn.classList.add(TAB_ITEM_ACTIVE_CLASS);
     else btn.classList.remove(TAB_ITEM_ACTIVE_CLASS);
@@ -405,6 +460,13 @@ function renderTabsForPanel(panel: Element, tabs: OpenTabInfo[]) {
 
     btn.addEventListener("click", () => {
       try {
+        // Immediately update active class on tab buttons for responsiveness
+        const tabButtons = Array.from(bar.querySelectorAll(`.${TAB_ITEM_CLASS}`));
+        tabButtons.forEach((b, i) => {
+          if (i === index) b.classList.add(TAB_ITEM_ACTIVE_CLASS);
+          else b.classList.remove(TAB_ITEM_ACTIVE_CLASS);
+        });
+
         switchTabInPanel(panel, index);
       } catch (e) {
         console.warn("Failed to switch tab", e);
@@ -473,7 +535,8 @@ function enableDrag(bar: HTMLElement) {
     if (!dragging) return;
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
-    applyBarPosition(bar, origLeft + dx, origTop + dy);
+    bar.style.left = `${origLeft + dx}px`;
+    bar.style.top = `${origTop + dy}px`;
   };
   const onUp = async () => {
     if (!dragging) return;
@@ -680,7 +743,7 @@ function injectGlobalStyles() {
 
 /* 标签栏通用样式（不设置背景色，跟随主题） */
 .${TAB_BAR_CLASS} { }
-.${TAB_ITEM_CLASS} { color: inherit; border-radius: 8px; border: none ; }
+.${TAB_ITEM_CLASS} { color: inherit; border-radius: 8px; border: none; backdrop-filter: blur(2px); }
 .${TAB_ITEM_CLASS}.${TAB_ITEM_ACTIVE_CLASS} { }
 .${TAB_CLOSE_CLASS} { }
 
@@ -690,15 +753,15 @@ function injectGlobalStyles() {
 /* 浅色模式 */
 @media (prefers-color-scheme: light) {
   .${TAB_BAR_CLASS} { border-bottom: 1px solid transparent; padding: 0; }
-  .${TAB_ITEM_CLASS} { color: #111; background: rgba(0,0,0,0.06); max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .${TAB_ITEM_CLASS}.${TAB_ITEM_ACTIVE_CLASS} { background: #e5e7eb; }
+  .${TAB_ITEM_CLASS} { color: #111; background: rgba(0,0,0,0.06); max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; backdrop-filter: blur(2px); }
+  .${TAB_ITEM_CLASS}.${TAB_ITEM_ACTIVE_CLASS} { background: #e5e7eb; backdrop-filter: blur(2px); }
 }
 
 /* 深色模式 */
 @media (prefers-color-scheme: dark) {
   .${TAB_BAR_CLASS} { border-bottom: 1px solid transparent; padding: 0; }
-  .${TAB_ITEM_CLASS} { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.06); max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .${TAB_ITEM_CLASS}.${TAB_ITEM_ACTIVE_CLASS} { background: rgba(255,255,255,0.12); }
+  .${TAB_ITEM_CLASS} { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.06); max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; backdrop-filter: blur(2px); }
+  .${TAB_ITEM_CLASS}.${TAB_ITEM_ACTIVE_CLASS} { background: rgba(255,255,255,0.12); backdrop-filter: blur(2px); }
 }
 
 /* 当宿主定义 --ocla-bg == #26272B 或 body 背景为 #26272B 时的适配 */
@@ -709,10 +772,12 @@ body:has([style*="--ocla-bg:#26272B"]) .${TAB_BAR_CLASS} {
 body[style*="#26272B"],
 body:has([style*="--ocla-bg:#26272B"]) .${TAB_ITEM_CLASS} {
   background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(2px);
 }
 body[style*="#26272B"],
 body:has([style*="--ocla-bg:#26272B"]) .${TAB_ITEM_CLASS}.${TAB_ITEM_ACTIVE_CLASS} {
   background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(2px);
 }
 `;
   document.head.appendChild(style);
