@@ -1,11 +1,21 @@
 {
   "name": "orca-plugin-template",
-  "version": "0.0.0",
+  "version": "2.1.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "SET NODE_ENV=production && tsc && vite build",
-    "preview": "vite preview"
+    "build": "cross-env NODE_ENV=production tsc && vite build",
+    "build:watch": "vite build --watch",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist",
+    "prebuild": "npm run clean",
+    "postbuild": "echo 'Build completed successfully!'",
+    "version": "npm run build && git add dist/",
+    "release": "node scripts/release.js",
+    "release:patch": "node scripts/release.js patch",
+    "release:minor": "node scripts/release.js minor",
+    "release:major": "node scripts/release.js major"
   },
   "peerDependencies": {
     "react": "^18.2.0",
@@ -16,6 +26,8 @@
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
     "@vitejs/plugin-react-swc": "^3.5.0",
+    "cross-env": "^7.0.3",
+    "rimraf": "^5.0.5",
     "rollup-plugin-external-globals": "^0.9.2",
     "typescript": "^5.2.2",
     "vite": "^5.2.0"
