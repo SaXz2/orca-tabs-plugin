@@ -212,7 +212,7 @@ const Te = {
   tomorrow: "'tomorrow at' p",
   nextWeek: "eeee 'at' p",
   other: "P"
-}, Me = (r, e, t, n) => ke[r];
+}, Ce = (r, e, t, n) => ke[r];
 function D(r) {
   return (e, t) => {
     const n = t != null && t.context ? String(t.context) : "standalone";
@@ -228,7 +228,7 @@ function D(r) {
     return a[o];
   };
 }
-const Ce = {
+const Me = {
   narrow: ["B", "A"],
   abbreviated: ["BC", "AD"],
   wide: ["Before Christ", "Anno Domini"]
@@ -356,7 +356,7 @@ const Ce = {
 }, Fe = {
   ordinalNumber: Oe,
   era: D({
-    values: Ce,
+    values: Me,
     defaultWidth: "wide"
   }),
   quarter: D({
@@ -527,7 +527,7 @@ const qe = /^(\d+)(th|st|nd|rd)?/i, Ye = /\d+/i, Be = {
   code: "en-US",
   formatDistance: xe,
   formatLong: Ie,
-  formatRelative: Me,
+  formatRelative: Ce,
   localize: Fe,
   match: Ge,
   options: {
@@ -619,7 +619,7 @@ const I = {
     );
     return b(a, e.length);
   }
-}, C = {
+}, M = {
   midnight: "midnight",
   noon: "noon",
   morning: "morning",
@@ -961,7 +961,7 @@ const I = {
   b: function(r, e, t) {
     const n = r.getHours();
     let a;
-    switch (n === 12 ? a = C.noon : n === 0 ? a = C.midnight : a = n / 12 >= 1 ? "pm" : "am", e) {
+    switch (n === 12 ? a = M.noon : n === 0 ? a = M.midnight : a = n / 12 >= 1 ? "pm" : "am", e) {
       case "b":
       case "bb":
         return t.dayPeriod(a, {
@@ -990,7 +990,7 @@ const I = {
   B: function(r, e, t) {
     const n = r.getHours();
     let a;
-    switch (n >= 17 ? a = C.evening : n >= 12 ? a = C.afternoon : n >= 4 ? a = C.morning : a = C.night, e) {
+    switch (n >= 17 ? a = M.evening : n >= 12 ? a = M.afternoon : n >= 4 ? a = M.morning : a = M.night, e) {
       case "B":
       case "BB":
       case "BBB":
@@ -1055,11 +1055,11 @@ const I = {
         return J(n);
       case "XXXX":
       case "XX":
-        return M(n);
+        return C(n);
       case "XXXXX":
       case "XXX":
       default:
-        return M(n, ":");
+        return C(n, ":");
     }
   },
   // Timezone (ISO-8601. If offset is 0, output is `'+00:00'` or equivalent)
@@ -1070,11 +1070,11 @@ const I = {
         return J(n);
       case "xxxx":
       case "xx":
-        return M(n);
+        return C(n);
       case "xxxxx":
       case "xxx":
       default:
-        return M(n, ":");
+        return C(n, ":");
     }
   },
   // Timezone (GMT)
@@ -1087,7 +1087,7 @@ const I = {
         return "GMT" + K(n, ":");
       case "OOOO":
       default:
-        return "GMT" + M(n, ":");
+        return "GMT" + C(n, ":");
     }
   },
   // Timezone (specific non-location)
@@ -1100,7 +1100,7 @@ const I = {
         return "GMT" + K(n, ":");
       case "zzzz":
       default:
-        return "GMT" + M(n, ":");
+        return "GMT" + C(n, ":");
     }
   },
   // Seconds timestamp
@@ -1118,9 +1118,9 @@ function K(r, e = "") {
   return o === 0 ? t + String(a) : t + String(a) + e + b(o, 2);
 }
 function J(r, e) {
-  return r % 60 === 0 ? (r > 0 ? "-" : "+") + b(Math.abs(r) / 60, 2) : M(r, e);
+  return r % 60 === 0 ? (r > 0 ? "-" : "+") + b(Math.abs(r) / 60, 2) : C(r, e);
 }
-function M(r, e = "") {
+function C(r, e = "") {
   const t = r > 0 ? "-" : "+", n = Math.abs(r), a = b(Math.trunc(n / 60), 2), o = b(n % 60, 2);
   return t + a + e + o;
 }
@@ -2353,12 +2353,56 @@ class Pt {
     this.firstPanelTabs = t, this.debouncedUpdateTabsUI(), this.saveFirstPanelTabs(), this.saveClosedTabs(), console.log(`🗑️ 已关闭其他 ${a} 个标签，保留了当前标签和固定标签`);
   }
   /**
-   * 重命名标签（使用Orca原生InputBox）
+   * 重命名标签（内联编辑）
    */
   renameTab(e) {
     if (this.currentPanelIndex !== 0) return;
     const t = document.querySelector(".tab-context-menu");
-    t && t.remove(), this.showOrcaRenameInput(e);
+    t && t.remove(), this.showInlineRenameInput(e);
+  }
+  /**
+   * 显示内联重命名输入框
+   */
+  showInlineRenameInput(e) {
+    const t = document.querySelector(`[data-tab-id="${e.blockId}"]`);
+    if (!t) {
+      console.warn("找不到对应的标签元素");
+      return;
+    }
+    const n = t.querySelector(".inline-rename-input");
+    n && n.remove();
+    const a = t.textContent, o = t.style.cssText, s = document.createElement("input");
+    s.type = "text", s.value = e.title, s.className = "inline-rename-input";
+    const i = orca.state.themeMode === "dark";
+    let c = i ? "rgba(255, 255, 255, 0.1)" : "rgba(200, 200, 200, 0.6)", d = i ? "#ffffff" : "#333";
+    e.color && (c = this.applyOklchFormula(e.color, "background"), d = this.applyOklchFormula(e.color, "text")), s.style.cssText = `
+      background: ${c};
+      color: ${d};
+      border: 2px solid #3b82f6;
+      border-radius: 4px;
+      padding: 2px 8px;
+      height: 20px;
+      line-height: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      outline: none;
+      width: 100%;
+      max-width: 150px;
+      box-sizing: border-box;
+      -webkit-app-region: no-drag;
+      app-region: no-drag;
+    `, t.textContent = "", t.appendChild(s), t.style.padding = "2px 8px", s.focus(), s.select();
+    const l = () => {
+      const h = s.value.trim();
+      h && h !== e.title && this.updateTabTitle(e, h), t.textContent = a, t.style.cssText = o;
+    }, u = () => {
+      t.textContent = a, t.style.cssText = o;
+    };
+    s.addEventListener("blur", l), s.addEventListener("keydown", (h) => {
+      h.key === "Enter" ? (h.preventDefault(), l()) : h.key === "Escape" && (h.preventDefault(), u());
+    }), s.addEventListener("click", (h) => {
+      h.stopPropagation();
+    });
   }
   /**
    * 使用Orca原生InputBox显示重命名输入框

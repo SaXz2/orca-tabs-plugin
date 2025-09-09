@@ -2232,7 +2232,7 @@ class OrcaTabsPlugin {
   }
 
   /**
-   * 重命名标签（使用Orca原生InputBox）
+   * 重命名标签（内联编辑）
    */
   renameTab(tab: TabInfo) {
     if (this.currentPanelIndex !== 0) return; // 只有第一个面板支持重命名功能
@@ -2243,8 +2243,109 @@ class OrcaTabsPlugin {
       existingMenu.remove();
     }
     
-    // 使用Orca原生InputBox进行重命名
-    this.showOrcaRenameInput(tab);
+    // 使用内联编辑进行重命名
+    this.showInlineRenameInput(tab);
+  }
+
+  /**
+   * 显示内联重命名输入框
+   */
+  showInlineRenameInput(tab: TabInfo) {
+    // 查找对应的标签元素
+    const tabElement = document.querySelector(`[data-tab-id="${tab.blockId}"]`) as HTMLElement;
+    if (!tabElement) {
+      console.warn("找不到对应的标签元素");
+      return;
+    }
+
+    // 移除现有的内联输入框
+    const existingInput = tabElement.querySelector('.inline-rename-input');
+    if (existingInput) {
+      existingInput.remove();
+    }
+
+    // 保存原始内容
+    const originalContent = tabElement.textContent;
+    const originalStyle = tabElement.style.cssText;
+
+    // 创建输入框
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = tab.title;
+    input.className = 'inline-rename-input';
+    
+    // 设置输入框样式，使其与标签样式一致
+    const isDarkMode = orca.state.themeMode === 'dark';
+    let backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(200, 200, 200, 0.6)';
+    let textColor = isDarkMode ? '#ffffff' : '#333';
+    
+    // 如果有颜色，应用颜色样式
+    if (tab.color) {
+      backgroundColor = this.applyOklchFormula(tab.color, 'background');
+      textColor = this.applyOklchFormula(tab.color, 'text');
+    }
+
+    input.style.cssText = `
+      background: ${backgroundColor};
+      color: ${textColor};
+      border: 2px solid #3b82f6;
+      border-radius: 4px;
+      padding: 2px 8px;
+      height: 20px;
+      line-height: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      outline: none;
+      width: 100%;
+      max-width: 150px;
+      box-sizing: border-box;
+      -webkit-app-region: no-drag;
+      app-region: no-drag;
+    `;
+
+    // 隐藏标签文本，显示输入框
+    tabElement.textContent = '';
+    tabElement.appendChild(input);
+    tabElement.style.padding = '2px 8px'; // 保持原有padding
+
+    // 选中输入框中的文本
+    input.focus();
+    input.select();
+
+    // 确认重命名
+    const confirmRename = () => {
+      const newTitle = input.value.trim();
+      if (newTitle && newTitle !== tab.title) {
+        this.updateTabTitle(tab, newTitle);
+      }
+      // 恢复标签显示
+      tabElement.textContent = originalContent;
+      tabElement.style.cssText = originalStyle;
+    };
+
+    // 取消重命名
+    const cancelRename = () => {
+      // 恢复标签显示
+      tabElement.textContent = originalContent;
+      tabElement.style.cssText = originalStyle;
+    };
+
+    // 添加事件监听器
+    input.addEventListener('blur', confirmRename);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        confirmRename();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        cancelRename();
+      }
+    });
+
+    // 防止点击事件冒泡
+    input.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
   }
 
   /**
