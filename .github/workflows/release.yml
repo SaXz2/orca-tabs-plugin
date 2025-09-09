@@ -71,11 +71,6 @@ jobs:
           files: |
             orca-tabs-plugin.zip
             orca-tabs-plugin.tar.gz
-            dist/index.js
-            dist/index.js.map
-            package.json
-            README.md
-            icon.png
           generate_release_notes: true
           draft: false
           prerelease: false
