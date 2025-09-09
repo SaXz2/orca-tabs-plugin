@@ -26,6 +26,7 @@ interface TabInfo {
   isJournal?: boolean;
   isPinned?: boolean;
   order: number;
+  scrollPosition?: { x: number; y: number }; // 滚动位置
 }
 
 interface TabPosition {
@@ -65,6 +66,10 @@ class OrcaTabsPlugin {
   private lastSwapTarget: string | null = null; // 上次交换的目标标签ID，防止重复交换
   private dragOverTimer: number | null = null; // 拖拽悬停计时器
   private isDragOverActive = false; // 是否正在拖拽悬停状态
+  private themeChangeListener: (() => void) | null = null; // 主题变化监听器
+  private lastPanelDiscoveryTime = 0; // 上次面板发现时间
+  private panelDiscoveryCache: { panelIds: string[], timestamp: number } | null = null; // 面板发现缓存
+  private scrollListener: (() => void) | null = null; // 滚动监听器
   
   // 已关闭标签页跟踪
   private closedTabs: Set<string> = new Set(); // 已关闭的标签页blockId集合
@@ -119,9 +124,111 @@ class OrcaTabsPlugin {
     // 设置全局拖拽结束监听器
     this.setupDragEndListener();
     
+    // 监听主题变化
+    this.setupThemeChangeListener();
+    
+    // 设置滚动监听器
+    this.setupScrollListener();
+    
     // 标记初始化完成
     this.isInitialized = true;
     console.log("✅ 插件初始化完成");
+  }
+
+  /**
+   * 设置主题变化监听器
+   */
+  private setupThemeChangeListener() {
+    // 移除之前的监听器
+    if (this.themeChangeListener) {
+      this.themeChangeListener();
+      this.themeChangeListener = null;
+    }
+
+    // 使用Orca广播API监听主题变化
+    const handleThemeChange = (theme: string) => {
+      console.log("检测到主题变化，重新渲染标签页颜色:", theme);
+      console.log("当前主题模式:", orca.state.themeMode);
+      
+      // 延迟执行，确保主题切换完成
+      setTimeout(() => {
+        console.log("开始重新渲染标签页，当前主题:", orca.state.themeMode);
+        this.debouncedUpdateTabsUI();
+      }, 200); // 增加延迟时间
+    };
+
+    // 注册主题变化监听器
+    try {
+      orca.broadcasts.registerHandler("core.themeChanged", handleThemeChange);
+      console.log("主题变化监听器注册成功");
+    } catch (error) {
+      console.error("主题变化监听器注册失败:", error);
+    }
+
+    // 添加备用的主题检测机制
+    let lastThemeMode = orca.state.themeMode;
+    const checkThemeChange = () => {
+      const currentThemeMode = orca.state.themeMode;
+      if (currentThemeMode !== lastThemeMode) {
+        console.log("备用检测：主题从", lastThemeMode, "切换到", currentThemeMode);
+        lastThemeMode = currentThemeMode;
+        setTimeout(() => {
+          this.debouncedUpdateTabsUI();
+        }, 200);
+      }
+    };
+
+    // 每500ms检查一次主题变化（备用机制）
+    const themeCheckInterval = setInterval(checkThemeChange, 500);
+
+    // 保存清理函数
+    this.themeChangeListener = () => {
+      orca.broadcasts.unregisterHandler("core.themeChanged", handleThemeChange);
+      clearInterval(themeCheckInterval);
+    };
+  }
+
+  /**
+   * 设置滚动监听器
+   */
+  private setupScrollListener() {
+    // 移除之前的监听器
+    if (this.scrollListener) {
+      this.scrollListener();
+      this.scrollListener = null;
+    }
+
+    // 创建滚动监听器
+    let scrollTimeout: number | null = null;
+    const handleScroll = () => {
+      // 防抖处理，避免频繁记录
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
+      
+      scrollTimeout = setTimeout(() => {
+        const currentActiveTab = this.getCurrentActiveTab();
+        if (currentActiveTab) {
+          this.recordScrollPosition(currentActiveTab);
+        }
+      }, 300); // 300ms防抖
+    };
+
+    // 监听所有可能的滚动容器
+    const scrollContainers = document.querySelectorAll('.orca-panel-content, .orca-editor-content, .scroll-container, .orca-scroll-container, .orca-panel, body, html');
+    scrollContainers.forEach(container => {
+      container.addEventListener('scroll', handleScroll, { passive: true });
+    });
+
+    // 保存清理函数
+    this.scrollListener = () => {
+      scrollContainers.forEach(container => {
+        container.removeEventListener('scroll', handleScroll);
+      });
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
+    };
   }
 
   /**
@@ -201,7 +308,7 @@ class OrcaTabsPlugin {
     }
     
     // 立即执行交换，不使用延迟
-    this.swapTab(targetTab, draggingTab);
+      this.swapTab(targetTab, draggingTab);
     this.lastSwapTarget = targetTab.blockId;
   }
 
@@ -256,7 +363,20 @@ class OrcaTabsPlugin {
    * 发现所有面板
    */
   discoverPanels() {
+    const now = Date.now();
+    
+    // 如果距离上次发现不到1秒，且缓存有效，直接使用缓存
+    if (now - this.lastPanelDiscoveryTime < 1000 && this.panelDiscoveryCache) {
+      const cacheAge = now - this.panelDiscoveryCache.timestamp;
+      if (cacheAge < 1000) { // 缓存1秒内有效
+        this.panelIds = [...this.panelDiscoveryCache.panelIds];
+        console.log("📋 使用面板发现缓存，面板ID列表:", this.panelIds);
+        return;
+      }
+    }
+    
     console.log("🔍 开始发现面板...");
+    this.lastPanelDiscoveryTime = now;
     
     const mainSection = document.querySelector('section#main');
     if (!mainSection) {
@@ -342,6 +462,12 @@ class OrcaTabsPlugin {
     
     console.log(`🎯 最终发现 ${this.panelIds.length} 个面板，面板ID列表:`, this.panelIds);
     console.log(`🎯 当前面板: ${this.currentPanelId} (索引: ${this.currentPanelIndex})`);
+    
+    // 更新缓存
+    this.panelDiscoveryCache = {
+      panelIds: [...this.panelIds],
+      timestamp: now
+    };
     
     // 如果只有一个面板，显示提示
     if (this.panelIds.length === 1) {
@@ -732,24 +858,30 @@ class OrcaTabsPlugin {
     this.tabContainer = document.createElement('div');
     this.tabContainer.className = 'orca-tabs-container';
     // 不再需要为切换器预留空间
+    // 根据主题模式设置背景
+    const isDarkMode = orca.state.themeMode === 'dark';
+    const backgroundColor = isDarkMode ? 'transparent' : 'rgba(255, 255, 255, 0.1)';
+    
     this.tabContainer.style.cssText = `
       position: fixed;
       top: ${this.position.y}px;
       left: ${this.position.x}px;
       z-index: 300;
       display: flex;
-      gap: 2px;
+      gap: 4px;
       backdrop-filter: blur(2px);
       -webkit-backdrop-filter: blur(2px);
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      padding: 4px;
+      background: ${backgroundColor};
+      border-radius: 6px;
+      padding: 2px;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
       user-select: none;
       max-width: 80vw;
       flex-wrap: wrap;
       pointer-events: auto;
       -webkit-app-region: no-drag;
+      height: 28px;
+      align-items: center;
       app-region: no-drag;
     `;
     
@@ -867,23 +999,70 @@ class OrcaTabsPlugin {
 
       /* 拖拽时的过渡动画 */
       .orca-tab {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        will-change: transform, box-shadow, background;
+        transition: all 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+        will-change: transform, box-shadow, background, opacity, border;
       }
 
-      /* 拖拽悬停效果 */
+      /* 未选中标签的基础样式 */
+      .orca-tab {
+        opacity: 0.85;
+        border: 1px solid transparent;
+      }
+
+      /* 选中/悬停的标签样式 */
       .orca-tab:hover:not([data-dragging="true"]):not([data-drag-over="true"]) {
-        transform: scale(1.02) !important;
+        opacity: 1 !important;
+        border: 1px solid rgba(0, 0, 0, 0.2) !important;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+        transform: scale(1.02) !important;
+        transition: all 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+      }
+
+      /* 暗色模式下的选中样式 */
+      .dark .orca-tab:hover:not([data-dragging="true"]):not([data-drag-over="true"]) {
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1) !important;
+      }
+
+      /* 点击/激活状态的标签样式 */
+      .orca-tab:active:not([data-dragging="true"]):not([data-drag-over="true"]) {
+        opacity: 1 !important;
+        border: 1px solid rgba(0, 0, 0, 0.3) !important;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2) !important;
+        transform: scale(0.98) !important;
+        transition: all 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+      }
+
+      /* 暗色模式下的点击样式 */
+      .dark .orca-tab:active:not([data-dragging="true"]):not([data-drag-over="true"]) {
+        border: 1px solid rgba(255, 255, 255, 0.4) !important;
+        box-shadow: 0 1px 4px rgba(255, 255, 255, 0.2) !important;
+      }
+
+      /* 聚焦状态的标签样式 */
+      .orca-tab[data-focused="true"] {
+        opacity: 1 !important;
+        border: 2px solid #3b82f6 !important;
+        box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2), 0 2px 8px rgba(59, 130, 246, 0.3) !important;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05)) !important;
+        transform: scale(1.02) !important;
+        transition: all 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+      }
+
+      /* 暗色模式下的聚焦样式 */
+      .dark .orca-tab[data-focused="true"] {
+        border: 2px solid #60a5fa !important;
+        box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.3), 0 2px 8px rgba(96, 165, 250, 0.2) !important;
+        background: linear-gradient(135deg, rgba(96, 165, 250, 0.15), rgba(96, 165, 250, 0.08)) !important;
       }
 
       /* 拖拽时的光标样式 */
       .orca-tab[draggable="true"] {
-        cursor: grab !important;
+        cursor: pointer !important;
       }
 
       .orca-tab[draggable="true"]:active {
-        cursor: grabbing !important;
+        cursor: pointer !important;
       }
 
       /* 拖拽时的标签容器动画 */
@@ -919,14 +1098,14 @@ class OrcaTabsPlugin {
   debouncedUpdateTabsUI() {
     // 如果正在拖拽，延迟更新UI以避免干扰拖拽体验
     if (this.draggingTab) {
-      // 清除之前的计时器
-      if (this.updateDebounceTimer) {
-        clearTimeout(this.updateDebounceTimer);
-      }
-      
+    // 清除之前的计时器
+    if (this.updateDebounceTimer) {
+      clearTimeout(this.updateDebounceTimer);
+    }
+    
       // 设置新的计时器，拖拽时使用更长的延迟
-      this.updateDebounceTimer = setTimeout(async () => {
-        await this.updateTabsUI();
+    this.updateDebounceTimer = setTimeout(async () => {
+      await this.updateTabsUI();
       }, 200); // 拖拽时200ms防抖
     } else {
       // 正常情况下的防抖
@@ -1145,16 +1324,23 @@ class OrcaTabsPlugin {
     tabElement.className = 'orca-tab';
     tabElement.setAttribute('data-tab-id', tab.blockId); // 添加data属性用于重命名定位
     
+    // 检查是否为当前激活的标签
+    const isActive = this.isTabActive(tab);
+    if (isActive) {
+      tabElement.setAttribute('data-focused', 'true');
+    }
+    
     // 设置样式
-    let backgroundColor = 'rgba(200, 200, 200, 0.6)';
-    let textColor = '#333';
+    const isDarkMode = orca.state.themeMode === 'dark';
+    let backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(200, 200, 200, 0.6)';
+    let textColor = isDarkMode ? '#ffffff' : '#333';
     let fontWeight = 'normal';
     
     // 如果有颜色，应用颜色样式
     if (tab.color) {
-      backgroundColor = this.hexToRgba(tab.color, 0.25);
-      // 使用加深的颜色作为文字颜色，确保可读性
-      textColor = this.darkenColor(tab.color, 0.3);
+      // 使用OKLCH公式处理颜色（仅限暗色模式）
+      backgroundColor = this.applyOklchFormula(tab.color, 'background');
+      textColor = this.applyOklchFormula(tab.color, 'text');
       fontWeight = '600';
     }
 
@@ -1162,8 +1348,11 @@ class OrcaTabsPlugin {
       background: ${backgroundColor};
       color: ${textColor};
       font-weight: ${fontWeight};
-      padding: 6px 12px;
-      border-radius: 6px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      height: 24px;
+      max-height: 24px;
+      line-height: 20px;
       cursor: pointer;
       font-size: 12px;
       white-space: nowrap;
@@ -1202,6 +1391,13 @@ class OrcaTabsPlugin {
       e.stopPropagation();
       e.stopImmediatePropagation();
       
+      // 移除其他标签的聚焦状态
+      const allTabs = this.tabContainer?.querySelectorAll('.orca-tab');
+      allTabs?.forEach(t => t.removeAttribute('data-focused'));
+      
+      // 设置当前标签为聚焦状态
+      tabElement.setAttribute('data-focused', 'true');
+      
       // 普通点击切换标签
       this.switchToTab(tab);
     });
@@ -1221,6 +1417,25 @@ class OrcaTabsPlugin {
         e.stopPropagation();
         e.stopImmediatePropagation();
         this.closeTab(tab);
+      }
+    });
+
+    // 添加键盘快捷键支持
+    tabElement.addEventListener('keydown', (e) => {
+      if (e.target === tabElement || tabElement.contains(e.target as Node)) {
+        if (e.key === 'F2') {
+      e.preventDefault();
+      e.stopPropagation();
+          this.renameTab(tab);
+        } else if (e.ctrlKey && e.key === 'p') {
+          e.preventDefault();
+          e.stopPropagation();
+          this.toggleTabPinStatus(tab);
+        } else if (e.ctrlKey && e.key === 'w') {
+          e.preventDefault();
+          e.stopPropagation();
+          this.closeTab(tab);
+        }
       }
     });
 
@@ -1391,8 +1606,166 @@ class OrcaTabsPlugin {
     return hex; // 如果解析失败，返回原颜色
   }
 
+  /**
+   * RGB转OKLCH颜色空间
+   */
+  private rgbToOklch(r: number, g: number, b: number): { l: number; c: number; h: number } {
+    // 将RGB转换为线性RGB
+    const linearR = r / 255;
+    const linearG = g / 255;
+    const linearB = b / 255;
+
+    // 应用sRGB到线性RGB的转换
+    const srgbToLinear = (c: number) => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    
+    const rLinear = srgbToLinear(linearR);
+    const gLinear = srgbToLinear(linearG);
+    const bLinear = srgbToLinear(linearB);
+
+    // 转换为XYZ颜色空间
+    const x = rLinear * 0.4124564 + gLinear * 0.3575761 + bLinear * 0.1804375;
+    const y = rLinear * 0.2126729 + gLinear * 0.7151522 + bLinear * 0.0721750;
+    const z = rLinear * 0.0193339 + gLinear * 0.1191920 + bLinear * 0.9503041;
+
+    // 转换为OKLCH
+    const l = 0.2104542553 * x + 0.7936177850 * y - 0.0040720468 * z;
+    const m = 1.9779984951 * x - 2.4285922050 * y + 0.4505937099 * z;
+    const s = 0.0259040371 * x + 0.7827717662 * y - 0.8086757660 * z;
+
+    const l_ = Math.cbrt(l);
+    const m_ = Math.cbrt(m);
+    const s_ = Math.cbrt(s);
+
+    const l_oklch = 0.2104542553 * l_ + 0.7936177850 * m_ + 0.0040720468 * s_;
+    const a = 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_;
+    const b_oklch = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_;
+
+    const c = Math.sqrt(a * a + b_oklch * b_oklch);
+    const h = Math.atan2(b_oklch, a) * 180 / Math.PI;
+    const h_normalized = h < 0 ? h + 360 : h;
+
+    return { l: l_oklch, c, h: h_normalized };
+  }
+
+  /**
+   * OKLCH转RGB颜色空间
+   */
+  private oklchToRgb(l: number, c: number, h: number): { r: number; g: number; b: number } {
+    const h_rad = h * Math.PI / 180;
+    const a = c * Math.cos(h_rad);
+    const b_oklch = c * Math.sin(h_rad);
+
+    const l_ = l;
+    const m_ = a;
+    const s_ = b_oklch;
+
+    const l_cubed = l_ * l_ * l_;
+    const m_cubed = m_ * m_ * m_;
+    const s_cubed = s_ * s_ * s_;
+
+    const x = 1.0478112 * l_cubed + 0.0228866 * m_cubed - 0.0502170 * s_cubed;
+    const y = 0.0295424 * l_cubed + 0.9904844 * m_cubed + 0.0170491 * s_cubed;
+    const z = -0.0092345 * l_cubed + 0.0150436 * m_cubed + 0.7521316 * s_cubed;
+
+    const rLinear = 3.2404542 * x - 1.5371385 * y - 0.4985314 * z;
+    const gLinear = -0.9692660 * x + 1.8760108 * y + 0.0415560 * z;
+    const bLinear = 0.0556434 * x - 0.2040259 * y + 1.0572252 * z;
+
+    const linearToSrgb = (c: number) => c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1/2.4) - 0.055;
+
+    const r = Math.max(0, Math.min(255, Math.round(linearToSrgb(rLinear) * 255)));
+    const g = Math.max(0, Math.min(255, Math.round(linearToSrgb(gLinear) * 255)));
+    const b = Math.max(0, Math.min(255, Math.round(linearToSrgb(bLinear) * 255)));
+
+    return { r, g, b };
+  }
+
+  /**
+   * 应用颜色调整（支持亮色和暗色模式）
+   * 优先使用简单的RGB调整，避免OKLCH偏色问题
+   */
+  private applyOklchFormula(hex: string, type: 'text' | 'background'): string {
+    // 使用Orca API检查是否为暗色模式
+    const isDarkMode = orca.state.themeMode === 'dark';
+    
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!result) return hex;
+
+    const r = parseInt(result[1], 16);
+    const g = parseInt(result[2], 16);
+    const b = parseInt(result[3], 16);
+
+    if (type === 'text') {
+      // 文字颜色：根据模式调整对比度
+      const brightness = (r + g + b) / 3;
+      
+      if (isDarkMode) {
+        // 暗色模式：增亮文字
+        if (brightness < 80) {
+          // 暗色：适度增亮
+          const factor = 1.6;
+          const newR = Math.min(255, Math.round(r * factor));
+          const newG = Math.min(255, Math.round(g * factor));
+          const newB = Math.min(255, Math.round(b * factor));
+          return `rgb(${newR}, ${newG}, ${newB})`;
+        } else if (brightness < 150) {
+          // 中等亮度：轻微增亮
+          const factor = 1.3;
+          const newR = Math.min(255, Math.round(r * factor));
+          const newG = Math.min(255, Math.round(g * factor));
+          const newB = Math.min(255, Math.round(b * factor));
+          return `rgb(${newR}, ${newG}, ${newB})`;
+        } else {
+          // 亮色：保持原色或轻微增亮
+          const factor = 1.1;
+          const newR = Math.min(255, Math.round(r * factor));
+          const newG = Math.min(255, Math.round(g * factor));
+          const newB = Math.min(255, Math.round(b * factor));
+          return `rgb(${newR}, ${newG}, ${newB})`;
+        }
+      } else {
+        // 亮色模式：变暗文字以提高对比度
+        if (brightness > 200) {
+          // 很亮的颜色：大幅变暗
+          const factor = 0.4;
+          const newR = Math.max(0, Math.round(r * factor));
+          const newG = Math.max(0, Math.round(g * factor));
+          const newB = Math.max(0, Math.round(b * factor));
+          return `rgb(${newR}, ${newG}, ${newB})`;
+        } else if (brightness > 150) {
+          // 中等亮度：适度变暗
+          const factor = 0.6;
+          const newR = Math.max(0, Math.round(r * factor));
+          const newG = Math.max(0, Math.round(g * factor));
+          const newB = Math.max(0, Math.round(b * factor));
+          return `rgb(${newR}, ${newG}, ${newB})`;
+        } else {
+          // 暗色：轻微变暗
+          const factor = 0.8;
+          const newR = Math.max(0, Math.round(r * factor));
+          const newG = Math.max(0, Math.round(g * factor));
+          const newB = Math.max(0, Math.round(b * factor));
+          return `rgb(${newR}, ${newG}, ${newB})`;
+        }
+      }
+    } else {
+      // 背景颜色：根据模式调整透明度
+      if (isDarkMode) {
+        return this.hexToRgba(hex, 0.25);
+      } else {
+        return this.hexToRgba(hex, 0.35);
+      }
+    }
+  }
+
   async switchToTab(tab: TabInfo) {
     try {
+      // 记录当前激活标签的滚动位置
+      const currentActiveTab = this.getCurrentActiveTab();
+      if (currentActiveTab && currentActiveTab.blockId !== tab.blockId) {
+        this.recordScrollPosition(currentActiveTab);
+      }
+      
       // 根据当前面板索引决定在哪个面板打开
       const targetPanelId = this.panelIds[this.currentPanelIndex];
       
@@ -1405,6 +1778,14 @@ class OrcaTabsPlugin {
       }
       
       console.log(`🔄 切换到标签: ${tab.title} (面板 ${this.currentPanelIndex + 1})`);
+      
+      // 恢复目标标签的滚动位置
+      this.restoreScrollPosition(tab);
+      
+      // 调试信息
+      setTimeout(() => {
+        this.debugScrollPosition(tab);
+      }, 500);
     } catch (e) {
       console.error("切换标签失败:", e);
     }
@@ -1486,6 +1867,209 @@ class OrcaTabsPlugin {
     }
   }
 
+
+  /**
+   * 记录当前标签的滚动位置
+   */
+  private recordScrollPosition(tab: TabInfo) {
+    try {
+      // 使用Orca的viewState API来保存滚动位置
+      const panelId = this.panelIds[this.currentPanelIndex];
+      const panel = orca.nav.findViewPanel(panelId, orca.state.panels);
+      
+      if (panel && panel.viewState) {
+        // 尝试多种方式找到滚动容器
+        let scrollContainer: HTMLElement | null = null;
+        
+        // 方法1: 通过block元素查找
+        const blockElement = document.querySelector(`.orca-block-editor[data-block-id="${tab.blockId}"]`);
+        if (blockElement) {
+          const panelElement = blockElement.closest('.orca-panel');
+          if (panelElement) {
+            scrollContainer = panelElement.querySelector('.orca-panel-content, .orca-editor-content, .scroll-container, .orca-scroll-container') as HTMLElement;
+          }
+        }
+        
+        // 方法2: 直接查找当前激活面板的滚动容器
+        if (!scrollContainer) {
+          const activePanel = document.querySelector('.orca-panel.active');
+          if (activePanel) {
+            scrollContainer = activePanel.querySelector('.orca-panel-content, .orca-editor-content, .scroll-container, .orca-scroll-container') as HTMLElement;
+          }
+        }
+        
+        // 方法3: 查找body或documentElement的滚动
+        if (!scrollContainer) {
+          scrollContainer = document.body.scrollTop > 0 ? document.body : document.documentElement;
+        }
+        
+        if (scrollContainer) {
+          const scrollPosition = {
+            x: scrollContainer.scrollLeft || 0,
+            y: scrollContainer.scrollTop || 0
+          };
+          
+          // 保存到Orca的viewState中
+          panel.viewState.scrollPosition = scrollPosition;
+          
+          // 同时保存到标签信息中作为备份
+          const tabIndex = this.firstPanelTabs.findIndex(t => t.blockId === tab.blockId);
+          if (tabIndex !== -1) {
+            this.firstPanelTabs[tabIndex].scrollPosition = scrollPosition;
+            this.saveFirstPanelTabs();
+          }
+          
+          console.log(`📝 记录标签 "${tab.title}" 滚动位置到viewState:`, scrollPosition, '容器:', scrollContainer.className);
+        } else {
+          console.warn(`未找到标签 "${tab.title}" 的滚动容器`);
+        }
+      } else {
+        console.warn(`未找到面板 ${panelId} 或viewState`);
+      }
+    } catch (error) {
+      console.warn('记录滚动位置时出错:', error);
+    }
+  }
+
+  /**
+   * 恢复标签的滚动位置
+   */
+  private restoreScrollPosition(tab: TabInfo) {
+    try {
+      // 优先从Orca的viewState中获取滚动位置
+      let scrollPosition = null;
+      
+      // 方法1: 从viewState获取
+      const panelId = this.panelIds[this.currentPanelIndex];
+      const panel = orca.nav.findViewPanel(panelId, orca.state.panels);
+      if (panel && panel.viewState && panel.viewState.scrollPosition) {
+        scrollPosition = panel.viewState.scrollPosition;
+        console.log(`🔄 从viewState恢复标签 "${tab.title}" 滚动位置:`, scrollPosition);
+      }
+      
+      // 方法2: 从标签信息获取（备份）
+      if (!scrollPosition && tab.scrollPosition) {
+        scrollPosition = tab.scrollPosition;
+        console.log(`🔄 从标签信息恢复标签 "${tab.title}" 滚动位置:`, scrollPosition);
+      }
+      
+      if (!scrollPosition) return;
+      
+      // 多次尝试恢复，确保DOM已更新
+      const attemptRestore = (attempt: number = 1) => {
+        if (attempt > 5) {
+          console.warn(`恢复标签 "${tab.title}" 滚动位置失败，已尝试5次`);
+          return;
+        }
+        
+        // 尝试多种方式找到滚动容器
+        let scrollContainer: HTMLElement | null = null;
+        
+        // 方法1: 通过block元素查找
+        const blockElement = document.querySelector(`.orca-block-editor[data-block-id="${tab.blockId}"]`);
+        if (blockElement) {
+          const panelElement = blockElement.closest('.orca-panel');
+          if (panelElement) {
+            scrollContainer = panelElement.querySelector('.orca-panel-content, .orca-editor-content, .scroll-container, .orca-scroll-container') as HTMLElement;
+          }
+        }
+        
+        // 方法2: 直接查找当前激活面板的滚动容器
+        if (!scrollContainer) {
+          const activePanel = document.querySelector('.orca-panel.active');
+          if (activePanel) {
+            scrollContainer = activePanel.querySelector('.orca-panel-content, .orca-editor-content, .scroll-container, .orca-scroll-container') as HTMLElement;
+          }
+        }
+        
+        // 方法3: 查找body或documentElement的滚动
+        if (!scrollContainer) {
+          scrollContainer = document.body.scrollTop > 0 ? document.body : document.documentElement;
+        }
+        
+        if (scrollContainer) {
+          scrollContainer.scrollLeft = scrollPosition.x;
+          scrollContainer.scrollTop = scrollPosition.y;
+          console.log(`🔄 恢复标签 "${tab.title}" 滚动位置:`, scrollPosition, '容器:', scrollContainer.className, `尝试${attempt}`);
+        } else {
+          // 如果没找到容器，延迟重试
+          setTimeout(() => attemptRestore(attempt + 1), 200 * attempt);
+        }
+      };
+      
+      // 立即尝试一次，然后延迟尝试
+      attemptRestore();
+      setTimeout(() => attemptRestore(2), 100);
+      setTimeout(() => attemptRestore(3), 300);
+    } catch (error) {
+      console.warn('恢复滚动位置时出错:', error);
+    }
+  }
+
+  /**
+   * 调试滚动位置信息
+   */
+  private debugScrollPosition(tab: TabInfo) {
+    console.log(`🔍 调试标签 "${tab.title}" 滚动位置:`);
+    console.log('标签保存的滚动位置:', tab.scrollPosition);
+    
+    // 检查viewState中的滚动位置
+    const panelId = this.panelIds[this.currentPanelIndex];
+    const panel = orca.nav.findViewPanel(panelId, orca.state.panels);
+    if (panel && panel.viewState) {
+      console.log('viewState中的滚动位置:', panel.viewState.scrollPosition);
+      console.log('完整viewState:', panel.viewState);
+    } else {
+      console.log('未找到viewState');
+    }
+    
+    // 查找所有可能的滚动容器
+    const containers = [
+      '.orca-panel-content',
+      '.orca-editor-content', 
+      '.scroll-container',
+      '.orca-scroll-container',
+      '.orca-panel',
+      'body',
+      'html'
+    ];
+    
+    containers.forEach(selector => {
+      const elements = document.querySelectorAll(selector);
+      elements.forEach((el, index) => {
+        const element = el as HTMLElement;
+        if (element.scrollTop > 0 || element.scrollLeft > 0) {
+          console.log(`容器 ${selector}[${index}]:`, {
+            scrollTop: element.scrollTop,
+            scrollLeft: element.scrollLeft,
+            className: element.className,
+            id: element.id
+          });
+        }
+      });
+    });
+  }
+
+  /**
+   * 检查标签是否为当前激活状态
+   */
+  private isTabActive(tab: TabInfo): boolean {
+    try {
+      // 获取当前激活的面板
+      const activePanel = document.querySelector('.orca-panel.active');
+      if (!activePanel) return false;
+
+      // 获取当前激活的块编辑器
+      const activeBlock = activePanel.querySelector('.orca-block-editor[data-block-id]');
+      if (!activeBlock) return false;
+
+      const activeBlockId = activeBlock.getAttribute('data-block-id');
+      return activeBlockId === tab.blockId;
+    } catch (error) {
+      console.warn('检查标签激活状态时出错:', error);
+      return false;
+    }
+  }
 
   /**
    * 获取当前激活的标签
@@ -1690,7 +2274,7 @@ class OrcaTabsPlugin {
     `;
     document.body.appendChild(container);
 
-    // 计算输入框位置（确保不被裁掉）
+    // 计算输入框位置（优化版：靠近边缘时往内定位）
     const tabElement = document.querySelector(`[data-tab-id="${tab.blockId}"]`) as HTMLElement;
     let inputPosition = { x: '50%', y: '50%' };
     
@@ -1698,30 +2282,43 @@ class OrcaTabsPlugin {
       const rect = tabElement.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
+      const inputWidth = 300; // 输入框预估宽度
+      const inputHeight = 100; // 输入框预估高度
+      const margin = 20; // 边距
       
-      // 计算最佳位置，确保不被裁掉
+      // 计算最佳位置，优先在标签上方显示
       let x = rect.left;
-      let y = rect.top - 80; // 在标签上方显示
+      let y = rect.top - inputHeight - 10; // 在标签上方显示
       
-      // 检查右边界
-      if (x + 300 > viewportWidth) {
-        x = viewportWidth - 320;
+      // 智能边界检测和调整
+      // 检查右边界 - 如果太靠近右边缘，往左移动
+      if (x + inputWidth > viewportWidth - margin) {
+        x = viewportWidth - inputWidth - margin;
       }
       
-      // 检查左边界
-      if (x < 20) {
-        x = 20;
+      // 检查左边界 - 如果太靠近左边缘，往右移动
+      if (x < margin) {
+        x = margin;
       }
       
-      // 检查上边界
-      if (y < 20) {
-        y = rect.bottom + 10; // 如果上方空间不够，显示在下方
+      // 检查上边界 - 如果上方空间不够，显示在下方
+      if (y < margin) {
+        y = rect.bottom + 10;
+        
+        // 如果下方也不够，调整到屏幕中央
+        if (y + inputHeight > viewportHeight - margin) {
+          y = (viewportHeight - inputHeight) / 2;
+        }
       }
       
-      // 检查下边界
-      if (y + 100 > viewportHeight) {
-        y = viewportHeight - 120;
+      // 检查下边界 - 如果下方空间不够，调整位置
+      if (y + inputHeight > viewportHeight - margin) {
+        y = viewportHeight - inputHeight - margin;
       }
+      
+      // 最终边界检查，确保完全在屏幕内
+      x = Math.max(margin, Math.min(x, viewportWidth - inputWidth - margin));
+      y = Math.max(margin, Math.min(y, viewportHeight - inputHeight - margin));
       
       inputPosition = { x: `${x}px`, y: `${y}px` };
     }
@@ -2013,6 +2610,7 @@ class OrcaTabsPlugin {
             key: 'rename',
             title: '重命名标签',
             preIcon: 'ti ti-edit',
+            shortcut: 'F2',
             onClick: () => {
               close();
               this.renameTab(tab);
@@ -2022,6 +2620,7 @@ class OrcaTabsPlugin {
             key: 'pin',
             title: tab.isPinned ? '取消固定' : '固定标签',
             preIcon: tab.isPinned ? 'ti ti-pin-off' : 'ti ti-pin',
+            shortcut: 'Ctrl+P',
             onClick: () => {
               close();
               this.toggleTabPinStatus(tab);
@@ -2032,6 +2631,7 @@ class OrcaTabsPlugin {
             key: 'close',
             title: '关闭标签',
             preIcon: 'ti ti-x',
+            shortcut: 'Ctrl+W',
             disabled: this.firstPanelTabs.length <= 1,
             onClick: () => {
               close();
@@ -2388,10 +2988,10 @@ class OrcaTabsPlugin {
     const containerRect = this.tabContainer.getBoundingClientRect();
     
     // 限制在窗口范围内，考虑实际容器大小
-    const minX = 10; // 留一点边距
-    const maxX = window.innerWidth - containerRect.width - 10;
-    const minY = 10;
-    const maxY = window.innerHeight - containerRect.height - 10;
+    const minX = 5; // 留一点边距
+    const maxX = window.innerWidth - containerRect.width - 5;
+    const minY = 5;
+    const maxY = window.innerHeight - containerRect.height - 5;
     
     this.position.x = Math.max(minX, Math.min(maxX, this.position.x));
     this.position.y = Math.max(minY, Math.min(maxY, this.position.y));
@@ -2441,10 +3041,10 @@ class OrcaTabsPlugin {
     const estimatedWidth = 400;
     const estimatedHeight = 40;
     
-    const minX = 10;
-    const maxX = window.innerWidth - estimatedWidth - 10;
-    const minY = 10;
-    const maxY = window.innerHeight - estimatedHeight - 10;
+    const minX = 0; // 允许紧靠左边缘
+    const maxX = window.innerWidth - estimatedWidth;
+    const minY = 0; // 允许紧靠上边缘
+    const maxY = window.innerHeight - estimatedHeight;
     
     this.position.x = Math.max(minX, Math.min(maxX, this.position.x));
     this.position.y = Math.max(minY, Math.min(maxY, this.position.y));
@@ -2693,10 +3293,10 @@ class OrcaTabsPlugin {
    * 启动主动的面板状态监控
    */
   startActiveMonitoring() {
-    // 1. 定期检查面板状态（每500ms，减少频率避免闪烁）
+    // 1. 定期检查面板状态（每2秒，大幅减少频率）
     this.monitoringInterval = setInterval(async () => {
       await this.checkPanelStatusChange();
-    }, 500);
+    }, 2000);
     
     // 2. 监听全局点击事件，可能触发面板切换（使用防抖）
     this.clickListener = async (e: Event) => {
@@ -2750,6 +3350,18 @@ class OrcaTabsPlugin {
    * 检查面板状态是否发生变化
    */
   async checkPanelStatusChange() {
+    // 快速检查面板数量是否变化
+    const currentPanelCount = document.querySelectorAll('.orca-panel:not([data-menu-panel="true"])').length;
+    
+    // 如果面板数量没有变化，跳过完整发现
+    if (currentPanelCount === this.panelIds.length && this.panelDiscoveryCache) {
+      const cacheAge = Date.now() - this.panelDiscoveryCache.timestamp;
+      if (cacheAge < 3000) { // 缓存3秒内有效
+        console.log("📋 面板数量未变化，跳过面板发现");
+        return;
+      }
+    }
+    
     // 首先重新扫描面板，检查是否有面板被关闭
     const oldPanelIds = [...this.panelIds];
     this.discoverPanels();
@@ -2913,6 +3525,14 @@ class OrcaTabsPlugin {
     if (this.dragEndListener) {
       document.removeEventListener('dragend', this.dragEndListener);
       this.dragEndListener = null;
+    }
+    if (this.themeChangeListener) {
+      this.themeChangeListener();
+      this.themeChangeListener = null;
+    }
+    if (this.scrollListener) {
+      this.scrollListener();
+      this.scrollListener = null;
     }
     
     // 清理拖拽状态
