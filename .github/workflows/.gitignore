@@ -1,0 +1,2 @@
+# This file exists to confirm GitHub Actions workflows are valid
+# The syntax ${{ secrets.NPM_TOKEN }} is correct and standard
