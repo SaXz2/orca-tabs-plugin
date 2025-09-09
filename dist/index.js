@@ -2018,7 +2018,7 @@ class Pt {
       pointer-events: auto;
     `;
     let c = e.title;
-    e.icon && (c = `${e.icon} ${e.title}`), e.isPinned && (c = `📌 ${c}`), t.textContent = c;
+    e.icon && (c = `${e.icon} ${e.title}`), e.isPinned && (c = `${c} 📌`), t.textContent = c;
     let d = e.title;
     return e.isPinned && (d += " (已固定)"), t.title = d, t.addEventListener("click", (l) => {
       var h;

@@ -1372,9 +1372,9 @@ class OrcaTabsPlugin {
     if (tab.icon) {
       displayText = `${tab.icon} ${tab.title}`;
     }
-    // 如果是固定标签，添加固定图标
+    // 如果是固定标签，添加固定图标（放在后面）
     if (tab.isPinned) {
-      displayText = `📌 ${displayText}`;
+      displayText = `${displayText} 📌`;
     }
     tabElement.textContent = displayText;
     
