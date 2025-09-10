@@ -73,6 +73,7 @@ class OrcaTabsPlugin {
   
   // 已关闭标签页跟踪
   private closedTabs: Set<string> = new Set(); // 已关闭的标签页blockId集合
+  private lastActiveBlockId: string | null = null; // 上一个激活的标签ID
 
   async init() {
     // 从设置中读取最大标签数
@@ -559,8 +560,9 @@ class OrcaTabsPlugin {
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;
       
-      // 相同固定状态的标签保持原有顺序
-      return a.order - b.order;
+      // 相同固定状态的标签保持数组中的顺序（不按order排序）
+      // 这样新插入的标签会保持在正确的位置
+      return 0;
     });
   }
 
@@ -1764,6 +1766,9 @@ class OrcaTabsPlugin {
       const currentActiveTab = this.getCurrentActiveTab();
       if (currentActiveTab && currentActiveTab.blockId !== tab.blockId) {
         this.recordScrollPosition(currentActiveTab);
+        // 记录当前激活的标签ID，用于后续新标签的插入位置
+        this.lastActiveBlockId = currentActiveTab.blockId;
+        console.log(`🎯 记录切换前的激活标签: ${currentActiveTab.title} (ID: ${currentActiveTab.blockId})`);
       }
       
       // 根据当前面板索引决定在哪个面板打开
@@ -1777,6 +1782,8 @@ class OrcaTabsPlugin {
         await orca.nav.goTo("block", { blockId: parseInt(tab.blockId) }, targetPanelId);
       }
       
+      // 更新当前激活的标签ID
+      this.lastActiveBlockId = tab.blockId;
       console.log(`🔄 切换到标签: ${tab.title} (面板 ${this.currentPanelIndex + 1})`);
       
       // 恢复目标标签的滚动位置
@@ -2055,12 +2062,13 @@ class OrcaTabsPlugin {
    */
   private isTabActive(tab: TabInfo): boolean {
     try {
-      // 获取当前激活的面板
-      const activePanel = document.querySelector('.orca-panel.active');
-      if (!activePanel) return false;
+      // 获取第一个面板
+      const firstPanelId = this.panelIds[0];
+      const firstPanel = document.querySelector(`.orca-panel[data-panel-id="${firstPanelId}"]`);
+      if (!firstPanel) return false;
 
-      // 获取当前激活的块编辑器
-      const activeBlock = activePanel.querySelector('.orca-block-editor[data-block-id]');
+      // 获取当前激活的块编辑器（可见的那个）
+      const activeBlock = firstPanel.querySelector('.orca-hideable:not([style*="display: none"]) .orca-block-editor[data-block-id]');
       if (!activeBlock) return false;
 
       const activeBlockId = activeBlock.getAttribute('data-block-id');
@@ -2118,6 +2126,58 @@ class OrcaTabsPlugin {
     
     // 返回当前标签的索引，新标签将插入到其后面（索引+1的位置）
     return currentIndex;
+  }
+
+  /**
+   * 获取新标签添加前的当前激活标签（用于确定插入位置）
+   */
+  getCurrentActiveTabBeforeNewOne(): TabInfo | null {
+    if (this.currentPanelIndex !== 0) return null; // 只有第一个面板支持
+    
+    if (this.firstPanelTabs.length === 0) return null;
+    
+    // 如果有记录的上一个激活标签ID，查找对应的标签
+    if (this.lastActiveBlockId) {
+      const lastActiveTab = this.firstPanelTabs.find(tab => tab.blockId === this.lastActiveBlockId);
+      if (lastActiveTab) {
+        console.log(`🎯 找到上一个激活的标签: ${lastActiveTab.title}`);
+        return lastActiveTab;
+      }
+    }
+    
+    // 如果没有记录或找不到，尝试获取当前UI中的激活标签
+    const currentActiveTab = this.getCurrentActiveTab();
+    if (currentActiveTab) {
+      console.log(`🎯 使用当前激活的标签: ${currentActiveTab.title}`);
+      return currentActiveTab;
+    }
+    
+    console.log(`🎯 没有找到激活的标签`);
+    return null;
+  }
+
+  /**
+   * 基于之前激活的标签获取智能插入位置
+   */
+  getSmartInsertPositionWithPrevious(previousActiveTab: TabInfo | null): number {
+    if (this.currentPanelIndex !== 0) return -1; // 只有第一个面板支持
+    
+    if (this.firstPanelTabs.length === 0) return -1;
+    
+    if (!previousActiveTab) {
+      console.log(`🎯 没有找到之前激活的标签，添加到末尾`);
+      return -1;
+    }
+    
+    // 找到之前激活标签的索引
+    const previousIndex = this.firstPanelTabs.findIndex(tab => tab.blockId === previousActiveTab.blockId);
+    if (previousIndex === -1) {
+      console.log(`🎯 之前激活的标签不在当前列表中，添加到末尾`);
+      return -1;
+    }
+    
+    console.log(`🎯 将在标签 "${previousActiveTab.title}" (索引${previousIndex}) 后面插入新标签`);
+    return previousIndex;
   }
 
   /**
@@ -2339,12 +2399,14 @@ class OrcaTabsPlugin {
     input.select();
 
     // 确认重命名
-    const confirmRename = () => {
+    const confirmRename = async () => {
       const newTitle = input.value.trim();
       if (newTitle && newTitle !== tab.title) {
-        this.updateTabTitle(tab, newTitle);
+        await this.updateTabTitle(tab, newTitle);
+        // 重命名后，让UI更新来显示新标题
+        return; // 不恢复原始内容，让UI更新显示新标题
       }
-      // 恢复标签显示
+      // 如果没有更改，恢复标签显示
       tabElement.textContent = originalContent;
       tabElement.style.cssText = originalStyle;
     };
@@ -2679,8 +2741,8 @@ class OrcaTabsPlugin {
         // 保存数据
         this.saveFirstPanelTabs();
         
-        // 更新UI
-        this.debouncedUpdateTabsUI();
+        // 立即更新UI（重命名需要立即反馈）
+        await this.updateTabsUI();
         
         console.log(`📝 标签重命名: "${tab.title}" -> "${newTitle}"`);
         
@@ -3216,40 +3278,106 @@ class OrcaTabsPlugin {
     // 检查是否已经存在这个标签页
     const existingTab = this.firstPanelTabs.find(tab => tab.blockId === blockId);
     if (existingTab) {
-      // 如果已经存在，不需要添加
+      // 如果已经存在，更新聚焦状态
       console.log(`📋 当前激活页面已存在: "${existingTab.title}"`);
+      
+      // 清除所有标签的聚焦状态
+      const allTabs = this.tabContainer?.querySelectorAll('.orca-tab');
+      allTabs?.forEach(tab => tab.removeAttribute('data-focused'));
+      
+      // 设置当前标签为聚焦状态
+      const currentTabElement = this.tabContainer?.querySelector(`[data-tab-id="${blockId}"]`);
+      if (currentTabElement) {
+        currentTabElement.setAttribute('data-focused', 'true');
+        console.log(`🎯 更新聚焦状态到已存在的标签: "${existingTab.title}"`);
+      }
+      
+      // 更新UI显示
+      this.debouncedUpdateTabsUI();
       return;
     }
 
+    // 直接从UI中找到当前聚焦的标签
+    let insertIndex = this.firstPanelTabs.length; // 默认插入到末尾
+    
+    console.log(`🎯 开始查找聚焦标签，当前数组长度: ${this.firstPanelTabs.length}`);
+    console.log(`🎯 当前所有标签:`, this.firstPanelTabs.map((tab, idx) => `${idx}:${tab.title}`));
+    
+    const focusedTabElement = this.tabContainer?.querySelector('.orca-tab[data-focused="true"]');
+    console.log(`🎯 找到的聚焦标签元素:`, focusedTabElement);
+    
+    if (focusedTabElement) {
+      const focusedTabId = focusedTabElement.getAttribute('data-tab-id');
+      console.log(`🎯 聚焦标签的data-tab-id:`, focusedTabId);
+      
+      if (focusedTabId) {
+        const focusedIndex = this.firstPanelTabs.findIndex(tab => tab.blockId === focusedTabId);
+        console.log(`🎯 在数组中找到的索引:`, focusedIndex);
+        
+        if (focusedIndex !== -1) {
+          insertIndex = focusedIndex + 1; // 在聚焦标签的后面插入
+          console.log(`🎯 找到聚焦的标签: "${this.firstPanelTabs[focusedIndex].title}" (索引${focusedIndex})，将在位置${insertIndex}插入`);
+        } else {
+          console.log(`🎯 聚焦的标签不在数组中，插入到末尾`);
+        }
+      } else {
+        console.log(`🎯 聚焦的标签没有data-tab-id，插入到末尾`);
+      }
+    } else {
+      console.log(`🎯 没有找到聚焦的标签，将替换最后一个非固定标签`);
+    }
+    
+    console.log(`🎯 最终计算的insertIndex: ${insertIndex}`);
+    
     // 获取当前激活页面的标签信息
     const tabInfo = await this.getTabInfo(blockId, firstPanelId, this.firstPanelTabs.length);
     if (tabInfo) {
       console.log(`📋 检测到新的激活页面: "${tabInfo.title}"`);
       
       if (this.firstPanelTabs.length >= this.maxTabs) {
-        // 达到上限，替换最后一个非固定标签页
-        const lastNonPinnedIndex = this.findLastNonPinnedTabIndex();
-        if (lastNonPinnedIndex !== -1) {
-          const replacedTab = this.firstPanelTabs[lastNonPinnedIndex];
-          this.firstPanelTabs[lastNonPinnedIndex] = tabInfo;
-          console.log(`🔄 标签页达到上限，替换最后一个标签: "${replacedTab.title}" -> "${tabInfo.title}"`);
+        // 达到上限，根据是否有聚焦标签决定处理方式
+        
+        if (insertIndex < this.firstPanelTabs.length) {
+          // 有聚焦标签，在聚焦标签后面插入，然后删除最后一个非固定标签
+          console.log(`🎯 插入前数组:`, this.firstPanelTabs.map((tab, idx) => `${idx}:${tab.title}`));
+          this.firstPanelTabs.splice(insertIndex, 0, tabInfo);
+          console.log(`➕ 在位置 ${insertIndex} 插入新标签: ${tabInfo.title}`);
+          console.log(`🎯 插入后数组:`, this.firstPanelTabs.map((tab, idx) => `${idx}:${tab.title}`));
+          
+          // 删除最后一个非固定标签来保持数量限制
+          const lastNonPinnedIndex = this.findLastNonPinnedTabIndex();
+          if (lastNonPinnedIndex !== -1) {
+            const removedTab = this.firstPanelTabs[lastNonPinnedIndex];
+            this.firstPanelTabs.splice(lastNonPinnedIndex, 1);
+            console.log(`🗑️ 删除末尾的非固定标签: "${removedTab.title}" 来保持数量限制`);
+            console.log(`🎯 最终数组:`, this.firstPanelTabs.map((tab, idx) => `${idx}:${tab.title}`));
+          } else {
+            // 如果所有标签都是固定的，删除刚插入的新标签
+            const newTabIndex = this.firstPanelTabs.findIndex(tab => tab.blockId === tabInfo.blockId);
+            if (newTabIndex !== -1) {
+              this.firstPanelTabs.splice(newTabIndex, 1);
+              console.log(`⚠️ 所有标签都是固定的，无法添加新标签: "${tabInfo.title}"`);
+              return;
+            }
+          }
         } else {
-          // 如果所有标签都是固定的，则跳过新标签
-          console.log(`⚠️ 所有标签都是固定的，无法添加新标签: "${tabInfo.title}"`);
-          return;
+          // 没有聚焦标签，直接替换最后一个非固定标签
+          const lastNonPinnedIndex = this.findLastNonPinnedTabIndex();
+          if (lastNonPinnedIndex !== -1) {
+            const replacedTab = this.firstPanelTabs[lastNonPinnedIndex];
+            this.firstPanelTabs[lastNonPinnedIndex] = tabInfo;
+            console.log(`🔄 没有聚焦标签，替换最后一个非固定标签: "${replacedTab.title}" -> "${tabInfo.title}"`);
+          } else {
+            // 如果所有标签都是固定的，无法添加
+            console.log(`⚠️ 所有标签都是固定的，无法添加新标签: "${tabInfo.title}"`);
+            return;
+          }
         }
       } else {
-        // 未达到上限，智能插入新标签
-        const insertPosition = this.getSmartInsertPosition();
-        if (insertPosition >= 0 && insertPosition < this.firstPanelTabs.length) {
-          // 插入到指定位置
-          this.firstPanelTabs.splice(insertPosition + 1, 0, tabInfo);
-          console.log(`➕ 在位置 ${insertPosition + 1} 插入新标签: ${tabInfo.title} (ID: ${blockId})`);
-        } else {
-          // 如果无法确定位置，添加到末尾
-          this.firstPanelTabs.push(tabInfo);
-          console.log(`➕ 添加新标签到末尾: ${tabInfo.title} (ID: ${blockId})`);
-        }
+        // 未达到上限，在计算出的位置插入新标签
+        this.firstPanelTabs.splice(insertIndex, 0, tabInfo);
+        console.log(`➕ 在位置 ${insertIndex} 插入新标签: ${tabInfo.title}`);
+        console.log(`🎯 插入后数组:`, this.firstPanelTabs.map((tab, idx) => `${idx}:${tab.title}`));
       }
       
       // 如果标签页重新显示，从已关闭列表中移除
