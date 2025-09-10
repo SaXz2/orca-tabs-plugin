@@ -78,6 +78,15 @@ class OrcaTabsPlugin {
   private isUpdating: boolean = false; // 是否正在更新
   private isInitialized: boolean = false; // 是否已完成初始化
   private isVerticalMode: boolean = false; // 垂直模式标志
+  private verticalWidth: number = 200; // 垂直模式下的窗口宽度
+  private verticalPosition: TabPosition = { x: 20, y: 20 }; // 垂直模式下的位置
+  private isResizing: boolean = false; // 是否正在调整大小
+  private resizeHandle: HTMLElement | null = null; // 调整大小的拖拽手柄
+  private isSidebarAlignmentEnabled: boolean = false; // 侧边栏对齐功能是否启用
+  private sidebarAlignmentTimer: number | null = null; // 侧边栏状态检查定时器
+  private lastSidebarState: string | null = null; // 上次检测到的侧边栏状态
+  private sidebarCheckFrame: number | null = null; // RAF 帧ID
+  private isFloatingWindowVisible: boolean = true; // 浮窗是否可见
   
   // 拖拽状态管理
   private draggingTab: TabInfo | null = null; // 当前正在拖拽的标签
@@ -115,6 +124,15 @@ class OrcaTabsPlugin {
 
     // 恢复保存的位置
     this.restorePosition();
+    
+    // 恢复布局模式
+    this.restoreLayoutMode();
+    
+    // 恢复浮窗可见状态
+    this.restoreFloatingWindowVisibility();
+    
+    // 注册顶部工具栏按钮
+    this.registerHeadbarButton();
     
     // 发现所有面板
     this.discoverPanels();
@@ -891,6 +909,12 @@ class OrcaTabsPlugin {
   }
 
   async createTabsUI() {
+    // 如果浮窗被隐藏，不创建UI
+    if (!this.isFloatingWindowVisible) {
+      this.log("🙈 浮窗已隐藏，跳过UI创建");
+      return;
+    }
+
     // 移除现有的标签容器和循环切换器
     if (this.tabContainer) {
       this.tabContainer.remove();
@@ -909,13 +933,14 @@ class OrcaTabsPlugin {
     // 不再需要为切换器预留空间
     // 根据主题模式设置背景
     const isDarkMode = orca.state.themeMode === 'dark';
-    const backgroundColor = isDarkMode ? 'transparent' : 'rgba(255, 255, 255, 0.1)';
+    const backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.1)';
     
     // 根据布局模式设置不同的样式
+    const currentPosition = this.isVerticalMode ? this.verticalPosition : this.position;
     const containerStyle = this.isVerticalMode ? `
       position: fixed;
-      top: ${this.position.y}px;
-      left: ${this.position.x}px;
+      top: ${currentPosition.y}px;
+      left: ${currentPosition.x}px;
       z-index: 300;
       display: flex;
       flex-direction: column;
@@ -924,21 +949,24 @@ class OrcaTabsPlugin {
       -webkit-backdrop-filter: blur(2px);
       background: ${backgroundColor};
       border-radius: 6px;
-      padding: 2px;
+      padding: 4px 2px;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
       user-select: none;
       max-height: 80vh;
       flex-wrap: nowrap;
       pointer-events: auto;
       -webkit-app-region: no-drag;
-      width: 200px;
+      width: auto;
+      min-width: 120px;
+      max-width: 400px;
       align-items: stretch;
       app-region: no-drag;
       overflow-y: auto;
+      overflow-x: hidden;
     ` : `
       position: fixed;
-      top: ${this.position.y}px;
-      left: ${this.position.x}px;
+      top: ${currentPosition.y}px;
+      left: ${currentPosition.x}px;
       z-index: 300;
       display: flex;
       gap: 4px;
@@ -969,6 +997,7 @@ class OrcaTabsPlugin {
         e.stopPropagation();
       }
     });
+    
     
     this.tabContainer.addEventListener('click', (e) => {
       // 只阻止标签栏内部的点击事件冒泡，不影响侧边栏
@@ -1011,6 +1040,10 @@ class OrcaTabsPlugin {
     // 添加拖拽相关的CSS样式
     this.addDragStyles();
 
+    // 如果是垂直模式，启用拖拽调整宽度功能
+    if (this.isVerticalMode) {
+      await this.enableDragResize();
+    }
 
     await this.updateTabsUI();
   }
@@ -1414,7 +1447,26 @@ class OrcaTabsPlugin {
     // 创建新建标签页按钮
     const newTabButton = document.createElement('div');
     newTabButton.className = 'new-tab-button';
-    newTabButton.style.cssText = `
+    // 根据布局模式设置不同的新建按钮样式
+    const newButtonStyle = this.isVerticalMode ? `
+      width: calc(100% - 6px);
+      margin: 0 3px;
+      height: 24px;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: #666;
+      min-height: 24px;
+      flex-shrink: 0;
+      -webkit-app-region: no-drag;
+      app-region: no-drag;
+      pointer-events: auto;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    ` : `
       width: 24px;
       height: 24px;
       background: transparent;
@@ -1433,6 +1485,8 @@ class OrcaTabsPlugin {
       border-radius: 4px;
       transition: all 0.2s ease;
     `;
+    
+    newTabButton.style.cssText = newButtonStyle;
     newTabButton.innerHTML = '+';
     newTabButton.title = '新建标签页';
 
@@ -1457,66 +1511,169 @@ class OrcaTabsPlugin {
 
     this.tabContainer.appendChild(newTabButton);
     
-    // 添加布局模式切换按钮
-    this.addLayoutToggleButton();
+    // 为新建标签页按钮添加右键菜单
+    this.addNewTabButtonContextMenu(newTabButton);
   }
   
   /**
-   * 添加布局模式切换按钮
+   * 为新建标签页按钮添加右键菜单
    */
-  addLayoutToggleButton() {
-    if (!this.tabContainer) return;
-    
-    // 检查是否已经存在切换按钮
-    const existingButton = this.tabContainer.querySelector('.layout-toggle-button');
-    if (existingButton) return;
-    
-    // 创建布局模式切换按钮
-    const toggleButton = document.createElement('div');
-    toggleButton.className = 'layout-toggle-button';
-    toggleButton.style.cssText = `
-      width: 24px;
-      height: 24px;
-      background: transparent;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      color: #666;
-      margin-left: 4px;
-      min-height: 24px;
-      flex-shrink: 0;
-      -webkit-app-region: no-drag;
-      app-region: no-drag;
-      pointer-events: auto;
-      border-radius: 4px;
-      transition: all 0.2s ease;
-      border: 1px solid rgba(100, 100, 100, 0.3);
-    `;
-    
-    // 设置按钮图标和提示
-    toggleButton.textContent = this.isVerticalMode ? '⏸' : '⏵';
-    toggleButton.title = this.isVerticalMode ? '切换到水平布局' : '切换到垂直布局';
-    
-    // 悬停效果
-    toggleButton.addEventListener('mouseenter', () => {
-      toggleButton.style.background = 'rgba(100, 100, 100, 0.1)';
-      toggleButton.style.color = '#333';
-    });
-    
-    toggleButton.addEventListener('mouseleave', () => {
-      toggleButton.style.background = 'transparent';
-      toggleButton.style.color = '#666';
-    });
-    
-    // 点击切换布局模式
-    toggleButton.addEventListener('click', async (e) => {
+  addNewTabButtonContextMenu(button: HTMLElement) {
+    button.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
       e.stopPropagation();
-      await this.toggleLayoutMode();
+      this.showNewTabButtonContextMenu(e);
     });
+  }
+  
+  /**
+   * 显示新建标签页按钮的右键菜单
+   */
+  showNewTabButtonContextMenu(e: MouseEvent) {
+    // 移除现有的右键菜单
+    const existingMenu = document.querySelector('.new-tab-context-menu');
+    if (existingMenu) {
+      existingMenu.remove();
+    }
+
+    // 创建右键菜单
+    const menu = document.createElement('div');
+    menu.className = 'new-tab-context-menu';
     
-    this.tabContainer.appendChild(toggleButton);
+    // 计算菜单位置，避免在屏幕边缘显示一半
+    const menuWidth = 180;
+    const menuHeight = 120; // 预估菜单高度
+    let left = e.clientX;
+    let top = e.clientY;
+    
+    // 如果菜单会超出右边界，向左调整
+    if (left + menuWidth > window.innerWidth) {
+      left = window.innerWidth - menuWidth - 10;
+    }
+    
+    // 如果菜单会超出下边界，向上调整
+    if (top + menuHeight > window.innerHeight) {
+      top = window.innerHeight - menuHeight - 10;
+    }
+    
+    // 确保不超出左边界和上边界
+    left = Math.max(10, left);
+    top = Math.max(10, top);
+    
+    menu.style.cssText = `
+      position: fixed;
+      left: ${left}px;
+      top: ${top}px;
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 1000;
+      min-width: ${menuWidth}px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    `;
+
+    // 菜单项
+    const menuItems = [
+      {
+        text: '新建标签页',
+        action: () => this.createNewTab(),
+        icon: '+'
+      },
+      {
+        text: '---',
+        action: null,
+        separator: true
+      },
+      {
+        text: this.isVerticalMode ? '切换到水平布局' : '切换到垂直布局',
+        action: () => this.toggleLayoutMode(),
+        icon: this.isVerticalMode ? '⏸' : '⏵'
+      },
+      {
+        text: '---',
+        action: null,
+        separator: true
+      },
+      {
+        text: this.isSidebarAlignmentEnabled ? '关闭侧边栏对齐' : '开启侧边栏对齐',
+        action: () => this.toggleSidebarAlignment(),
+        icon: this.isSidebarAlignmentEnabled ? '🔴' : '🟢'
+      }
+    ];
+
+
+    menuItems.forEach(item => {
+      if (item.separator) {
+        const separator = document.createElement('div');
+        separator.style.cssText = `
+          height: 1px;
+          background: #ddd;
+          margin: 4px 8px;
+        `;
+        menu.appendChild(separator);
+        return;
+      }
+
+      const menuItem = document.createElement('div');
+      menuItem.style.cssText = `
+        padding: 8px 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #333;
+        transition: background-color 0.2s ease;
+      `;
+      
+      if (item.icon) {
+        const icon = document.createElement('span');
+        icon.textContent = item.icon;
+        icon.style.cssText = `
+          font-size: 12px;
+          width: 16px;
+          text-align: center;
+        `;
+        menuItem.appendChild(icon);
+      }
+      
+      const text = document.createElement('span');
+      text.textContent = item.text;
+      menuItem.appendChild(text);
+      
+      menuItem.addEventListener('mouseenter', () => {
+        menuItem.style.backgroundColor = 'rgba(0, 0, 0, 0.1)';
+      });
+      
+      menuItem.addEventListener('mouseleave', () => {
+        menuItem.style.backgroundColor = 'transparent';
+      });
+      
+      menuItem.addEventListener('click', () => {
+        if (item.action) {
+          item.action();
+        }
+        menu.remove();
+      });
+      
+      menu.appendChild(menuItem);
+    });
+
+    document.body.appendChild(menu);
+
+    // 点击其他地方关闭菜单
+    const closeMenu = (e: MouseEvent) => {
+      if (!menu.contains(e.target as Node)) {
+        menu.remove();
+        document.removeEventListener('click', closeMenu);
+      }
+    };
+    
+    setTimeout(() => {
+      document.addEventListener('click', closeMenu);
+    }, 100);
   }
   
   /**
@@ -1524,13 +1681,20 @@ class OrcaTabsPlugin {
    */
   async toggleLayoutMode() {
     try {
+      // 切换模式前，保存当前位置到对应模式
+      if (this.isVerticalMode) {
+        // 从垂直模式切换到水平模式，保存垂直位置
+        this.verticalPosition = { ...this.position };
+      } else {
+        // 从水平模式切换到垂直模式，保存水平位置
+        this.position = { ...this.verticalPosition };
+      }
+      
       // 切换模式
       this.isVerticalMode = !this.isVerticalMode;
       
-      // 保存设置
-      await orca.plugins.setSettings("app", "orca-tabs-plugin", {
-        layoutMode: this.isVerticalMode ? 'vertical' : 'horizontal'
-      });
+      // 保存布局模式到localStorage（参考位置保存方式）
+      this.saveLayoutMode();
       
       // 重新创建UI
       await this.createTabsUI();
@@ -1540,6 +1704,614 @@ class OrcaTabsPlugin {
       this.error("切换布局模式失败:", error);
     }
   }
+  
+  /**
+   * 切换侧边栏对齐状态
+   */
+  async toggleSidebarAlignment() {
+    try {
+      if (this.isSidebarAlignmentEnabled) {
+        // 关闭侧边栏对齐功能
+        await this.disableSidebarAlignment();
+      } else {
+        // 开启侧边栏对齐功能
+        await this.enableSidebarAlignment();
+      }
+    } catch (error) {
+      this.error("切换侧边栏对齐失败:", error);
+    }
+  }
+
+  /**
+   * 启用侧边栏对齐功能
+   */
+  async enableSidebarAlignment() {
+    try {
+      this.log("🚀 启用侧边栏对齐功能");
+      
+      // 读取侧边栏宽度
+      const sidebarWidth = this.getSidebarWidth();
+      this.log(`📏 读取到的侧边栏宽度: ${sidebarWidth}px`);
+      
+      if (sidebarWidth === 0) {
+        this.log("⚠️ 无法读取侧边栏宽度，操作终止");
+        return;
+      }
+      
+      // 启用状态（不移动位置）
+      this.isSidebarAlignmentEnabled = true;
+      
+      // 开始监听侧边栏状态变化
+      this.startSidebarAlignmentObserver();
+      
+      this.log(`✅ 侧边栏对齐功能已启用，标签栏保持在当前位置`);
+    } catch (error) {
+      this.error("启用侧边栏对齐失败:", error);
+    }
+  }
+
+  /**
+   * 禁用侧边栏对齐功能
+   */
+  async disableSidebarAlignment() {
+    try {
+      this.log("🔴 禁用侧边栏对齐功能");
+      
+      // 停止监听
+      this.stopSidebarAlignmentObserver();
+      
+      // 读取侧边栏宽度
+      const sidebarWidth = this.getSidebarWidth();
+      this.log(`📏 读取到的侧边栏宽度: ${sidebarWidth}px`);
+      
+      if (sidebarWidth > 0) {
+        // 按照用户要求，读取 div#app 的 class 来判断侧边栏状态
+        const appElement = document.querySelector('div#app');
+        this.log(`🔍 查找 div#app 元素: ${appElement ? '找到' : '未找到'}`);
+        
+        if (appElement) {
+          this.log(`🔍 app元素类名: ${appElement.className}`);
+        }
+        
+        const isSidebarClosed = appElement?.classList.contains('sidebar-closed') || false;
+        const isSidebarOpened = appElement?.classList.contains('sidebar-opened') || false;
+        
+        this.log(`🔍 侧边栏状态检测结果:`);
+        this.log(`   - 关闭状态 (sidebar-closed): ${isSidebarClosed}`);
+        this.log(`   - 打开状态 (sidebar-opened): ${isSidebarOpened}`);
+        
+        const currentX = this.isVerticalMode ? this.verticalPosition.x : this.position.x;
+        this.log(`📍 当前位置: ${currentX}px (${this.isVerticalMode ? '垂直模式' : '水平模式'})`);
+        
+        let newX: number;
+        let action: string;
+        
+        if (isSidebarClosed) {
+          // 侧边栏关闭时，向左移动侧边栏宽度
+          newX = Math.max(10, currentX - sidebarWidth);
+          action = "向左移动";
+          this.log(`📐 侧边栏关闭，向左移动 ${sidebarWidth}px，新位置: ${newX}px`);
+        } else if (isSidebarOpened) {
+          // 侧边栏打开时，向右移动侧边栏宽度
+          newX = currentX + sidebarWidth;
+          // 确保不超出窗口右边界
+          const containerWidth = this.tabContainer?.getBoundingClientRect().width || 200;
+          newX = Math.min(newX, window.innerWidth - containerWidth - 10);
+          action = "向右移动";
+          this.log(`📐 侧边栏打开，向右移动 ${sidebarWidth}px，新位置: ${newX}px`);
+        } else {
+          this.log("⚠️ 无法确定侧边栏状态，保持当前位置");
+          this.isSidebarAlignmentEnabled = false;
+          return;
+        }
+        
+        // 更新位置
+        if (this.isVerticalMode) {
+          this.verticalPosition.x = newX;
+          this.saveLayoutMode();
+        } else {
+          this.position.x = newX;
+          this.savePosition();
+        }
+        
+        // 重新创建UI
+        this.log(`🎨 开始重新创建UI...`);
+        await this.createTabsUI();
+        this.log(`   UI重新创建完成`);
+        
+        this.log(`✅ 标签栏已${action}，最终位置: (${newX}, ${this.isVerticalMode ? this.verticalPosition.y : this.position.y})`);
+      }
+      
+      // 禁用状态
+      this.isSidebarAlignmentEnabled = false;
+      this.log("🔴 侧边栏对齐功能已禁用");
+    } catch (error) {
+      this.error("禁用侧边栏对齐失败:", error);
+    }
+  }
+
+  /**
+   * 开始监听侧边栏状态变化（使用轻量级轮询）
+   */
+  startSidebarAlignmentObserver() {
+    // 停止现有的监听器
+    this.stopSidebarAlignmentObserver();
+
+    // 初始化状态
+    this.updateLastSidebarState();
+
+    // 方案1：使用简单的定时器（推荐，性能最好）
+    this.sidebarAlignmentTimer = window.setInterval(() => {
+      if (this.isSidebarAlignmentEnabled) {
+        this.checkSidebarStateChange();
+      }
+    }, 1000); // 1秒检查一次，减少频率
+
+    this.log("👁️ 开始监听侧边栏状态变化（轻量级轮询模式）");
+  }
+
+  /**
+   * 停止监听侧边栏状态变化
+   */
+  stopSidebarAlignmentObserver() {
+    if (this.sidebarCheckFrame) {
+      cancelAnimationFrame(this.sidebarCheckFrame);
+      this.sidebarCheckFrame = null;
+    }
+    if (this.sidebarAlignmentTimer) {
+      clearInterval(this.sidebarAlignmentTimer);
+      this.sidebarAlignmentTimer = null;
+    }
+    this.lastSidebarState = null;
+    this.log("👁️ 停止监听侧边栏状态变化");
+  }
+
+  /**
+   * 更新上次检测到的侧边栏状态
+   */
+  updateLastSidebarState() {
+    const appElement = document.querySelector('div#app');
+    if (!appElement) {
+      this.lastSidebarState = null;
+      return;
+    }
+
+    const isSidebarClosed = appElement.classList.contains('sidebar-closed');
+    const isSidebarOpened = appElement.classList.contains('sidebar-opened');
+    
+    if (isSidebarClosed) {
+      this.lastSidebarState = 'closed';
+    } else if (isSidebarOpened) {
+      this.lastSidebarState = 'opened';
+    } else {
+      this.lastSidebarState = 'unknown';
+    }
+  }
+
+  /**
+   * 检查侧边栏状态是否发生变化
+   */
+  checkSidebarStateChange() {
+    if (!this.isSidebarAlignmentEnabled) return;
+
+    const appElement = document.querySelector('div#app');
+    if (!appElement) return;
+
+    const isSidebarClosed = appElement.classList.contains('sidebar-closed');
+    const isSidebarOpened = appElement.classList.contains('sidebar-opened');
+    
+    let currentState: string;
+    if (isSidebarClosed) {
+      currentState = 'closed';
+    } else if (isSidebarOpened) {
+      currentState = 'opened';
+    } else {
+      currentState = 'unknown';
+    }
+
+    // 如果状态发生变化，执行自动调整
+    if (this.lastSidebarState !== currentState) {
+      this.log(`🔄 检测到侧边栏状态变化: ${this.lastSidebarState} -> ${currentState}`);
+      this.lastSidebarState = currentState;
+      this.autoAdjustSidebarAlignment();
+    }
+  }
+
+  /**
+   * 自动调整侧边栏对齐
+   */
+  async autoAdjustSidebarAlignment() {
+    if (!this.isSidebarAlignmentEnabled) return;
+
+    try {
+      const sidebarWidth = this.getSidebarWidth();
+      if (sidebarWidth === 0) return;
+
+      const appElement = document.querySelector('div#app');
+      if (!appElement) return;
+
+      const isSidebarClosed = appElement.classList.contains('sidebar-closed');
+      const isSidebarOpened = appElement.classList.contains('sidebar-opened');
+      
+      const currentX = this.isVerticalMode ? this.verticalPosition.x : this.position.x;
+      let newX: number;
+      
+      if (isSidebarClosed) {
+        newX = Math.max(10, currentX - sidebarWidth);
+      } else if (isSidebarOpened) {
+        newX = currentX + sidebarWidth;
+        const containerWidth = this.tabContainer?.getBoundingClientRect().width || 200;
+        newX = Math.min(newX, window.innerWidth - containerWidth - 10);
+      } else {
+        return;
+      }
+      
+      // 更新位置
+      if (this.isVerticalMode) {
+        this.verticalPosition.x = newX;
+        this.saveLayoutMode();
+      } else {
+        this.position.x = newX;
+        this.savePosition();
+      }
+      
+      // 重新创建UI
+      await this.createTabsUI();
+      
+      this.log(`🔄 自动调整位置: ${currentX}px → ${newX}px`);
+    } catch (error) {
+      this.error("自动调整侧边栏对齐失败:", error);
+    }
+  }
+
+  /**
+   * 切换浮窗显示/隐藏状态
+   */
+  async toggleFloatingWindow() {
+    try {
+      this.isFloatingWindowVisible = !this.isFloatingWindowVisible;
+      
+      if (this.isFloatingWindowVisible) {
+        // 显示浮窗
+        this.log("👁️ 显示浮窗");
+        await this.createTabsUI();
+      } else {
+        // 隐藏浮窗
+        this.log("🙈 隐藏浮窗");
+        if (this.tabContainer) {
+          this.tabContainer.remove();
+          this.tabContainer = null;
+        }
+        if (this.resizeHandle) {
+          this.resizeHandle.remove();
+          this.resizeHandle = null;
+        }
+      }
+      
+      // 保存状态到 localStorage
+      localStorage.setItem('orca-tabs-visible', this.isFloatingWindowVisible.toString());
+      
+      this.log(`✅ 浮窗已${this.isFloatingWindowVisible ? '显示' : '隐藏'}`);
+    } catch (error) {
+      this.error("切换浮窗状态失败:", error);
+    }
+  }
+
+  /**
+   * 从 localStorage 恢复浮窗可见状态
+   */
+  restoreFloatingWindowVisibility() {
+    try {
+      const saved = localStorage.getItem('orca-tabs-visible');
+      if (saved !== null) {
+        this.isFloatingWindowVisible = saved === 'true';
+        this.log(`📱 恢复浮窗可见状态: ${this.isFloatingWindowVisible ? '显示' : '隐藏'}`);
+      }
+    } catch (error) {
+      this.error("恢复浮窗可见状态失败:", error);
+    }
+  }
+
+  /**
+   * 注册顶部工具栏按钮
+   */
+  registerHeadbarButton() {
+    try {
+      // 注册 headbar 按钮
+      orca.headbar.registerHeadbarButton('orca-tabs-plugin.toggleButton', () => {
+        const React = (window as any).React;
+        const Button = orca.components.Button;
+        
+        return React.createElement(Button, {
+          variant: 'plain',
+          onClick: () => this.toggleFloatingWindow(),
+          title: this.isFloatingWindowVisible ? '隐藏标签栏' : '显示标签栏',
+          style: {
+            color: this.isFloatingWindowVisible ? '#666' : '#999',
+            transition: 'color 0.2s ease'
+          }
+        }, React.createElement('i', {
+          className: this.isFloatingWindowVisible ? 'ti ti-eye' : 'ti ti-eye-off'
+        }));
+      });
+      
+      this.log("🔘 顶部工具栏按钮已注册");
+    } catch (error) {
+      this.error("注册顶部工具栏按钮失败:", error);
+    }
+  }
+
+  /**
+   * 注销顶部工具栏按钮
+   */
+  unregisterHeadbarButton() {
+    try {
+      orca.headbar.unregisterHeadbarButton('orca-tabs-plugin.toggleButton');
+      this.log("🔘 顶部工具栏按钮已注销");
+    } catch (error) {
+      this.error("注销顶部工具栏按钮失败:", error);
+    }
+  }
+
+  /**
+   * 对齐到侧边栏（保留原方法作为备用）
+   */
+  async alignToSidebar() {
+    try {
+      // 读取侧边栏宽度
+      const sidebarWidth = this.getSidebarWidth();
+      if (sidebarWidth === 0) {
+        this.log("⚠️ 无法读取侧边栏宽度");
+        return;
+      }
+      
+      // 检查侧边栏状态
+      const isSidebarClosed = document.querySelector('#sidebar.sidebar-closed') !== null;
+      const isSidebarOpened = document.querySelector('#sidebar.sidebar-opened') !== null;
+      
+      this.log(`🔍 侧边栏状态 - 关闭: ${isSidebarClosed}, 打开: ${isSidebarOpened}`);
+      
+      let newX: number;
+      
+      const currentX = this.isVerticalMode ? this.verticalPosition.x : this.position.x;
+      this.log(`📍 当前位置: ${currentX}px`);
+      
+      if (isSidebarClosed) {
+        // 侧边栏关闭时，向左移动侧边栏宽度
+        newX = Math.max(10, currentX - sidebarWidth);
+        this.log(`📐 侧边栏关闭，向左移动 ${sidebarWidth}px，新位置: ${newX}px`);
+      } else if (isSidebarOpened) {
+        // 侧边栏打开时，向右移动侧边栏宽度
+        newX = currentX + sidebarWidth;
+        // 确保不超出窗口右边界
+        const containerWidth = this.tabContainer?.getBoundingClientRect().width || 200;
+        newX = Math.min(newX, window.innerWidth - containerWidth - 10);
+        this.log(`📐 侧边栏打开，向右移动 ${sidebarWidth}px，新位置: ${newX}px`);
+      } else {
+        this.log("⚠️ 无法确定侧边栏状态");
+        return;
+      }
+      
+      // 更新位置
+      if (this.isVerticalMode) {
+        this.verticalPosition.x = newX;
+      } else {
+        this.position.x = newX;
+      }
+      
+      // 保存位置
+      if (this.isVerticalMode) {
+        this.saveLayoutMode();
+      } else {
+        this.savePosition();
+      }
+      
+      // 重新创建UI
+      await this.createTabsUI();
+      
+      this.log(`📐 标签栏已对齐到侧边栏，新位置: (${newX}, ${this.isVerticalMode ? this.verticalPosition.y : this.position.y})`);
+    } catch (error) {
+      this.error("对齐到侧边栏失败:", error);
+    }
+  }
+  
+  /**
+   * 获取侧边栏宽度
+   */
+  getSidebarWidth(): number {
+    try {
+      this.log("🔍 开始获取侧边栏宽度...");
+      
+      // 按照用户要求，读取 nav#sidebar 的 --orca-sidebar-width
+      const sidebar = document.querySelector('nav#sidebar');
+      this.log(`   查找 nav#sidebar 元素: ${sidebar ? '找到' : '未找到'}`);
+      
+      if (!sidebar) {
+        this.log("⚠️ 未找到 nav#sidebar 元素");
+        return 0;
+      }
+      
+      this.log(`   侧边栏元素信息:`);
+      this.log(`     - ID: ${sidebar.id}`);
+      this.log(`     - 类名: ${sidebar.className}`);
+      this.log(`     - 标签名: ${sidebar.tagName}`);
+      
+      // 获取计算后的样式
+      const computedStyle = window.getComputedStyle(sidebar);
+      const widthValue = computedStyle.getPropertyValue('--orca-sidebar-width');
+      
+      this.log(`   CSS变量 --orca-sidebar-width: "${widthValue}"`);
+      
+      if (widthValue && widthValue !== '') {
+        // 解析CSS变量值，如 "240px"
+        const width = parseInt(widthValue.replace('px', ''));
+        if (!isNaN(width)) {
+          this.log(`✅ 从CSS变量获取侧边栏宽度: ${width}px`);
+          return width;
+        } else {
+          this.log(`⚠️ CSS变量值无法解析为数字: "${widthValue}"`);
+        }
+      } else {
+        this.log(`⚠️ CSS变量 --orca-sidebar-width 不存在或为空`);
+      }
+      
+      // 如果CSS变量不可用，尝试获取实际宽度
+      this.log(`   尝试获取实际宽度...`);
+      const rect = sidebar.getBoundingClientRect();
+      this.log(`   实际尺寸: width=${rect.width}px, height=${rect.height}px`);
+      
+      if (rect.width > 0) {
+        this.log(`✅ 从实际尺寸获取侧边栏宽度: ${rect.width}px`);
+        return rect.width;
+      }
+      
+      this.log("⚠️ 无法获取侧边栏宽度，所有方法都失败");
+      return 0;
+    } catch (error) {
+      this.error("获取侧边栏宽度失败:", error);
+      return 0;
+    }
+  }
+
+  /**
+   * 启用拖拽调整宽度功能
+   */
+  async enableDragResize() {
+    if (!this.isVerticalMode) {
+      this.log("⚠️ 拖拽调整宽度仅在垂直模式下可用");
+      return;
+    }
+    
+    if (!this.tabContainer) return;
+    
+    // 移除现有的拖拽手柄
+    if (this.resizeHandle) {
+      this.resizeHandle.remove();
+    }
+    
+    // 创建拖拽手柄
+    this.resizeHandle = document.createElement('div');
+    this.resizeHandle.className = 'resize-handle';
+    this.resizeHandle.style.cssText = `
+      position: absolute;
+      top: 0;
+      right: -4px;
+      width: 8px;
+      height: 100%;
+      cursor: col-resize;
+      background: transparent;
+      z-index: 400;
+      -webkit-app-region: no-drag;
+      app-region: no-drag;
+    `;
+    
+    // 添加视觉指示器
+    const indicator = document.createElement('div');
+    indicator.style.cssText = `
+      position: absolute;
+      top: 50%;
+      right: 2px;
+      transform: translateY(-50%);
+      width: 2px;
+      height: 20px;
+      background: rgba(100, 100, 100, 0.5);
+      border-radius: 1px;
+    `;
+    this.resizeHandle.appendChild(indicator);
+    
+    this.tabContainer.appendChild(this.resizeHandle);
+    
+    // 添加拖拽事件
+    this.setupResizeEvents();
+    
+    this.log("📏 拖拽调整宽度已启用，拖拽右侧边缘调整宽度");
+  }
+  
+  /**
+   * 设置拖拽调整大小事件
+   */
+  setupResizeEvents() {
+    if (!this.resizeHandle || !this.tabContainer) return;
+    
+    let startX = 0;
+    let startWidth = 0;
+    
+    const startResize = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      this.isResizing = true;
+      startX = e.clientX;
+      startWidth = this.verticalWidth;
+      
+      // 添加拖拽样式
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      
+      // 添加全局事件监听器
+      document.addEventListener('mousemove', doResize);
+      document.addEventListener('mouseup', stopResize);
+    };
+    
+    const doResize = (e: MouseEvent) => {
+      if (!this.isResizing || !this.tabContainer) return;
+      
+      e.preventDefault();
+      
+      const deltaX = e.clientX - startX;
+      const newWidth = Math.max(120, Math.min(400, startWidth + deltaX));
+      
+      // 实时更新宽度
+      this.verticalWidth = newWidth;
+      this.tabContainer.style.width = `${newWidth}px`;
+    };
+    
+    const stopResize = async (e: MouseEvent) => {
+      if (!this.isResizing) return;
+      
+      this.isResizing = false;
+      
+      // 恢复样式
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      
+      // 移除事件监听器
+      document.removeEventListener('mousemove', doResize);
+      document.removeEventListener('mouseup', stopResize);
+      
+      // 保存设置
+      try {
+        await orca.plugins.setSettings("app", "orca-tabs-plugin", {
+          verticalWidth: this.verticalWidth
+        });
+        this.log(`📏 宽度已调整为: ${this.verticalWidth}px`);
+      } catch (error) {
+        this.error("保存宽度设置失败:", error);
+      }
+    };
+    
+    this.resizeHandle.addEventListener('mousedown', startResize);
+  }
+  
+  /**
+   * 更新垂直模式宽度
+   */
+  async updateVerticalWidth(newWidth: number) {
+    try {
+      this.verticalWidth = newWidth;
+      
+      // 保存宽度设置到localStorage
+      this.saveLayoutMode();
+      
+      // 重新创建UI
+      await this.createTabsUI();
+      
+      this.log(`📏 垂直模式宽度已更新为: ${newWidth}px`);
+    } catch (error) {
+      this.error("更新宽度失败:", error);
+    }
+  }
+  
 
   /**
    * 创建标签元素
@@ -1570,7 +2342,27 @@ class OrcaTabsPlugin {
       fontWeight = '600';
     }
 
-    tabElement.style.cssText = `
+    // 根据布局模式设置不同的标签样式
+    const tabStyle = this.isVerticalMode ? `
+      background: ${backgroundColor};
+      color: ${textColor};
+      font-weight: ${fontWeight};
+      padding: 2px 8px;
+      border-radius: 4px;
+      height: 24px;
+      max-height: 24px;
+      line-height: 20px;
+      cursor: pointer;
+      font-size: 12px;
+      width: calc(100% - 6px);
+      margin: 0 3px;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      -webkit-app-region: no-drag;
+      app-region: no-drag;
+      pointer-events: auto;
+    ` : `
       background: ${backgroundColor};
       color: ${textColor};
       font-weight: ${fontWeight};
@@ -1589,6 +2381,8 @@ class OrcaTabsPlugin {
       app-region: no-drag;
       pointer-events: auto;
     `;
+    
+    tabElement.style.cssText = tabStyle;
 
     // 创建标签内容容器
     const tabContent = document.createElement('div');
@@ -1634,6 +2428,11 @@ class OrcaTabsPlugin {
 
     // 将内容容器添加到标签元素
     tabElement.appendChild(tabContent);
+    
+    // 如果是垂直模式且没有拖拽手柄，自动添加
+    if (this.isVerticalMode && !this.resizeHandle) {
+      this.enableDragResize();
+    }
     
     // 设置悬停提示
     let tooltip = tab.title;
@@ -2318,29 +3117,16 @@ class OrcaTabsPlugin {
           defaultValue: "",
           description: "新建标签页时将导航到此块ID"
         },
-        layoutMode: {
-          label: "布局模式",
-          type: "singleChoice" as const,
-          defaultValue: "horizontal",
-          description: "选择标签页的布局方向",
-          choices: [
-            { label: "水平布局", value: "horizontal" },
-            { label: "垂直布局", value: "vertical" }
-          ]
-        }
       };
 
       await orca.plugins.setSettingsSchema("orca-tabs-plugin", settingsSchema);
       
       // 读取设置值
       const settings = orca.state.plugins["orca-tabs-plugin"]?.settings;
+      
       if (settings?.homePageBlockId) {
         this.homePageBlockId = settings.homePageBlockId;
         this.log(`🏠 主页块ID: ${this.homePageBlockId}`);
-      }
-      if (settings?.layoutMode) {
-        this.isVerticalMode = settings.layoutMode === 'vertical';
-        this.log(`📐 布局模式: ${this.isVerticalMode ? '垂直' : '水平'}`);
       }
       
       this.log("✅ 插件设置已注册");
@@ -3779,16 +4565,34 @@ class OrcaTabsPlugin {
     const ReactDOM = (window as any).ReactDOM;
     
     if (!React || !ReactDOM || !orca.components.ContextMenu || !orca.components.Menu || !orca.components.MenuText) {
-      this.warn("Orca组件不可用，回退到原生右键菜单");
-      // 回退到原生实现
+      // 如果组件不可用，延迟重试一次
+      setTimeout(() => {
+        const retryReact = (window as any).React;
+        const retryReactDOM = (window as any).ReactDOM;
+        
+        if (!retryReact || !retryReactDOM || !orca.components.ContextMenu || !orca.components.Menu || !orca.components.MenuText) {
+          // 仍然不可用，使用原生实现
       tabElement.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
         this.showTabContextMenu(e, tab);
       });
+        } else {
+          // 重试成功，使用Orca组件
+          this.createOrcaContextMenu(tabElement, tab);
+        }
+      }, 100);
       return;
     }
+    
+    // 组件可用，直接创建
+    this.createOrcaContextMenu(tabElement, tab);
+  }
+  
+  createOrcaContextMenu(tabElement: HTMLElement, tab: TabInfo) {
+    const React = (window as any).React;
+    const ReactDOM = (window as any).ReactDOM;
 
     // 创建ContextMenu容器
     const menuContainer = document.createElement('div');
@@ -4155,8 +4959,10 @@ class OrcaTabsPlugin {
     e.stopImmediatePropagation(); // 强制阻止窗口拖拽
     
     this.isDragging = true;
-    this.dragStartX = e.clientX - this.position.x;
-    this.dragStartY = e.clientY - this.position.y;
+    // 根据布局模式使用不同的位置
+    const currentPosition = this.isVerticalMode ? this.verticalPosition : this.position;
+    this.dragStartX = e.clientX - currentPosition.x;
+    this.dragStartY = e.clientY - currentPosition.y;
 
     // 使用箭头函数绑定this
     const handleMouseMove = (event: MouseEvent) => {
@@ -4188,8 +4994,14 @@ class OrcaTabsPlugin {
 
     e.preventDefault();
     
+    // 根据布局模式更新不同的位置
+    if (this.isVerticalMode) {
+      this.verticalPosition.x = e.clientX - this.dragStartX;
+      this.verticalPosition.y = e.clientY - this.dragStartY;
+    } else {
     this.position.x = e.clientX - this.dragStartX;
     this.position.y = e.clientY - this.dragStartY;
+    }
 
     // 获取容器的实际尺寸
     const containerRect = this.tabContainer.getBoundingClientRect();
@@ -4200,12 +5012,19 @@ class OrcaTabsPlugin {
     const minY = 5;
     const maxY = window.innerHeight - containerRect.height - 5;
     
+    // 根据布局模式限制不同的位置
+    if (this.isVerticalMode) {
+      this.verticalPosition.x = Math.max(minX, Math.min(maxX, this.verticalPosition.x));
+      this.verticalPosition.y = Math.max(minY, Math.min(maxY, this.verticalPosition.y));
+    } else {
     this.position.x = Math.max(minX, Math.min(maxX, this.position.x));
     this.position.y = Math.max(minY, Math.min(maxY, this.position.y));
+    }
 
     // 只移动标签容器
-    this.tabContainer.style.left = this.position.x + 'px';
-    this.tabContainer.style.top = this.position.y + 'px';
+    const currentPosition = this.isVerticalMode ? this.verticalPosition : this.position;
+    this.tabContainer.style.left = currentPosition.x + 'px';
+    this.tabContainer.style.top = currentPosition.y + 'px';
     
     // 确保拖拽过程中不会影响其他元素的点击
     this.ensureClickableElements();
@@ -4240,7 +5059,11 @@ class OrcaTabsPlugin {
     this.log("🔄 拖拽结束，清理所有拖拽状态");
 
     // 保存位置
-    this.savePosition();
+    if (this.isVerticalMode) {
+      this.saveLayoutMode(); // 垂直模式保存到布局数据中
+    } else {
+      this.savePosition(); // 水平模式保存到位置数据中
+    }
   }
 
   savePosition() {
@@ -4248,6 +5071,23 @@ class OrcaTabsPlugin {
       localStorage.setItem('orca-tabs-position', JSON.stringify(this.position));
     } catch (e) {
       this.warn("无法保存标签位置");
+    }
+  }
+
+  /**
+   * 保存布局模式到localStorage
+   */
+  saveLayoutMode() {
+    try {
+      const layoutData = {
+        isVerticalMode: this.isVerticalMode,
+        verticalWidth: this.verticalWidth,
+        verticalPosition: this.verticalPosition
+      };
+      localStorage.setItem('orca-tabs-layout', JSON.stringify(layoutData));
+      this.log(`💾 布局模式已保存: ${this.isVerticalMode ? '垂直' : '水平'}, 宽度: ${this.verticalWidth}px, 位置: (${this.verticalPosition.x}, ${this.verticalPosition.y})`);
+    } catch (e) {
+      this.warn("无法保存布局模式");
     }
   }
 
@@ -4324,6 +5164,32 @@ class OrcaTabsPlugin {
       }
     } catch (e) {
       this.warn("无法恢复标签位置");
+    }
+  }
+
+  /**
+   * 从localStorage恢复布局模式
+   */
+  restoreLayoutMode() {
+    try {
+      const saved = localStorage.getItem('orca-tabs-layout');
+      if (saved) {
+        const layoutData = JSON.parse(saved);
+        this.isVerticalMode = layoutData.isVerticalMode || false;
+        this.verticalWidth = layoutData.verticalWidth || 200;
+        this.verticalPosition = layoutData.verticalPosition || { x: 20, y: 20 };
+        this.log(`📐 布局模式已恢复: ${this.isVerticalMode ? '垂直' : '水平'}, 宽度: ${this.verticalWidth}px, 位置: (${this.verticalPosition.x}, ${this.verticalPosition.y})`);
+      } else {
+        this.isVerticalMode = false;
+        this.verticalWidth = 200;
+        this.verticalPosition = { x: 20, y: 20 };
+        this.log(`📐 布局模式: 水平 (默认)`);
+      }
+    } catch (e) {
+      this.warn("无法恢复布局模式，使用默认值");
+      this.isVerticalMode = false;
+      this.verticalWidth = 200;
+      this.verticalPosition = { x: 20, y: 20 };
     }
   }
 
@@ -5024,6 +5890,9 @@ export async function load(_name: string) {
 export async function unload() {
   // Clean up any resources used by the plugin here.
   if (tabsPlugin) {
+    // 注销顶部工具栏按钮
+    tabsPlugin.unregisterHeadbarButton();
+    
     tabsPlugin.destroy();
     tabsPlugin = null;
   }
