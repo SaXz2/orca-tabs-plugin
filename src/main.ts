@@ -2240,28 +2240,9 @@ class OrcaTabsPlugin {
         if (focusedTab) {
           const focusedIndex = this.firstPanelTabs.findIndex(tab => tab.blockId === focusedTab.blockId);
           if (focusedIndex !== -1) {
-            // 如果聚焦的标签是固定的，在其后面插入
-            if (focusedTab.isPinned) {
-              insertIndex = focusedIndex + 1;
-              this.log(`📌 聚焦标签是固定的，在其后面插入新标签`);
-            } else {
-              // 如果聚焦的标签不是固定的，找到最后一个固定标签的位置，在其后面插入
-              let lastPinnedIndex = -1;
-              for (let i = 0; i < this.firstPanelTabs.length; i++) {
-                if (this.firstPanelTabs[i].isPinned) {
-                  lastPinnedIndex = i;
-                }
-              }
-              
-              if (lastPinnedIndex !== -1) {
-                insertIndex = lastPinnedIndex + 1;
-                this.log(`📌 聚焦标签不是固定的，在最后一个固定标签后面插入新标签`);
-              } else {
-                // 如果没有固定标签，在聚焦标签后面插入
-                insertIndex = focusedIndex + 1;
-                this.log(`📌 没有固定标签，在聚焦标签后面插入新标签`);
-              }
-            }
+            // 直接在聚焦标签后面插入
+            insertIndex = focusedIndex + 1;
+            this.log(`📌 在聚焦标签后面插入新标签`);
           }
         }
       }
@@ -4280,7 +4261,7 @@ class OrcaTabsPlugin {
     // 为不同类型的事件注册同一个监听器
     document.addEventListener('click', this.globalEventListener);
     document.addEventListener('contextmenu', this.globalEventListener);
-    document.addEventListener('keydown', this.globalEventListener);
+    // 移除keydown监听以避免干扰Orca核心功能
   }
 
   /**
@@ -4294,9 +4275,7 @@ class OrcaTabsPlugin {
       case 'contextmenu':
         await this.handleContextMenuEvent(e as MouseEvent);
         break;
-      case 'keydown':
-        await this.handleKeydownEvent(e as KeyboardEvent);
-        break;
+      // keydown事件处理已移除
     }
   }
 
@@ -4347,49 +4326,7 @@ class OrcaTabsPlugin {
     }
   }
 
-  /**
-   * 处理键盘事件
-   */
-  private async handleKeydownEvent(e: KeyboardEvent) {
-    // 检查插件快捷键
-    const isCtrlT = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 't' && !e.shiftKey;
-    
-    if (isCtrlT) {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-      
-      // 获取当前光标位置的块ID
-      const currentBlockId = this.getCurrentCursorBlockId();
-      if (currentBlockId) {
-        this.log(`⌨️ 检测到快捷键: ${e.ctrlKey ? 'Ctrl' : 'Cmd'}+T, 目标块ID: ${currentBlockId}，将在后台新建标签页`);
-        
-        // Ctrl+T: 在新标签页打开
-        await this.openInNewTab(currentBlockId);
-      } else {
-        this.warn("⌨️ 无法获取当前光标位置的块ID");
-        // 警告提示已移除
-      }
-      return;
-    }
-    
-    // 特别关注可能关闭面板的快捷键
-    const isPanelCloseKey = (e.ctrlKey || e.metaKey) && e.key === 'w';
-    const isEscapeKey = e.key === 'Escape';
-    
-    if (isPanelCloseKey || isEscapeKey) {
-      this.log(`⌨️ 检测到可能关闭面板的快捷键: ${e.key} (Ctrl/Cmd: ${e.ctrlKey || e.metaKey})`);
-      // 重要操作立即检查
-      setTimeout(() => {
-        this.debouncedCheckPanelStatus();
-      }, 50);
-    } else {
-      // 其他键盘事件延迟检查
-      setTimeout(() => {
-        this.debouncedCheckPanelStatus();
-      }, 200);
-    }
-  }
+  // handleKeydownEvent方法已移除，不再监听全局键盘事件
 
   /**
    * 防抖的面板状态检查
@@ -4577,7 +4514,7 @@ class OrcaTabsPlugin {
     if (this.globalEventListener) {
       document.removeEventListener('click', this.globalEventListener);
       document.removeEventListener('contextmenu', this.globalEventListener);
-      document.removeEventListener('keydown', this.globalEventListener);
+      // keydown监听器已移除
       this.globalEventListener = null;
     }
     if (this.dragEndListener) {

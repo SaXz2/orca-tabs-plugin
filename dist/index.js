@@ -15,9 +15,9 @@ const ut = {
   今天: "今天",
   昨天: "昨天",
   明天: "明天"
-}, et = 6048e5, ht = 864e5, K = Symbol.for("constructDateFrom");
+}, et = 6048e5, ht = 864e5, X = Symbol.for("constructDateFrom");
 function P(r, t) {
-  return typeof r == "function" ? r(t) : r && typeof r == "object" && K in r ? r[K](t) : r instanceof Date ? new r.constructor(t) : new Date(t);
+  return typeof r == "function" ? r(t) : r && typeof r == "object" && X in r ? r[X](t) : r instanceof Date ? new r.constructor(t) : new Date(t);
 }
 function I(r, t) {
   return P(t || r, r);
@@ -46,7 +46,7 @@ function at(r, t) {
   const o = F(i);
   return e.getTime() >= s.getTime() ? n + 1 : e.getTime() >= o.getTime() ? n : n - 1;
 }
-function X(r) {
+function j(r) {
   const t = I(r), e = new Date(
     Date.UTC(
       t.getFullYear(),
@@ -76,7 +76,7 @@ function gt(r, t, e) {
     e == null ? void 0 : e.in,
     r,
     t
-  ), s = q(n), i = q(a), o = +s - X(s), c = +i - X(i);
+  ), s = q(n), i = q(a), o = +s - j(s), c = +i - j(i);
   return Math.round((o - c) / ht);
 }
 function bt(r, t) {
@@ -104,7 +104,7 @@ function yt(r, t) {
   const e = I(r, t == null ? void 0 : t.in);
   return e.setFullYear(e.getFullYear(), 0, 1), e.setHours(0, 0, 0, 0), e;
 }
-const Tt = {
+const xt = {
   lessThanXSeconds: {
     one: "less than a second",
     other: "less than {{count}} seconds"
@@ -166,9 +166,9 @@ const Tt = {
     one: "almost 1 year",
     other: "almost {{count}} years"
   }
-}, xt = (r, t, e) => {
+}, Tt = (r, t, e) => {
   let n;
-  const a = Tt[r];
+  const a = xt[r];
   return typeof a == "string" ? n = a : t === 1 ? n = a.one : n = a.other.replace("{{count}}", t.toString()), e != null && e.addSuffix ? e.comparison && e.comparison > 0 ? "in " + n : n + " ago" : n;
 };
 function _(r) {
@@ -228,11 +228,11 @@ function D(r) {
     return a[s];
   };
 }
-const $t = {
+const Mt = {
   narrow: ["B", "A"],
   abbreviated: ["BC", "AD"],
   wide: ["Before Christ", "Anno Domini"]
-}, Mt = {
+}, $t = {
   narrow: ["1", "2", "3", "4"],
   abbreviated: ["Q1", "Q2", "Q3", "Q4"],
   wide: ["1st quarter", "2nd quarter", "3rd quarter", "4th quarter"]
@@ -356,11 +356,11 @@ const $t = {
 }, At = {
   ordinalNumber: Ot,
   era: D({
-    values: $t,
+    values: Mt,
     defaultWidth: "wide"
   }),
   quarter: D({
-    values: Mt,
+    values: $t,
     defaultWidth: "wide",
     argumentCallback: (r) => r - 1
   }),
@@ -464,18 +464,18 @@ const qt = /^(\d+)(th|st|nd|rd)?/i, Wt = /\d+/i, Yt = {
     /^n/i,
     /^d/i
   ]
-}, Kt = {
+}, Xt = {
   narrow: /^[smtwf]/i,
   short: /^(su|mo|tu|we|th|fr|sa)/i,
   abbreviated: /^(sun|mon|tue|wed|thu|fri|sat)/i,
   wide: /^(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/i
-}, Xt = {
+}, jt = {
   narrow: [/^s/i, /^m/i, /^t/i, /^w/i, /^t/i, /^f/i, /^s/i],
   any: [/^su/i, /^m/i, /^tu/i, /^w/i, /^th/i, /^f/i, /^sa/i]
-}, jt = {
+}, Gt = {
   narrow: /^(a|p|mi|n|(in the|at) (morning|afternoon|evening|night))/i,
   any: /^([ap]\.?\s?m\.?|midnight|noon|(in the|at) (morning|afternoon|evening|night))/i
-}, Gt = {
+}, Jt = {
   any: {
     am: /^a/i,
     pm: /^p/i,
@@ -486,7 +486,7 @@ const qt = /^(\d+)(th|st|nd|rd)?/i, Wt = /\d+/i, Yt = {
     evening: /evening/i,
     night: /night/i
   }
-}, Jt = {
+}, Kt = {
   ordinalNumber: Ft({
     matchPattern: qt,
     parsePattern: Wt,
@@ -512,24 +512,24 @@ const qt = /^(\d+)(th|st|nd|rd)?/i, Wt = /\d+/i, Yt = {
     defaultParseWidth: "any"
   }),
   day: L({
-    matchPatterns: Kt,
+    matchPatterns: Xt,
     defaultMatchWidth: "wide",
-    parsePatterns: Xt,
+    parsePatterns: jt,
     defaultParseWidth: "any"
   }),
   dayPeriod: L({
-    matchPatterns: jt,
+    matchPatterns: Gt,
     defaultMatchWidth: "any",
-    parsePatterns: Gt,
+    parsePatterns: Jt,
     defaultParseWidth: "any"
   })
 }, Qt = {
   code: "en-US",
-  formatDistance: xt,
+  formatDistance: Tt,
   formatLong: vt,
   formatRelative: Ct,
   localize: At,
-  match: Jt,
+  match: Kt,
   options: {
     weekStartsOn: 0,
     firstWeekContainsDate: 1
@@ -619,14 +619,14 @@ const v = {
     );
     return p(a, t.length);
   }
-}, $ = {
+}, M = {
   midnight: "midnight",
   noon: "noon",
   morning: "morning",
   afternoon: "afternoon",
   evening: "evening",
   night: "night"
-}, j = {
+}, G = {
   // Era
   G: function(r, t, e) {
     const n = r.getFullYear() > 0 ? 1 : 0;
@@ -961,7 +961,7 @@ const v = {
   b: function(r, t, e) {
     const n = r.getHours();
     let a;
-    switch (n === 12 ? a = $.noon : n === 0 ? a = $.midnight : a = n / 12 >= 1 ? "pm" : "am", t) {
+    switch (n === 12 ? a = M.noon : n === 0 ? a = M.midnight : a = n / 12 >= 1 ? "pm" : "am", t) {
       case "b":
       case "bb":
         return e.dayPeriod(a, {
@@ -990,7 +990,7 @@ const v = {
   B: function(r, t, e) {
     const n = r.getHours();
     let a;
-    switch (n >= 17 ? a = $.evening : n >= 12 ? a = $.afternoon : n >= 4 ? a = $.morning : a = $.night, t) {
+    switch (n >= 17 ? a = M.evening : n >= 12 ? a = M.afternoon : n >= 4 ? a = M.morning : a = M.night, t) {
       case "B":
       case "BB":
       case "BBB":
@@ -1052,7 +1052,7 @@ const v = {
       return "Z";
     switch (t) {
       case "X":
-        return J(n);
+        return K(n);
       case "XXXX":
       case "XX":
         return C(n);
@@ -1067,7 +1067,7 @@ const v = {
     const n = r.getTimezoneOffset();
     switch (t) {
       case "x":
-        return J(n);
+        return K(n);
       case "xxxx":
       case "xx":
         return C(n);
@@ -1084,7 +1084,7 @@ const v = {
       case "O":
       case "OO":
       case "OOO":
-        return "GMT" + G(n, ":");
+        return "GMT" + J(n, ":");
       case "OOOO":
       default:
         return "GMT" + C(n, ":");
@@ -1097,7 +1097,7 @@ const v = {
       case "z":
       case "zz":
       case "zzz":
-        return "GMT" + G(n, ":");
+        return "GMT" + J(n, ":");
       case "zzzz":
       default:
         return "GMT" + C(n, ":");
@@ -1113,11 +1113,11 @@ const v = {
     return p(+r, t.length);
   }
 };
-function G(r, t = "") {
+function J(r, t = "") {
   const e = r > 0 ? "-" : "+", n = Math.abs(r), a = Math.trunc(n / 60), s = n % 60;
   return s === 0 ? e + String(a) : e + String(a) + t + p(s, 2);
 }
-function J(r, t) {
+function K(r, t) {
   return r % 60 === 0 ? (r > 0 ? "-" : "+") + p(Math.abs(r) / 60, 2) : C(r, t);
 }
 function C(r, t = "") {
@@ -1206,7 +1206,7 @@ function A(r, t, e) {
     const b = g[0];
     if (b === "'")
       return { isToken: !1, value: me(g) };
-    if (j[b])
+    if (G[b])
       return { isToken: !0, value: g };
     if (b.match(be))
       throw new RangeError(
@@ -1224,7 +1224,7 @@ function A(r, t, e) {
     if (!g.isToken) return g.value;
     const b = g.value;
     (ce(b) || oe(b)) && le(b, t, String(r));
-    const y = j[b[0]];
+    const y = G[b[0]];
     return y(o, b, a.localize, l);
   }).join("");
 }
@@ -1245,13 +1245,13 @@ function ye(r, t) {
     t
   );
 }
-function Te(r, t, e) {
+function xe(r, t, e) {
   return nt(r, -1, e);
 }
-function xe(r, t) {
+function Te(r, t) {
   return z(
     P(r, r),
-    Te(H(r))
+    xe(H(r))
   );
 }
 const V = {
@@ -1541,7 +1541,7 @@ class Pe {
   formatJournalDate(t) {
     try {
       let e = orca.state.settings[V.JournalDateFormat];
-      return (!e || typeof e != "string") && (e = (orca.state.locale || "zh-CN").startsWith("zh") ? "yyyy年MM月dd日" : "yyyy-MM-dd"), pe(t) ? B("今天") : xe(t) ? B("昨天") : ye(t) ? B("明天") : this.formatDateWithPattern(t, e);
+      return (!e || typeof e != "string") && (e = (orca.state.locale || "zh-CN").startsWith("zh") ? "yyyy年MM月dd日" : "yyyy-MM-dd"), pe(t) ? B("今天") : Te(t) ? B("昨天") : ye(t) ? B("明天") : this.formatDateWithPattern(t, e);
     } catch (e) {
       return this.warn("日期格式化失败:", e), this.formatDateWithPattern(t, "yyyy-MM-dd");
     }
@@ -2144,15 +2144,15 @@ class Pe {
    * RGB转OKLCH颜色空间
    */
   rgbToOklch(t, e, n) {
-    const a = t / 255, s = e / 255, i = n / 255, o = (U) => U <= 0.04045 ? U / 12.92 : Math.pow((U + 0.055) / 1.055, 2.4), c = o(a), l = o(s), d = o(i), u = c * 0.4124564 + l * 0.3575761 + d * 0.1804375, h = c * 0.2126729 + l * 0.7151522 + d * 0.072175, f = c * 0.0193339 + l * 0.119192 + d * 0.9503041, g = 0.2104542553 * u + 0.793617785 * h - 0.0040720468 * f, b = 1.9779984951 * u - 2.428592205 * h + 0.4505937099 * f, y = 0.0259040371 * u + 0.7827717662 * h - 0.808675766 * f, x = Math.cbrt(g), T = Math.cbrt(b), k = Math.cbrt(y), Y = 0.2104542553 * x + 0.793617785 * T + 0.0040720468 * k, M = 1.9779984951 * x - 2.428592205 * T + 0.4505937099 * k, S = 0.0259040371 * x + 0.7827717662 * T - 0.808675766 * k, E = Math.sqrt(M * M + S * S), R = Math.atan2(S, M) * 180 / Math.PI, ot = R < 0 ? R + 360 : R;
+    const a = t / 255, s = e / 255, i = n / 255, o = (U) => U <= 0.04045 ? U / 12.92 : Math.pow((U + 0.055) / 1.055, 2.4), c = o(a), l = o(s), d = o(i), u = c * 0.4124564 + l * 0.3575761 + d * 0.1804375, h = c * 0.2126729 + l * 0.7151522 + d * 0.072175, f = c * 0.0193339 + l * 0.119192 + d * 0.9503041, g = 0.2104542553 * u + 0.793617785 * h - 0.0040720468 * f, b = 1.9779984951 * u - 2.428592205 * h + 0.4505937099 * f, y = 0.0259040371 * u + 0.7827717662 * h - 0.808675766 * f, T = Math.cbrt(g), x = Math.cbrt(b), k = Math.cbrt(y), Y = 0.2104542553 * T + 0.793617785 * x + 0.0040720468 * k, $ = 1.9779984951 * T - 2.428592205 * x + 0.4505937099 * k, S = 0.0259040371 * T + 0.7827717662 * x - 0.808675766 * k, E = Math.sqrt($ * $ + S * S), R = Math.atan2(S, $) * 180 / Math.PI, ot = R < 0 ? R + 360 : R;
     return { l: Y, c: E, h: ot };
   }
   /**
    * OKLCH转RGB颜色空间
    */
   oklchToRgb(t, e, n) {
-    const a = n * Math.PI / 180, s = e * Math.cos(a), i = e * Math.sin(a), o = t, c = s, l = i, d = o * o * o, u = c * c * c, h = l * l * l, f = 1.0478112 * d + 0.0228866 * u - 0.050217 * h, g = 0.0295424 * d + 0.9904844 * u + 0.0170491 * h, b = -92345e-7 * d + 0.0150436 * u + 0.7521316 * h, y = 3.2404542 * f - 1.5371385 * g - 0.4985314 * b, x = -0.969266 * f + 1.8760108 * g + 0.041556 * b, T = 0.0556434 * f - 0.2040259 * g + 1.0572252 * b, k = (E) => E <= 31308e-7 ? 12.92 * E : 1.055 * Math.pow(E, 1 / 2.4) - 0.055, Y = Math.max(0, Math.min(255, Math.round(k(y) * 255))), M = Math.max(0, Math.min(255, Math.round(k(x) * 255))), S = Math.max(0, Math.min(255, Math.round(k(T) * 255)));
-    return { r: Y, g: M, b: S };
+    const a = n * Math.PI / 180, s = e * Math.cos(a), i = e * Math.sin(a), o = t, c = s, l = i, d = o * o * o, u = c * c * c, h = l * l * l, f = 1.0478112 * d + 0.0228866 * u - 0.050217 * h, g = 0.0295424 * d + 0.9904844 * u + 0.0170491 * h, b = -92345e-7 * d + 0.0150436 * u + 0.7521316 * h, y = 3.2404542 * f - 1.5371385 * g - 0.4985314 * b, T = -0.969266 * f + 1.8760108 * g + 0.041556 * b, x = 0.0556434 * f - 0.2040259 * g + 1.0572252 * b, k = (E) => E <= 31308e-7 ? 12.92 * E : 1.055 * Math.pow(E, 1 / 2.4) - 0.055, Y = Math.max(0, Math.min(255, Math.round(k(y) * 255))), $ = Math.max(0, Math.min(255, Math.round(k(T) * 255))), S = Math.max(0, Math.min(255, Math.round(k(x) * 255)));
+    return { r: Y, g: $, b: S };
   }
   /**
    * 应用颜色调整（支持亮色和暗色模式）
@@ -2396,15 +2396,7 @@ class Pe {
         const l = this.getCurrentActiveTab();
         if (l) {
           const d = this.firstPanelTabs.findIndex((u) => u.blockId === l.blockId);
-          if (d !== -1)
-            if (l.isPinned)
-              o = d + 1, this.log("📌 聚焦标签是固定的，在其后面插入新标签");
-            else {
-              let u = -1;
-              for (let h = 0; h < this.firstPanelTabs.length; h++)
-                this.firstPanelTabs[h].isPinned && (u = h);
-              u !== -1 ? (o = u + 1, this.log("📌 聚焦标签不是固定的，在最后一个固定标签后面插入新标签")) : (o = d + 1, this.log("📌 没有固定标签，在聚焦标签后面插入新标签"));
-            }
+          d !== -1 && (o = d + 1, this.log("📌 在聚焦标签后面插入新标签"));
         }
       }
       if (this.firstPanelTabs.length >= this.maxTabs)
@@ -2849,8 +2841,8 @@ class Pe {
     let i = { x: "50%", y: "50%" };
     if (s) {
       const u = s.getBoundingClientRect(), h = window.innerWidth, f = window.innerHeight, g = 300, b = 100, y = 20;
-      let x = u.left, T = u.top - b - 10;
-      x + g > h - y && (x = h - g - y), x < y && (x = y), T < y && (T = u.bottom + 10, T + b > f - y && (T = (f - b) / 2)), T + b > f - y && (T = f - b - y), x = Math.max(y, Math.min(x, h - g - y)), T = Math.max(y, Math.min(T, f - b - y)), i = { x: `${x}px`, y: `${T}px` };
+      let T = u.left, x = u.top - b - 10;
+      T + g > h - y && (T = h - g - y), T < y && (T = y), x < y && (x = u.bottom + 10, x + b > f - y && (x = (f - b) / 2)), x + b > f - y && (x = f - b - y), T = Math.max(y, Math.min(T, h - g - y)), x = Math.max(y, Math.min(x, f - b - y)), i = { x: `${T}px`, y: `${x}px` };
     }
     const o = orca.components.InputBox, c = e.createElement(o, {
       label: "重命名标签",
@@ -3433,7 +3425,7 @@ class Pe {
       await this.checkPanelStatusChange();
     }, 2e3), this.globalEventListener = async (t) => {
       await this.handleGlobalEvent(t);
-    }, document.addEventListener("click", this.globalEventListener), document.addEventListener("contextmenu", this.globalEventListener), document.addEventListener("keydown", this.globalEventListener);
+    }, document.addEventListener("click", this.globalEventListener), document.addEventListener("contextmenu", this.globalEventListener);
   }
   /**
    * 统一的全局事件处理器
@@ -3445,9 +3437,6 @@ class Pe {
         break;
       case "contextmenu":
         await this.handleContextMenuEvent(t);
-        break;
-      case "keydown":
-        await this.handleKeydownEvent(t);
         break;
     }
   }
@@ -3475,23 +3464,7 @@ class Pe {
       this.enhanceBlockRefContextMenu(n);
     }, 50));
   }
-  /**
-   * 处理键盘事件
-   */
-  async handleKeydownEvent(t) {
-    if ((t.ctrlKey || t.metaKey) && t.key.toLowerCase() === "t" && !t.shiftKey) {
-      t.preventDefault(), t.stopPropagation(), t.stopImmediatePropagation();
-      const s = this.getCurrentCursorBlockId();
-      s ? (this.log(`⌨️ 检测到快捷键: ${t.ctrlKey ? "Ctrl" : "Cmd"}+T, 目标块ID: ${s}，将在后台新建标签页`), await this.openInNewTab(s)) : this.warn("⌨️ 无法获取当前光标位置的块ID");
-      return;
-    }
-    const n = (t.ctrlKey || t.metaKey) && t.key === "w", a = t.key === "Escape";
-    n || a ? (this.log(`⌨️ 检测到可能关闭面板的快捷键: ${t.key} (Ctrl/Cmd: ${t.ctrlKey || t.metaKey})`), setTimeout(() => {
-      this.debouncedCheckPanelStatus();
-    }, 50)) : setTimeout(() => {
-      this.debouncedCheckPanelStatus();
-    }, 200);
-  }
+  // handleKeydownEvent方法已移除，不再监听全局键盘事件
   /**
    * 防抖的面板状态检查
    */
@@ -3553,7 +3526,7 @@ class Pe {
   destroy() {
     this.tabContainer && (this.tabContainer.remove(), this.tabContainer = null), this.cycleSwitcher && (this.cycleSwitcher.remove(), this.cycleSwitcher = null);
     const t = document.getElementById("orca-tabs-drag-styles");
-    t && t.remove(), this.monitoringInterval && (clearInterval(this.monitoringInterval), this.monitoringInterval = null), this.updateDebounceTimer && (clearTimeout(this.updateDebounceTimer), this.updateDebounceTimer = null), this.swapDebounceTimer && (clearTimeout(this.swapDebounceTimer), this.swapDebounceTimer = null), this.globalEventListener && (document.removeEventListener("click", this.globalEventListener), document.removeEventListener("contextmenu", this.globalEventListener), document.removeEventListener("keydown", this.globalEventListener), this.globalEventListener = null), this.dragEndListener && (document.removeEventListener("dragend", this.dragEndListener), this.dragEndListener = null), this.themeChangeListener && (this.themeChangeListener(), this.themeChangeListener = null), this.scrollListener && (this.scrollListener(), this.scrollListener = null), this.draggingTab = null;
+    t && t.remove(), this.monitoringInterval && (clearInterval(this.monitoringInterval), this.monitoringInterval = null), this.updateDebounceTimer && (clearTimeout(this.updateDebounceTimer), this.updateDebounceTimer = null), this.swapDebounceTimer && (clearTimeout(this.swapDebounceTimer), this.swapDebounceTimer = null), this.globalEventListener && (document.removeEventListener("click", this.globalEventListener), document.removeEventListener("contextmenu", this.globalEventListener), this.globalEventListener = null), this.dragEndListener && (document.removeEventListener("dragend", this.dragEndListener), this.dragEndListener = null), this.themeChangeListener && (this.themeChangeListener(), this.themeChangeListener = null), this.scrollListener && (this.scrollListener(), this.scrollListener = null), this.draggingTab = null;
   }
 }
 let w = null;
