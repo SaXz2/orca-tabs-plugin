@@ -1,6 +1,6 @@
 {
   "name": "orca-plugin-template",
-  "version": "2.1.9",
+  "version": "2.1.11",
   "type": "module",
   "main": "dist/index.js",
   "files": [
