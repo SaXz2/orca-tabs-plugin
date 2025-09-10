@@ -31,13 +31,17 @@ try {
 
   console.log(`📋 打包版本: v${version}`);
 
+  // 创建 dist 目录
+  const distDir = join(releaseDir, 'dist');
+  mkdirSync(distDir, { recursive: true });
+
   // 复制必要文件
   const filesToCopy = [
-    { src: 'dist/index.js', dest: 'index.js', required: true },
+    { src: 'dist/index.js', dest: 'dist/index.js', required: true },
     { src: 'package.json', dest: 'package.json', required: true },
     { src: 'README.md', dest: 'README.md', required: true },
     { src: 'icon.png', dest: 'icon.png', required: true },
-    { src: 'dist/index.js.map', dest: 'index.js.map', required: false }
+    { src: 'dist/index.js.map', dest: 'dist/index.js.map', required: false }
   ];
 
   for (const file of filesToCopy) {
