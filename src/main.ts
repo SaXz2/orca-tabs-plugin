@@ -44,16 +44,35 @@ class OrcaTabsPlugin {
   private currentPanelId: string = '';
   private panelIds: string[] = []; // 所有面板ID列表
   private currentPanelIndex = 0; // 当前面板索引
+  
+  // 调试日志（开发模式）
+  private log(...args: any[]) {
+    // 在开发模式下启用日志（可以通过变量控制）
+    if (typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS !== false) {
+      console.log(...args);
+    }
+  }
+  
+  private warn(...args: any[]) {
+    if (typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS !== false) {
+      console.warn(...args);
+    }
+  }
+  
+  private error(...args: any[]) {
+    // 错误日志在生产环境也保留
+    console.error(...args);
+  }
   private tabContainer: HTMLElement | null = null;
   private cycleSwitcher: HTMLElement | null = null;
   private isDragging = false;
   private dragStartX = 0;
   private dragStartY = 0;
   private maxTabs = 10; // 默认值，会从设置中读取
+  private homePageBlockId: string | null = null; // 主页块ID，从设置中读取
   private position: TabPosition = { x: 50, y: 50 };
   private monitoringInterval: number | null = null;
-  private clickListener: ((e: Event) => void) | null = null;
-  private keyListener: ((e: KeyboardEvent) => void) | null = null;
+  private globalEventListener: ((e: Event) => void) | null = null; // 统一的全局事件监听器
   private updateDebounceTimer: number | null = null; // 防抖计时器
   private lastUpdateTime: number = 0; // 上次更新时间
   private isUpdating: boolean = false; // 是否正在更新
@@ -73,15 +92,25 @@ class OrcaTabsPlugin {
   
   // 已关闭标签页跟踪
   private closedTabs: Set<string> = new Set(); // 已关闭的标签页blockId集合
-  private lastActiveBlockId: string | null = null; // 上一个激活的标签ID
+  private lastActiveBlockId: string | null = null
+  
+  // 快捷键相关
+  private hoveredBlockId: string | null = null; // 当前鼠标悬停的块ID
+  private currentContextBlockRefId: string | null = null; // 当前右键菜单对应的块引用ID
 
   async init() {
     // 从设置中读取最大标签数
     try {
       this.maxTabs = orca.state.settings[AppKeys.CachedEditorNum] || 10;
     } catch (e) {
-      console.warn("无法读取最大标签数设置，使用默认值10");
+      this.warn("无法读取最大标签数设置，使用默认值10");
     }
+
+    // 注册插件设置
+    await this.registerPluginSettings();
+
+    // 注册块菜单命令
+    this.registerBlockMenuCommands();
 
     // 恢复保存的位置
     this.restorePosition();
@@ -103,11 +132,11 @@ class OrcaTabsPlugin {
     
     if (!hasPersistentData) {
       // 只有在没有持久化数据时才扫描第一个面板（首次使用）
-      console.log("首次使用，扫描第一个面板创建标签页");
+      this.log("首次使用，扫描第一个面板创建标签页");
       await this.scanFirstPanel();
     } else {
       // 有持久化数据，使用固化的标签页状态
-      console.log("检测到持久化数据，使用固化的标签页状态");
+      this.log("检测到持久化数据，使用固化的标签页状态");
     }
     
     // 创建标签页UI
@@ -133,7 +162,7 @@ class OrcaTabsPlugin {
     
     // 标记初始化完成
     this.isInitialized = true;
-    console.log("✅ 插件初始化完成");
+    this.log("✅ 插件初始化完成");
   }
 
   /**
@@ -148,12 +177,12 @@ class OrcaTabsPlugin {
 
     // 使用Orca广播API监听主题变化
     const handleThemeChange = (theme: string) => {
-      console.log("检测到主题变化，重新渲染标签页颜色:", theme);
-      console.log("当前主题模式:", orca.state.themeMode);
+      this.log("检测到主题变化，重新渲染标签页颜色:", theme);
+      this.log("当前主题模式:", orca.state.themeMode);
       
       // 延迟执行，确保主题切换完成
       setTimeout(() => {
-        console.log("开始重新渲染标签页，当前主题:", orca.state.themeMode);
+        this.log("开始重新渲染标签页，当前主题:", orca.state.themeMode);
         this.debouncedUpdateTabsUI();
       }, 200); // 增加延迟时间
     };
@@ -161,9 +190,9 @@ class OrcaTabsPlugin {
     // 注册主题变化监听器
     try {
       orca.broadcasts.registerHandler("core.themeChanged", handleThemeChange);
-      console.log("主题变化监听器注册成功");
+      this.log("主题变化监听器注册成功");
     } catch (error) {
-      console.error("主题变化监听器注册失败:", error);
+      this.error("主题变化监听器注册失败:", error);
     }
 
     // 添加备用的主题检测机制
@@ -171,7 +200,7 @@ class OrcaTabsPlugin {
     const checkThemeChange = () => {
       const currentThemeMode = orca.state.themeMode;
       if (currentThemeMode !== lastThemeMode) {
-        console.log("备用检测：主题从", lastThemeMode, "切换到", currentThemeMode);
+        this.log("备用检测：主题从", lastThemeMode, "切换到", currentThemeMode);
         lastThemeMode = currentThemeMode;
         setTimeout(() => {
           this.debouncedUpdateTabsUI();
@@ -239,7 +268,7 @@ class OrcaTabsPlugin {
     this.dragEndListener = () => {
       this.draggingTab = null;
       this.clearDragVisualFeedback();
-      console.log("🔄 全局拖拽结束，清除拖拽状态");
+      this.log("🔄 全局拖拽结束，清除拖拽状态");
     };
     document.addEventListener("dragend", this.dragEndListener);
   }
@@ -318,7 +347,7 @@ class OrcaTabsPlugin {
    */
   swapTab(targetTab: TabInfo, draggingTab: TabInfo) {
     if (this.currentPanelIndex !== 0) {
-      console.log("只有第一个面板支持拖拽排序");
+      this.log("只有第一个面板支持拖拽排序");
       return;
     }
     
@@ -345,7 +374,6 @@ class OrcaTabsPlugin {
         tab.order = index;
       });
       
-      console.log(`🔄 标签交换: ${draggingTab.title} -> ${targetTab.title} (${isMovingRight ? '右移' : '左移'})`);
       
       // 重新排序（保持固定标签在前）
       this.sortTabsByPinStatus();
@@ -371,36 +399,34 @@ class OrcaTabsPlugin {
       const cacheAge = now - this.panelDiscoveryCache.timestamp;
       if (cacheAge < 1000) { // 缓存1秒内有效
         this.panelIds = [...this.panelDiscoveryCache.panelIds];
-        console.log("📋 使用面板发现缓存，面板ID列表:", this.panelIds);
+        this.log("📋 使用面板发现缓存，面板ID列表:", this.panelIds);
         return;
       }
     }
     
-    console.log("🔍 开始发现面板...");
+    this.log("🔍 开始发现面板...");
     this.lastPanelDiscoveryTime = now;
     
     const mainSection = document.querySelector('section#main');
     if (!mainSection) {
-      console.warn("❌ 未找到 section#main");
+      this.warn("❌ 未找到 section#main");
       return;
     }
-    console.log("✅ 找到 section#main");
+    this.log("✅ 找到 section#main");
 
     const panelsRow = mainSection.querySelector('.orca-panels-row');
     if (!panelsRow) {
-      console.warn("❌ 未找到 .orca-panels-row");
+      this.warn("❌ 未找到 .orca-panels-row");
       return;
     }
-    console.log("✅ 找到 .orca-panels-row");
+    this.log("✅ 找到 .orca-panels-row");
 
     // 检查所有可能的面板选择器
     const allPanels = document.querySelectorAll('.orca-panel');
-    console.log(`🔍 在整个文档中找到 ${allPanels.length} 个 .orca-panel 元素`);
     
     const panels = panelsRow.querySelectorAll('.orca-panel');
     this.panelIds = [];
     
-    console.log(`🔍 在 .orca-panels-row 中找到 ${panels.length} 个 .orca-panel 元素`);
     
     // 详细检查每个面板
     panels.forEach((panel, index) => {
@@ -410,29 +436,29 @@ class OrcaTabsPlugin {
       const rect = panel.getBoundingClientRect();
       const isMenuPanel = this.isMenuPanel(panel);
       
-      console.log(`面板 ${index + 1}: ID=${panelId}, 激活=${isActive}, 可见=${isVisible}, 菜单=${isMenuPanel}, 位置=(${rect.left}, ${rect.top})`);
+      this.log(`面板 ${index + 1}: ID=${panelId}, 激活=${isActive}, 可见=${isVisible}, 菜单=${isMenuPanel}, 位置=(${rect.left}, ${rect.top})`);
       
       if (panelId && !isMenuPanel) {
         this.panelIds.push(panelId);
       } else if (isMenuPanel) {
-        console.log(`🚫 跳过菜单面板: ${panelId}`);
+        this.log(`🚫 跳过菜单面板: ${panelId}`);
       } else {
-        console.warn(`❌ 面板 ${index + 1} 没有 data-panel-id 属性`);
+        this.warn(`❌ 面板 ${index + 1} 没有 data-panel-id 属性`);
       }
     });
     
     // 如果面板数量不足，尝试其他方法
     if (panels.length < 2 && allPanels.length >= 2) {
-      console.log("⚠️ 在 .orca-panels-row 中面板不足，尝试从整个文档中查找...");
+      this.log("⚠️ 在 .orca-panels-row 中面板不足，尝试从整个文档中查找...");
       
       allPanels.forEach((panel, index) => {
         const panelId = panel.getAttribute('data-panel-id');
         const isMenuPanel = this.isMenuPanel(panel);
         if (panelId && !this.panelIds.includes(panelId) && !isMenuPanel) {
           this.panelIds.push(panelId);
-          console.log(`➕ 从文档中找到额外面板: ID=${panelId}`);
+          this.log(`➕ 从文档中找到额外面板: ID=${panelId}`);
         } else if (isMenuPanel) {
-          console.log(`🚫 跳过菜单面板: ${panelId}`);
+          this.log(`🚫 跳过菜单面板: ${panelId}`);
         }
       });
     }
@@ -461,8 +487,8 @@ class OrcaTabsPlugin {
       }
     }
     
-    console.log(`🎯 最终发现 ${this.panelIds.length} 个面板，面板ID列表:`, this.panelIds);
-    console.log(`🎯 当前面板: ${this.currentPanelId} (索引: ${this.currentPanelIndex})`);
+    this.log(`🎯 最终发现 ${this.panelIds.length} 个面板，面板ID列表:`, this.panelIds);
+    this.log(`🎯 当前面板: ${this.currentPanelId} (索引: ${this.currentPanelIndex})`);
     
     // 更新缓存
     this.panelDiscoveryCache = {
@@ -472,9 +498,9 @@ class OrcaTabsPlugin {
     
     // 如果只有一个面板，显示提示
     if (this.panelIds.length === 1) {
-      console.log("ℹ️ 只有一个面板，不会显示切换按钮");
+      this.log("ℹ️ 只有一个面板，不会显示切换按钮");
     } else if (this.panelIds.length > 1) {
-      console.log(`✅ 发现 ${this.panelIds.length} 个面板，将创建循环切换器`);
+      this.log(`✅ 发现 ${this.panelIds.length} 个面板，将创建循环切换器`);
     }
   }
 
@@ -511,20 +537,19 @@ class OrcaTabsPlugin {
     // 只获取当前激活的页面（最上面的）
     const activeBlockEditor = panel.querySelector('.orca-hideable:not([style*="display: none"]) .orca-block-editor[data-block-id]');
     if (!activeBlockEditor) {
-      console.log("第一个面板中没有找到激活的块编辑器");
+      this.log("第一个面板中没有找到激活的块编辑器");
       return;
     }
 
     const blockId = activeBlockEditor.getAttribute('data-block-id');
     if (!blockId) {
-      console.log("激活的块编辑器没有blockId");
+      this.log("激活的块编辑器没有blockId");
       return;
     }
 
     // 获取当前激活页面的标签信息
     const tabInfo = await this.getTabInfo(blockId, firstPanelId, 0);
     if (tabInfo) {
-      console.log(`📋 扫描第一个面板，找到激活页面: "${tabInfo.title}"`);
       
       // 直接设置为第一个面板的标签页（只显示当前激活的页面）
       this.firstPanelTabs = [tabInfo];
@@ -534,7 +559,7 @@ class OrcaTabsPlugin {
       
       await this.updateTabsUI();
     } else {
-      console.log("无法获取激活页面的标签信息");
+      this.log("无法获取激活页面的标签信息");
     }
   }
 
@@ -545,7 +570,6 @@ class OrcaTabsPlugin {
     // 由于现在只处理当前激活的页面，这个方法主要用于兼容性
     // 实际逻辑已经在scanFirstPanel和checkFirstPanelBlocks中处理
     if (newTabs.length > 0) {
-      console.log(`📋 合并标签页: ${newTabs.length} 个标签页`);
       // 应用排序逻辑（固定标签在前，非固定在后）
       this.sortTabsByPinStatus();
     }
@@ -601,12 +625,12 @@ class OrcaTabsPlugin {
       } else if (isTomorrow(date)) {
         return t('明天');
       } else {
-        // 使用用户设置的日期格式
+        // 使用用户设置的日期格式，但需要处理星期几的中文显示
         return this.formatDateWithPattern(date, dateFormat);
       }
     } catch (e) {
       // 如果格式化失败，使用默认格式
-      console.warn("日期格式化失败:", e);
+      this.warn("日期格式化失败:", e);
       return this.formatDateWithPattern(date, 'yyyy-MM-dd');
     }
   }
@@ -645,7 +669,7 @@ class OrcaTabsPlugin {
               text += `[[块${referencedBlockId}]]`;
             }
           } catch (e) {
-            console.warn("处理r类型块引用失败:", e);
+            this.warn("处理r类型块引用失败:", e);
             text += `[[块引用]]`;
           }
         } else if (fragment.v) {
@@ -664,7 +688,7 @@ class OrcaTabsPlugin {
             text += `[[块${referencedBlockId}]]`;
           }
         } catch (e) {
-          console.warn("处理块引用失败:", e);
+          this.warn("处理块引用失败:", e);
           text += `[[块引用]]`;
         }
       } else if (fragment.t && fragment.t.includes("math") && fragment.v) {
@@ -727,7 +751,27 @@ class OrcaTabsPlugin {
    */
   formatDateWithPattern(date: Date, pattern: string): string {
     try {
-      return format(date, pattern);
+      // 检查是否包含星期几格式（E）
+      if (pattern.includes('E')) {
+        const locale = orca.state.locale || 'zh-CN';
+        
+        if (locale.startsWith('zh')) {
+          // 中文环境，需要手动处理星期几
+          const weekday = date.getDay(); // 0=周日, 1=周一, ..., 6=周六
+          const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+          const weekdayText = weekdays[weekday];
+          
+          // 替换E为中文星期几
+          const chinesePattern = pattern.replace(/E/g, weekdayText);
+          return format(date, chinesePattern);
+        } else {
+          // 非中文环境，直接使用format
+          return format(date, pattern);
+        }
+      } else {
+        // 不包含星期几，直接格式化
+        return format(date, pattern);
+      }
     } catch (e) {
       // 如果用户设置的格式无效，尝试常见格式
       const fallbackFormats = ['yyyy-MM-dd', 'MM/dd/yyyy', 'dd/MM/yyyy', 'yyyy年MM月dd日'];
@@ -807,7 +851,7 @@ class OrcaTabsPlugin {
           }
         }
       } catch (e) {
-        console.warn("获取标题失败:", e);
+        this.warn("获取标题失败:", e);
         title = `块 ${blockId}`;
       }
 
@@ -823,7 +867,7 @@ class OrcaTabsPlugin {
           icon = iconProp.value;
         }
       } catch (e) {
-        console.warn("获取属性失败:", e);
+        this.warn("获取属性失败:", e);
       }
 
       return {
@@ -837,7 +881,7 @@ class OrcaTabsPlugin {
         order
       };
     } catch (e) {
-      console.error("获取标签信息失败:", e);
+      this.error("获取标签信息失败:", e);
       return null;
     }
   }
@@ -851,10 +895,9 @@ class OrcaTabsPlugin {
       this.cycleSwitcher.remove();
     }
 
-    console.log(`🎨 创建UI: 面板数=${this.panelIds.length}, 位置=(${this.position.x}, ${this.position.y})`);
 
     // 不再创建循环切换器，因为标签页会自动切换
-    console.log("📱 使用自动切换模式，不创建面板切换器");
+    this.log("📱 使用自动切换模式，不创建面板切换器");
 
     // 创建标签容器
     this.tabContainer = document.createElement('div');
@@ -927,7 +970,6 @@ class OrcaTabsPlugin {
     // 添加拖拽相关的CSS样式
     this.addDragStyles();
 
-    console.log(`✅ 标签容器已创建，位置: (${this.position.x}, ${this.position.y})`);
 
     await this.updateTabsUI();
   }
@@ -1091,7 +1133,7 @@ class OrcaTabsPlugin {
     `;
     
     document.head.appendChild(style);
-    console.log("✅ 拖拽样式已添加");
+    this.log("✅ 拖拽样式已添加");
   }
 
   /**
@@ -1136,8 +1178,9 @@ class OrcaTabsPlugin {
     
     this.lastUpdateTime = now;
 
-    // 清除现有标签（保留拖拽手柄）
+    // 清除现有标签（保留拖拽手柄和新建按钮）
     const dragHandle = this.tabContainer.querySelector('.drag-handle');
+    const newTabButton = this.tabContainer.querySelector('.new-tab-button');
     this.tabContainer.innerHTML = '';
     if (dragHandle) {
       this.tabContainer.appendChild(dragHandle);
@@ -1151,16 +1194,18 @@ class OrcaTabsPlugin {
 
     if (firstPanelExists && isFirstPanelActive) {
       // 第一个面板存在且激活时，显示固化标签页
-      console.log("📋 显示第一个面板的固化标签页");
+      this.log("📋 显示第一个面板的固化标签页");
       // 确保标签按固定状态排序
       this.sortTabsByPinStatus();
       this.firstPanelTabs.forEach((tab, index) => {
         const tabElement = this.createTabElement(tab);
         this.tabContainer?.appendChild(tabElement);
       });
+      
+      // 在标签页后面添加新建按钮
+      this.addNewTabButton();
     } else {
       // 其他情况：显示当前激活面板的实时标签页
-      console.log(`📋 显示面板 ${this.currentPanelIndex + 1} 的实时标签页`);
       await this.showCurrentPanelTabsSync();
     }
     
@@ -1176,11 +1221,10 @@ class OrcaTabsPlugin {
 
     const panel = document.querySelector(`.orca-panel[data-panel-id="${this.currentPanelId}"]`);
     if (!panel) {
-      console.warn(`❌ 未找到面板: ${this.currentPanelId}`);
+      this.warn(`❌ 未找到面板: ${this.currentPanelId}`);
       return;
     }
 
-    console.log(`🔍 扫描面板 ${this.currentPanelIndex + 1} 的实时标签页...`);
 
     const hideableElements = panel.querySelectorAll('.orca-hideable');
     const tabs: TabInfo[] = [];
@@ -1198,11 +1242,10 @@ class OrcaTabsPlugin {
       const tabInfo = await this.getTabInfo(blockId, this.currentPanelId, order++);
       if (tabInfo) {
         tabs.push(tabInfo);
-        console.log(`📝 块 ${blockId} 标题: "${tabInfo.title}"`);
       }
     }
 
-    console.log(`📋 面板 ${this.currentPanelIndex + 1} 找到 ${tabs.length} 个标签页`);
+    this.log(`📋 面板 ${this.currentPanelIndex + 1} 找到 ${tabs.length} 个标签页`);
 
     // 一次性更新DOM
     const fragment = document.createDocumentFragment();
@@ -1252,11 +1295,10 @@ class OrcaTabsPlugin {
 
     const panel = document.querySelector(`.orca-panel[data-panel-id="${this.currentPanelId}"]`);
     if (!panel) {
-      console.warn(`❌ 未找到面板: ${this.currentPanelId}`);
+      this.warn(`❌ 未找到面板: ${this.currentPanelId}`);
       return;
     }
 
-    console.log(`🔍 扫描面板 ${this.currentPanelIndex + 1} 的实时标签页...`);
 
     const hideableElements = panel.querySelectorAll('.orca-hideable');
     const tabs: TabInfo[] = [];
@@ -1277,7 +1319,7 @@ class OrcaTabsPlugin {
       }
     }
 
-    console.log(`📋 面板 ${this.currentPanelIndex + 1} 找到 ${tabs.length} 个标签页`);
+    this.log(`📋 面板 ${this.currentPanelIndex + 1} 找到 ${tabs.length} 个标签页`);
 
     // 一次性更新DOM，避免闪烁
     const fragment = document.createDocumentFragment();
@@ -1316,6 +1358,63 @@ class OrcaTabsPlugin {
     
     // 一次性替换内容
     this.tabContainer.appendChild(fragment);
+  }
+
+  /**
+   * 添加新建标签页按钮
+   */
+  addNewTabButton() {
+    if (!this.tabContainer) return;
+    
+    // 检查是否已经存在新建按钮
+    const existingButton = this.tabContainer.querySelector('.new-tab-button');
+    if (existingButton) return;
+    
+    // 创建新建标签页按钮
+    const newTabButton = document.createElement('div');
+    newTabButton.className = 'new-tab-button';
+    newTabButton.style.cssText = `
+      width: 24px;
+      height: 24px;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: #666;
+      margin-left: 4px;
+      min-height: 24px;
+      flex-shrink: 0;
+      -webkit-app-region: no-drag;
+      app-region: no-drag;
+      pointer-events: auto;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    `;
+    newTabButton.innerHTML = '+';
+    newTabButton.title = '新建标签页';
+
+    // 添加悬停效果
+    newTabButton.addEventListener('mouseenter', () => {
+      newTabButton.style.background = 'rgba(0, 0, 0, 0.1)';
+      newTabButton.style.color = '#333';
+    });
+    
+    newTabButton.addEventListener('mouseleave', () => {
+      newTabButton.style.background = 'transparent';
+      newTabButton.style.color = '#666';
+    });
+
+    // 添加点击事件
+    newTabButton.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.log('🆕 点击新建标签页按钮');
+      await this.createNewTab();
+    });
+
+    this.tabContainer.appendChild(newTabButton);
   }
 
   /**
@@ -1465,7 +1564,6 @@ class OrcaTabsPlugin {
         this.tabContainer.setAttribute('data-dragging', 'true');
       }
       
-      console.log(`🔄 开始拖拽标签: ${tab.title} (${tab.blockId})`);
     });
 
     // 拖拽结束事件（修复版）
@@ -1492,7 +1590,7 @@ class OrcaTabsPlugin {
         this.debouncedUpdateTabsUI();
       }, 50);
       
-      console.log(`🔄 结束拖拽标签: ${tab.title}`);
+      this.log(`🔄 结束拖拽标签: ${tab.title}`);
     });
 
     // 拖拽经过事件（修复版）
@@ -1535,7 +1633,7 @@ class OrcaTabsPlugin {
     tabElement.addEventListener('drop', (e) => {
       e.preventDefault();
       const draggedBlockId = e.dataTransfer?.getData('text/plain');
-      console.log(`🔄 拖拽放置: ${draggedBlockId} -> ${tab.blockId}`);
+      this.log(`🔄 拖拽放置: ${draggedBlockId} -> ${tab.blockId}`);
       // 这个事件现在主要用于调试，实际交换逻辑在dragover中处理
     });
 
@@ -1768,7 +1866,7 @@ class OrcaTabsPlugin {
         this.recordScrollPosition(currentActiveTab);
         // 记录当前激活的标签ID，用于后续新标签的插入位置
         this.lastActiveBlockId = currentActiveTab.blockId;
-        console.log(`🎯 记录切换前的激活标签: ${currentActiveTab.title} (ID: ${currentActiveTab.blockId})`);
+        this.log(`🎯 记录切换前的激活标签: ${currentActiveTab.title} (ID: ${currentActiveTab.blockId})`);
       }
       
       // 根据当前面板索引决定在哪个面板打开
@@ -1784,7 +1882,7 @@ class OrcaTabsPlugin {
       
       // 更新当前激活的标签ID
       this.lastActiveBlockId = tab.blockId;
-      console.log(`🔄 切换到标签: ${tab.title} (面板 ${this.currentPanelIndex + 1})`);
+      this.log(`🔄 切换到标签: ${tab.title} (面板 ${this.currentPanelIndex + 1})`);
       
       // 恢复目标标签的滚动位置
       this.restoreScrollPosition(tab);
@@ -1794,7 +1892,7 @@ class OrcaTabsPlugin {
         this.debugScrollPosition(tab);
       }, 500);
     } catch (e) {
-      console.error("切换标签失败:", e);
+      this.error("切换标签失败:", e);
     }
   }
 
@@ -1820,7 +1918,7 @@ class OrcaTabsPlugin {
   async switchToAdjacentTab(closedTab: TabInfo) {
     const currentIndex = this.firstPanelTabs.findIndex(tab => tab.blockId === closedTab.blockId);
     if (currentIndex === -1) {
-      console.log("未找到要关闭的标签页");
+      this.log("未找到要关闭的标签页");
       return;
     }
     
@@ -1841,13 +1939,13 @@ class OrcaTabsPlugin {
     // 检查目标索引是否有效
     if (targetIndex >= 0 && targetIndex < this.firstPanelTabs.length) {
       const targetTab = this.firstPanelTabs[targetIndex];
-      console.log(`🔄 自动切换到相邻标签: "${targetTab.title}" (位置: ${targetIndex})`);
+      this.log(`🔄 自动切换到相邻标签: "${targetTab.title}" (位置: ${targetIndex})`);
       
       // 导航到目标标签页（在第一个面板中打开）
       const firstPanelId = this.panelIds[0];
       await orca.nav.goTo("block", { blockId: parseInt(targetTab.blockId) }, firstPanelId);
     } else {
-      console.log("没有可切换的相邻标签页");
+      this.log("没有可切换的相邻标签页");
     }
   }
 
@@ -1870,10 +1968,599 @@ class OrcaTabsPlugin {
       this.saveFirstPanelTabs();
       
       const status = this.firstPanelTabs[tabIndex].isPinned ? '固定' : '取消固定';
-      console.log(`📌 标签 "${tab.title}" 已${status}`);
+      this.log(`📌 标签 "${tab.title}" 已${status}`);
     }
   }
 
+
+  /**
+   * 注册插件设置
+   */
+  private async registerPluginSettings() {
+    try {
+      const settingsSchema = {
+        homePageBlockId: {
+          label: "主页块ID",
+          type: "string" as const,
+          defaultValue: "",
+          description: "新建标签页时将导航到此块ID"
+        }
+      };
+
+      await orca.plugins.setSettingsSchema("orca-tabs-plugin", settingsSchema);
+      
+      // 读取设置值
+      const settings = orca.state.plugins["orca-tabs-plugin"]?.settings;
+      if (settings?.homePageBlockId) {
+        this.homePageBlockId = settings.homePageBlockId;
+        this.log(`🏠 主页块ID: ${this.homePageBlockId}`);
+      }
+      
+      this.log("✅ 插件设置已注册");
+    } catch (error) {
+      this.error("注册插件设置失败:", error);
+    }
+  }
+
+  /**
+   * 注册块菜单命令
+   */
+  private registerBlockMenuCommands() {
+    try {
+      // 注册"在新标签页打开"命令
+      orca.blockMenuCommands.registerBlockMenuCommand("orca-tabs.openInNewTab", {
+        worksOnMultipleBlocks: false,
+        render: (blockId, rootBlockId, close) => {
+          const React = (window as any).React;
+          if (!React || !orca.components.MenuText) {
+            return null;
+          }
+
+          return React.createElement(orca.components.MenuText, {
+            title: "在新标签页打开",
+            subTitle: "Ctrl+T",
+            preIcon: "ti ti-external-link",
+            onClick: () => {
+              close();
+              this.openInNewTab(blockId.toString());
+            }
+          });
+        }
+      });
+
+      this.log("✅ 已注册块菜单命令: 在新标签页打开");
+    } catch (error) {
+      this.error("注册块菜单命令失败:", error);
+    }
+  }
+
+  /**
+   * 创建新标签页
+   */
+  async createNewTab() {
+    if (this.currentPanelIndex !== 0) return; // 只有第一个面板支持此功能
+    
+    try {
+      
+      // 使用设置的主页块ID，如果没有设置则默认为1
+      const newBlockId = (this.homePageBlockId && this.homePageBlockId.trim()) ? this.homePageBlockId : "1";
+      const tabTitle = (this.homePageBlockId && this.homePageBlockId.trim()) ? "🏠 主页" : "📄 新标签页";
+      
+      this.log(`🆕 创建新标签页，使用块ID: ${newBlockId}`);
+      
+      // 创建标签信息
+      const tabInfo: TabInfo = {
+        blockId: newBlockId,
+        panelId: this.panelIds[0],
+        title: tabTitle,
+        isPinned: false,
+        order: this.firstPanelTabs.length
+      };
+      
+      this.log(`📋 新标签页信息: "${tabInfo.title}" (ID: ${newBlockId})`);
+      
+      // 获取当前聚焦的标签
+      const focusedTab = this.getCurrentActiveTab();
+      let insertIndex = this.firstPanelTabs.length; // 默认插入到末尾
+      
+      if (focusedTab) {
+        // 找到聚焦标签的索引，在其后面插入新标签
+        const focusedIndex = this.firstPanelTabs.findIndex(tab => tab.blockId === focusedTab.blockId);
+        if (focusedIndex !== -1) {
+          insertIndex = focusedIndex + 1; // 在聚焦标签后面插入
+          this.log(`🎯 将在聚焦标签 "${focusedTab.title}" 后面插入新标签: "${tabInfo.title}"`);
+        }
+      } else {
+        this.log(`🎯 没有聚焦标签，将添加到末尾`);
+      }
+      
+      // 处理标签数量限制
+      if (this.firstPanelTabs.length >= this.maxTabs) {
+        // 达到上限，在指定位置插入新标签，然后删除最后一个非固定标签
+        this.firstPanelTabs.splice(insertIndex, 0, tabInfo);
+        this.log(`➕ 在位置 ${insertIndex} 插入新标签: ${tabInfo.title}`);
+        
+        // 删除最后一个非固定标签来保持数量限制
+        const lastNonPinnedIndex = this.findLastNonPinnedTabIndex();
+        if (lastNonPinnedIndex !== -1) {
+          const removedTab = this.firstPanelTabs[lastNonPinnedIndex];
+          this.firstPanelTabs.splice(lastNonPinnedIndex, 1);
+          this.log(`🗑️ 删除末尾的非固定标签: "${removedTab.title}" 来保持数量限制`);
+        } else {
+          // 如果所有标签都是固定的，删除刚插入的新标签
+          const newTabIndex = this.firstPanelTabs.findIndex(tab => tab.blockId === tabInfo.blockId);
+          if (newTabIndex !== -1) {
+            this.firstPanelTabs.splice(newTabIndex, 1);
+            this.log(`⚠️ 所有标签都是固定的，无法添加新标签: "${tabInfo.title}"`);
+            return;
+          }
+        }
+      } else {
+        // 未达到上限，在指定位置插入新标签
+        this.firstPanelTabs.splice(insertIndex, 0, tabInfo);
+        this.log(`➕ 在位置 ${insertIndex} 插入新标签: ${tabInfo.title}`);
+      }
+      
+      // 保存标签数据
+      this.saveFirstPanelTabs();
+      
+      // 更新UI
+      await this.updateTabsUI();
+      
+      // 导航到目标块
+      const firstPanelId = this.panelIds[0];
+      await orca.nav.goTo("block", { blockId: parseInt(newBlockId) }, firstPanelId);
+      this.log(`🔄 导航到块: ${newBlockId}`);
+      
+      // 显示成功提示
+      orca.notify("success", `已创建新标签页: "${tabInfo.title}"`, {
+        title: "Orca Tabs Plugin"
+      });
+      
+      this.log(`✅ 成功创建新标签页: "${tabInfo.title}"`);
+    } catch (error) {
+      this.error("创建新标签页时出错:", error);
+      orca.notify("error", "创建新标签页时出错", {
+        title: "Orca Tabs Plugin"
+      });
+    }
+  }
+
+  /**
+   * 生成趣味性内容
+   */
+  private generateFunContent(): string {
+    const funContents = [
+      "🌟 欢迎来到新标签页！开始您的创作之旅吧～",
+      "✨ 这是一个全新的开始，让想法自由流淌...",
+      "🎨 空白画布等待您的灵感，开始创作吧！",
+      "💡 新的一天，新的想法，从这里开始记录...",
+      "🚀 准备好探索新的知识领域了吗？",
+      "📝 让文字在这里自由舞蹈，记录生活的美好",
+      "🎯 专注当下，记录此刻的思考与感悟",
+      "🌈 每个新标签页都是一个新的可能性",
+      "💫 在这里，让创意无限延伸...",
+      "🎪 欢迎来到您的个人知识舞台！"
+    ];
+    
+    const randomIndex = Math.floor(Math.random() * funContents.length);
+    return funContents[randomIndex];
+  }
+
+  /**
+   * 设置块内容
+   */
+  private async setBlockContent(blockId: string, content: string): Promise<void> {
+    try {
+      // 使用后端API来更新块内容
+      await orca.invokeBackend("set-block-content", parseInt(blockId), [{ t: "t", v: content }]);
+      this.log(`📝 已为新块 ${blockId} 设置内容: "${content}"`);
+    } catch (error) {
+      this.warn("设置块内容失败，尝试备用方法:", error);
+      // 备用方法：直接更新块对象
+      try {
+        const block = await orca.invokeBackend("get-block", parseInt(blockId));
+        if (block) {
+          // 这里我们暂时跳过内容设置，让用户手动编辑
+          this.log(`📝 跳过自动内容设置，用户可手动编辑块 ${blockId}`);
+        }
+      } catch (backupError) {
+        this.warn("备用方法也失败:", backupError);
+      }
+    }
+  }
+
+  /**
+   * 通用的标签添加方法
+   */
+  private async addTabToPanel(blockId: string, insertMode: 'replace' | 'after' | 'end', navigate: boolean = false): Promise<boolean> {
+    if (this.currentPanelIndex !== 0) return false; // 只有第一个面板支持此功能
+    
+    try {
+      // 检查块是否已经存在于标签页中
+      const existingTab = this.firstPanelTabs.find(tab => tab.blockId === blockId);
+      if (existingTab) {
+        this.log(`📋 块 ${blockId} 已存在于标签页中`);
+        if (navigate) {
+          // 如果需要导航且已存在，直接跳转
+          const firstPanelId = this.panelIds[0];
+          await orca.nav.goTo("block", { blockId: parseInt(blockId) }, firstPanelId);
+          orca.notify("info", "该块已在标签页中，已跳转", {
+            title: "Orca Tabs Plugin"
+          });
+        } else {
+          orca.notify("info", "该块已在标签页中", {
+            title: "Orca Tabs Plugin"
+          });
+        }
+        return true;
+      }
+
+      // 获取块信息
+      const block = orca.state.blocks[parseInt(blockId)];
+      if (!block) {
+        this.warn(`无法找到块 ${blockId}`);
+        orca.notify("error", "无法找到指定的块", {
+          title: "Orca Tabs Plugin"
+        });
+        return false;
+      }
+
+      // 创建标签信息
+      const tabInfo: TabInfo = {
+        blockId: blockId,
+        panelId: this.panelIds[0],
+        title: block.text || `块 ${blockId}`,
+        isPinned: false,
+        order: this.firstPanelTabs.length
+      };
+
+      // 确定插入位置
+      let insertIndex = this.firstPanelTabs.length; // 默认插入到末尾
+      let shouldReplace = false;
+
+      if (insertMode === 'replace') {
+        // 替换模式：获取聚焦标签并替换
+        const focusedTab = this.getCurrentActiveTab();
+        if (!focusedTab) {
+          this.warn("没有找到当前聚焦的标签");
+          orca.notify("warn", "没有找到当前聚焦的标签", {
+            title: "Orca Tabs Plugin"
+          });
+          return false;
+        }
+        
+        const focusedIndex = this.firstPanelTabs.findIndex(tab => tab.blockId === focusedTab.blockId);
+        if (focusedIndex === -1) {
+          this.warn("无法找到聚焦标签在数组中的位置");
+          orca.notify("error", "无法找到聚焦标签位置", {
+            title: "Orca Tabs Plugin"
+          });
+          return false;
+        }
+        
+        insertIndex = focusedIndex;
+        shouldReplace = true;
+      } else if (insertMode === 'after') {
+        // 在聚焦标签后面插入
+        const focusedTab = this.getCurrentActiveTab();
+        if (focusedTab) {
+          const focusedIndex = this.firstPanelTabs.findIndex(tab => tab.blockId === focusedTab.blockId);
+          if (focusedIndex !== -1) {
+            insertIndex = focusedIndex + 1;
+          }
+        }
+      }
+      // 'end' 模式使用默认的末尾插入
+
+      // 处理标签数量限制和插入逻辑
+      if (this.firstPanelTabs.length >= this.maxTabs) {
+        if (shouldReplace) {
+          // 直接替换
+          this.firstPanelTabs[insertIndex] = tabInfo;
+        } else {
+          // 插入新标签，然后删除最后一个非固定标签
+          this.firstPanelTabs.splice(insertIndex, 0, tabInfo);
+          const lastNonPinnedIndex = this.findLastNonPinnedTabIndex();
+          if (lastNonPinnedIndex !== -1) {
+            this.firstPanelTabs.splice(lastNonPinnedIndex, 1);
+          } else {
+            // 如果所有标签都是固定的，删除刚插入的新标签
+            const newTabIndex = this.firstPanelTabs.findIndex(tab => tab.blockId === tabInfo.blockId);
+            if (newTabIndex !== -1) {
+              this.firstPanelTabs.splice(newTabIndex, 1);
+              orca.notify("warn", "所有标签都是固定的，无法添加新标签", {
+                title: "Orca Tabs Plugin"
+              });
+              return false;
+            }
+          }
+        }
+      } else {
+        if (shouldReplace) {
+          this.firstPanelTabs[insertIndex] = tabInfo;
+        } else {
+          this.firstPanelTabs.splice(insertIndex, 0, tabInfo);
+        }
+      }
+
+      // 保存标签数据
+      this.saveFirstPanelTabs();
+
+      // 更新UI
+      await this.updateTabsUI();
+
+      // 导航（如果需要）
+      if (navigate) {
+        const firstPanelId = this.panelIds[0];
+        await orca.nav.goTo("block", { blockId: parseInt(blockId) }, firstPanelId);
+      }
+
+      // 显示成功提示
+      const actionText = navigate ? "已打开" : "已在后台新建标签页";
+      orca.notify("success", `${actionText}: "${tabInfo.title}"`, {
+        title: "Orca Tabs Plugin"
+      });
+
+      return true;
+    } catch (error) {
+      this.error(`添加标签页时出错:`, error);
+      orca.notify("error", "添加标签页时出错", {
+        title: "Orca Tabs Plugin"
+      });
+      return false;
+    }
+  }
+
+  /**
+   * 将指定块添加到标签页中，替换当前聚焦标签
+   */
+  async createBlockAfterFocused(blockId: string) {
+    await this.addTabToPanel(blockId, 'replace', false);
+  }
+
+  /**
+   * 在后台新建标签页打开指定块（在聚焦标签后面插入新标签但不跳转）
+   */
+  async openInNewTab(blockId: string) {
+    await this.addTabToPanel(blockId, 'after', false);
+  }
+
+
+  /**
+   * 从DOM元素中获取块引用的ID
+   */
+  private getBlockRefId(element: HTMLElement): string | null {
+    try {
+      // 遍历当前元素及其父元素，寻找块引用标识
+      let current: HTMLElement | null = element;
+      
+      while (current && current !== document.body) {
+        // 检查常见的块引用类名和属性
+        const classList = current.classList;
+        
+        // 检查是否有块引用相关的类名
+        if (classList.contains('orca-ref') || 
+            classList.contains('block-ref') || 
+            classList.contains('block-reference') ||
+            classList.contains('orca-fragment-r') ||
+            classList.contains('fragment-r') ||
+            classList.contains('orca-block-reference') ||
+            current.tagName.toLowerCase() === 'a' && current.getAttribute('href')?.startsWith('#')) {
+          
+          // 尝试从不同的属性中获取块ID
+          const blockId = current.getAttribute('data-block-id') ||
+                          current.getAttribute('data-ref-id') ||
+                          current.getAttribute('data-blockid') ||
+                          current.getAttribute('data-target-block-id') ||
+                          current.getAttribute('data-fragment-v') ||
+                          current.getAttribute('data-v') ||
+                          current.getAttribute('href')?.replace('#', '') ||
+                          current.getAttribute('data-id');
+          
+          if (blockId && !isNaN(parseInt(blockId))) {
+            this.log(`🔗 从元素中提取到块引用ID: ${blockId}`);
+            return blockId;
+          }
+        }
+        
+        // 检查内联样式或其他可能的标识
+        const dataAttrs = current.dataset;
+        for (const [key, value] of Object.entries(dataAttrs)) {
+          if ((key.toLowerCase().includes('block') || key.toLowerCase().includes('ref')) && 
+              value && !isNaN(parseInt(value))) {
+            this.log(`🔗 从data属性 ${key} 中提取到块引用ID: ${value}`);
+            return value;
+          }
+        }
+        
+        // 继续向上查找父元素
+        current = current.parentElement;
+      }
+      
+      // 如果没有找到明确的块引用标识，尝试从文本内容中解析
+      if (element.textContent) {
+        const text = element.textContent.trim();
+        // 匹配 [[块ID]] 或类似的格式
+        const blockRefMatch = text.match(/\[\[(?:块)?(\d+)\]\]/) || text.match(/block[:\s]*(\d+)/i);
+        if (blockRefMatch && blockRefMatch[1]) {
+          this.log(`🔗 从文本内容中解析到块引用ID: ${blockRefMatch[1]}`);
+          return blockRefMatch[1];
+        }
+      }
+      
+      this.log(`🔗 未能从元素中提取块引用ID`);
+      return null;
+    } catch (error) {
+      this.error("获取块引用ID时出错:", error);
+      return null;
+    }
+  }
+
+  /**
+   * 获取当前光标位置的块ID
+   */
+  private getCurrentCursorBlockId(): string | null {
+    try {
+      // 获取当前选择
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) {
+        this.log("🔍 无法获取当前选择");
+        return null;
+      }
+
+      // 使用 Orca 工具转换为 CursorData
+      const cursorData = orca.utils.getCursorDataFromSelection(selection);
+      if (!cursorData) {
+        this.log("🔍 无法从选择转换为 CursorData");
+        return null;
+      }
+
+      // 返回光标锚点位置的块ID
+      const blockId = cursorData.anchor.blockId.toString();
+      this.log(`🔍 获取到当前光标块ID: ${blockId}`);
+      return blockId;
+    } catch (error) {
+      this.error("获取当前光标块ID时出错:", error);
+      return null;
+    }
+  }
+
+  /**
+   * 增强块引用的右键菜单，添加标签页相关选项
+   */
+  private enhanceBlockRefContextMenu(blockRefId: string) {
+    try {
+      // 查找当前显示的上下文菜单
+      const contextMenus = document.querySelectorAll('.orca-context-menu, .context-menu, [role="menu"]');
+      let targetMenu: HTMLElement | null = null;
+      
+      // 找到最新显示的菜单（通常是最后一个）
+      for (let i = contextMenus.length - 1; i >= 0; i--) {
+        const menu = contextMenus[i] as HTMLElement;
+        if (menu.offsetParent !== null && getComputedStyle(menu).display !== 'none') {
+          targetMenu = menu;
+          break;
+        }
+      }
+      
+      if (!targetMenu) {
+        this.log("🔗 未找到显示的右键菜单");
+        return;
+      }
+      
+      // 检查是否已经添加过我们的选项
+      if (targetMenu.querySelector('.orca-tabs-ref-menu-item')) {
+        this.log("🔗 块引用菜单项已存在");
+        return;
+      }
+      
+      this.log(`🔗 为块引用 ${blockRefId} 添加菜单项`);
+      
+      // 创建分隔符（如果需要）
+      const existingItems = targetMenu.querySelectorAll('[role="menuitem"], .menu-item');
+      if (existingItems.length > 0) {
+        const separator = document.createElement('div');
+        separator.className = 'orca-tabs-ref-menu-separator';
+        separator.style.cssText = `
+          height: 1px;
+          background: rgba(0, 0, 0, 0.1);
+          margin: 4px 8px;
+        `;
+        targetMenu.appendChild(separator);
+      }
+      
+       // 创建"在新标签页打开"选项
+       const newTabItem = this.createContextMenuItem(
+         "在新标签页打开",
+         "ti ti-external-link",
+         "Ctrl+点击",
+         () => this.openInNewTab(blockRefId)
+       );
+       targetMenu.appendChild(newTabItem);
+      
+      this.log(`✅ 成功为块引用 ${blockRefId} 添加菜单项`);
+    } catch (error) {
+      this.error("增强块引用右键菜单时出错:", error);
+    }
+  }
+
+  /**
+   * 创建上下文菜单项
+   */
+  private createContextMenuItem(title: string, icon: string, shortcut: string, onClick: () => void): HTMLElement {
+    const item = document.createElement('div');
+    item.className = 'orca-tabs-ref-menu-item';
+    item.setAttribute('role', 'menuitem');
+    item.style.cssText = `
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.15s ease;
+      font-size: 14px;
+      line-height: 1.4;
+    `;
+    
+    // 图标
+    const iconElement = document.createElement('i');
+    iconElement.className = icon;
+    iconElement.style.cssText = `
+      margin-right: 8px;
+      font-size: 16px;
+      width: 16px;
+      text-align: center;
+      color: #666;
+    `;
+    
+    // 标题
+    const titleElement = document.createElement('span');
+    titleElement.textContent = title;
+    titleElement.style.cssText = `
+      flex: 1;
+      color: #333;
+    `;
+    
+    // 快捷键提示
+    const shortcutElement = document.createElement('span');
+    shortcutElement.textContent = shortcut;
+    shortcutElement.style.cssText = `
+      font-size: 12px;
+      color: #999;
+      margin-left: 12px;
+    `;
+    
+    // 组装元素
+    item.appendChild(iconElement);
+    item.appendChild(titleElement);
+    item.appendChild(shortcutElement);
+    
+    // 悬停效果
+    item.addEventListener('mouseenter', () => {
+      item.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+    });
+    
+    item.addEventListener('mouseleave', () => {
+      item.style.backgroundColor = 'transparent';
+    });
+    
+    // 点击事件
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onClick();
+      
+      // 关闭菜单
+      const menu = item.closest('.orca-context-menu, .context-menu, [role="menu"]') as HTMLElement;
+      if (menu) {
+        menu.style.display = 'none';
+        menu.remove();
+      }
+    });
+    
+    return item;
+  }
 
   /**
    * 记录当前标签的滚动位置
@@ -1926,15 +2613,15 @@ class OrcaTabsPlugin {
             this.saveFirstPanelTabs();
           }
           
-          console.log(`📝 记录标签 "${tab.title}" 滚动位置到viewState:`, scrollPosition, '容器:', scrollContainer.className);
+          this.log(`📝 记录标签 "${tab.title}" 滚动位置到viewState:`, scrollPosition, '容器:', scrollContainer.className);
         } else {
-          console.warn(`未找到标签 "${tab.title}" 的滚动容器`);
+          this.warn(`未找到标签 "${tab.title}" 的滚动容器`);
         }
       } else {
-        console.warn(`未找到面板 ${panelId} 或viewState`);
+        this.warn(`未找到面板 ${panelId} 或viewState`);
       }
     } catch (error) {
-      console.warn('记录滚动位置时出错:', error);
+      this.warn('记录滚动位置时出错:', error);
     }
   }
 
@@ -1951,13 +2638,13 @@ class OrcaTabsPlugin {
       const panel = orca.nav.findViewPanel(panelId, orca.state.panels);
       if (panel && panel.viewState && panel.viewState.scrollPosition) {
         scrollPosition = panel.viewState.scrollPosition;
-        console.log(`🔄 从viewState恢复标签 "${tab.title}" 滚动位置:`, scrollPosition);
+        this.log(`🔄 从viewState恢复标签 "${tab.title}" 滚动位置:`, scrollPosition);
       }
       
       // 方法2: 从标签信息获取（备份）
       if (!scrollPosition && tab.scrollPosition) {
         scrollPosition = tab.scrollPosition;
-        console.log(`🔄 从标签信息恢复标签 "${tab.title}" 滚动位置:`, scrollPosition);
+        this.log(`🔄 从标签信息恢复标签 "${tab.title}" 滚动位置:`, scrollPosition);
       }
       
       if (!scrollPosition) return;
@@ -1965,7 +2652,7 @@ class OrcaTabsPlugin {
       // 多次尝试恢复，确保DOM已更新
       const attemptRestore = (attempt: number = 1) => {
         if (attempt > 5) {
-          console.warn(`恢复标签 "${tab.title}" 滚动位置失败，已尝试5次`);
+          this.warn(`恢复标签 "${tab.title}" 滚动位置失败，已尝试5次`);
           return;
         }
         
@@ -1997,7 +2684,7 @@ class OrcaTabsPlugin {
         if (scrollContainer) {
           scrollContainer.scrollLeft = scrollPosition.x;
           scrollContainer.scrollTop = scrollPosition.y;
-          console.log(`🔄 恢复标签 "${tab.title}" 滚动位置:`, scrollPosition, '容器:', scrollContainer.className, `尝试${attempt}`);
+          this.log(`🔄 恢复标签 "${tab.title}" 滚动位置:`, scrollPosition, '容器:', scrollContainer.className, `尝试${attempt}`);
         } else {
           // 如果没找到容器，延迟重试
           setTimeout(() => attemptRestore(attempt + 1), 200 * attempt);
@@ -2009,7 +2696,7 @@ class OrcaTabsPlugin {
       setTimeout(() => attemptRestore(2), 100);
       setTimeout(() => attemptRestore(3), 300);
     } catch (error) {
-      console.warn('恢复滚动位置时出错:', error);
+      this.warn('恢复滚动位置时出错:', error);
     }
   }
 
@@ -2017,17 +2704,17 @@ class OrcaTabsPlugin {
    * 调试滚动位置信息
    */
   private debugScrollPosition(tab: TabInfo) {
-    console.log(`🔍 调试标签 "${tab.title}" 滚动位置:`);
-    console.log('标签保存的滚动位置:', tab.scrollPosition);
+    this.log(`🔍 调试标签 "${tab.title}" 滚动位置:`);
+    this.log('标签保存的滚动位置:', tab.scrollPosition);
     
     // 检查viewState中的滚动位置
     const panelId = this.panelIds[this.currentPanelIndex];
     const panel = orca.nav.findViewPanel(panelId, orca.state.panels);
     if (panel && panel.viewState) {
-      console.log('viewState中的滚动位置:', panel.viewState.scrollPosition);
-      console.log('完整viewState:', panel.viewState);
+      this.log('viewState中的滚动位置:', panel.viewState.scrollPosition);
+      this.log('完整viewState:', panel.viewState);
     } else {
-      console.log('未找到viewState');
+      this.log('未找到viewState');
     }
     
     // 查找所有可能的滚动容器
@@ -2046,7 +2733,7 @@ class OrcaTabsPlugin {
       elements.forEach((el, index) => {
         const element = el as HTMLElement;
         if (element.scrollTop > 0 || element.scrollLeft > 0) {
-          console.log(`容器 ${selector}[${index}]:`, {
+          this.log(`容器 ${selector}[${index}]:`, {
             scrollTop: element.scrollTop,
             scrollLeft: element.scrollLeft,
             className: element.className,
@@ -2074,7 +2761,7 @@ class OrcaTabsPlugin {
       const activeBlockId = activeBlock.getAttribute('data-block-id');
       return activeBlockId === tab.blockId;
     } catch (error) {
-      console.warn('检查标签激活状态时出错:', error);
+      this.warn('检查标签激活状态时出错:', error);
       return false;
     }
   }
@@ -2140,7 +2827,7 @@ class OrcaTabsPlugin {
     if (this.lastActiveBlockId) {
       const lastActiveTab = this.firstPanelTabs.find(tab => tab.blockId === this.lastActiveBlockId);
       if (lastActiveTab) {
-        console.log(`🎯 找到上一个激活的标签: ${lastActiveTab.title}`);
+        this.log(`🎯 找到上一个激活的标签: ${lastActiveTab.title}`);
         return lastActiveTab;
       }
     }
@@ -2148,11 +2835,11 @@ class OrcaTabsPlugin {
     // 如果没有记录或找不到，尝试获取当前UI中的激活标签
     const currentActiveTab = this.getCurrentActiveTab();
     if (currentActiveTab) {
-      console.log(`🎯 使用当前激活的标签: ${currentActiveTab.title}`);
+      this.log(`🎯 使用当前激活的标签: ${currentActiveTab.title}`);
       return currentActiveTab;
     }
     
-    console.log(`🎯 没有找到激活的标签`);
+    this.log(`🎯 没有找到激活的标签`);
     return null;
   }
 
@@ -2165,18 +2852,18 @@ class OrcaTabsPlugin {
     if (this.firstPanelTabs.length === 0) return -1;
     
     if (!previousActiveTab) {
-      console.log(`🎯 没有找到之前激活的标签，添加到末尾`);
+      this.log(`🎯 没有找到之前激活的标签，添加到末尾`);
       return -1;
     }
     
     // 找到之前激活标签的索引
     const previousIndex = this.firstPanelTabs.findIndex(tab => tab.blockId === previousActiveTab.blockId);
     if (previousIndex === -1) {
-      console.log(`🎯 之前激活的标签不在当前列表中，添加到末尾`);
+      this.log(`🎯 之前激活的标签不在当前列表中，添加到末尾`);
       return -1;
     }
     
-    console.log(`🎯 将在标签 "${previousActiveTab.title}" (索引${previousIndex}) 后面插入新标签`);
+    this.log(`🎯 将在标签 "${previousActiveTab.title}" (索引${previousIndex}) 后面插入新标签`);
     return previousIndex;
   }
 
@@ -2218,13 +2905,13 @@ class OrcaTabsPlugin {
     
     // 检查是否只有一个标签
     if (this.firstPanelTabs.length <= 1) {
-      console.log("⚠️ 只有一个标签，无法关闭");
+      this.log("⚠️ 只有一个标签，无法关闭");
       return;
     }
     
     // 检查是否是固定标签
     if (tab.isPinned) {
-      console.log("⚠️ 固定标签默认不可关闭，需要强制关闭");
+      this.log("⚠️ 固定标签默认不可关闭，需要强制关闭");
       // 这里可以添加确认对话框，暂时直接关闭
     }
     
@@ -2248,14 +2935,14 @@ class OrcaTabsPlugin {
       this.saveFirstPanelTabs();
       this.saveClosedTabs();
       
-      console.log(`🗑️ 标签 "${tab.title}" 已关闭，已添加到关闭列表`);
+      this.log(`🗑️ 标签 "${tab.title}" 已关闭，已添加到关闭列表`);
       
       // 如果关闭的是当前激活的标签，自动切换到相邻标签
       if (isClosingActiveTab && adjacentTab) {
-        console.log(`🔄 自动切换到相邻标签: "${adjacentTab.title}"`);
+        this.log(`🔄 自动切换到相邻标签: "${adjacentTab.title}"`);
         await this.switchToTab(adjacentTab);
       } else if (isClosingActiveTab && !adjacentTab) {
-        console.log(`⚠️ 关闭了激活标签但没有相邻标签可切换`);
+        this.log(`⚠️ 关闭了激活标签但没有相邻标签可切换`);
       }
     }
   }
@@ -2284,7 +2971,7 @@ class OrcaTabsPlugin {
     this.saveFirstPanelTabs();
     this.saveClosedTabs();
     
-    console.log(`🗑️ 已关闭 ${closedCount} 个标签，保留了 ${pinnedTabs.length} 个固定标签`);
+    this.log(`🗑️ 已关闭 ${closedCount} 个标签，保留了 ${pinnedTabs.length} 个固定标签`);
   }
 
   /**
@@ -2314,7 +3001,7 @@ class OrcaTabsPlugin {
     this.saveFirstPanelTabs();
     this.saveClosedTabs();
     
-    console.log(`🗑️ 已关闭其他 ${closedCount} 个标签，保留了当前标签和固定标签`);
+    this.log(`🗑️ 已关闭其他 ${closedCount} 个标签，保留了当前标签和固定标签`);
   }
 
   /**
@@ -2340,7 +3027,7 @@ class OrcaTabsPlugin {
     // 查找对应的标签元素
     const tabElement = document.querySelector(`[data-tab-id="${tab.blockId}"]`) as HTMLElement;
     if (!tabElement) {
-      console.warn("找不到对应的标签元素");
+      this.warn("找不到对应的标签元素");
       return;
     }
 
@@ -2445,7 +3132,7 @@ class OrcaTabsPlugin {
     const ReactDOM = (window as any).ReactDOM;
     
     if (!React || !ReactDOM || !orca.components.InputBox) {
-      console.warn("Orca组件不可用，回退到原生实现");
+      this.warn("Orca组件不可用，回退到原生实现");
       this.showRenameInput(tab);
       return;
     }
@@ -2744,13 +3431,13 @@ class OrcaTabsPlugin {
         // 立即更新UI（重命名需要立即反馈）
         await this.updateTabsUI();
         
-        console.log(`📝 标签重命名: "${tab.title}" -> "${newTitle}"`);
+        this.log(`📝 标签重命名: "${tab.title}" -> "${newTitle}"`);
         
         // 可选：同时更新块的别名（如果需要同步到Orca）
         // await this.updateBlockAlias(tab.blockId, newTitle);
       }
     } catch (e) {
-      console.error("重命名标签失败:", e);
+      this.error("重命名标签失败:", e);
     }
   }
 
@@ -2763,7 +3450,7 @@ class OrcaTabsPlugin {
     const ReactDOM = (window as any).ReactDOM;
     
     if (!React || !ReactDOM || !orca.components.ContextMenu || !orca.components.Menu || !orca.components.MenuText) {
-      console.warn("Orca组件不可用，回退到原生右键菜单");
+      this.warn("Orca组件不可用，回退到原生右键菜单");
       // 回退到原生实现
       tabElement.addEventListener('contextmenu', (e) => {
         e.preventDefault();
@@ -2999,9 +3686,9 @@ class OrcaTabsPlugin {
     try {
       const storageKey = this.getStorageKey();
       localStorage.setItem(storageKey, JSON.stringify(this.firstPanelTabs));
-      console.log(`💾 保存标签数据到: ${storageKey}`);
+      this.log(`💾 保存标签数据到: ${storageKey}`);
     } catch (e) {
-      console.warn("无法保存第一个面板标签数据:", e);
+      this.warn("无法保存第一个面板标签数据:", e);
     }
   }
 
@@ -3012,9 +3699,9 @@ class OrcaTabsPlugin {
     try {
       const storageKey = this.getClosedTabsStorageKey();
       localStorage.setItem(storageKey, JSON.stringify(Array.from(this.closedTabs)));
-      console.log(`💾 保存已关闭标签列表到: ${storageKey}`);
+      this.log(`💾 保存已关闭标签列表到: ${storageKey}`);
     } catch (e) {
-      console.warn("无法保存已关闭标签列表:", e);
+      this.warn("无法保存已关闭标签列表:", e);
     }
   }
 
@@ -3027,13 +3714,13 @@ class OrcaTabsPlugin {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         this.firstPanelTabs = JSON.parse(saved);
-        console.log(`📂 从 ${storageKey} 恢复了 ${this.firstPanelTabs.length} 个标签页`);
+        this.log(`📂 从 ${storageKey} 恢复了 ${this.firstPanelTabs.length} 个标签页`);
       } else {
         this.firstPanelTabs = [];
-        console.log(`📂 ${storageKey} 没有保存的标签页数据`);
+        this.log(`📂 ${storageKey} 没有保存的标签页数据`);
       }
     } catch (e) {
-      console.warn("无法恢复第一个面板标签数据:", e);
+      this.warn("无法恢复第一个面板标签数据:", e);
       this.firstPanelTabs = [];
     }
   }
@@ -3047,13 +3734,13 @@ class OrcaTabsPlugin {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         this.closedTabs = new Set(JSON.parse(saved));
-        console.log(`📂 从 ${storageKey} 恢复了 ${this.closedTabs.size} 个已关闭标签`);
+        this.log(`📂 从 ${storageKey} 恢复了 ${this.closedTabs.size} 个已关闭标签`);
       } else {
         this.closedTabs = new Set();
-        console.log(`📂 ${storageKey} 没有保存的已关闭标签数据`);
+        this.log(`📂 ${storageKey} 没有保存的已关闭标签数据`);
       }
     } catch (e) {
-      console.warn("无法恢复已关闭标签列表:", e);
+      this.warn("无法恢复已关闭标签列表:", e);
       this.closedTabs = new Set();
     }
   }
@@ -3066,11 +3753,11 @@ class OrcaTabsPlugin {
       // 尝试获取当前库的repo信息
       const repo = orca.state.repo;
       if (repo && typeof repo === 'string') {
-        console.log(`📦 使用repo作为存储键: ${repo}`);
+        this.log(`📦 使用repo作为存储键: ${repo}`);
         return `orca-first-panel-tabs-repo-${repo}`;
       }
     } catch (e) {
-      console.warn("无法获取repo信息:", e);
+      this.warn("无法获取repo信息:", e);
     }
     
     // 备选方案：尝试从URL提取repo信息
@@ -3080,30 +3767,30 @@ class OrcaTabsPlugin {
       const urlMatch = url.match(/\/repo\/([^\/]+)/);
       if (urlMatch && urlMatch[1]) {
         const repoFromUrl = urlMatch[1];
-        console.log(`📦 从URL提取repo标识: ${repoFromUrl}`);
+        this.log(`📦 从URL提取repo标识: ${repoFromUrl}`);
         return `orca-first-panel-tabs-repo-${repoFromUrl}`;
       }
       
       // 如果没有明确的repo信息，使用URL哈希
       const urlHash = this.hashString(url);
-      console.log(`📦 使用URL哈希作为备选: ${urlHash}`);
+      this.log(`📦 使用URL哈希作为备选: ${urlHash}`);
       return `orca-first-panel-tabs-url-${urlHash}`;
     } catch (e) {
-      console.warn("无法从URL提取repo信息:", e);
+      this.warn("无法从URL提取repo信息:", e);
     }
     
     // 最后备选：使用页面标题
     try {
       const title = document.title || 'default';
       const titleHash = this.hashString(title);
-      console.log(`📦 使用页面标题作为最后备选: ${titleHash}`);
+      this.log(`📦 使用页面标题作为最后备选: ${titleHash}`);
       return `orca-first-panel-tabs-title-${titleHash}`;
     } catch (e) {
-      console.warn("无法获取页面标题:", e);
+      this.warn("无法获取页面标题:", e);
     }
     
     // 最后的最后备选：使用默认键
-    console.log("📦 使用默认存储键");
+    this.log("📦 使用默认存储键");
     return 'orca-first-panel-tabs-default';
   }
 
@@ -3205,7 +3892,7 @@ class OrcaTabsPlugin {
     try {
       localStorage.setItem('orca-tabs-position', JSON.stringify(this.position));
     } catch (e) {
-      console.warn("无法保存标签位置");
+      this.warn("无法保存标签位置");
     }
   }
 
@@ -3218,7 +3905,7 @@ class OrcaTabsPlugin {
         this.constrainPosition();
       }
     } catch (e) {
-      console.warn("无法恢复标签位置");
+      this.warn("无法恢复标签位置");
     }
   }
 
@@ -3265,13 +3952,13 @@ class OrcaTabsPlugin {
     // 只获取当前激活的页面（最上面的）
     const activeBlockEditor = firstPanel.querySelector('.orca-hideable:not([style*="display: none"]) .orca-block-editor[data-block-id]');
     if (!activeBlockEditor) {
-      console.log("第一个面板中没有找到激活的块编辑器");
+      this.log("第一个面板中没有找到激活的块编辑器");
       return;
     }
 
     const blockId = activeBlockEditor.getAttribute('data-block-id');
     if (!blockId) {
-      console.log("激活的块编辑器没有blockId");
+      this.log("激活的块编辑器没有blockId");
       return;
     }
 
@@ -3279,7 +3966,7 @@ class OrcaTabsPlugin {
     const existingTab = this.firstPanelTabs.find(tab => tab.blockId === blockId);
     if (existingTab) {
       // 如果已经存在，更新聚焦状态
-      console.log(`📋 当前激活页面已存在: "${existingTab.title}"`);
+      this.log(`📋 当前激活页面已存在: "${existingTab.title}"`);
       
       // 清除所有标签的聚焦状态
       const allTabs = this.tabContainer?.querySelectorAll('.orca-tab');
@@ -3289,7 +3976,7 @@ class OrcaTabsPlugin {
       const currentTabElement = this.tabContainer?.querySelector(`[data-tab-id="${blockId}"]`);
       if (currentTabElement) {
         currentTabElement.setAttribute('data-focused', 'true');
-        console.log(`🎯 更新聚焦状态到已存在的标签: "${existingTab.title}"`);
+        this.log(`🎯 更新聚焦状态到已存在的标签: "${existingTab.title}"`);
       }
       
       // 更新UI显示
@@ -3299,64 +3986,66 @@ class OrcaTabsPlugin {
 
     // 直接从UI中找到当前聚焦的标签
     let insertIndex = this.firstPanelTabs.length; // 默认插入到末尾
+    let shouldReplaceFocused = false; // 是否应该替换聚焦的标签
     
-    console.log(`🎯 开始查找聚焦标签，当前数组长度: ${this.firstPanelTabs.length}`);
-    console.log(`🎯 当前所有标签:`, this.firstPanelTabs.map((tab, idx) => `${idx}:${tab.title}`));
     
     const focusedTabElement = this.tabContainer?.querySelector('.orca-tab[data-focused="true"]');
-    console.log(`🎯 找到的聚焦标签元素:`, focusedTabElement);
     
     if (focusedTabElement) {
       const focusedTabId = focusedTabElement.getAttribute('data-tab-id');
-      console.log(`🎯 聚焦标签的data-tab-id:`, focusedTabId);
       
       if (focusedTabId) {
         const focusedIndex = this.firstPanelTabs.findIndex(tab => tab.blockId === focusedTabId);
-        console.log(`🎯 在数组中找到的索引:`, focusedIndex);
         
         if (focusedIndex !== -1) {
-          insertIndex = focusedIndex + 1; // 在聚焦标签的后面插入
-          console.log(`🎯 找到聚焦的标签: "${this.firstPanelTabs[focusedIndex].title}" (索引${focusedIndex})，将在位置${insertIndex}插入`);
+          insertIndex = focusedIndex; // 直接替换聚焦标签的位置
+          shouldReplaceFocused = true; // 标记为替换聚焦标签
         } else {
-          console.log(`🎯 聚焦的标签不在数组中，插入到末尾`);
+          this.log(`🎯 聚焦的标签不在数组中，插入到末尾`);
         }
       } else {
-        console.log(`🎯 聚焦的标签没有data-tab-id，插入到末尾`);
+        this.log(`🎯 聚焦的标签没有data-tab-id，插入到末尾`);
       }
     } else {
-      console.log(`🎯 没有找到聚焦的标签，将替换最后一个非固定标签`);
+      this.log(`🎯 没有找到聚焦的标签，将替换最后一个非固定标签`);
     }
     
-    console.log(`🎯 最终计算的insertIndex: ${insertIndex}`);
+    this.log(`🎯 最终计算的insertIndex: ${insertIndex}, 是否替换聚焦标签: ${shouldReplaceFocused}`);
     
     // 获取当前激活页面的标签信息
     const tabInfo = await this.getTabInfo(blockId, firstPanelId, this.firstPanelTabs.length);
     if (tabInfo) {
-      console.log(`📋 检测到新的激活页面: "${tabInfo.title}"`);
+      this.log(`📋 检测到新的激活页面: "${tabInfo.title}"`);
       
       if (this.firstPanelTabs.length >= this.maxTabs) {
         // 达到上限，根据是否有聚焦标签决定处理方式
         
-        if (insertIndex < this.firstPanelTabs.length) {
-          // 有聚焦标签，在聚焦标签后面插入，然后删除最后一个非固定标签
-          console.log(`🎯 插入前数组:`, this.firstPanelTabs.map((tab, idx) => `${idx}:${tab.title}`));
-          this.firstPanelTabs.splice(insertIndex, 0, tabInfo);
-          console.log(`➕ 在位置 ${insertIndex} 插入新标签: ${tabInfo.title}`);
-          console.log(`🎯 插入后数组:`, this.firstPanelTabs.map((tab, idx) => `${idx}:${tab.title}`));
+        if (shouldReplaceFocused && insertIndex < this.firstPanelTabs.length) {
+          // 有聚焦标签，直接替换聚焦标签
+          const replacedTab = this.firstPanelTabs[insertIndex];
+          this.firstPanelTabs[insertIndex] = tabInfo;
+          this.log(`🔄 替换聚焦标签: "${replacedTab.title}" -> "${tabInfo.title}"`);
+          this.log(`🎯 替换后数组:`, this.firstPanelTabs.map((tab, idx) => `${idx}:${tab.title}`));
+        } else if (insertIndex < this.firstPanelTabs.length) {
+          // 有聚焦标签但不在替换模式，在聚焦标签后面插入，然后删除最后一个非固定标签
+          this.log(`🎯 插入前数组:`, this.firstPanelTabs.map((tab, idx) => `${idx}:${tab.title}`));
+          this.firstPanelTabs.splice(insertIndex + 1, 0, tabInfo);
+          this.log(`➕ 在位置 ${insertIndex + 1} 插入新标签: ${tabInfo.title}`);
+          this.log(`🎯 插入后数组:`, this.firstPanelTabs.map((tab, idx) => `${idx}:${tab.title}`));
           
           // 删除最后一个非固定标签来保持数量限制
           const lastNonPinnedIndex = this.findLastNonPinnedTabIndex();
           if (lastNonPinnedIndex !== -1) {
             const removedTab = this.firstPanelTabs[lastNonPinnedIndex];
             this.firstPanelTabs.splice(lastNonPinnedIndex, 1);
-            console.log(`🗑️ 删除末尾的非固定标签: "${removedTab.title}" 来保持数量限制`);
-            console.log(`🎯 最终数组:`, this.firstPanelTabs.map((tab, idx) => `${idx}:${tab.title}`));
+            this.log(`🗑️ 删除末尾的非固定标签: "${removedTab.title}" 来保持数量限制`);
+            this.log(`🎯 最终数组:`, this.firstPanelTabs.map((tab, idx) => `${idx}:${tab.title}`));
           } else {
             // 如果所有标签都是固定的，删除刚插入的新标签
             const newTabIndex = this.firstPanelTabs.findIndex(tab => tab.blockId === tabInfo.blockId);
             if (newTabIndex !== -1) {
               this.firstPanelTabs.splice(newTabIndex, 1);
-              console.log(`⚠️ 所有标签都是固定的，无法添加新标签: "${tabInfo.title}"`);
+              this.log(`⚠️ 所有标签都是固定的，无法添加新标签: "${tabInfo.title}"`);
               return;
             }
           }
@@ -3366,32 +4055,41 @@ class OrcaTabsPlugin {
           if (lastNonPinnedIndex !== -1) {
             const replacedTab = this.firstPanelTabs[lastNonPinnedIndex];
             this.firstPanelTabs[lastNonPinnedIndex] = tabInfo;
-            console.log(`🔄 没有聚焦标签，替换最后一个非固定标签: "${replacedTab.title}" -> "${tabInfo.title}"`);
+            this.log(`🔄 没有聚焦标签，替换最后一个非固定标签: "${replacedTab.title}" -> "${tabInfo.title}"`);
           } else {
             // 如果所有标签都是固定的，无法添加
-            console.log(`⚠️ 所有标签都是固定的，无法添加新标签: "${tabInfo.title}"`);
+            this.log(`⚠️ 所有标签都是固定的，无法添加新标签: "${tabInfo.title}"`);
             return;
           }
         }
       } else {
-        // 未达到上限，在计算出的位置插入新标签
-        this.firstPanelTabs.splice(insertIndex, 0, tabInfo);
-        console.log(`➕ 在位置 ${insertIndex} 插入新标签: ${tabInfo.title}`);
-        console.log(`🎯 插入后数组:`, this.firstPanelTabs.map((tab, idx) => `${idx}:${tab.title}`));
+        // 未达到上限，根据是否替换聚焦标签决定处理方式
+        if (shouldReplaceFocused && insertIndex < this.firstPanelTabs.length) {
+          // 替换聚焦标签
+          const replacedTab = this.firstPanelTabs[insertIndex];
+          this.firstPanelTabs[insertIndex] = tabInfo;
+          this.log(`🔄 替换聚焦标签: "${replacedTab.title}" -> "${tabInfo.title}"`);
+          this.log(`🎯 替换后数组:`, this.firstPanelTabs.map((tab, idx) => `${idx}:${tab.title}`));
+        } else {
+          // 在计算出的位置插入新标签
+          this.firstPanelTabs.splice(insertIndex, 0, tabInfo);
+          this.log(`➕ 在位置 ${insertIndex} 插入新标签: ${tabInfo.title}`);
+          this.log(`🎯 插入后数组:`, this.firstPanelTabs.map((tab, idx) => `${idx}:${tab.title}`));
+        }
       }
       
       // 如果标签页重新显示，从已关闭列表中移除
       if (this.closedTabs.has(blockId)) {
         this.closedTabs.delete(blockId);
         this.saveClosedTabs();
-        console.log(`🔄 标签 "${tabInfo.title}" 重新显示，从已关闭列表中移除`);
+        this.log(`🔄 标签 "${tabInfo.title}" 重新显示，从已关闭列表中移除`);
       }
       
       // 保存更新后的数组
       this.saveFirstPanelTabs();
       this.debouncedUpdateTabsUI();
     } else {
-      console.log("无法获取激活页面的标签信息");
+      this.log("无法获取激活页面的标签信息");
     }
   }
 
@@ -3411,7 +4109,7 @@ class OrcaTabsPlugin {
           // 检查是否有新的面板添加
           if (target.classList.contains('orca-panels-row') || 
               target.closest('.orca-panels-row')) {
-            console.log("🔍 检测到面板行变化，检查新面板...");
+            this.log("🔍 检测到面板行变化，检查新面板...");
             shouldCheckNewPanels = true;
           }
           
@@ -3451,7 +4149,7 @@ class OrcaTabsPlugin {
         
         // 如果面板索引发生变化，立即更新标签页显示
         if (oldIndex !== this.currentPanelIndex) {
-          console.log(`🔄 面板切换: ${oldIndex} -> ${this.currentPanelIndex}`);
+          this.log(`🔄 面板切换: ${oldIndex} -> ${this.currentPanelIndex}`);
           this.debouncedUpdateTabsUI();
         }
       }
@@ -3491,27 +4189,27 @@ class OrcaTabsPlugin {
     this.discoverPanels();
     
     if (this.panelIds.length > oldPanelCount) {
-      console.log(`🎉 发现新面板！从 ${oldPanelCount} 个增加到 ${this.panelIds.length} 个`);
+      this.log(`🎉 发现新面板！从 ${oldPanelCount} 个增加到 ${this.panelIds.length} 个`);
       
       // 重新创建UI以显示循环切换器
       await this.createTabsUI();
     } else if (this.panelIds.length < oldPanelCount) {
-      console.log(`📉 面板数量减少！从 ${oldPanelCount} 个减少到 ${this.panelIds.length} 个`);
-      console.log(`📋 旧面板列表: [${oldPanelIds.join(', ')}]`);
-      console.log(`📋 新面板列表: [${this.panelIds.join(', ')}]`);
+      this.log(`📉 面板数量减少！从 ${oldPanelCount} 个减少到 ${this.panelIds.length} 个`);
+      this.log(`📋 旧面板列表: [${oldPanelIds.join(', ')}]`);
+      this.log(`📋 新面板列表: [${this.panelIds.join(', ')}]`);
       
       // 检查第一个面板是否发生了变化
       const oldFirstPanelId = oldPanelIds[0];
       const newFirstPanelId = this.panelIds[0];
       
       if (oldFirstPanelId && newFirstPanelId && oldFirstPanelId !== newFirstPanelId) {
-        console.log(`🔄 第一个面板已变更: ${oldFirstPanelId} -> ${newFirstPanelId}`);
+        this.log(`🔄 第一个面板已变更: ${oldFirstPanelId} -> ${newFirstPanelId}`);
         await this.handleFirstPanelChange(oldFirstPanelId, newFirstPanelId);
       }
       
       // 检查当前面板是否还存在
       if (this.currentPanelId && !this.panelIds.includes(this.currentPanelId)) {
-        console.log(`🔄 当前面板 ${this.currentPanelId} 已关闭，切换到第一个面板`);
+        this.log(`🔄 当前面板 ${this.currentPanelId} 已关闭，切换到第一个面板`);
         this.currentPanelIndex = 0;
         this.currentPanelId = this.panelIds[0];
       }
@@ -3561,38 +4259,126 @@ class OrcaTabsPlugin {
       await this.checkPanelStatusChange();
     }, 2000);
     
-    // 2. 监听全局点击事件，可能触发面板切换（使用防抖）
-    this.clickListener = async (e: Event) => {
-      // 使用防抖，避免频繁触发
-      setTimeout(() => {
-        this.debouncedCheckPanelStatus();
-      }, 100);
+    // 统一的全局事件监听器
+    this.globalEventListener = async (e: Event) => {
+      await this.handleGlobalEvent(e);
     };
-    document.addEventListener('click', this.clickListener);
     
-    // 3. 监听键盘事件，可能有快捷键切换或关闭面板
-    this.keyListener = async (e: KeyboardEvent) => {
-      // 特别关注可能关闭面板的快捷键
-      const isPanelCloseKey = (e.ctrlKey || e.metaKey) && e.key === 'w';
-      const isEscapeKey = e.key === 'Escape';
-      
-      
-      if (isPanelCloseKey || isEscapeKey) {
-        console.log(`⌨️ 检测到可能关闭面板的快捷键: ${e.key} (Ctrl/Cmd: ${e.ctrlKey || e.metaKey})`);
-        // 重要操作立即检查
-        setTimeout(() => {
-          this.debouncedCheckPanelStatus();
-        }, 50);
-      } else {
-        // 其他键盘事件延迟检查
-        setTimeout(() => {
-          this.debouncedCheckPanelStatus();
-        }, 200);
-      }
-    };
-    document.addEventListener('keydown', this.keyListener);
+    // 为不同类型的事件注册同一个监听器
+    document.addEventListener('click', this.globalEventListener);
+    document.addEventListener('contextmenu', this.globalEventListener);
+    document.addEventListener('keydown', this.globalEventListener);
   }
 
+  /**
+   * 统一的全局事件处理器
+   */
+  private async handleGlobalEvent(e: Event) {
+    switch (e.type) {
+      case 'click':
+        await this.handleClickEvent(e as MouseEvent);
+        break;
+      case 'contextmenu':
+        await this.handleContextMenuEvent(e as MouseEvent);
+        break;
+      case 'keydown':
+        await this.handleKeydownEvent(e as KeyboardEvent);
+        break;
+    }
+  }
+
+  /**
+   * 处理点击事件
+   */
+  private async handleClickEvent(e: MouseEvent) {
+    // 检查是否是 Ctrl+点击 块引用
+    if ((e.ctrlKey || e.metaKey) && e.target) {
+      const target = e.target as HTMLElement;
+      const blockRefId = this.getBlockRefId(target);
+      
+      if (blockRefId) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        
+        this.log(`🔗 检测到 Ctrl+点击 块引用: ${blockRefId}，将在后台新建标签页`);
+        
+        // Ctrl+点击: 在新标签页打开
+        await this.openInNewTab(blockRefId);
+        return;
+      }
+    }
+    
+    // 使用防抖，避免频繁触发
+    setTimeout(() => {
+      this.debouncedCheckPanelStatus();
+    }, 100);
+  }
+
+  /**
+   * 处理右键菜单事件
+   */
+  private async handleContextMenuEvent(e: MouseEvent) {
+    const target = e.target as HTMLElement;
+    const blockRefId = this.getBlockRefId(target);
+    
+    if (blockRefId) {
+      // 这是块引用的右键菜单
+      this.log(`🔗 检测到块引用右键菜单: ${blockRefId}`);
+      this.currentContextBlockRefId = blockRefId;
+      
+      // 延迟一点时间，让原生菜单先显示，然后我们添加自定义项
+      setTimeout(() => {
+        this.enhanceBlockRefContextMenu(blockRefId);
+      }, 50);
+    }
+  }
+
+  /**
+   * 处理键盘事件
+   */
+  private async handleKeydownEvent(e: KeyboardEvent) {
+    // 检查插件快捷键
+    const isCtrlT = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 't' && !e.shiftKey;
+    
+    if (isCtrlT) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      
+      // 获取当前光标位置的块ID
+      const currentBlockId = this.getCurrentCursorBlockId();
+      if (currentBlockId) {
+        this.log(`⌨️ 检测到快捷键: ${e.ctrlKey ? 'Ctrl' : 'Cmd'}+T, 目标块ID: ${currentBlockId}，将在后台新建标签页`);
+        
+        // Ctrl+T: 在新标签页打开
+        await this.openInNewTab(currentBlockId);
+      } else {
+        this.warn("⌨️ 无法获取当前光标位置的块ID");
+        orca.notify("warn", "请先将光标定位到要操作的块中", {
+          title: "Orca Tabs Plugin"
+        });
+      }
+      return;
+    }
+    
+    // 特别关注可能关闭面板的快捷键
+    const isPanelCloseKey = (e.ctrlKey || e.metaKey) && e.key === 'w';
+    const isEscapeKey = e.key === 'Escape';
+    
+    if (isPanelCloseKey || isEscapeKey) {
+      this.log(`⌨️ 检测到可能关闭面板的快捷键: ${e.key} (Ctrl/Cmd: ${e.ctrlKey || e.metaKey})`);
+      // 重要操作立即检查
+      setTimeout(() => {
+        this.debouncedCheckPanelStatus();
+      }, 50);
+    } else {
+      // 其他键盘事件延迟检查
+      setTimeout(() => {
+        this.debouncedCheckPanelStatus();
+      }, 200);
+    }
+  }
 
   /**
    * 防抖的面板状态检查
@@ -3620,7 +4406,7 @@ class OrcaTabsPlugin {
     if (currentPanelCount === this.panelIds.length && this.panelDiscoveryCache) {
       const cacheAge = Date.now() - this.panelDiscoveryCache.timestamp;
       if (cacheAge < 3000) { // 缓存3秒内有效
-        console.log("📋 面板数量未变化，跳过面板发现");
+        this.log("📋 面板数量未变化，跳过面板发现");
         return;
       }
     }
@@ -3634,20 +4420,20 @@ class OrcaTabsPlugin {
       !oldPanelIds.every((id, index) => id === this.panelIds[index]);
     
     if (panelListChanged) {
-      console.log(`📋 面板列表发生变化: ${oldPanelIds.length} -> ${this.panelIds.length}`);
-      console.log(`📋 旧面板列表: [${oldPanelIds.join(', ')}]`);
-      console.log(`📋 新面板列表: [${this.panelIds.join(', ')}]`);
+      this.log(`📋 面板列表发生变化: ${oldPanelIds.length} -> ${this.panelIds.length}`);
+      this.log(`📋 旧面板列表: [${oldPanelIds.join(', ')}]`);
+      this.log(`📋 新面板列表: [${this.panelIds.join(', ')}]`);
       
       // 检查第一个面板是否被关闭
       const oldFirstPanelId = oldPanelIds[0];
       const newFirstPanelId = this.panelIds[0];
       
       if (oldFirstPanelId && newFirstPanelId && oldFirstPanelId !== newFirstPanelId) {
-        console.log(`🔄 第一个面板已变更: ${oldFirstPanelId} -> ${newFirstPanelId}`);
-        console.log(`🔄 变更前状态: currentPanelId=${this.currentPanelId}, currentPanelIndex=${this.currentPanelIndex}`);
+        this.log(`🔄 第一个面板已变更: ${oldFirstPanelId} -> ${newFirstPanelId}`);
+        this.log(`🔄 变更前状态: currentPanelId=${this.currentPanelId}, currentPanelIndex=${this.currentPanelIndex}`);
         // 将新的第一个面板设置为固化面板，并迁移/清空原有数据
         await this.handleFirstPanelChange(oldFirstPanelId, newFirstPanelId);
-        console.log(`🔄 变更后状态: currentPanelId=${this.currentPanelId}, currentPanelIndex=${this.currentPanelIndex}`);
+        this.log(`🔄 变更后状态: currentPanelId=${this.currentPanelId}, currentPanelIndex=${this.currentPanelIndex}`);
       }
     }
     
@@ -3660,7 +4446,7 @@ class OrcaTabsPlugin {
         const newIndex = this.panelIds.indexOf(panelId);
         
         if (newIndex !== -1) {
-          console.log(`🔄 检测到面板切换: ${this.currentPanelId} -> ${panelId} (索引: ${oldIndex} -> ${newIndex})`);
+          this.log(`🔄 检测到面板切换: ${this.currentPanelId} -> ${panelId} (索引: ${oldIndex} -> ${newIndex})`);
           
           this.currentPanelIndex = newIndex;
           this.currentPanelId = panelId;
@@ -3676,26 +4462,26 @@ class OrcaTabsPlugin {
    * 处理第一个面板变更（当原第一个面板被关闭时）
    */
   async handleFirstPanelChange(oldFirstPanelId: string, newFirstPanelId: string) {
-    console.log(`🔄 处理第一个面板变更: ${oldFirstPanelId} -> ${newFirstPanelId}`);
-    console.log(`🔄 当前面板状态: currentPanelId=${this.currentPanelId}, currentPanelIndex=${this.currentPanelIndex}`);
+    this.log(`🔄 处理第一个面板变更: ${oldFirstPanelId} -> ${newFirstPanelId}`);
+    this.log(`🔄 当前面板状态: currentPanelId=${this.currentPanelId}, currentPanelIndex=${this.currentPanelIndex}`);
     
     // 清空旧的固化标签数据（因为对应的面板已经不存在了）
-    console.log(`🗑️ 清空旧面板 ${oldFirstPanelId} 的固化标签数据`);
+    this.log(`🗑️ 清空旧面板 ${oldFirstPanelId} 的固化标签数据`);
     this.firstPanelTabs = [];
     
     // 扫描新的第一个面板，创建新的固化标签
-    console.log(`🔍 为新的第一个面板 ${newFirstPanelId} 创建固化标签`);
+    this.log(`🔍 为新的第一个面板 ${newFirstPanelId} 创建固化标签`);
     await this.scanFirstPanel();
     
     // 保存新的固化标签数据
     this.saveFirstPanelTabs();
     
     // 立即更新UI显示新的固化标签
-    console.log(`🎨 立即更新UI显示新的固化标签`);
+    this.log(`🎨 立即更新UI显示新的固化标签`);
     await this.updateTabsUI();
     
-    console.log(`✅ 第一个面板变更处理完成，新建了 ${this.firstPanelTabs.length} 个固化标签`);
-    console.log(`✅ 新的固化标签:`, this.firstPanelTabs.map(tab => `${tab.title}(${tab.blockId})`));
+    this.log(`✅ 第一个面板变更处理完成，新建了 ${this.firstPanelTabs.length} 个固化标签`);
+    this.log(`✅ 新的固化标签:`, this.firstPanelTabs.map(tab => `${tab.title}(${tab.blockId})`));
   }
 
   /**
@@ -3712,7 +4498,7 @@ class OrcaTabsPlugin {
    * 重置插件缓存
    */
   async resetCache() {
-    console.log("🔄 开始重置插件缓存...");
+    this.log("🔄 开始重置插件缓存...");
     
     // 清空固化标签数据
     this.firstPanelTabs = [];
@@ -3726,15 +4512,15 @@ class OrcaTabsPlugin {
       const closedTabsKey = this.getClosedTabsStorageKey();
       localStorage.removeItem(storageKey);
       localStorage.removeItem(closedTabsKey);
-      console.log(`🗑️ 已删除localStorage缓存: ${storageKey}`);
-      console.log(`🗑️ 已删除已关闭标签缓存: ${closedTabsKey}`);
+      this.log(`🗑️ 已删除localStorage缓存: ${storageKey}`);
+      this.log(`🗑️ 已删除已关闭标签缓存: ${closedTabsKey}`);
     } catch (e) {
-      console.warn("删除localStorage缓存失败:", e);
+      this.warn("删除localStorage缓存失败:", e);
     }
     
     // 重新扫描第一个面板
     if (this.panelIds.length > 0) {
-      console.log("🔍 重新扫描第一个面板...");
+      this.log("🔍 重新扫描第一个面板...");
       await this.scanFirstPanel();
       this.saveFirstPanelTabs();
     }
@@ -3742,7 +4528,7 @@ class OrcaTabsPlugin {
     // 更新UI
     await this.updateTabsUI();
     
-    console.log("✅ 插件缓存重置完成");
+    this.log("✅ 插件缓存重置完成");
   }
 
   destroy() {
@@ -3777,13 +4563,11 @@ class OrcaTabsPlugin {
     }
     
     // 清理监听器
-    if (this.clickListener) {
-      document.removeEventListener('click', this.clickListener);
-      this.clickListener = null;
-    }
-    if (this.keyListener) {
-      document.removeEventListener('keydown', this.keyListener);
-      this.keyListener = null;
+    if (this.globalEventListener) {
+      document.removeEventListener('click', this.globalEventListener);
+      document.removeEventListener('contextmenu', this.globalEventListener);
+      document.removeEventListener('keydown', this.globalEventListener);
+      this.globalEventListener = null;
     }
     if (this.dragEndListener) {
       document.removeEventListener('dragend', this.dragEndListener);
@@ -3836,8 +4620,10 @@ export async function load(_name: string) {
     "重置插件缓存"
   );
 
-  console.log(t("标签页插件已启动"));
-  console.log(`${pluginName} loaded.`);
+  if (typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS !== false) {
+    console.log(t("标签页插件已启动"));
+    console.log(`${pluginName} loaded.`);
+  }
 }
 
 export async function unload() {
