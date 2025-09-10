@@ -2412,7 +2412,15 @@ class Pe {
         const l = this.getCurrentActiveTab();
         if (l) {
           const u = this.firstPanelTabs.findIndex((h) => h.blockId === l.blockId);
-          u !== -1 && (o = u + 1);
+          if (u !== -1)
+            if (l.isPinned)
+              o = u + 1, this.log("📌 聚焦标签是固定的，在其后面插入新标签");
+            else {
+              let h = -1;
+              for (let f = 0; f < this.firstPanelTabs.length; f++)
+                this.firstPanelTabs[f].isPinned && (h = f);
+              h !== -1 ? (o = h + 1, this.log("📌 聚焦标签不是固定的，在最后一个固定标签后面插入新标签")) : (o = u + 1, this.log("📌 没有固定标签，在聚焦标签后面插入新标签"));
+            }
         }
       }
       if (this.firstPanelTabs.length >= this.maxTabs)

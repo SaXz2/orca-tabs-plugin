@@ -2239,15 +2239,45 @@ class OrcaTabsPlugin {
           return false;
         }
         
-        insertIndex = focusedIndex;
-        shouldReplace = true;
+        // 检查聚焦的标签是否是固定标签
+        if (focusedTab.isPinned) {
+          // 如果是固定标签，拒绝替换操作，改为在其后面插入
+          this.log(`📌 聚焦标签是固定的，拒绝替换操作，改为在其后面插入`);
+          insertIndex = focusedIndex + 1;
+          shouldReplace = false;
+        } else {
+          // 如果不是固定标签，可以替换
+          insertIndex = focusedIndex;
+          shouldReplace = true;
+        }
       } else if (insertMode === 'after') {
         // 在聚焦标签后面插入
         const focusedTab = this.getCurrentActiveTab();
         if (focusedTab) {
           const focusedIndex = this.firstPanelTabs.findIndex(tab => tab.blockId === focusedTab.blockId);
           if (focusedIndex !== -1) {
-            insertIndex = focusedIndex + 1;
+            // 如果聚焦的标签是固定的，在其后面插入
+            if (focusedTab.isPinned) {
+              insertIndex = focusedIndex + 1;
+              this.log(`📌 聚焦标签是固定的，在其后面插入新标签`);
+            } else {
+              // 如果聚焦的标签不是固定的，找到最后一个固定标签的位置，在其后面插入
+              let lastPinnedIndex = -1;
+              for (let i = 0; i < this.firstPanelTabs.length; i++) {
+                if (this.firstPanelTabs[i].isPinned) {
+                  lastPinnedIndex = i;
+                }
+              }
+              
+              if (lastPinnedIndex !== -1) {
+                insertIndex = lastPinnedIndex + 1;
+                this.log(`📌 聚焦标签不是固定的，在最后一个固定标签后面插入新标签`);
+              } else {
+                // 如果没有固定标签，在聚焦标签后面插入
+                insertIndex = focusedIndex + 1;
+                this.log(`📌 没有固定标签，在聚焦标签后面插入新标签`);
+              }
+            }
           }
         }
       }
@@ -3998,8 +4028,20 @@ class OrcaTabsPlugin {
         const focusedIndex = this.firstPanelTabs.findIndex(tab => tab.blockId === focusedTabId);
         
         if (focusedIndex !== -1) {
-          insertIndex = focusedIndex; // 直接替换聚焦标签的位置
-          shouldReplaceFocused = true; // 标记为替换聚焦标签
+          const focusedTab = this.firstPanelTabs[focusedIndex];
+          
+          // 检查聚焦的标签是否是固定标签
+          if (focusedTab.isPinned) {
+            // 如果是固定标签，在其后面插入新标签，而不是替换
+            insertIndex = focusedIndex + 1;
+            shouldReplaceFocused = false;
+            this.log(`📌 聚焦标签是固定的，将在其后面插入新标签`);
+          } else {
+            // 如果不是固定标签，可以替换
+            insertIndex = focusedIndex;
+            shouldReplaceFocused = true;
+            this.log(`🎯 聚焦标签不是固定的，将替换聚焦标签`);
+          }
         } else {
           this.log(`🎯 聚焦的标签不在数组中，插入到末尾`);
         }

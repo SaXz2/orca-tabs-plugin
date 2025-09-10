@@ -2407,12 +2407,20 @@ class Pe {
           return this.warn("无法找到聚焦标签在数组中的位置"), orca.notify("error", "无法找到聚焦标签位置", {
             title: "Orca Tabs Plugin"
           }), !1;
-        o = u, c = !0;
+        l.isPinned ? (this.log("📌 聚焦标签是固定的，拒绝替换操作，改为在其后面插入"), o = u + 1, c = !1) : (o = u, c = !0);
       } else if (e === "after") {
         const l = this.getCurrentActiveTab();
         if (l) {
           const u = this.firstPanelTabs.findIndex((h) => h.blockId === l.blockId);
-          u !== -1 && (o = u + 1);
+          if (u !== -1)
+            if (l.isPinned)
+              o = u + 1, this.log("📌 聚焦标签是固定的，在其后面插入新标签");
+            else {
+              let h = -1;
+              for (let f = 0; f < this.firstPanelTabs.length; f++)
+                this.firstPanelTabs[f].isPinned && (h = f);
+              h !== -1 ? (o = h + 1, this.log("📌 聚焦标签不是固定的，在最后一个固定标签后面插入新标签")) : (o = u + 1, this.log("📌 没有固定标签，在聚焦标签后面插入新标签"));
+            }
         }
       }
       if (this.firstPanelTabs.length >= this.maxTabs)
@@ -3334,7 +3342,7 @@ class Pe {
       const f = c.getAttribute("data-tab-id");
       if (f) {
         const g = this.firstPanelTabs.findIndex((b) => b.blockId === f);
-        g !== -1 ? (i = g, o = !0) : this.log("🎯 聚焦的标签不在数组中，插入到末尾");
+        g !== -1 ? this.firstPanelTabs[g].isPinned ? (i = g + 1, o = !1, this.log("📌 聚焦标签是固定的，将在其后面插入新标签")) : (i = g, o = !0, this.log("🎯 聚焦标签不是固定的，将替换聚焦标签")) : this.log("🎯 聚焦的标签不在数组中，插入到末尾");
       } else
         this.log("🎯 聚焦的标签没有data-tab-id，插入到末尾");
     } else
