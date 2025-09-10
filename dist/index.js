@@ -35,15 +35,15 @@ function O(r, e) {
   const t = q(), n = (e == null ? void 0 : e.weekStartsOn) ?? ((c = (i = e == null ? void 0 : e.locale) == null ? void 0 : i.options) == null ? void 0 : c.weekStartsOn) ?? t.weekStartsOn ?? ((l = (d = t.locale) == null ? void 0 : d.options) == null ? void 0 : l.weekStartsOn) ?? 0, a = v(r, e == null ? void 0 : e.in), o = a.getDay(), s = (o < n ? 7 : 0) + o - n;
   return a.setDate(a.getDate() - s), a.setHours(0, 0, 0, 0), a;
 }
-function A(r, e) {
+function W(r, e) {
   return O(r, { ...e, weekStartsOn: 1 });
 }
 function ae(r, e) {
   const t = v(r, e == null ? void 0 : e.in), n = t.getFullYear(), a = P(t, 0);
   a.setFullYear(n + 1, 0, 4), a.setHours(0, 0, 0, 0);
-  const o = A(a), s = P(t, 0);
+  const o = W(a), s = P(t, 0);
   s.setFullYear(n, 0, 4), s.setHours(0, 0, 0, 0);
-  const i = A(s);
+  const i = W(s);
   return t.getTime() >= o.getTime() ? n + 1 : t.getTime() >= i.getTime() ? n : n - 1;
 }
 function X(r) {
@@ -81,7 +81,7 @@ function ge(r, e, t) {
 }
 function me(r, e) {
   const t = ae(r, e), n = P(r, 0);
-  return n.setFullYear(t, 0, 4), n.setHours(0, 0, 0, 0), A(n);
+  return n.setFullYear(t, 0, 4), n.setHours(0, 0, 0, 0), W(n);
 }
 function _(r) {
   return P(r, Date.now());
@@ -384,9 +384,9 @@ function L(r) {
     const n = t.width, a = n && r.matchPatterns[n] || r.matchPatterns[r.defaultMatchWidth], o = e.match(a);
     if (!o)
       return null;
-    const s = o[0], i = n && r.parsePatterns[n] || r.parsePatterns[r.defaultParseWidth], c = Array.isArray(i) ? Ae(i, (u) => u.test(s)) : (
+    const s = o[0], i = n && r.parsePatterns[n] || r.parsePatterns[r.defaultParseWidth], c = Array.isArray(i) ? We(i, (u) => u.test(s)) : (
       // [TODO] -- I challenge you to fix the type
-      We(i, (u) => u.test(s))
+      Ae(i, (u) => u.test(s))
     );
     let d;
     d = r.valueCallback ? r.valueCallback(c) : c, d = t.valueCallback ? (
@@ -397,12 +397,12 @@ function L(r) {
     return { value: d, rest: l };
   };
 }
-function We(r, e) {
+function Ae(r, e) {
   for (const t in r)
     if (Object.prototype.hasOwnProperty.call(r, t) && e(r[t]))
       return t;
 }
-function Ae(r, e) {
+function We(r, e) {
   for (let t = 0; t < r.length; t++)
     if (e(r[t]))
       return t;
@@ -540,7 +540,7 @@ function Ve(r, e) {
   return ge(t, ye(t)) + 1;
 }
 function Ze(r, e) {
-  const t = v(r, e == null ? void 0 : e.in), n = +A(t) - +me(t);
+  const t = v(r, e == null ? void 0 : e.in), n = +W(t) - +me(t);
   return Math.round(n / te) + 1;
 }
 function oe(r, e) {
@@ -1261,7 +1261,7 @@ const V = {
   JSON: 0,
   Text: 1
 };
-let W;
+let A;
 class Pt {
   constructor() {
     m(this, "firstPanelTabs", []);
@@ -2302,6 +2302,17 @@ class Pt {
     return a && this.firstPanelTabs.find((o) => o.blockId === a) || null;
   }
   /**
+   * 获取智能插入位置（在当前激活标签后面）
+   */
+  getSmartInsertPosition() {
+    if (this.currentPanelIndex !== 0 || this.firstPanelTabs.length === 0) return -1;
+    const e = this.getCurrentActiveTab();
+    if (!e)
+      return -1;
+    const t = this.firstPanelTabs.findIndex((n) => n.blockId === e.blockId);
+    return t === -1 ? -1 : t;
+  }
+  /**
    * 获取相邻标签（用于关闭当前标签后自动切换）
    */
   getAdjacentTab(e) {
@@ -2893,8 +2904,10 @@ class Pt {
           console.log(`⚠️ 所有标签都是固定的，无法添加新标签: "${s.title}"`);
           return;
         }
-      } else
-        this.firstPanelTabs.push(s), console.log(`➕ 添加新标签: ${s.title} (ID: ${a})`);
+      } else {
+        const i = this.getSmartInsertPosition();
+        i >= 0 && i < this.firstPanelTabs.length ? (this.firstPanelTabs.splice(i + 1, 0, s), console.log(`➕ 在位置 ${i + 1} 插入新标签: ${s.title} (ID: ${a})`)) : (this.firstPanelTabs.push(s), console.log(`➕ 添加新标签到末尾: ${s.title} (ID: ${a})`));
+      }
       this.closedTabs.has(a) && (this.closedTabs.delete(a), this.saveClosedTabs(), console.log(`🔄 标签 "${s.title}" 重新显示，从已关闭列表中移除`)), this.saveFirstPanelTabs(), this.debouncedUpdateTabsUI();
     } else
       console.log("无法获取激活页面的标签信息");
@@ -3050,20 +3063,20 @@ class Pt {
 }
 let T = null;
 async function It(r) {
-  W = r, de(orca.state.locale, { "zh-CN": ue }), T = new Pt(), document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", () => {
+  A = r, de(orca.state.locale, { "zh-CN": ue }), T = new Pt(), document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => T == null ? void 0 : T.init(), 500);
   }) : setTimeout(() => T == null ? void 0 : T.init(), 500), orca.commands.registerCommand(
-    `${W}.resetCache`,
+    `${A}.resetCache`,
     async () => {
       T && (await T.resetCache(), orca.notify("success", "插件缓存已重置", {
         title: "Orca Tabs Plugin"
       }));
     },
     "重置插件缓存"
-  ), console.log(F("标签页插件已启动")), console.log(`${W} loaded.`);
+  ), console.log(F("标签页插件已启动")), console.log(`${A} loaded.`);
 }
 async function kt() {
-  T && (T.destroy(), T = null), orca.commands.unregisterCommand(`${W}.resetCache`);
+  T && (T.destroy(), T = null), orca.commands.unregisterCommand(`${A}.resetCache`);
 }
 export {
   It as load,

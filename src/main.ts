@@ -2095,6 +2095,32 @@ class OrcaTabsPlugin {
   }
 
   /**
+   * 获取智能插入位置（在当前激活标签后面）
+   */
+  getSmartInsertPosition(): number {
+    if (this.currentPanelIndex !== 0) return -1; // 只有第一个面板支持
+    
+    if (this.firstPanelTabs.length === 0) return -1;
+    
+    // 获取当前激活的标签
+    const currentActiveTab = this.getCurrentActiveTab();
+    if (!currentActiveTab) {
+      // 如果没有找到当前激活的标签，返回-1表示添加到末尾
+      return -1;
+    }
+    
+    // 找到当前激活标签的索引
+    const currentIndex = this.firstPanelTabs.findIndex(tab => tab.blockId === currentActiveTab.blockId);
+    if (currentIndex === -1) {
+      // 如果没有找到索引，返回-1表示添加到末尾
+      return -1;
+    }
+    
+    // 返回当前标签的索引，新标签将插入到其后面（索引+1的位置）
+    return currentIndex;
+  }
+
+  /**
    * 获取相邻标签（用于关闭当前标签后自动切换）
    */
   getAdjacentTab(currentTab: TabInfo): TabInfo | null {
@@ -3213,9 +3239,17 @@ class OrcaTabsPlugin {
           return;
         }
       } else {
-        // 未达到上限，直接添加
-        this.firstPanelTabs.push(tabInfo);
-        console.log(`➕ 添加新标签: ${tabInfo.title} (ID: ${blockId})`);
+        // 未达到上限，智能插入新标签
+        const insertPosition = this.getSmartInsertPosition();
+        if (insertPosition >= 0 && insertPosition < this.firstPanelTabs.length) {
+          // 插入到指定位置
+          this.firstPanelTabs.splice(insertPosition + 1, 0, tabInfo);
+          console.log(`➕ 在位置 ${insertPosition + 1} 插入新标签: ${tabInfo.title} (ID: ${blockId})`);
+        } else {
+          // 如果无法确定位置，添加到末尾
+          this.firstPanelTabs.push(tabInfo);
+          console.log(`➕ 添加新标签到末尾: ${tabInfo.title} (ID: ${blockId})`);
+        }
       }
       
       // 如果标签页重新显示，从已关闭列表中移除
