@@ -4678,3 +4678,4 @@ export async function unload() {
   // 注销重置缓存命令
   orca.commands.unregisterCommand(`${pluginName}.resetCache`);
 }
+
