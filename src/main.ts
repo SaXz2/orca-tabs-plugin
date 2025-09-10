@@ -77,6 +77,7 @@ class OrcaTabsPlugin {
   private lastUpdateTime: number = 0; // 上次更新时间
   private isUpdating: boolean = false; // 是否正在更新
   private isInitialized: boolean = false; // 是否已完成初始化
+  private isVerticalMode: boolean = false; // 垂直模式标志
   
   // 拖拽状态管理
   private draggingTab: TabInfo | null = null; // 当前正在拖拽的标签
@@ -910,7 +911,31 @@ class OrcaTabsPlugin {
     const isDarkMode = orca.state.themeMode === 'dark';
     const backgroundColor = isDarkMode ? 'transparent' : 'rgba(255, 255, 255, 0.1)';
     
-    this.tabContainer.style.cssText = `
+    // 根据布局模式设置不同的样式
+    const containerStyle = this.isVerticalMode ? `
+      position: fixed;
+      top: ${this.position.y}px;
+      left: ${this.position.x}px;
+      z-index: 300;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      background: ${backgroundColor};
+      border-radius: 6px;
+      padding: 2px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      user-select: none;
+      max-height: 80vh;
+      flex-wrap: nowrap;
+      pointer-events: auto;
+      -webkit-app-region: no-drag;
+      width: 200px;
+      align-items: stretch;
+      app-region: no-drag;
+      overflow-y: auto;
+    ` : `
       position: fixed;
       top: ${this.position.y}px;
       left: ${this.position.x}px;
@@ -932,6 +957,8 @@ class OrcaTabsPlugin {
       align-items: center;
       app-region: no-drag;
     `;
+    
+    this.tabContainer.style.cssText = containerStyle;
     
     // 添加事件监听，只阻止标签栏内部的mousedown事件冒泡
     this.tabContainer.addEventListener('mousedown', (e) => {
@@ -1429,6 +1456,89 @@ class OrcaTabsPlugin {
     });
 
     this.tabContainer.appendChild(newTabButton);
+    
+    // 添加布局模式切换按钮
+    this.addLayoutToggleButton();
+  }
+  
+  /**
+   * 添加布局模式切换按钮
+   */
+  addLayoutToggleButton() {
+    if (!this.tabContainer) return;
+    
+    // 检查是否已经存在切换按钮
+    const existingButton = this.tabContainer.querySelector('.layout-toggle-button');
+    if (existingButton) return;
+    
+    // 创建布局模式切换按钮
+    const toggleButton = document.createElement('div');
+    toggleButton.className = 'layout-toggle-button';
+    toggleButton.style.cssText = `
+      width: 24px;
+      height: 24px;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #666;
+      margin-left: 4px;
+      min-height: 24px;
+      flex-shrink: 0;
+      -webkit-app-region: no-drag;
+      app-region: no-drag;
+      pointer-events: auto;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+      border: 1px solid rgba(100, 100, 100, 0.3);
+    `;
+    
+    // 设置按钮图标和提示
+    toggleButton.textContent = this.isVerticalMode ? '⏸' : '⏵';
+    toggleButton.title = this.isVerticalMode ? '切换到水平布局' : '切换到垂直布局';
+    
+    // 悬停效果
+    toggleButton.addEventListener('mouseenter', () => {
+      toggleButton.style.background = 'rgba(100, 100, 100, 0.1)';
+      toggleButton.style.color = '#333';
+    });
+    
+    toggleButton.addEventListener('mouseleave', () => {
+      toggleButton.style.background = 'transparent';
+      toggleButton.style.color = '#666';
+    });
+    
+    // 点击切换布局模式
+    toggleButton.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await this.toggleLayoutMode();
+    });
+    
+    this.tabContainer.appendChild(toggleButton);
+  }
+  
+  /**
+   * 切换布局模式
+   */
+  async toggleLayoutMode() {
+    try {
+      // 切换模式
+      this.isVerticalMode = !this.isVerticalMode;
+      
+      // 保存设置
+      await orca.plugins.setSettings("app", "orca-tabs-plugin", {
+        layoutMode: this.isVerticalMode ? 'vertical' : 'horizontal'
+      });
+      
+      // 重新创建UI
+      await this.createTabsUI();
+      
+      this.log(`📐 布局模式已切换为: ${this.isVerticalMode ? '垂直' : '水平'}`);
+    } catch (error) {
+      this.error("切换布局模式失败:", error);
+    }
   }
 
   /**
@@ -2207,6 +2317,16 @@ class OrcaTabsPlugin {
           type: "string" as const,
           defaultValue: "",
           description: "新建标签页时将导航到此块ID"
+        },
+        layoutMode: {
+          label: "布局模式",
+          type: "singleChoice" as const,
+          defaultValue: "horizontal",
+          description: "选择标签页的布局方向",
+          choices: [
+            { label: "水平布局", value: "horizontal" },
+            { label: "垂直布局", value: "vertical" }
+          ]
         }
       };
 
@@ -2217,6 +2337,10 @@ class OrcaTabsPlugin {
       if (settings?.homePageBlockId) {
         this.homePageBlockId = settings.homePageBlockId;
         this.log(`🏠 主页块ID: ${this.homePageBlockId}`);
+      }
+      if (settings?.layoutMode) {
+        this.isVerticalMode = settings.layoutMode === 'vertical';
+        this.log(`📐 布局模式: ${this.isVerticalMode ? '垂直' : '水平'}`);
       }
       
       this.log("✅ 插件设置已注册");
