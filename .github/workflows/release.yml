@@ -44,16 +44,17 @@ jobs:
         run: |
           # 创建发布目录
           mkdir -p release-package
+          mkdir -p release-package/dist
           
           # 复制必要文件到发布目录
-          cp dist/index.js release-package/
+          cp dist/index.js release-package/dist/
           cp package.json release-package/
           cp README.md release-package/
           cp icon.png release-package/
           
-          # 如果存在 source map，也复制
+          # 如果存在 source map，也复制到 dist 目录
           if [ -f "dist/index.js.map" ]; then
-            cp dist/index.js.map release-package/
+            cp dist/index.js.map release-package/dist/
           fi
           
           # 创建压缩包
