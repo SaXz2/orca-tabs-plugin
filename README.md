@@ -31,16 +31,11 @@ npm install
 npm run build
 ```
 
-构建完成后，将 `dist/index.js` 文件复制到 Orca Note 的插件目录中：
-
-1. 运行 `npm run build` 构建插件
-2. 打开 Orca Note
-3. 进入设置 → 插件
-4. 点击"添加插件"
-5. 选择 `dist/index.js` 文件
-6. 启用插件
+构建完成后，将 `dist/index.js` 文件复制到 Orca Note 的插件目录，
 
 > 💡 提示：安装后可能需要重启 Orca Note 应用才能生效
+> 💡 提示：右侧有编译好的，下载以后在插件目录
+
 
 
 ## 使用
