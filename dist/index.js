@@ -35,15 +35,15 @@ function O(r, t) {
   const e = q(), n = (t == null ? void 0 : t.weekStartsOn) ?? ((l = (o = t == null ? void 0 : t.locale) == null ? void 0 : o.options) == null ? void 0 : l.weekStartsOn) ?? e.weekStartsOn ?? ((u = (c = e.locale) == null ? void 0 : c.options) == null ? void 0 : u.weekStartsOn) ?? 0, a = I(r, t == null ? void 0 : t.in), i = a.getDay(), s = (i < n ? 7 : 0) + i - n;
   return a.setDate(a.getDate() - s), a.setHours(0, 0, 0, 0), a;
 }
-function N(r, t) {
+function B(r, t) {
   return O(r, { ...t, weekStartsOn: 1 });
 }
 function at(r, t) {
   const e = I(r, t == null ? void 0 : t.in), n = e.getFullYear(), a = T(e, 0);
   a.setFullYear(n + 1, 0, 4), a.setHours(0, 0, 0, 0);
-  const i = N(a), s = T(e, 0);
+  const i = B(a), s = T(e, 0);
   s.setFullYear(n, 0, 4), s.setHours(0, 0, 0, 0);
-  const o = N(s);
+  const o = B(s);
   return e.getTime() >= i.getTime() ? n + 1 : e.getTime() >= o.getTime() ? n : n - 1;
 }
 function X(r) {
@@ -81,7 +81,7 @@ function ft(r, t, e) {
 }
 function bt(r, t) {
   const e = at(r, t), n = T(r, 0);
-  return n.setFullYear(e, 0, 4), n.setHours(0, 0, 0, 0), N(n);
+  return n.setFullYear(e, 0, 4), n.setHours(0, 0, 0, 0), B(n);
 }
 function V(r) {
   return T(r, Date.now());
@@ -384,7 +384,7 @@ function L(r) {
     const n = e.width, a = n && r.matchPatterns[n] || r.matchPatterns[r.defaultMatchWidth], i = t.match(a);
     if (!i)
       return null;
-    const s = i[0], o = n && r.parsePatterns[n] || r.parsePatterns[r.defaultParseWidth], l = Array.isArray(o) ? Bt(o, (h) => h.test(s)) : (
+    const s = i[0], o = n && r.parsePatterns[n] || r.parsePatterns[r.defaultParseWidth], l = Array.isArray(o) ? Nt(o, (h) => h.test(s)) : (
       // [TODO] -- I challenge you to fix the type
       Wt(o, (h) => h.test(s))
     );
@@ -402,12 +402,12 @@ function Wt(r, t) {
     if (Object.prototype.hasOwnProperty.call(r, e) && t(r[e]))
       return e;
 }
-function Bt(r, t) {
+function Nt(r, t) {
   for (let e = 0; e < r.length; e++)
     if (t(r[e]))
       return e;
 }
-function Nt(r) {
+function Bt(r) {
   return (t, e = {}) => {
     const n = t.match(r.matchPattern);
     if (!n) return null;
@@ -487,7 +487,7 @@ const Ft = /^(\d+)(th|st|nd|rd)?/i, qt = /\d+/i, Rt = {
     night: /night/i
   }
 }, Jt = {
-  ordinalNumber: Nt({
+  ordinalNumber: Bt({
     matchPattern: Ft,
     parsePattern: qt,
     valueCallback: (r) => parseInt(r, 10)
@@ -540,7 +540,7 @@ function Qt(r, t) {
   return ft(e, yt(e)) + 1;
 }
 function Zt(r, t) {
-  const e = I(r, t == null ? void 0 : t.in), n = +N(e) - +bt(e);
+  const e = I(r, t == null ? void 0 : t.in), n = +B(e) - +bt(e);
   return Math.round(n / et) + 1;
 }
 function rt(r, t) {
@@ -1261,7 +1261,7 @@ const Q = {
   JSON: 0,
   Text: 1
 };
-let B;
+let N;
 class Te {
   constructor() {
     m(this, "firstPanelTabs", []);
@@ -1303,14 +1303,14 @@ class Te {
     // 调整大小的拖拽手柄
     m(this, "isSidebarAlignmentEnabled", !1);
     // 侧边栏对齐功能是否启用
-    m(this, "sidebarAlignmentTimer", null);
-    // 侧边栏状态检查定时器
+    m(this, "sidebarAlignmentObserver", null);
+    // 侧边栏状态监听器
     m(this, "lastSidebarState", null);
     // 上次检测到的侧边栏状态
-    m(this, "sidebarCheckFrame", null);
-    // RAF 帧ID
     m(this, "isFloatingWindowVisible", !0);
     // 浮窗是否可见
+    m(this, "sidebarDebounceTimer", null);
+    // 防抖计时器
     // 拖拽状态管理
     m(this, "draggingTab", null);
     // 当前正在拖拽的标签
@@ -2281,18 +2281,29 @@ class Te {
     }
   }
   /**
-   * 开始监听侧边栏状态变化（使用轻量级轮询）
+   * 开始监听侧边栏状态变化（使用 MutationObserver）
    */
   startSidebarAlignmentObserver() {
-    this.stopSidebarAlignmentObserver(), this.updateLastSidebarState(), this.sidebarAlignmentTimer = window.setInterval(() => {
-      this.isSidebarAlignmentEnabled && this.checkSidebarStateChange();
-    }, 1e3), this.log("👁️ 开始监听侧边栏状态变化（轻量级轮询模式）");
+    this.stopSidebarAlignmentObserver(), this.updateLastSidebarState();
+    const t = document.querySelector("div#app");
+    if (!t) {
+      this.log("⚠️ 未找到 div#app 元素，无法监听侧边栏状态变化");
+      return;
+    }
+    this.sidebarAlignmentObserver = new MutationObserver((e) => {
+      e.some(
+        (a) => a.type === "attributes" && a.attributeName === "class"
+      ) && (this.log("🔄 检测到 div#app class 变化，立即检查侧边栏状态"), this.checkSidebarStateChangeImmediate());
+    }), this.sidebarAlignmentObserver.observe(t, {
+      attributes: !0,
+      attributeFilter: ["class"]
+    }), this.log("👁️ 开始监听侧边栏状态变化（MutationObserver 模式）");
   }
   /**
    * 停止监听侧边栏状态变化
    */
   stopSidebarAlignmentObserver() {
-    this.sidebarCheckFrame && (cancelAnimationFrame(this.sidebarCheckFrame), this.sidebarCheckFrame = null), this.sidebarAlignmentTimer && (clearInterval(this.sidebarAlignmentTimer), this.sidebarAlignmentTimer = null), this.lastSidebarState = null, this.log("👁️ 停止监听侧边栏状态变化");
+    this.sidebarAlignmentObserver && (this.sidebarAlignmentObserver.disconnect(), this.sidebarAlignmentObserver = null), this.sidebarDebounceTimer && (clearTimeout(this.sidebarDebounceTimer), this.sidebarDebounceTimer = null), this.lastSidebarState = null, this.log("👁️ 停止监听侧边栏状态变化");
   }
   /**
    * 更新上次检测到的侧边栏状态
@@ -2307,15 +2318,23 @@ class Te {
     e ? this.lastSidebarState = "closed" : n ? this.lastSidebarState = "opened" : this.lastSidebarState = "unknown";
   }
   /**
-   * 检查侧边栏状态是否发生变化
+   * 立即检查侧边栏状态变化（无防抖）
    */
-  checkSidebarStateChange() {
+  checkSidebarStateChangeImmediate() {
     if (!this.isSidebarAlignmentEnabled) return;
     const t = document.querySelector("div#app");
     if (!t) return;
     const e = t.classList.contains("sidebar-closed"), n = t.classList.contains("sidebar-opened");
     let a;
     e ? a = "closed" : n ? a = "opened" : a = "unknown", this.lastSidebarState !== a && (this.log(`🔄 检测到侧边栏状态变化: ${this.lastSidebarState} -> ${a}`), this.lastSidebarState = a, this.autoAdjustSidebarAlignment());
+  }
+  /**
+   * 检查侧边栏状态是否发生变化（带防抖）
+   */
+  checkSidebarStateChange() {
+    this.isSidebarAlignmentEnabled && (this.sidebarDebounceTimer && clearTimeout(this.sidebarDebounceTimer), this.sidebarDebounceTimer = window.setTimeout(() => {
+      this.checkSidebarStateChangeImmediate();
+    }, 50));
   }
   /**
    * 自动调整侧边栏对齐
@@ -4228,18 +4247,18 @@ class Te {
 }
 let v = null;
 async function Pe(r) {
-  B = r, dt(orca.state.locale, { "zh-CN": ht }), v = new Te(), document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", () => {
+  N = r, dt(orca.state.locale, { "zh-CN": ht }), v = new Te(), document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => v == null ? void 0 : v.init(), 500);
   }) : setTimeout(() => v == null ? void 0 : v.init(), 500), orca.commands.registerCommand(
-    `${B}.resetCache`,
+    `${N}.resetCache`,
     async () => {
       v && await v.resetCache();
     },
     "重置插件缓存"
-  ), typeof window < "u" && window.DEBUG_ORCA_TABS !== !1 && (console.log(W("标签页插件已启动")), console.log(`${B} loaded.`));
+  ), typeof window < "u" && window.DEBUG_ORCA_TABS !== !1 && (console.log(W("标签页插件已启动")), console.log(`${N} loaded.`));
 }
 async function ke() {
-  v && (v.unregisterHeadbarButton(), v.destroy(), v = null), orca.commands.unregisterCommand(`${B}.resetCache`);
+  v && (v.unregisterHeadbarButton(), v.destroy(), v = null), orca.commands.unregisterCommand(`${N}.resetCache`);
 }
 export {
   Pe as load,

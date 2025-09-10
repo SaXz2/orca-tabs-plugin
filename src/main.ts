@@ -83,10 +83,10 @@ class OrcaTabsPlugin {
   private isResizing: boolean = false; // 是否正在调整大小
   private resizeHandle: HTMLElement | null = null; // 调整大小的拖拽手柄
   private isSidebarAlignmentEnabled: boolean = false; // 侧边栏对齐功能是否启用
-  private sidebarAlignmentTimer: number | null = null; // 侧边栏状态检查定时器
+  private sidebarAlignmentObserver: MutationObserver | null = null; // 侧边栏状态监听器
   private lastSidebarState: string | null = null; // 上次检测到的侧边栏状态
-  private sidebarCheckFrame: number | null = null; // RAF 帧ID
   private isFloatingWindowVisible: boolean = true; // 浮窗是否可见
+  private sidebarDebounceTimer: number | null = null; // 防抖计时器
   
   // 拖拽状态管理
   private draggingTab: TabInfo | null = null; // 当前正在拖拽的标签
@@ -1831,7 +1831,7 @@ class OrcaTabsPlugin {
   }
 
   /**
-   * 开始监听侧边栏状态变化（使用轻量级轮询）
+   * 开始监听侧边栏状态变化（使用 MutationObserver）
    */
   startSidebarAlignmentObserver() {
     // 停止现有的监听器
@@ -1840,29 +1840,54 @@ class OrcaTabsPlugin {
     // 初始化状态
     this.updateLastSidebarState();
 
-    // 方案1：使用简单的定时器（推荐，性能最好）
-    this.sidebarAlignmentTimer = window.setInterval(() => {
-      if (this.isSidebarAlignmentEnabled) {
-        this.checkSidebarStateChange();
-      }
-    }, 1000); // 1秒检查一次，减少频率
+    // 查找 div#app 元素
+    const appElement = document.querySelector('div#app');
+    if (!appElement) {
+      this.log("⚠️ 未找到 div#app 元素，无法监听侧边栏状态变化");
+      return;
+    }
 
-    this.log("👁️ 开始监听侧边栏状态变化（轻量级轮询模式）");
+    // 创建 MutationObserver 监听 class 变化
+    this.sidebarAlignmentObserver = new MutationObserver((mutations) => {
+      // 检查是否有 class 属性变化
+      const hasClassChange = mutations.some(mutation => 
+        mutation.type === 'attributes' && mutation.attributeName === 'class'
+      );
+
+      if (hasClassChange) {
+        this.log("🔄 检测到 div#app class 变化，立即检查侧边栏状态");
+        this.checkSidebarStateChangeImmediate();
+      }
+    });
+
+    // 开始监听 class 属性变化
+    this.sidebarAlignmentObserver.observe(appElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    this.log("👁️ 开始监听侧边栏状态变化（MutationObserver 模式）");
   }
 
   /**
    * 停止监听侧边栏状态变化
    */
   stopSidebarAlignmentObserver() {
-    if (this.sidebarCheckFrame) {
-      cancelAnimationFrame(this.sidebarCheckFrame);
-      this.sidebarCheckFrame = null;
+    // 清理 MutationObserver
+    if (this.sidebarAlignmentObserver) {
+      this.sidebarAlignmentObserver.disconnect();
+      this.sidebarAlignmentObserver = null;
     }
-    if (this.sidebarAlignmentTimer) {
-      clearInterval(this.sidebarAlignmentTimer);
-      this.sidebarAlignmentTimer = null;
+
+    // 清理防抖计时器
+    if (this.sidebarDebounceTimer) {
+      clearTimeout(this.sidebarDebounceTimer);
+      this.sidebarDebounceTimer = null;
     }
+
+    // 重置状态
     this.lastSidebarState = null;
+
     this.log("👁️ 停止监听侧边栏状态变化");
   }
 
@@ -1889,9 +1914,9 @@ class OrcaTabsPlugin {
   }
 
   /**
-   * 检查侧边栏状态是否发生变化
+   * 立即检查侧边栏状态变化（无防抖）
    */
-  checkSidebarStateChange() {
+  checkSidebarStateChangeImmediate() {
     if (!this.isSidebarAlignmentEnabled) return;
 
     const appElement = document.querySelector('div#app');
@@ -1909,12 +1934,30 @@ class OrcaTabsPlugin {
       currentState = 'unknown';
     }
 
-    // 如果状态发生变化，执行自动调整
+    // 如果状态发生变化，立即执行调整
     if (this.lastSidebarState !== currentState) {
       this.log(`🔄 检测到侧边栏状态变化: ${this.lastSidebarState} -> ${currentState}`);
       this.lastSidebarState = currentState;
+      
+      // 立即执行调整
       this.autoAdjustSidebarAlignment();
     }
+  }
+
+  /**
+   * 检查侧边栏状态是否发生变化（带防抖）
+   */
+  checkSidebarStateChange() {
+    if (!this.isSidebarAlignmentEnabled) return;
+
+    // 防抖处理
+    if (this.sidebarDebounceTimer) {
+      clearTimeout(this.sidebarDebounceTimer);
+    }
+
+    this.sidebarDebounceTimer = window.setTimeout(() => {
+      this.checkSidebarStateChangeImmediate();
+    }, 50); // 50ms 防抖，非常快
   }
 
   /**
