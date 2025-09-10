@@ -1471,10 +1471,7 @@ class OrcaTabsPlugin {
       line-height: 20px;
       cursor: pointer;
       font-size: 12px;
-      white-space: nowrap;
       max-width: 150px;
-      overflow: hidden;
-      text-overflow: ellipsis;
       transition: all 0.2s ease;
       backdrop-filter: blur(2px);
       -webkit-backdrop-filter: blur(2px);
@@ -1483,16 +1480,50 @@ class OrcaTabsPlugin {
       pointer-events: auto;
     `;
 
+    // 创建标签内容容器
+    const tabContent = document.createElement('div');
+    tabContent.style.cssText = `
+      display: flex;
+      align-items: center;
+      width: 100%;
+      height: 100%;
+      gap: 4px;
+    `;
+
+    // 创建文本容器
+    const textContainer = document.createElement('div');
+    textContainer.style.cssText = `
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    `;
+
     // 设置标签文本
     let displayText = tab.title;
     if (tab.icon) {
       displayText = `${tab.icon} ${tab.title}`;
     }
-    // 如果是固定标签，添加固定图标（放在后面）
+    textContainer.textContent = displayText;
+
+    // 添加文本容器到内容容器
+    tabContent.appendChild(textContainer);
+
+    // 如果是固定标签，添加独立的图钉图标
     if (tab.isPinned) {
-      displayText = `${displayText} 📌`;
+      const pinIcon = document.createElement('span');
+      pinIcon.textContent = '📌';
+      pinIcon.style.cssText = `
+        flex-shrink: 0;
+        font-size: 10px;
+        opacity: 0.8;
+      `;
+      tabContent.appendChild(pinIcon);
     }
-    tabElement.textContent = displayText;
+
+    // 将内容容器添加到标签元素
+    tabElement.appendChild(tabContent);
     
     // 设置悬停提示
     let tooltip = tab.title;
