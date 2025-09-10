@@ -841,13 +841,16 @@ class OrcaTabsPlugin {
         } else {
           // 最低优先级：检查是否是日期块（用高效的API检查）
           const journalInfo = this.extractJournalInfo(block);
+          console.log(`🔍 检查块 ${blockId} 是否为日期块:`, journalInfo);
           if (journalInfo) {
             isJournal = true;
             const formattedDate = this.formatJournalDate(journalInfo);
             title = `📅 ${formattedDate}`;
+            console.log(`📅 识别为日期块: ${title}, 原始日期: ${journalInfo.toISOString()}`);
           } else {
             // 不是日期块，使用块ID作为备选
             title = `块 ${blockId}`;
+            console.log(`❌ 不是日期块: ${blockId}`);
           }
         }
       } catch (e) {
@@ -930,13 +933,24 @@ class OrcaTabsPlugin {
       app-region: no-drag;
     `;
     
-    // 添加事件监听，阻止窗口拖拽
+    // 添加事件监听，只阻止标签栏内部的mousedown事件冒泡
     this.tabContainer.addEventListener('mousedown', (e) => {
-      e.stopPropagation();
+      const target = e.target as HTMLElement;
+      // 只阻止标签栏内部元素的mousedown事件，不影响侧边栏
+      if (target.closest('.orca-tab, .new-tab-button, .drag-handle') && 
+          !target.closest('.sidebar, .side-panel, .panel-resize, .resize-handle, .orca-sidebar, .orca-panel, .orca-menu')) {
+        e.stopPropagation();
+      }
     });
     
     this.tabContainer.addEventListener('click', (e) => {
-      e.stopPropagation();
+      // 只阻止标签栏内部的点击事件冒泡，不影响侧边栏
+      const target = e.target as HTMLElement;
+      if (target.closest('.orca-tab, .new-tab-button, .drag-handle') && 
+          !target.closest('.sidebar, .side-panel, .panel-resize, .resize-handle, .orca-sidebar, .orca-panel, .orca-menu')) {
+        e.stopPropagation();
+        console.log(`🖱️ 标签栏容器点击事件被阻止: ${target.className}`);
+      }
     });
 
     // 创建拖拽手柄
@@ -1421,6 +1435,7 @@ class OrcaTabsPlugin {
    * 创建标签元素
    */
   createTabElement(tab: TabInfo): HTMLElement {
+    console.log(`🔧 创建标签元素: ${tab.title} (ID: ${tab.blockId})`);
     const tabElement = document.createElement('div');
     tabElement.className = 'orca-tab';
     tabElement.setAttribute('data-tab-id', tab.blockId); // 添加data属性用于重命名定位
@@ -1488,9 +1503,12 @@ class OrcaTabsPlugin {
 
     // 添加点击事件
     tabElement.addEventListener('click', (e) => {
+      console.log(`🖱️ 标签点击事件触发: ${tab.title} (ID: ${tab.blockId})`);
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
+      
+      this.log(`🖱️ 点击标签: ${tab.title} (ID: ${tab.blockId})`);
       
       // 移除其他标签的聚焦状态
       const allTabs = this.tabContainer?.querySelectorAll('.orca-tab');
@@ -1501,6 +1519,11 @@ class OrcaTabsPlugin {
       
       // 普通点击切换标签
       this.switchToTab(tab);
+    });
+    
+    // 添加mousedown事件用于调试
+    tabElement.addEventListener('mousedown', (e) => {
+      console.log(`🖱️ 标签mousedown事件触发: ${tab.title} (ID: ${tab.blockId})`);
     });
 
     // 添加双击事件切换固定状态
@@ -1548,6 +1571,13 @@ class OrcaTabsPlugin {
     
     // 拖拽开始事件（优化版）
     tabElement.addEventListener('dragstart', (e) => {
+      // 检查是否在侧边栏拖拽区域，如果是则不处理标签拖拽
+      const target = e.target as HTMLElement;
+      if (target.closest('.sidebar, .side-panel, .panel-resize, .resize-handle, .orca-sidebar, .orca-panel, .orca-menu, .orca-recents-menu, [data-panel-id]')) {
+        e.preventDefault();
+        return;
+      }
+      
       e.dataTransfer!.effectAllowed = 'move'; // 声明拖拽类型为"移动"
       e.dataTransfer?.setData('text/plain', tab.blockId);
       
@@ -1595,6 +1625,12 @@ class OrcaTabsPlugin {
 
     // 拖拽经过事件（修复版）
     tabElement.addEventListener('dragover', (e) => {
+      // 检查是否在侧边栏拖拽区域，如果是则不处理标签拖拽
+      const target = e.target as HTMLElement;
+      if (target.closest('.sidebar, .side-panel, .panel-resize, .resize-handle, .orca-sidebar, .orca-panel, .orca-menu, .orca-recents-menu, [data-panel-id]')) {
+        return;
+      }
+      
       if (this.draggingTab && this.draggingTab.blockId !== tab.blockId) {
         e.preventDefault(); // 允许放置（必须调用，否则无法触发后续逻辑）
         e.dataTransfer!.dropEffect = 'move';
@@ -1609,6 +1645,12 @@ class OrcaTabsPlugin {
 
     // 拖拽进入事件
     tabElement.addEventListener('dragenter', (e) => {
+      // 检查是否在侧边栏拖拽区域，如果是则不处理标签拖拽
+      const target = e.target as HTMLElement;
+      if (target.closest('.sidebar, .side-panel, .panel-resize, .resize-handle, .orca-sidebar, .orca-panel, .orca-menu, .orca-recents-menu, [data-panel-id]')) {
+        return;
+      }
+      
       if (this.draggingTab && this.draggingTab.blockId !== tab.blockId) {
         e.preventDefault();
         // 添加拖拽悬停效果
@@ -1860,6 +1902,8 @@ class OrcaTabsPlugin {
 
   async switchToTab(tab: TabInfo) {
     try {
+      this.log(`🔄 开始切换标签: ${tab.title} (ID: ${tab.blockId})`);
+      
       // 记录当前激活标签的滚动位置
       const currentActiveTab = this.getCurrentActiveTab();
       if (currentActiveTab && currentActiveTab.blockId !== tab.blockId) {
@@ -1871,13 +1915,161 @@ class OrcaTabsPlugin {
       
       // 根据当前面板索引决定在哪个面板打开
       const targetPanelId = this.panelIds[this.currentPanelIndex];
+      this.log(`🎯 目标面板ID: ${targetPanelId}, 当前面板索引: ${this.currentPanelIndex}`);
       
-      if (this.currentPanelIndex === 0) {
-        // 第一个面板：使用固化标签页，在第一个面板打开
-        await orca.nav.goTo("block", { blockId: parseInt(tab.blockId) }, targetPanelId);
-      } else {
-        // 其他面板：在当前面板打开对应的块
-        await orca.nav.goTo("block", { blockId: parseInt(tab.blockId) }, targetPanelId);
+      // 使用更安全的导航方式
+      try {
+        if (tab.isJournal) {
+          // 日期块使用journal导航方式
+          console.log(`🚀 尝试使用 orca.nav.goTo 导航到日期块 ${tab.blockId}, 标题: ${tab.title}`);
+          this.log(`🚀 尝试使用 orca.nav.goTo 导航到日期块 ${tab.blockId}`);
+          
+          // 从标签标题中提取日期信息
+          let targetDate: Date | null = null;
+          
+          // 检查相对日期，使用 Orca 原生命令
+          console.log(`🔍 检查日期块标题: ${tab.title}`);
+          if (tab.title.includes('今天') || tab.title.includes('Today')) {
+            console.log(`📅 使用原生命令跳转到今天`);
+            try {
+              await orca.commands.invokeCommand('core.goToday');
+              console.log(`✅ 今天导航成功`);
+              return; // 直接返回，不需要后续处理
+            } catch (e) {
+              console.log(`❌ 今天导航失败:`, e);
+              // 如果原生命令失败，回退到日期格式
+              targetDate = new Date();
+              console.log(`📅 回退到日期格式: ${targetDate.toISOString()}`);
+            }
+          } else if (tab.title.includes('昨天') || tab.title.includes('Yesterday')) {
+            console.log(`📅 使用原生命令跳转到昨天`);
+            try {
+              await orca.commands.invokeCommand('core.goYesterday');
+              console.log(`✅ 昨天导航成功`);
+              return; // 直接返回，不需要后续处理
+            } catch (e) {
+              console.log(`❌ 昨天导航失败:`, e);
+              // 如果原生命令失败，回退到日期格式
+              targetDate = new Date();
+              targetDate.setDate(targetDate.getDate() - 1);
+              console.log(`📅 回退到日期格式: ${targetDate.toISOString()}`);
+            }
+          } else if (tab.title.includes('明天') || tab.title.includes('Tomorrow')) {
+            console.log(`📅 使用原生命令跳转到明天`);
+            try {
+              await orca.commands.invokeCommand('core.goTomorrow');
+              console.log(`✅ 明天导航成功`);
+              return; // 直接返回，不需要后续处理
+            } catch (e) {
+              console.log(`❌ 明天导航失败:`, e);
+              // 如果原生命令失败，回退到日期格式
+              targetDate = new Date();
+              targetDate.setDate(targetDate.getDate() + 1);
+              console.log(`📅 回退到日期格式: ${targetDate.toISOString()}`);
+            }
+          } else {
+            // 尝试从标题中提取日期
+            const dateMatch = tab.title.match(/(\d{4}-\d{2}-\d{2})/);
+            if (dateMatch) {
+              const dateStr = dateMatch[1];
+              targetDate = new Date(dateStr + 'T00:00:00.000Z'); // 确保是UTC时间
+              if (isNaN(targetDate.getTime())) {
+                console.log(`❌ 无效的日期格式: ${dateStr}`);
+                targetDate = null;
+              } else {
+                console.log(`📅 从标题提取日期: ${dateStr} -> ${targetDate.toISOString()}`);
+              }
+            } else {
+              // 尝试从块信息中获取原始日期
+              console.log(`🔍 尝试从块信息中获取原始日期: ${tab.blockId}`);
+              try {
+                const block = await orca.invokeBackend("get-block", parseInt(tab.blockId));
+                if (block) {
+                  const journalInfo = this.extractJournalInfo(block);
+                  if (journalInfo && !isNaN(journalInfo.getTime())) {
+                    targetDate = journalInfo;
+                    console.log(`📅 从块信息获取日期: ${journalInfo.toISOString()}`);
+                  } else {
+                    console.log(`❌ 块信息中未找到有效日期信息`);
+                  }
+                } else {
+                  console.log(`❌ 无法获取块信息`);
+                }
+              } catch (e) {
+                console.log(`❌ 获取块信息失败:`, e);
+                this.warn("无法获取块信息:", e);
+              }
+            }
+          }
+          
+          if (targetDate) {
+            console.log(`📅 使用日期导航: ${targetDate.toISOString().split('T')[0]}`);
+            this.log(`📅 使用日期导航: ${targetDate.toISOString().split('T')[0]}`);
+            try {
+              // 确保日期是有效的
+              if (isNaN(targetDate.getTime())) {
+                throw new Error("Invalid date");
+              }
+              
+              // 使用简单的 Date 对象格式
+              console.log(`📅 使用简单日期格式: ${targetDate.toISOString()}`);
+              await orca.nav.goTo("journal", { date: targetDate }, targetPanelId);
+              console.log(`✅ 日期导航成功`);
+            } catch (e) {
+              console.log(`❌ 日期导航失败:`, e);
+              // 如果简单格式失败，尝试 Orca 格式
+              try {
+                console.log(`🔄 尝试 Orca 日期格式`);
+                const journalDate = {
+                  t: 2, // 2 for full/absolute date
+                  v: targetDate.getTime() // 使用时间戳
+                };
+                console.log(`📅 使用 Orca 日期格式:`, journalDate);
+                await orca.nav.goTo("journal", { date: journalDate }, targetPanelId);
+                console.log(`✅ Orca 日期导航成功`);
+              } catch (e2) {
+                console.log(`❌ Orca 日期导航也失败:`, e2);
+                throw e2;
+              }
+            }
+          } else {
+            // 如果没有找到日期，尝试使用块ID
+            console.log(`⚠️ 未找到日期信息，尝试使用块ID导航`);
+            this.log(`⚠️ 未找到日期信息，尝试使用块ID导航`);
+            try {
+              await orca.nav.goTo("block", { blockId: parseInt(tab.blockId) }, targetPanelId);
+              console.log(`✅ 块ID导航成功`);
+            } catch (e) {
+              console.log(`❌ 块ID导航失败:`, e);
+              throw e;
+            }
+          }
+        } else {
+          // 普通块使用block导航方式
+          this.log(`🚀 尝试使用 orca.nav.goTo 导航到块 ${tab.blockId}`);
+          await orca.nav.goTo("block", { blockId: parseInt(tab.blockId) }, targetPanelId);
+        }
+        this.log(`✅ orca.nav.goTo 导航成功`);
+      } catch (navError) {
+        this.warn("导航失败，尝试备用方法:", navError);
+        // 备用方法：直接点击块引用
+        const blockElement = document.querySelector(`[data-block-id="${tab.blockId}"]`);
+        if (blockElement) {
+          this.log(`🔄 使用备用方法点击块元素: ${tab.blockId}`);
+          (blockElement as HTMLElement).click();
+        } else {
+          this.error("无法找到目标块元素:", tab.blockId);
+          // 尝试其他选择器
+          const altElement = document.querySelector(`[data-block-id="${tab.blockId}"]`) || 
+                           document.querySelector(`#block-${tab.blockId}`) ||
+                           document.querySelector(`.block-${tab.blockId}`);
+          if (altElement) {
+            this.log(`🔄 找到备用块元素，尝试点击`);
+            (altElement as HTMLElement).click();
+          } else {
+            this.error("完全无法找到目标块元素");
+          }
+        }
       }
       
       // 更新当前激活的标签ID
@@ -3813,21 +4005,23 @@ class OrcaTabsPlugin {
 
     // 使用箭头函数绑定this
     const handleMouseMove = (event: MouseEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
-      this.drag(event);
+      // 只在拖拽标签栏时阻止默认行为
+      if (this.isDragging) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.drag(event);
+      }
     };
     
     const handleMouseUp = (event: MouseEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
+      // 不阻止事件传播，让其他元素能正常响应
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       this.stopDrag();
     };
 
-    document.addEventListener('mousemove', handleMouseMove, { capture: true });
-    document.addEventListener('mouseup', handleMouseUp, { capture: true });
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
     
     if (this.tabContainer) {
       this.tabContainer.style.cursor = 'grabbing';
@@ -3857,6 +4051,9 @@ class OrcaTabsPlugin {
     // 只移动标签容器
     this.tabContainer.style.left = this.position.x + 'px';
     this.tabContainer.style.top = this.position.y + 'px';
+    
+    // 确保拖拽过程中不会影响其他元素的点击
+    this.ensureClickableElements();
   }
 
   stopDrag() {
@@ -3864,7 +4061,28 @@ class OrcaTabsPlugin {
     
     if (this.tabContainer) {
       this.tabContainer.style.cursor = 'default';
+      // 移除可能影响其他元素点击的样式和属性
+      this.tabContainer.style.userSelect = '';
+      this.tabContainer.style.pointerEvents = 'auto';
+      this.tabContainer.style.touchAction = '';
     }
+    
+    // 清理全局拖拽状态
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    document.body.style.pointerEvents = '';
+    document.body.style.touchAction = '';
+    document.documentElement.style.cursor = '';
+    document.documentElement.style.userSelect = '';
+    document.documentElement.style.pointerEvents = '';
+    
+    // 强制重置所有可能被影响的元素
+    this.resetAllElements();
+    
+    // 确保所有元素都能正常点击
+    this.ensureClickableElements();
+    
+    this.log("🔄 拖拽结束，清理所有拖拽状态");
 
     // 保存位置
     this.savePosition();
@@ -3876,6 +4094,69 @@ class OrcaTabsPlugin {
     } catch (e) {
       this.warn("无法保存标签位置");
     }
+  }
+
+  /**
+   * 确保所有元素都能正常点击（拖拽过程中调用）
+   */
+  ensureClickableElements() {
+    // 确保 body 和 html 元素可以点击
+    document.body.style.pointerEvents = 'auto';
+    document.documentElement.style.pointerEvents = 'auto';
+    
+    // 确保 Orca 原生面板可以点击
+    const orcaPanels = document.querySelectorAll('.orca-panel, .orca-sidebar, .orca-menu');
+    orcaPanels.forEach((panel) => {
+      const htmlPanel = panel as HTMLElement;
+      if (htmlPanel.style.pointerEvents === 'none') {
+        htmlPanel.style.pointerEvents = 'auto';
+      }
+    });
+    
+    // 确保按钮可以点击
+    const buttons = document.querySelectorAll('button, .btn, [role="button"]');
+    buttons.forEach((btn) => {
+      const htmlBtn = btn as HTMLElement;
+      if (htmlBtn.style.pointerEvents === 'none') {
+        htmlBtn.style.pointerEvents = 'auto';
+      }
+    });
+  }
+
+  /**
+   * 强制重置所有可能被拖拽影响的元素
+   */
+  resetAllElements() {
+    // 重置所有元素的样式
+    const allElements = document.querySelectorAll('*');
+    allElements.forEach((el) => {
+      const htmlEl = el as HTMLElement;
+      // 重置可能被拖拽影响的样式
+      if (htmlEl.style.cursor === 'grabbing' || htmlEl.style.cursor === 'grab') {
+        htmlEl.style.cursor = '';
+      }
+      if (htmlEl.style.userSelect === 'none') {
+        htmlEl.style.userSelect = '';
+      }
+      if (htmlEl.style.pointerEvents === 'none') {
+        htmlEl.style.pointerEvents = '';
+      }
+      if (htmlEl.style.touchAction === 'none') {
+        htmlEl.style.touchAction = '';
+      }
+    });
+    
+    // 特别处理可能被影响的 Orca 元素
+    const orcaElements = document.querySelectorAll('.orca-panel, .orca-sidebar, .orca-menu, .orca-recents-menu, [data-panel-id]');
+    orcaElements.forEach((el) => {
+      const htmlEl = el as HTMLElement;
+      htmlEl.style.cursor = '';
+      htmlEl.style.userSelect = '';
+      htmlEl.style.pointerEvents = 'auto';
+      htmlEl.style.touchAction = '';
+    });
+    
+    this.log("🔄 重置所有元素样式");
   }
 
   restorePosition() {
@@ -4258,9 +4539,9 @@ class OrcaTabsPlugin {
       await this.handleGlobalEvent(e);
     };
     
-    // 为不同类型的事件注册同一个监听器
-    document.addEventListener('click', this.globalEventListener);
-    document.addEventListener('contextmenu', this.globalEventListener);
+    // 为不同类型的事件注册同一个监听器，使用较低优先级
+    document.addEventListener('click', this.globalEventListener, { passive: true });
+    document.addEventListener('contextmenu', this.globalEventListener, { passive: true });
     // 移除keydown监听以避免干扰Orca核心功能
   }
 
@@ -4299,6 +4580,19 @@ class OrcaTabsPlugin {
         await this.openInNewTab(blockRefId);
         return;
       }
+    }
+    
+    // 检查是否点击了侧边栏相关元素，如果是则不处理
+    const target = e.target as HTMLElement;
+    if (target.closest('.sidebar, .side-panel, .panel-resize, .resize-handle, .orca-sidebar, .orca-panel, .orca-menu, .orca-recents-menu, [data-panel-id]')) {
+      this.log("🔄 检测到侧边栏/面板点击，跳过面板状态检查");
+      return;
+    }
+    
+    // 检查是否在拖拽过程中，如果是则不处理
+    if (this.isDragging) {
+      this.log("🔄 检测到拖拽过程中，跳过面板状态检查");
+      return;
     }
     
     // 使用防抖，避免频繁触发
