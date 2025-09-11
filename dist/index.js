@@ -27,12 +27,12 @@ function at(r, t, e) {
   return isNaN(t) ? I(r, NaN) : (t && n.setDate(n.getDate() + t), n);
 }
 let bt = {};
-function q() {
+function R() {
   return bt;
 }
 function B(r, t) {
   var o, l, c, u;
-  const e = q(), n = (t == null ? void 0 : t.weekStartsOn) ?? ((l = (o = t == null ? void 0 : t.locale) == null ? void 0 : o.options) == null ? void 0 : l.weekStartsOn) ?? e.weekStartsOn ?? ((u = (c = e.locale) == null ? void 0 : c.options) == null ? void 0 : u.weekStartsOn) ?? 0, i = P(r, t == null ? void 0 : t.in), a = i.getDay(), s = (a < n ? 7 : 0) + a - n;
+  const e = R(), n = (t == null ? void 0 : t.weekStartsOn) ?? ((l = (o = t == null ? void 0 : t.locale) == null ? void 0 : o.options) == null ? void 0 : l.weekStartsOn) ?? e.weekStartsOn ?? ((u = (c = e.locale) == null ? void 0 : c.options) == null ? void 0 : u.weekStartsOn) ?? 0, i = P(r, t == null ? void 0 : t.in), a = i.getDay(), s = (a < n ? 7 : 0) + a - n;
   return i.setDate(i.getDate() - s), i.setHours(0, 0, 0, 0), i;
 }
 function F(r, t) {
@@ -83,7 +83,7 @@ function mt(r, t) {
   const e = st(r, t), n = I(r, 0);
   return n.setFullYear(e, 0, 4), n.setHours(0, 0, 0, 0), F(n);
 }
-function Y(r) {
+function V(r) {
   return I(r, Date.now());
 }
 function H(r, t, e) {
@@ -171,7 +171,7 @@ const vt = {
   const i = vt[r];
   return typeof i == "string" ? n = i : t === 1 ? n = i.one : n = i.other.replace("{{count}}", t.toString()), e != null && e.addSuffix ? e.comparison && e.comparison > 0 ? "in " + n : n + " ago" : n;
 };
-function V(r) {
+function Y(r) {
   return (t = {}) => {
     const e = t.width ? String(t.width) : r.defaultWidth;
     return r.formats[e] || r.formats[r.defaultWidth];
@@ -193,15 +193,15 @@ const It = {
   medium: "{{date}}, {{time}}",
   short: "{{date}}, {{time}}"
 }, St = {
-  date: V({
+  date: Y({
     formats: It,
     defaultWidth: "full"
   }),
-  time: V({
+  time: Y({
     formats: Pt,
     defaultWidth: "full"
   }),
-  dateTime: V({
+  dateTime: Y({
     formats: kt,
     defaultWidth: "full"
   })
@@ -419,17 +419,17 @@ function zt(r) {
     return { value: s, rest: o };
   };
 }
-const qt = /^(\d+)(th|st|nd|rd)?/i, Rt = /\d+/i, _t = {
+const Rt = /^(\d+)(th|st|nd|rd)?/i, qt = /\d+/i, _t = {
   narrow: /^(b|a)/i,
   abbreviated: /^(b\.?\s?c\.?|b\.?\s?c\.?\s?e\.?|a\.?\s?d\.?|c\.?\s?e\.?)/i,
   wide: /^(before christ|before common era|anno domini|common era)/i
 }, Ut = {
   any: [/^b/i, /^(a|c)/i]
-}, Vt = {
+}, Yt = {
   narrow: /^[1234]/i,
   abbreviated: /^q[1234]/i,
   wide: /^[1234](th|st|nd|rd)? quarter/i
-}, Yt = {
+}, Vt = {
   any: [/1/i, /2/i, /3/i, /4/i]
 }, Ht = {
   narrow: /^[jfmasond]/i,
@@ -488,8 +488,8 @@ const qt = /^(\d+)(th|st|nd|rd)?/i, Rt = /\d+/i, _t = {
   }
 }, Kt = {
   ordinalNumber: zt({
-    matchPattern: qt,
-    parsePattern: Rt,
+    matchPattern: Rt,
+    parsePattern: qt,
     valueCallback: (r) => parseInt(r, 10)
   }),
   era: A({
@@ -499,9 +499,9 @@ const qt = /^(\d+)(th|st|nd|rd)?/i, Rt = /\d+/i, _t = {
     defaultParseWidth: "any"
   }),
   quarter: A({
-    matchPatterns: Vt,
+    matchPatterns: Yt,
     defaultMatchWidth: "wide",
-    parsePatterns: Yt,
+    parsePatterns: Vt,
     defaultParseWidth: "any",
     valueCallback: (r) => r + 1
   }),
@@ -545,7 +545,7 @@ function ee(r, t) {
 }
 function ot(r, t) {
   var u, h, g, d;
-  const e = P(r, t == null ? void 0 : t.in), n = e.getFullYear(), i = q(), a = (t == null ? void 0 : t.firstWeekContainsDate) ?? ((h = (u = t == null ? void 0 : t.locale) == null ? void 0 : u.options) == null ? void 0 : h.firstWeekContainsDate) ?? i.firstWeekContainsDate ?? ((d = (g = i.locale) == null ? void 0 : g.options) == null ? void 0 : d.firstWeekContainsDate) ?? 1, s = I((t == null ? void 0 : t.in) || r, 0);
+  const e = P(r, t == null ? void 0 : t.in), n = e.getFullYear(), i = R(), a = (t == null ? void 0 : t.firstWeekContainsDate) ?? ((h = (u = t == null ? void 0 : t.locale) == null ? void 0 : u.options) == null ? void 0 : h.firstWeekContainsDate) ?? i.firstWeekContainsDate ?? ((d = (g = i.locale) == null ? void 0 : g.options) == null ? void 0 : d.firstWeekContainsDate) ?? 1, s = I((t == null ? void 0 : t.in) || r, 0);
   s.setFullYear(n + 1, 0, a), s.setHours(0, 0, 0, 0);
   const o = B(s, t), l = I((t == null ? void 0 : t.in) || r, 0);
   l.setFullYear(n, 0, a), l.setHours(0, 0, 0, 0);
@@ -554,7 +554,7 @@ function ot(r, t) {
 }
 function ne(r, t) {
   var o, l, c, u;
-  const e = q(), n = (t == null ? void 0 : t.firstWeekContainsDate) ?? ((l = (o = t == null ? void 0 : t.locale) == null ? void 0 : o.options) == null ? void 0 : l.firstWeekContainsDate) ?? e.firstWeekContainsDate ?? ((u = (c = e.locale) == null ? void 0 : c.options) == null ? void 0 : u.firstWeekContainsDate) ?? 1, i = ot(r, t), a = I((t == null ? void 0 : t.in) || r, 0);
+  const e = R(), n = (t == null ? void 0 : t.firstWeekContainsDate) ?? ((l = (o = t == null ? void 0 : t.locale) == null ? void 0 : o.options) == null ? void 0 : l.firstWeekContainsDate) ?? e.firstWeekContainsDate ?? ((u = (c = e.locale) == null ? void 0 : c.options) == null ? void 0 : u.firstWeekContainsDate) ?? 1, i = ot(r, t), a = I((t == null ? void 0 : t.in) || r, 0);
   return a.setFullYear(i, 0, n), a.setHours(0, 0, 0, 0), B(a, t);
 }
 function ie(r, t) {
@@ -1190,7 +1190,7 @@ function ue(r, t, e) {
 const ge = /[yYQqMLwIdDecihHKkms]o|(\w)\1*|''|'(''|[^'])+('|$)|./g, fe = /P+p+|P+|p+|''|'(''|[^'])+('|$)|./g, be = /^'([^]*?)'?$/, pe = /''/g, me = /[a-zA-Z]/;
 function W(r, t, e) {
   var u, h, g, d;
-  const n = q(), i = n.locale ?? Zt, a = n.firstWeekContainsDate ?? ((h = (u = n.locale) == null ? void 0 : u.options) == null ? void 0 : h.firstWeekContainsDate) ?? 1, s = n.weekStartsOn ?? ((d = (g = n.locale) == null ? void 0 : g.options) == null ? void 0 : d.weekStartsOn) ?? 0, o = P(r, e == null ? void 0 : e.in);
+  const n = R(), i = n.locale ?? Zt, a = n.firstWeekContainsDate ?? ((h = (u = n.locale) == null ? void 0 : u.options) == null ? void 0 : h.firstWeekContainsDate) ?? 1, s = n.weekStartsOn ?? ((d = (g = n.locale) == null ? void 0 : g.options) == null ? void 0 : d.weekStartsOn) ?? 0, o = P(r, e == null ? void 0 : e.in);
   if (!xt(o))
     throw new RangeError("Invalid time value");
   let l = t.match(fe).map((f) => {
@@ -1235,13 +1235,13 @@ function ye(r) {
 function xe(r, t) {
   return H(
     I(r, r),
-    Y(r)
+    V(r)
   );
 }
 function we(r, t) {
   return H(
     r,
-    at(Y(r), 1),
+    at(V(r), 1),
     t
   );
 }
@@ -1251,7 +1251,7 @@ function ve(r, t, e) {
 function Te(r, t) {
   return H(
     I(r, r),
-    ve(Y(r))
+    ve(V(r))
   );
 }
 const Z = {
@@ -2661,33 +2661,10 @@ class Pe {
    * 禁用侧边栏对齐功能
    */
   async disableSidebarAlignment() {
-    var t;
     try {
-      this.log("🔴 禁用侧边栏对齐功能"), this.stopSidebarAlignmentObserver();
-      const e = this.getSidebarWidth();
-      if (this.log(`📏 读取到的侧边栏宽度: ${e}px`), e > 0) {
-        const n = document.querySelector("div#app");
-        this.log(`🔍 查找 div#app 元素: ${n ? "找到" : "未找到"}`), n && this.log(`🔍 app元素类名: ${n.className}`);
-        const i = (n == null ? void 0 : n.classList.contains("sidebar-closed")) || !1, a = (n == null ? void 0 : n.classList.contains("sidebar-opened")) || !1;
-        this.log("🔍 侧边栏状态检测结果:"), this.log(`   - 关闭状态 (sidebar-closed): ${i}`), this.log(`   - 打开状态 (sidebar-opened): ${a}`);
-        const s = this.isVerticalMode ? this.verticalPosition.x : this.position.x;
-        this.log(`📍 当前位置: ${s}px (${this.isVerticalMode ? "垂直模式" : "水平模式"})`);
-        let o, l;
-        if (i)
-          o = Math.max(10, s - e), l = "向左移动", this.log(`📐 侧边栏关闭，向左移动 ${e}px，新位置: ${o}px`);
-        else if (a) {
-          o = s + e;
-          const c = ((t = this.tabContainer) == null ? void 0 : t.getBoundingClientRect().width) || 200;
-          o = Math.min(o, window.innerWidth - c - 10), l = "向右移动", this.log(`📐 侧边栏打开，向右移动 ${e}px，新位置: ${o}px`);
-        } else {
-          this.log("⚠️ 无法确定侧边栏状态，保持当前位置"), this.isSidebarAlignmentEnabled = !1;
-          return;
-        }
-        this.isVerticalMode ? (this.verticalPosition.x = o, await this.saveLayoutMode()) : (this.position.x = o, await this.savePosition()), this.log("🎨 开始重新创建UI..."), await this.createTabsUI(), this.log("   UI重新创建完成"), this.log(`✅ 标签栏已${l}，最终位置: (${o}, ${this.isVerticalMode ? this.verticalPosition.y : this.position.y})`);
-      }
-      this.isSidebarAlignmentEnabled = !1, this.log("🔴 侧边栏对齐功能已禁用");
-    } catch (e) {
-      this.error("禁用侧边栏对齐失败:", e);
+      this.log("🔴 禁用侧边栏对齐功能"), this.stopSidebarAlignmentObserver(), await this.performSidebarAlignment(), this.isSidebarAlignmentEnabled = !1, this.log("🔴 侧边栏对齐功能已禁用");
+    } catch (t) {
+      this.error("禁用侧边栏对齐失败:", t);
     }
   }
   /**
@@ -2750,27 +2727,67 @@ class Pe {
    * 自动调整侧边栏对齐
    */
   async autoAdjustSidebarAlignment() {
-    var t;
-    if (this.isSidebarAlignmentEnabled)
-      try {
-        const e = this.getSidebarWidth();
-        if (e === 0) return;
-        const n = document.querySelector("div#app");
-        if (!n) return;
-        const i = n.classList.contains("sidebar-closed"), a = n.classList.contains("sidebar-opened"), s = this.isVerticalMode ? this.verticalPosition.x : this.position.x;
-        let o;
-        if (i)
-          o = Math.max(10, s - e);
-        else if (a) {
-          o = s + e;
-          const l = ((t = this.tabContainer) == null ? void 0 : t.getBoundingClientRect().width) || 200;
-          o = Math.min(o, window.innerWidth - l - 10);
-        } else
-          return;
-        this.isVerticalMode ? (this.verticalPosition.x = o, await this.saveLayoutMode()) : (this.position.x = o, await this.savePosition()), await this.createTabsUI(), this.log(`🔄 自动调整位置: ${s}px → ${o}px`);
-      } catch (e) {
-        this.error("自动调整侧边栏对齐失败:", e);
+    this.isSidebarAlignmentEnabled && await this.performSidebarAlignment();
+  }
+  /**
+   * 执行侧边栏对齐的核心逻辑
+   */
+  async performSidebarAlignment() {
+    try {
+      const t = this.getSidebarWidth();
+      if (t === 0) return;
+      const e = document.querySelector("div#app");
+      if (!e) return;
+      const n = e.classList.contains("sidebar-closed"), i = e.classList.contains("sidebar-opened");
+      if (!n && !i) {
+        this.log("⚠️ 无法确定侧边栏状态，跳过对齐");
+        return;
       }
+      const a = this.getCurrentPosition();
+      if (!a) return;
+      const s = this.calculateSidebarAlignmentPosition(
+        a,
+        t,
+        n,
+        i
+      );
+      if (!s) return;
+      await this.updatePosition(s), await this.createTabsUI(), this.log(`🔄 侧边栏对齐完成: (${a.x}, ${a.y}) → (${s.x}, ${s.y})`);
+    } catch (t) {
+      this.error("侧边栏对齐失败:", t);
+    }
+  }
+  /**
+   * 获取当前位置
+   */
+  getCurrentPosition() {
+    if (this.tabContainer) {
+      const t = this.tabContainer.getBoundingClientRect();
+      return { x: t.left, y: t.top };
+    }
+    return this.isVerticalMode ? { x: this.verticalPosition.x, y: this.verticalPosition.y } : { x: this.position.x, y: this.position.y };
+  }
+  /**
+   * 计算侧边栏对齐后的位置
+   */
+  calculateSidebarAlignmentPosition(t, e, n, i) {
+    var s;
+    let a;
+    if (n)
+      a = Math.max(10, t.x - e), this.log(`📐 侧边栏关闭，向左移动 ${e}px: ${t.x}px → ${a}px`);
+    else if (i) {
+      a = t.x + e;
+      const o = ((s = this.tabContainer) == null ? void 0 : s.getBoundingClientRect().width) || (this.isVerticalMode ? this.verticalWidth : 200);
+      a = Math.min(a, window.innerWidth - o - 10), this.log(`📐 侧边栏打开，向右移动 ${e}px: ${t.x}px → ${a}px`);
+    } else
+      return null;
+    return { x: a, y: t.y };
+  }
+  /**
+   * 更新位置到内存并保存
+   */
+  async updatePosition(t) {
+    this.isVerticalMode ? (this.verticalPosition.x = t.x, this.verticalPosition.y = t.y, await this.saveLayoutMode(), this.log(`📍 垂直模式位置已更新: (${t.x}, ${t.y})`)) : (this.position.x = t.x, this.position.y = t.y, await this.savePosition(), this.log(`📍 水平模式位置已更新: (${t.x}, ${t.y})`));
   }
   /**
    * 切换浮窗显示/隐藏状态
@@ -2888,33 +2905,13 @@ class Pe {
     t ? (this.log("🔄 检测到更新，重新创建UI..."), await this.createTabsUI()) : this.log("ℹ️ 没有标签页需要更新"), this.log("✅ 所有标签页的块类型和图标已更新");
   }
   /**
-   * 对齐到侧边栏（保留原方法作为备用）
+   * 对齐到侧边栏（手动触发）
    */
   async alignToSidebar() {
-    var t;
     try {
-      const e = this.getSidebarWidth();
-      if (e === 0) {
-        this.log("⚠️ 无法读取侧边栏宽度");
-        return;
-      }
-      const n = document.querySelector("#sidebar.sidebar-closed") !== null, i = document.querySelector("#sidebar.sidebar-opened") !== null;
-      this.log(`🔍 侧边栏状态 - 关闭: ${n}, 打开: ${i}`);
-      let a;
-      const s = this.isVerticalMode ? this.verticalPosition.x : this.position.x;
-      if (this.log(`📍 当前位置: ${s}px`), n)
-        a = Math.max(10, s - e), this.log(`📐 侧边栏关闭，向左移动 ${e}px，新位置: ${a}px`);
-      else if (i) {
-        a = s + e;
-        const o = ((t = this.tabContainer) == null ? void 0 : t.getBoundingClientRect().width) || 200;
-        a = Math.min(a, window.innerWidth - o - 10), this.log(`📐 侧边栏打开，向右移动 ${e}px，新位置: ${a}px`);
-      } else {
-        this.log("⚠️ 无法确定侧边栏状态");
-        return;
-      }
-      this.isVerticalMode ? this.verticalPosition.x = a : this.position.x = a, this.isVerticalMode ? await this.saveLayoutMode() : await this.savePosition(), await this.createTabsUI(), this.log(`📐 标签栏已对齐到侧边栏，新位置: (${a}, ${this.isVerticalMode ? this.verticalPosition.y : this.position.y})`);
-    } catch (e) {
-      this.error("对齐到侧边栏失败:", e);
+      this.log("🎯 手动触发侧边栏对齐"), await this.performSidebarAlignment();
+    } catch (t) {
+      this.error("对齐到侧边栏失败:", t);
     }
   }
   /**
@@ -3314,15 +3311,15 @@ class Pe {
    * RGB转OKLCH颜色空间
    */
   rgbToOklch(t, e, n) {
-    const i = t / 255, a = e / 255, s = n / 255, o = (U) => U <= 0.04045 ? U / 12.92 : Math.pow((U + 0.055) / 1.055, 2.4), l = o(i), c = o(a), u = o(s), h = l * 0.4124564 + c * 0.3575761 + u * 0.1804375, g = l * 0.2126729 + c * 0.7151522 + u * 0.072175, d = l * 0.0193339 + c * 0.119192 + u * 0.9503041, f = 0.2104542553 * h + 0.793617785 * g - 0.0040720468 * d, b = 1.9779984951 * h - 2.428592205 * g + 0.4505937099 * d, m = 0.0259040371 * h + 0.7827717662 * g - 0.808675766 * d, T = Math.cbrt(f), v = Math.cbrt(b), S = Math.cbrt(m), R = 0.2104542553 * T + 0.793617785 * v + 0.0040720468 * S, E = 1.9779984951 * T - 2.428592205 * v + 0.4505937099 * S, M = 0.0259040371 * T + 0.7827717662 * v - 0.808675766 * S, D = Math.sqrt(E * E + M * M), _ = Math.atan2(M, E) * 180 / Math.PI, ct = _ < 0 ? _ + 360 : _;
-    return { l: R, c: D, h: ct };
+    const i = t / 255, a = e / 255, s = n / 255, o = (U) => U <= 0.04045 ? U / 12.92 : Math.pow((U + 0.055) / 1.055, 2.4), l = o(i), c = o(a), u = o(s), h = l * 0.4124564 + c * 0.3575761 + u * 0.1804375, g = l * 0.2126729 + c * 0.7151522 + u * 0.072175, d = l * 0.0193339 + c * 0.119192 + u * 0.9503041, f = 0.2104542553 * h + 0.793617785 * g - 0.0040720468 * d, b = 1.9779984951 * h - 2.428592205 * g + 0.4505937099 * d, m = 0.0259040371 * h + 0.7827717662 * g - 0.808675766 * d, T = Math.cbrt(f), v = Math.cbrt(b), S = Math.cbrt(m), q = 0.2104542553 * T + 0.793617785 * v + 0.0040720468 * S, E = 1.9779984951 * T - 2.428592205 * v + 0.4505937099 * S, M = 0.0259040371 * T + 0.7827717662 * v - 0.808675766 * S, D = Math.sqrt(E * E + M * M), _ = Math.atan2(M, E) * 180 / Math.PI, ct = _ < 0 ? _ + 360 : _;
+    return { l: q, c: D, h: ct };
   }
   /**
    * OKLCH转RGB颜色空间
    */
   oklchToRgb(t, e, n) {
-    const i = n * Math.PI / 180, a = e * Math.cos(i), s = e * Math.sin(i), o = t, l = a, c = s, u = o * o * o, h = l * l * l, g = c * c * c, d = 1.0478112 * u + 0.0228866 * h - 0.050217 * g, f = 0.0295424 * u + 0.9904844 * h + 0.0170491 * g, b = -92345e-7 * u + 0.0150436 * h + 0.7521316 * g, m = 3.2404542 * d - 1.5371385 * f - 0.4985314 * b, T = -0.969266 * d + 1.8760108 * f + 0.041556 * b, v = 0.0556434 * d - 0.2040259 * f + 1.0572252 * b, S = (D) => D <= 31308e-7 ? 12.92 * D : 1.055 * Math.pow(D, 1 / 2.4) - 0.055, R = Math.max(0, Math.min(255, Math.round(S(m) * 255))), E = Math.max(0, Math.min(255, Math.round(S(T) * 255))), M = Math.max(0, Math.min(255, Math.round(S(v) * 255)));
-    return { r: R, g: E, b: M };
+    const i = n * Math.PI / 180, a = e * Math.cos(i), s = e * Math.sin(i), o = t, l = a, c = s, u = o * o * o, h = l * l * l, g = c * c * c, d = 1.0478112 * u + 0.0228866 * h - 0.050217 * g, f = 0.0295424 * u + 0.9904844 * h + 0.0170491 * g, b = -92345e-7 * u + 0.0150436 * h + 0.7521316 * g, m = 3.2404542 * d - 1.5371385 * f - 0.4985314 * b, T = -0.969266 * d + 1.8760108 * f + 0.041556 * b, v = 0.0556434 * d - 0.2040259 * f + 1.0572252 * b, S = (D) => D <= 31308e-7 ? 12.92 * D : 1.055 * Math.pow(D, 1 / 2.4) - 0.055, q = Math.max(0, Math.min(255, Math.round(S(m) * 255))), E = Math.max(0, Math.min(255, Math.round(S(T) * 255))), M = Math.max(0, Math.min(255, Math.round(S(v) * 255)));
+    return { r: q, g: E, b: M };
   }
   /**
    * 应用颜色调整（支持亮色和暗色模式）
@@ -4603,8 +4600,8 @@ class Pe {
    * 将位置限制在窗口边界内
    */
   constrainPosition() {
-    const i = window.innerWidth - 400, a = 0, s = window.innerHeight - 40;
-    this.position.x = Math.max(0, Math.min(i, this.position.x)), this.position.y = Math.max(a, Math.min(s, this.position.y));
+    const t = this.isVerticalMode ? this.verticalWidth : 400, e = 40, n = 0, i = window.innerWidth - t, a = 0, s = window.innerHeight - e;
+    this.isVerticalMode ? (this.verticalPosition.x = Math.max(n, Math.min(i, this.verticalPosition.x)), this.verticalPosition.y = Math.max(a, Math.min(s, this.verticalPosition.y))) : (this.position.x = Math.max(n, Math.min(i, this.position.x)), this.position.y = Math.max(a, Math.min(s, this.position.y)));
   }
   /**
    * 检查新添加的块
@@ -4853,7 +4850,10 @@ class Pe {
    * 更新UI元素位置
    */
   updateUIPositions() {
-    this.tabContainer && (this.tabContainer.style.left = this.position.x + "px", this.tabContainer.style.top = this.position.y + "px");
+    if (this.tabContainer) {
+      const t = this.isVerticalMode ? this.verticalPosition : this.position;
+      this.tabContainer.style.left = t.x + "px", this.tabContainer.style.top = t.y + "px";
+    }
   }
   /**
    * 重置插件缓存

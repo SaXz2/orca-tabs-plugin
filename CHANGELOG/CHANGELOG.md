@@ -1,5 +1,72 @@
 # Orca Tabs Plugin - 版本更新日志
 
+## v2.2.2 - 2024年12月
+
+### 🐛 修复问题
+
+#### 1. 垂直布局侧边栏对齐功能重构
+- **问题**: 垂直布局下侧边栏对齐功能存在多个bug
+  - 不会动态读取当前位置，导致对齐不准确
+  - 会重置Y坐标，导致用户自定义的垂直位置丢失
+  - 代码重复，维护困难
+- **修复**: 完全重构侧边栏对齐功能
+  - 参考水平布局的正常逻辑，创建统一的核心对齐方法
+  - 优先从DOM元素动态读取当前位置，确保对齐准确性
+  - 只更新X坐标，保持Y坐标不变，保护用户自定义位置
+  - 简化为统一的核心逻辑，消除代码重复
+
+#### 2. 位置管理优化
+- **问题**: `updateUIPositions`和`constrainPosition`方法没有考虑垂直模式
+- **修复**: 
+  - 修复`updateUIPositions`方法，根据布局模式使用正确的位置
+  - 修复`constrainPosition`方法，根据布局模式限制不同的位置
+  - 确保垂直和水平模式的位置管理完全独立
+
+#### 3. 代码架构改进
+- **重构**: 侧边栏对齐功能架构优化
+  - 新增`performSidebarAlignment()`核心对齐逻辑
+  - 新增`getCurrentPosition()`统一位置获取方法
+  - 新增`calculateSidebarAlignmentPosition()`位置计算逻辑
+  - 新增`updatePosition()`统一位置更新方法
+  - 简化`autoAdjustSidebarAlignment()`、`alignToSidebar()`、`disableSidebarAlignment()`方法
+
+### 🔧 技术改进
+
+#### 侧边栏对齐功能重构
+- 统一了水平和垂直模式的对齐逻辑
+- 动态位置读取确保对齐准确性
+- Y坐标保护机制防止位置重置
+- 智能边界检测防止超出窗口范围
+- 统一的错误处理和日志记录
+
+#### 位置管理增强
+- 根据布局模式选择正确的存储位置
+- 根据布局模式选择正确的保存方法
+- 独立的位置约束逻辑
+- 改进的UI位置更新机制
+
+### 📝 代码变更统计
+- 重构方法: 侧边栏对齐相关方法完全重构
+- 新增方法: `performSidebarAlignment()`, `getCurrentPosition()`, `calculateSidebarAlignmentPosition()`, `updatePosition()`
+- 修复方法: `updateUIPositions()`, `constrainPosition()`
+- 简化方法: `autoAdjustSidebarAlignment()`, `alignToSidebar()`, `disableSidebarAlignment()`
+- 代码减少: 约200行重复代码被消除
+
+### 🎯 影响范围
+- 垂直布局下的侧边栏对齐功能现在与水平布局一样稳定可靠
+- 用户自定义的垂直位置不会被意外重置
+- 侧边栏对齐的准确性显著提升
+- 代码维护性大幅改善
+
+### ✅ 测试建议
+1. 测试垂直布局下的侧边栏对齐功能
+2. 测试侧边栏开关时的自动对齐
+3. 测试手动触发侧边栏对齐
+4. 测试禁用侧边栏对齐功能
+5. 验证Y坐标在对齐过程中保持不变
+
+---
+
 ## v2.2.1 - 2024年12月
 
 ### 🚀 重大功能更新

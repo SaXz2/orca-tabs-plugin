@@ -2360,67 +2360,8 @@ class OrcaTabsPlugin {
       // 停止监听
       this.stopSidebarAlignmentObserver();
       
-      // 读取侧边栏宽度
-      const sidebarWidth = this.getSidebarWidth();
-      this.log(`📏 读取到的侧边栏宽度: ${sidebarWidth}px`);
-      
-      if (sidebarWidth > 0) {
-        // 按照用户要求，读取 div#app 的 class 来判断侧边栏状态
-        const appElement = document.querySelector('div#app');
-        this.log(`🔍 查找 div#app 元素: ${appElement ? '找到' : '未找到'}`);
-        
-        if (appElement) {
-          this.log(`🔍 app元素类名: ${appElement.className}`);
-        }
-        
-        const isSidebarClosed = appElement?.classList.contains('sidebar-closed') || false;
-        const isSidebarOpened = appElement?.classList.contains('sidebar-opened') || false;
-        
-        this.log(`🔍 侧边栏状态检测结果:`);
-        this.log(`   - 关闭状态 (sidebar-closed): ${isSidebarClosed}`);
-        this.log(`   - 打开状态 (sidebar-opened): ${isSidebarOpened}`);
-        
-        const currentX = this.isVerticalMode ? this.verticalPosition.x : this.position.x;
-        this.log(`📍 当前位置: ${currentX}px (${this.isVerticalMode ? '垂直模式' : '水平模式'})`);
-        
-        let newX: number;
-        let action: string;
-        
-        if (isSidebarClosed) {
-          // 侧边栏关闭时，向左移动侧边栏宽度
-          newX = Math.max(10, currentX - sidebarWidth);
-          action = "向左移动";
-          this.log(`📐 侧边栏关闭，向左移动 ${sidebarWidth}px，新位置: ${newX}px`);
-        } else if (isSidebarOpened) {
-          // 侧边栏打开时，向右移动侧边栏宽度
-          newX = currentX + sidebarWidth;
-          // 确保不超出窗口右边界
-          const containerWidth = this.tabContainer?.getBoundingClientRect().width || 200;
-          newX = Math.min(newX, window.innerWidth - containerWidth - 10);
-          action = "向右移动";
-          this.log(`📐 侧边栏打开，向右移动 ${sidebarWidth}px，新位置: ${newX}px`);
-        } else {
-          this.log("⚠️ 无法确定侧边栏状态，保持当前位置");
-          this.isSidebarAlignmentEnabled = false;
-          return;
-        }
-        
-        // 更新位置
-        if (this.isVerticalMode) {
-          this.verticalPosition.x = newX;
-          await this.saveLayoutMode();
-        } else {
-          this.position.x = newX;
-          await this.savePosition();
-        }
-        
-        // 重新创建UI
-        this.log(`🎨 开始重新创建UI...`);
-        await this.createTabsUI();
-        this.log(`   UI重新创建完成`);
-        
-        this.log(`✅ 标签栏已${action}，最终位置: (${newX}, ${this.isVerticalMode ? this.verticalPosition.y : this.position.y})`);
-      }
+      // 执行最后一次对齐调整
+      await this.performSidebarAlignment();
       
       // 禁用状态
       this.isSidebarAlignmentEnabled = false;
@@ -2565,7 +2506,13 @@ class OrcaTabsPlugin {
    */
   async autoAdjustSidebarAlignment() {
     if (!this.isSidebarAlignmentEnabled) return;
+    await this.performSidebarAlignment();
+  }
 
+  /**
+   * 执行侧边栏对齐的核心逻辑
+   */
+  async performSidebarAlignment() {
     try {
       const sidebarWidth = this.getSidebarWidth();
       if (sidebarWidth === 0) return;
@@ -2576,34 +2523,101 @@ class OrcaTabsPlugin {
       const isSidebarClosed = appElement.classList.contains('sidebar-closed');
       const isSidebarOpened = appElement.classList.contains('sidebar-opened');
       
-      const currentX = this.isVerticalMode ? this.verticalPosition.x : this.position.x;
-      let newX: number;
-      
-      if (isSidebarClosed) {
-        newX = Math.max(10, currentX - sidebarWidth);
-      } else if (isSidebarOpened) {
-        newX = currentX + sidebarWidth;
-        const containerWidth = this.tabContainer?.getBoundingClientRect().width || 200;
-        newX = Math.min(newX, window.innerWidth - containerWidth - 10);
-      } else {
+      if (!isSidebarClosed && !isSidebarOpened) {
+        this.log("⚠️ 无法确定侧边栏状态，跳过对齐");
         return;
       }
-      
+
+      // 获取当前位置
+      const currentPosition = this.getCurrentPosition();
+      if (!currentPosition) return;
+
+      // 计算新位置
+      const newPosition = this.calculateSidebarAlignmentPosition(
+        currentPosition, 
+        sidebarWidth, 
+        isSidebarClosed, 
+        isSidebarOpened
+      );
+
+      if (!newPosition) return;
+
       // 更新位置
-      if (this.isVerticalMode) {
-        this.verticalPosition.x = newX;
-        await this.saveLayoutMode();
-      } else {
-        this.position.x = newX;
-        await this.savePosition();
-      }
+      await this.updatePosition(newPosition);
       
       // 重新创建UI
       await this.createTabsUI();
       
-      this.log(`🔄 自动调整位置: ${currentX}px → ${newX}px`);
+      this.log(`🔄 侧边栏对齐完成: (${currentPosition.x}, ${currentPosition.y}) → (${newPosition.x}, ${newPosition.y})`);
     } catch (error) {
-      this.error("自动调整侧边栏对齐失败:", error);
+      this.error("侧边栏对齐失败:", error);
+    }
+  }
+
+  /**
+   * 获取当前位置
+   */
+  getCurrentPosition(): { x: number; y: number } | null {
+    // 优先从DOM元素读取当前位置
+    if (this.tabContainer) {
+      const rect = this.tabContainer.getBoundingClientRect();
+      return { x: rect.left, y: rect.top };
+    }
+    
+    // 如果容器不存在，使用内存中的位置
+    if (this.isVerticalMode) {
+      return { x: this.verticalPosition.x, y: this.verticalPosition.y };
+    } else {
+      return { x: this.position.x, y: this.position.y };
+    }
+  }
+
+  /**
+   * 计算侧边栏对齐后的位置
+   */
+  calculateSidebarAlignmentPosition(
+    currentPosition: { x: number; y: number },
+    sidebarWidth: number,
+    isSidebarClosed: boolean,
+    isSidebarOpened: boolean
+  ): { x: number; y: number } | null {
+    let newX: number;
+    
+    if (isSidebarClosed) {
+      // 侧边栏关闭时，向左移动侧边栏宽度
+      newX = Math.max(10, currentPosition.x - sidebarWidth);
+      this.log(`📐 侧边栏关闭，向左移动 ${sidebarWidth}px: ${currentPosition.x}px → ${newX}px`);
+    } else if (isSidebarOpened) {
+      // 侧边栏打开时，向右移动侧边栏宽度
+      newX = currentPosition.x + sidebarWidth;
+      
+      // 确保不超出窗口右边界
+      const containerWidth = this.tabContainer?.getBoundingClientRect().width || 
+                           (this.isVerticalMode ? this.verticalWidth : 200);
+      newX = Math.min(newX, window.innerWidth - containerWidth - 10);
+      this.log(`📐 侧边栏打开，向右移动 ${sidebarWidth}px: ${currentPosition.x}px → ${newX}px`);
+    } else {
+      return null;
+    }
+
+    // 保持Y坐标不变，只更新X坐标
+    return { x: newX, y: currentPosition.y };
+  }
+
+  /**
+   * 更新位置到内存并保存
+   */
+  async updatePosition(newPosition: { x: number; y: number }) {
+    if (this.isVerticalMode) {
+      this.verticalPosition.x = newPosition.x;
+      this.verticalPosition.y = newPosition.y;
+      await this.saveLayoutMode();
+      this.log(`📍 垂直模式位置已更新: (${newPosition.x}, ${newPosition.y})`);
+    } else {
+      this.position.x = newPosition.x;
+      this.position.y = newPosition.y;
+      await this.savePosition();
+      this.log(`📍 水平模式位置已更新: (${newPosition.x}, ${newPosition.y})`);
     }
   }
 
@@ -2826,62 +2840,12 @@ class OrcaTabsPlugin {
   }
 
   /**
-   * 对齐到侧边栏（保留原方法作为备用）
+   * 对齐到侧边栏（手动触发）
    */
   async alignToSidebar() {
     try {
-      // 读取侧边栏宽度
-      const sidebarWidth = this.getSidebarWidth();
-      if (sidebarWidth === 0) {
-        this.log("⚠️ 无法读取侧边栏宽度");
-        return;
-      }
-      
-      // 检查侧边栏状态
-      const isSidebarClosed = document.querySelector('#sidebar.sidebar-closed') !== null;
-      const isSidebarOpened = document.querySelector('#sidebar.sidebar-opened') !== null;
-      
-      this.log(`🔍 侧边栏状态 - 关闭: ${isSidebarClosed}, 打开: ${isSidebarOpened}`);
-      
-      let newX: number;
-      
-      const currentX = this.isVerticalMode ? this.verticalPosition.x : this.position.x;
-      this.log(`📍 当前位置: ${currentX}px`);
-      
-      if (isSidebarClosed) {
-        // 侧边栏关闭时，向左移动侧边栏宽度
-        newX = Math.max(10, currentX - sidebarWidth);
-        this.log(`📐 侧边栏关闭，向左移动 ${sidebarWidth}px，新位置: ${newX}px`);
-      } else if (isSidebarOpened) {
-        // 侧边栏打开时，向右移动侧边栏宽度
-        newX = currentX + sidebarWidth;
-        // 确保不超出窗口右边界
-        const containerWidth = this.tabContainer?.getBoundingClientRect().width || 200;
-        newX = Math.min(newX, window.innerWidth - containerWidth - 10);
-        this.log(`📐 侧边栏打开，向右移动 ${sidebarWidth}px，新位置: ${newX}px`);
-      } else {
-        this.log("⚠️ 无法确定侧边栏状态");
-        return;
-      }
-      
-      // 更新位置
-      if (this.isVerticalMode) {
-        this.verticalPosition.x = newX;
-      } else {
-        this.position.x = newX;
-      }
-      
-      // 保存位置
-      if (this.isVerticalMode) {
-        await this.saveLayoutMode();
-      } else {
-        await this.savePosition();
-      }
-      
-      // 重新创建UI
-      await this.createTabsUI();
-      
-      this.log(`📐 标签栏已对齐到侧边栏，新位置: (${newX}, ${this.isVerticalMode ? this.verticalPosition.y : this.position.y})`);
+      this.log("🎯 手动触发侧边栏对齐");
+      await this.performSidebarAlignment();
     } catch (error) {
       this.error("对齐到侧边栏失败:", error);
     }
@@ -6264,7 +6228,7 @@ class OrcaTabsPlugin {
    */
   constrainPosition() {
     // 保守估计容器大小（如果还没有创建）
-    const estimatedWidth = 400;
+    const estimatedWidth = this.isVerticalMode ? this.verticalWidth : 400;
     const estimatedHeight = 40;
     
     const minX = 0; // 允许紧靠左边缘
@@ -6272,8 +6236,14 @@ class OrcaTabsPlugin {
     const minY = 0; // 允许紧靠上边缘
     const maxY = window.innerHeight - estimatedHeight;
     
-    this.position.x = Math.max(minX, Math.min(maxX, this.position.x));
-    this.position.y = Math.max(minY, Math.min(maxY, this.position.y));
+    // 根据布局模式限制不同的位置
+    if (this.isVerticalMode) {
+      this.verticalPosition.x = Math.max(minX, Math.min(maxX, this.verticalPosition.x));
+      this.verticalPosition.y = Math.max(minY, Math.min(maxY, this.verticalPosition.y));
+    } else {
+      this.position.x = Math.max(minX, Math.min(maxX, this.position.x));
+      this.position.y = Math.max(minY, Math.min(maxY, this.position.y));
+    }
   }
 
   /**
@@ -6818,8 +6788,10 @@ class OrcaTabsPlugin {
    */
   updateUIPositions() {
     if (this.tabContainer) {
-      this.tabContainer.style.left = this.position.x + 'px';
-      this.tabContainer.style.top = this.position.y + 'px';
+      // 根据布局模式使用正确的位置
+      const currentPosition = this.isVerticalMode ? this.verticalPosition : this.position;
+      this.tabContainer.style.left = currentPosition.x + 'px';
+      this.tabContainer.style.top = currentPosition.y + 'px';
     }
   }
 
