@@ -27,6 +27,7 @@ interface TabInfo {
   isPinned?: boolean;
   order: number;
   scrollPosition?: { x: number; y: number }; // 滚动位置
+  blockType?: string; // 块类型
 }
 
 interface TabPosition {
@@ -202,35 +203,6 @@ class OrcaStorageService {
   }
 
   /**
-   * 迁移localStorage数据到API配置
-   * 检查是否存在旧的localStorage数据，如果存在则迁移到API配置
-   */
-  async migrateFromLocalStorage(): Promise<void> {
-    try {
-      this.log("🔄 开始检查并迁移localStorage数据...");
-      
-      // 迁移标签页数据
-      await this.migrateTabData();
-      
-      // 迁移已关闭标签列表
-      await this.migrateClosedTabs();
-      
-      // 迁移浮窗可见状态
-      await this.migrateFloatingWindowVisibility();
-      
-      // 迁移位置数据
-      await this.migratePosition();
-      
-      // 迁移布局模式
-      await this.migrateLayoutMode();
-      
-      this.log("✅ 数据迁移完成");
-    } catch (error) {
-      this.error("数据迁移失败:", error);
-    }
-  }
-
-  /**
    * 测试API配置的序列化和反序列化
    */
   async testConfigSerialization(): Promise<void> {
@@ -266,169 +238,10 @@ class OrcaStorageService {
     }
   }
 
-  /**
-   * 迁移标签页数据
-   */
-  private async migrateTabData(): Promise<void> {
-    try {
-      // 检查是否存在旧的localStorage数据
-      const oldKeys = this.getOldLocalStorageKeys();
-      let migrated = false;
-      
-      for (const oldKey of oldKeys) {
-        const oldData = localStorage.getItem(oldKey);
-        if (oldData) {
-          try {
-            const tabData = JSON.parse(oldData);
-            if (Array.isArray(tabData) && tabData.length > 0) {
-              await this.saveConfig(PLUGIN_STORAGE_KEYS.FIRST_PANEL_TABS, tabData);
-              this.log(`📦 已迁移标签页数据: ${oldKey} -> API配置`);
-              migrated = true;
-              break; // 只迁移第一个找到的数据
-            }
-          } catch (e) {
-            this.warn(`解析旧标签页数据失败: ${oldKey}`, e);
-          }
-        }
-      }
-      
-      if (!migrated) {
-        this.log("📦 没有找到需要迁移的标签页数据");
-      }
-    } catch (error) {
-      this.warn("迁移标签页数据失败:", error);
-    }
-  }
-
-  /**
-   * 迁移已关闭标签列表
-   */
-  private async migrateClosedTabs(): Promise<void> {
-    try {
-      const oldKeys = this.getOldClosedTabsKeys();
-      let migrated = false;
-      
-      for (const oldKey of oldKeys) {
-        const oldData = localStorage.getItem(oldKey);
-        if (oldData) {
-          try {
-            const closedTabs = JSON.parse(oldData);
-            if (Array.isArray(closedTabs)) {
-              await this.saveConfig(PLUGIN_STORAGE_KEYS.CLOSED_TABS, closedTabs);
-              this.log(`📦 已迁移已关闭标签列表: ${oldKey} -> API配置`);
-              migrated = true;
-              break;
-            }
-          } catch (e) {
-            this.warn(`解析旧已关闭标签数据失败: ${oldKey}`, e);
-          }
-        }
-      }
-      
-      if (!migrated) {
-        this.log("📦 没有找到需要迁移的已关闭标签数据");
-      }
-    } catch (error) {
-      this.warn("迁移已关闭标签数据失败:", error);
-    }
-  }
-
-  /**
-   * 迁移浮窗可见状态
-   */
-  private async migrateFloatingWindowVisibility(): Promise<void> {
-    try {
-      const oldData = localStorage.getItem('orca-tabs-visible');
-      if (oldData !== null) {
-        const isVisible = oldData === 'true';
-        await this.saveConfig(PLUGIN_STORAGE_KEYS.FLOATING_WINDOW_VISIBLE, isVisible);
-        this.log(`📦 已迁移浮窗可见状态: orca-tabs-visible -> API配置`);
-      } else {
-        this.log("📦 没有找到需要迁移的浮窗可见状态数据");
-      }
-    } catch (error) {
-      this.warn("迁移浮窗可见状态失败:", error);
-    }
-  }
-
-  /**
-   * 迁移位置数据
-   */
-  private async migratePosition(): Promise<void> {
-    try {
-      const oldData = localStorage.getItem('orca-tabs-position');
-      if (oldData) {
-        try {
-          const position = JSON.parse(oldData);
-          if (position && typeof position.x === 'number' && typeof position.y === 'number') {
-            await this.saveConfig(PLUGIN_STORAGE_KEYS.TABS_POSITION, position);
-            this.log(`📦 已迁移位置数据: orca-tabs-position -> API配置`);
-          }
-        } catch (e) {
-          this.warn("解析旧位置数据失败:", e);
-        }
-      } else {
-        this.log("📦 没有找到需要迁移的位置数据");
-      }
-    } catch (error) {
-      this.warn("迁移位置数据失败:", error);
-    }
-  }
-
-  /**
-   * 迁移布局模式
-   */
-  private async migrateLayoutMode(): Promise<void> {
-    try {
-      const oldData = localStorage.getItem('orca-tabs-layout');
-      if (oldData) {
-        try {
-          const layoutData = JSON.parse(oldData);
-          if (layoutData && typeof layoutData === 'object') {
-            await this.saveConfig(PLUGIN_STORAGE_KEYS.LAYOUT_MODE, layoutData);
-            this.log(`📦 已迁移布局模式数据: orca-tabs-layout -> API配置`);
-          }
-        } catch (e) {
-          this.warn("解析旧布局模式数据失败:", e);
-        }
-      } else {
-        this.log("📦 没有找到需要迁移的布局模式数据");
-      }
-    } catch (error) {
-      this.warn("迁移布局模式数据失败:", error);
-    }
-  }
 
   /**
    * 获取旧的localStorage键名（用于迁移）
    */
-  private getOldLocalStorageKeys(): string[] {
-    // 尝试获取当前库的repo信息
-    try {
-      const repo = orca.state.repo;
-      if (repo && typeof repo === 'string') {
-        return [`orca-first-panel-tabs-repo-${repo}`, 'orca-first-panel-tabs-default'];
-      }
-    } catch (e) {
-      // 忽略错误
-    }
-    return ['orca-first-panel-tabs-default'];
-  }
-
-  /**
-   * 获取旧的已关闭标签localStorage键名（用于迁移）
-   */
-  private getOldClosedTabsKeys(): string[] {
-    try {
-      const repo = orca.state.repo;
-      if (repo && typeof repo === 'string') {
-        return [`orca-closed-tabs-repo-${repo}`, 'orca-closed-tabs-default'];
-      }
-    } catch (e) {
-      // 忽略错误
-    }
-    return ['orca-closed-tabs-default'];
-  }
 }
 
 class OrcaTabsPlugin {
@@ -482,6 +295,7 @@ class OrcaTabsPlugin {
   private isVerticalMode: boolean = false; // 垂直模式标志
   private verticalWidth: number = 200; // 垂直模式下的窗口宽度
   private verticalPosition: TabPosition = { x: 20, y: 20 }; // 垂直模式下的位置
+  private horizontalPosition: TabPosition = { x: 20, y: 20 }; // 水平模式下的位置
   private isResizing: boolean = false; // 是否正在调整大小
   private resizeHandle: HTMLElement | null = null; // 调整大小的拖拽手柄
   private isSidebarAlignmentEnabled: boolean = false; // 侧边栏对齐功能是否启用
@@ -489,6 +303,8 @@ class OrcaTabsPlugin {
   private lastSidebarState: string | null = null; // 上次检测到的侧边栏状态
   private isFloatingWindowVisible: boolean = true; // 浮窗是否可见
   private sidebarDebounceTimer: number | null = null; // 防抖计时器
+  public showBlockTypeIcons: boolean = true; // 是否显示块类型图标
+  public showInHeadbar: boolean = true; // 是否在顶部栏显示按钮
   
   // 拖拽状态管理
   private draggingTab: TabInfo | null = null; // 当前正在拖拽的标签
@@ -533,6 +349,7 @@ class OrcaTabsPlugin {
     // 恢复浮窗可见状态
     await this.restoreFloatingWindowVisibility();
     
+    
     // 注册顶部工具栏按钮
     this.registerHeadbarButton();
     
@@ -542,8 +359,6 @@ class OrcaTabsPlugin {
     // 面板是动态创建的，不需要延迟检查
     // 监听器会自动检测新面板的创建
     
-    // 执行数据迁移（从localStorage到API配置）
-    await this.storageService.migrateFromLocalStorage();
     
     // 测试API配置序列化（开发模式）
     if (typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS !== false) {
@@ -1086,21 +901,13 @@ class OrcaTabsPlugin {
           } else {
             text += fragment.u; // 使用URL
           }
+        } else if (fragment.a) {
+          // 优先使用别名字段 a，并加上 [[]] 包围
+          text += `[[${fragment.a}]]`;
         } else if (fragment.v && (typeof fragment.v === "number" || typeof fragment.v === "string")) {
-          // 如果v是数字或字符串且没有URL，这是块引用，使用getTabInfo方式读取
-          try {
-            const referencedBlockId = fragment.v.toString();
-            // 使用getTabInfo方式获取块信息，这样能正确解析content
-            const tabInfo = await this.getTabInfo(referencedBlockId, "", 0);
-            if (tabInfo && tabInfo.title) {
-              text += tabInfo.title;
-            } else {
-              text += `[[块${referencedBlockId}]]`;
-            }
-          } catch (e) {
-            this.warn("处理r类型块引用失败:", e);
-            text += `[[块引用]]`;
-          }
+          // 如果v是数字或字符串且没有URL，这是块引用
+          // 对于没有a字段的块引用，直接使用v值，不进行复杂的解析
+          text += `[[块${fragment.v}]]`;
         } else if (fragment.v) {
           // 其他情况，v作为显示文本
           text += fragment.v;
@@ -1160,6 +967,306 @@ class OrcaTabsPlugin {
       // JSON解析失败或其他错误
       return null;
     }
+  }
+
+  /**
+   * 检查content是否需要拼接多段
+   */
+  needsContentConcatenation(content: any[]): boolean {
+    if (!Array.isArray(content) || content.length === 0) {
+      return false;
+    }
+    
+    // 检查是否包含没有别名的块引用
+    let hasRefsWithoutAlias = false;
+    let hasText = false;
+    let hasRefs = false;
+    
+    for (const fragment of content) {
+      if (fragment && typeof fragment === 'object') {
+        if (fragment.t === 'r' && fragment.v) {
+          hasRefs = true;
+          // 如果块引用没有a字段，认为需要拼接
+          if (!fragment.a) {
+            hasRefsWithoutAlias = true;
+          }
+        } else if (fragment.t === 't' && fragment.v) {
+          hasText = true;
+        }
+      }
+    }
+    
+    // 如果包含没有别名的块引用，或者包含文本+块引用的拼接格式，认为需要拼接
+    return hasRefsWithoutAlias || (hasText && hasRefs);
+  }
+
+  /**
+   * 检查content是否主要是文本+块引用的组合
+   */
+  isTextWithBlockRefs(content: any[]): boolean {
+    if (!Array.isArray(content) || content.length === 0) {
+      return false;
+    }
+    
+    let textCount = 0;
+    let refCount = 0;
+    
+    for (const fragment of content) {
+      if (fragment && typeof fragment === 'object') {
+        if (fragment.t === 'text' && fragment.v) {
+          textCount++;
+        } else if (fragment.t === 'ref' && fragment.v) {
+          refCount++;
+        }
+      }
+    }
+    
+    // 如果同时有文本和块引用，且文本数量大于等于块引用数量，认为是文本+块引用组合
+    return textCount > 0 && refCount > 0 && textCount >= refCount;
+  }
+
+  /**
+   * 检测块类型
+   */
+  async detectBlockType(block: any): Promise<string> {
+    try {
+      // 1. 检查是否是日期块
+      const journalInfo = this.extractJournalInfo(block);
+      if (journalInfo) {
+        return 'journal';
+      }
+
+      // 2. 检查 data-type 属性（最高优先级）
+      if (block['data-type']) {
+        const dataType = block['data-type'];
+        this.log(`🔍 检测到 data-type: ${dataType}`);
+        
+        switch (dataType) {
+          case 'table2':
+            return 'table';
+          case 'ul':
+            return 'list';
+          case 'ol':
+            return 'list';
+          default:
+            this.log(`⚠️ 未知的 data-type: ${dataType}`);
+        }
+      }
+
+      // 3. 检查是否是别名块，使用 Orca API 准确判断页面和标签类型
+      if (block.aliases && block.aliases.length > 0) {
+        this.log(`🏷️ 检测到别名块: aliases=${JSON.stringify(block.aliases)}`);
+        
+        const alias = block.aliases[0];
+        if (alias) {
+          try {
+            // 使用 _hide 属性判断：有 _hide 且为 truthy 的是页面，否则是标签
+            const hideProp = this.findProperty(block, '_hide');
+            const isPage = hideProp && hideProp.value;
+            
+            if (isPage) {
+              this.log(`📄 通过 _hide 属性确认为页面: ${alias} (hide=${hideProp.value})`);
+              return 'page';
+            } else {
+              this.log(`🏷️ 通过 _hide 属性确认为标签: ${alias} (hide=${hideProp ? hideProp.value : 'undefined'})`);
+              return 'tag';
+            }
+          } catch (error) {
+            this.warn("使用 API 检测标签失败，回退到文本分析:", error);
+            // 回退到原来的文本分析逻辑
+            if (alias.includes('#') || 
+                alias.includes('@') || 
+                alias.length < 20 && alias.match(/^[a-zA-Z0-9_-]+$/) ||
+                alias.match(/^[a-z]+$/i)) {
+              return 'tag';
+            } else {
+              return 'page';
+            }
+          }
+        }
+        
+        return 'alias'; // 默认返回别名
+      }
+      
+      // 调试：输出块的基本信息
+      this.verboseLog(`🔍 块信息调试: blockId=${block.id}, aliases=${block.aliases ? JSON.stringify(block.aliases) : 'undefined'}, content=${block.content ? 'exists' : 'undefined'}, text=${block.text ? 'exists' : 'undefined'}`);
+
+      // 4. 检查_repr属性中的类型
+      const reprProp = this.findProperty(block, '_repr');
+      if (reprProp && reprProp.type === PropType.JSON && reprProp.value) {
+        try {
+          const reprData = typeof reprProp.value === 'string' 
+            ? JSON.parse(reprProp.value) 
+            : reprProp.value;
+          
+          if (reprData.type) {
+            return reprData.type;
+          }
+        } catch (e) {
+          // JSON解析失败，继续其他检测
+        }
+      }
+
+      // 5. 检查块内容特征
+      if (block.content && Array.isArray(block.content)) {
+        // 检查是否包含代码块
+        const hasCodeBlock = block.content.some((item: any) => 
+          item && typeof item === 'object' && item.type === 'code'
+        );
+        if (hasCodeBlock) {
+          return 'code';
+        }
+
+        // 检查是否包含表格
+        const hasTable = block.content.some((item: any) => 
+          item && typeof item === 'object' && item.type === 'table'
+        );
+        if (hasTable) {
+          return 'table';
+        }
+
+        // 检查是否包含图片
+        const hasImage = block.content.some((item: any) => 
+          item && typeof item === 'object' && item.type === 'image'
+        );
+        if (hasImage) {
+          return 'image';
+        }
+
+        // 检查是否包含链接
+        const hasLink = block.content.some((item: any) => 
+          item && typeof item === 'object' && item.type === 'link'
+        );
+        if (hasLink) {
+          return 'link';
+        }
+      }
+
+      // 6. 检查块文本特征
+      if (block.text) {
+        const text = block.text.trim();
+        
+        // 检查是否是标题（以#开头）
+        if (text.startsWith('#')) {
+          return 'heading';
+        }
+
+        // 检查是否是引用（以>开头）
+        if (text.startsWith('> ')) {
+          return 'quote';
+        }
+
+        // 检查是否是代码行
+        if (text.startsWith('```') || text.startsWith('`')) {
+          return 'code';
+        }
+
+        // 检查是否是任务项
+        if (text.startsWith('- [ ]') || text.startsWith('- [x]') || text.startsWith('* [ ]') || text.startsWith('* [x]')) {
+          return 'task';
+        }
+
+        // 检查是否是表格（包含|分隔符且有多行）
+        if (text.includes('|') && text.split('\n').length > 1) {
+          return 'table';
+        }
+
+        // 检查是否是列表（无序列表：- * + 开头，有序列表：数字. 开头）
+        if (text.startsWith('- ') || text.startsWith('* ') || text.startsWith('+ ') || 
+            /^\d+\.\s/.test(text)) {
+          return 'list';
+        }
+
+        // 检查是否包含URL链接
+        const urlPattern = /https?:\/\/[^\s]+/;
+        if (urlPattern.test(text)) {
+          return 'link';
+        }
+
+        // 检查是否是数学公式
+        if (text.includes('$$') || text.includes('$') && text.includes('=')) {
+          return 'math';
+        }
+      }
+
+      // 7. 默认类型
+      return 'text';
+    } catch (e) {
+      this.warn("检测块类型失败:", e);
+      return 'text';
+    }
+  }
+
+  /**
+   * 根据块类型获取图标
+   */
+  getBlockTypeIcon(blockType: string): string {
+    const iconMap: { [key: string]: string } = {
+      'journal': '📅',      // 日期块 - 保持emoji
+      'alias': 'ti ti-tag',       // 别名块
+      'page': 'ti ti-file',         // 页面
+      'tag': 'ti ti-hash',         // 标签
+      'heading': 'ti ti-heading',      // 标题
+      'code': 'ti ti-code',         // 代码
+      'table': 'ti ti-table',        // 表格
+      'image': 'ti ti-photo',        // 图片
+      'link': 'ti ti-link',         // 链接
+      'list': 'ti ti-list',         // 列表
+      'quote': 'ti ti-quote',        // 引用
+      'text': 'ti ti-box',         // 普通文本
+      'block': 'ti ti-square',        // 块
+      'note': 'ti ti-notes',         // 笔记
+      'task': 'ti ti-checkbox',         // 任务
+      'idea': 'ti ti-bulb',         // 想法
+      'question': 'ti ti-help-circle',     // 问题
+      'answer': 'ti ti-message-circle',       // 答案
+      'summary': 'ti ti-file-text',      // 总结
+      'reference': 'ti ti-book',    // 参考
+      'example': 'ti ti-code',      // 示例
+      'warning': 'ti ti-alert-triangle',      // 警告
+      'info': 'ti ti-info-circle',         // 信息
+      'tip': 'ti ti-lightbulb',          // 提示
+      'math': 'ti ti-math',         // 数学公式
+      'default': 'ti ti-file'       // 默认
+    };
+
+    const icon = iconMap[blockType] || iconMap['default'];
+    this.verboseLog(`🎨 为块类型 "${blockType}" 分配图标: ${icon}`);
+    return icon;
+  }
+
+  /**
+   * 获取所有支持的块类型和对应图标
+   */
+  getAllBlockTypeIcons(): { [key: string]: string } {
+    return {
+      'journal': '📅',      // 日期块 - 保持emoji
+      'alias': 'ti ti-tag',       // 别名块
+      'page': 'ti ti-file-text',         // 页面
+      'tag': 'ti ti-tag',         // 标签
+      'heading': 'ti ti-heading',      // 标题
+      'code': 'ti ti-code',         // 代码
+      'table': 'ti ti-table',        // 表格
+      'image': 'ti ti-photo',        // 图片
+      'link': 'ti ti-link',         // 链接
+      'list': 'ti ti-list',         // 列表
+      'quote': 'ti ti-quote',        // 引用
+      'text': 'ti ti-box',         // 普通文本
+      'block': 'ti ti-square',        // 块
+      'note': 'ti ti-notes',         // 笔记
+      'task': 'ti ti-checkbox',         // 任务
+      'idea': 'ti ti-bulb',         // 想法
+      'question': 'ti ti-help-circle',     // 问题
+      'answer': 'ti ti-message-circle',       // 答案
+      'summary': 'ti ti-file-text',      // 总结
+      'reference': 'ti ti-book',    // 参考
+      'example': 'ti ti-code',      // 示例
+      'warning': 'ti ti-alert-triangle',      // 警告
+      'info': 'ti ti-info-circle',         // 信息
+      'tip': 'ti ti-lightbulb',          // 提示
+      'math': 'ti ti-math',         // 数学公式
+      'default': 'ti ti-file'       // 默认
+    };
   }
 
   /**
@@ -1255,32 +1362,81 @@ class OrcaTabsPlugin {
       let color = "";
       let icon = "";
       let isJournal = false;
+      let blockType = "";
 
-      // 获取标题：优先级 BlockAlias > content内容 > text内容 > _repr日期块
+      // 检测块类型
+      blockType = await this.detectBlockType(block);
+      this.log(`🔍 检测到块类型: ${blockType} (块ID: ${blockId})`);
+      
+      // 特别调试别名块
+      if (block.aliases && block.aliases.length > 0) {
+        this.log(`🏷️ 别名块详细信息: blockId=${blockId}, aliases=${JSON.stringify(block.aliases)}, 检测到的类型=${blockType}`);
+      }
+
+      // 获取标题：优先级 日期块 > 别名 > content内容 > text内容
       try {
-        // 最高优先级：检查是否有别名（性能最好）
-        if (block.aliases && block.aliases.length > 0) {
+        // 最高优先级：检查是否是日期块
+        const journalInfo = this.extractJournalInfo(block);
+        if (journalInfo) {
+          isJournal = true;
+          const formattedDate = this.formatJournalDate(journalInfo);
+          title = formattedDate; // 移除文字中的图标，图标会通过icon属性单独显示
+          console.log(`📅 识别为日期块: ${title}, 原始日期: ${journalInfo.toISOString()}`);
+        } else if (block.aliases && block.aliases.length > 0) {
+          // 第二优先级：检查是否有别名
           title = block.aliases[0];
         } else if (block.content && block.content.length > 0) {
-          // 次优先级：使用content内容（最准确，不包含标签）
-          title = (await this.extractTextFromContent(block.content)).substring(0, 50);
+          // 第三优先级：检查content是否需要拼接多段
+          const needsConcatenation = this.needsContentConcatenation(block.content);
+          if (needsConcatenation && block.text) {
+            // 如果需要拼接多段，优先使用block.text
+            title = block.text.substring(0, 50);
+          } else {
+            // 否则使用content内容解析
+            title = (await this.extractTextFromContent(block.content)).substring(0, 50);
+          }
         } else if (block.text) {
           // 第三优先级：使用text内容作为备选
-          title = block.text.substring(0, 50);
-        } else {
-          // 最低优先级：检查是否是日期块（用高效的API检查）
-          const journalInfo = this.extractJournalInfo(block);
-          console.log(`🔍 检查块 ${blockId} 是否为日期块:`, journalInfo);
-          if (journalInfo) {
-            isJournal = true;
-            const formattedDate = this.formatJournalDate(journalInfo);
-            title = `📅 ${formattedDate}`;
-            console.log(`📅 识别为日期块: ${title}, 原始日期: ${journalInfo.toISOString()}`);
-          } else {
-            // 不是日期块，使用块ID作为备选
-            title = `块 ${blockId}`;
-            console.log(`❌ 不是日期块: ${blockId}`);
+          let textTitle = block.text.substring(0, 50);
+          
+          // 根据块类型优化标题提取
+          if (blockType === 'list') {
+            // 列表：提取第一行作为标题
+            const firstLine = block.text.split('\n')[0].trim();
+            if (firstLine) {
+              // 移除列表标记
+              textTitle = firstLine.replace(/^[-*+]\s+/, '').replace(/^\d+\.\s+/, '');
+            }
+          } else if (blockType === 'table') {
+            // 表格：提取第一行作为标题
+            const firstLine = block.text.split('\n')[0].trim();
+            if (firstLine) {
+              // 移除表格分隔符
+              textTitle = firstLine.replace(/\|/g, '').trim();
+            }
+          } else if (blockType === 'quote') {
+            // 引用：提取第一行作为标题
+            const firstLine = block.text.split('\n')[0].trim();
+            if (firstLine) {
+              // 移除引用标记
+              textTitle = firstLine.replace(/^>\s+/, '');
+            }
+          } else if (blockType === 'image') {
+            // 图片：优先匹配 caption: 内容
+            const captionMatch = block.text.match(/caption:\s*(.+)/i);
+            if (captionMatch && captionMatch[1]) {
+              textTitle = captionMatch[1].trim();
+            } else {
+              // 如果没有找到 caption，使用整个 text 内容
+              textTitle = block.text.trim();
+            }
           }
+          
+          title = textTitle;
+        } else {
+          // 最低优先级：使用块ID作为备选
+          title = `块 ${blockId}`;
+          console.log(`❌ 没有找到合适的标题，使用块ID: ${blockId}`);
         }
       } catch (e) {
         this.warn("获取标题失败:", e);
@@ -1295,11 +1451,20 @@ class OrcaTabsPlugin {
         if (colorProp && colorProp.type === 1) {
           color = colorProp.value;
         }
+        
+        // 优先使用用户自定义图标，否则根据设置决定是否使用块类型图标
         if (iconProp && iconProp.type === 1) {
           icon = iconProp.value;
+          this.log(`🎨 使用用户自定义图标: ${icon} (块ID: ${blockId})`);
+        } else if (this.showBlockTypeIcons || blockType === 'journal') {
+          // 使用块类型对应的图标，日期块始终显示图标
+          icon = this.getBlockTypeIcon(blockType);
+          this.log(`🎨 使用块类型图标: ${icon} (块类型: ${blockType}, 块ID: ${blockId})`);
         }
       } catch (e) {
         this.warn("获取属性失败:", e);
+        // 如果获取属性失败，使用块类型图标作为备选
+        icon = this.getBlockTypeIcon(blockType);
       }
 
       return {
@@ -1310,7 +1475,8 @@ class OrcaTabsPlugin {
         icon,
         isJournal,
         isPinned: false, // 新标签默认不固定
-        order
+        order,
+        blockType
       };
     } catch (e) {
       this.error("获取标签信息失败:", e);
@@ -1366,13 +1532,13 @@ class OrcaTabsPlugin {
       flex-wrap: nowrap;
       pointer-events: auto;
       -webkit-app-region: no-drag;
-      width: auto;
+      width: ${this.verticalWidth}px;
       min-width: 120px;
       max-width: 400px;
       align-items: stretch;
       app-region: no-drag;
       overflow-y: auto;
-      overflow-x: hidden;
+      overflow-x: visible;
     ` : `
       position: fixed;
       top: ${currentPosition.y}px;
@@ -1452,7 +1618,7 @@ class OrcaTabsPlugin {
 
     // 如果是垂直模式，启用拖拽调整宽度功能
     if (this.isVerticalMode) {
-      await this.enableDragResize();
+      this.enableDragResize();
     }
 
     await this.updateTabsUI();
@@ -2000,7 +2166,27 @@ class OrcaTabsPlugin {
         text: this.isVerticalMode ? '切换到水平布局' : '切换到垂直布局',
         action: () => this.toggleLayoutMode(),
         icon: this.isVerticalMode ? '⏸' : '⏵'
-      },
+      }
+    ];
+
+    // 在垂直模式下添加面板宽度调整选项
+    if (this.isVerticalMode) {
+      menuItems.push(
+        {
+          text: '---',
+          action: null,
+          separator: true
+        },
+        {
+          text: '调整面板宽度',
+          action: () => this.showWidthAdjustmentDialog(),
+          icon: '📏'
+        }
+      );
+    }
+
+    // 添加侧边栏对齐选项
+    menuItems.push(
       {
         text: '---',
         action: null,
@@ -2011,7 +2197,7 @@ class OrcaTabsPlugin {
         action: () => this.toggleSidebarAlignment(),
         icon: this.isSidebarAlignmentEnabled ? '🔴' : '🟢'
       }
-    ];
+    );
 
 
     menuItems.forEach(item => {
@@ -2095,15 +2281,19 @@ class OrcaTabsPlugin {
       if (this.isVerticalMode) {
         // 从垂直模式切换到水平模式，保存垂直位置
         this.verticalPosition = { ...this.position };
+        // 恢复水平位置（从保存的水平位置恢复）
+        this.position = this.horizontalPosition || { x: 100, y: 100 };
       } else {
         // 从水平模式切换到垂直模式，保存水平位置
-        this.position = { ...this.verticalPosition };
+        this.horizontalPosition = { ...this.position };
+        // 恢复垂直位置（从保存的垂直位置恢复）
+        this.position = this.verticalPosition || { x: 100, y: 100 };
       }
       
       // 切换模式
       this.isVerticalMode = !this.isVerticalMode;
       
-      // 保存布局模式到localStorage（参考位置保存方式）
+      // 保存布局模式到API配置
       await this.saveLayoutMode();
       
       // 重新创建UI
@@ -2485,6 +2675,26 @@ class OrcaTabsPlugin {
           className: this.isFloatingWindowVisible ? 'ti ti-eye' : 'ti ti-eye-off'
         }));
       });
+
+      // 注册调试按钮（根据设置决定是否显示）
+      if (this.showInHeadbar && typeof window !== 'undefined') {
+        orca.headbar.registerHeadbarButton('orca-tabs-plugin.debugButton', () => {
+          const React = (window as any).React;
+          const Button = orca.components.Button;
+          
+          return React.createElement(Button, {
+            variant: 'plain',
+            onClick: () => this.toggleBlockTypeIcons(),
+            title: this.showBlockTypeIcons ? '隐藏块类型图标' : '显示块类型图标',
+            style: {
+              color: this.showBlockTypeIcons ? '#007acc' : '#999',
+              transition: 'color 0.2s ease'
+            }
+          }, React.createElement('i', {
+            className: this.showBlockTypeIcons ? 'ti ti-palette' : 'ti ti-palette-off'
+          }));
+        });
+      }
       
       this.log("🔘 顶部工具栏按钮已注册");
     } catch (error) {
@@ -2498,10 +2708,121 @@ class OrcaTabsPlugin {
   unregisterHeadbarButton() {
     try {
       orca.headbar.unregisterHeadbarButton('orca-tabs-plugin.toggleButton');
+      
+      // 注销调试按钮
+      if (typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS !== false) {
+        orca.headbar.unregisterHeadbarButton('orca-tabs-plugin.debugButton');
+      }
+      
       this.log("🔘 顶部工具栏按钮已注销");
     } catch (error) {
       this.error("注销顶部工具栏按钮失败:", error);
     }
+  }
+
+
+  /**
+   * 显示块类型图标信息（调试功能）
+   */
+  showBlockTypeIconsInfo() {
+    const icons = this.getAllBlockTypeIcons();
+    console.log("🎨 支持的块类型和图标:");
+    console.table(icons);
+    
+    // 显示当前标签的块类型信息
+    if (this.firstPanelTabs.length > 0) {
+      console.log("📋 当前标签的块类型:");
+      this.firstPanelTabs.forEach((tab, index) => {
+        console.log(`${index + 1}. ${tab.title} (${tab.blockType || 'unknown'}) - ${tab.icon}`);
+      });
+    }
+    
+    this.log("🎨 块类型图标信息已输出到控制台");
+  }
+
+  /**
+   * 切换块类型图标显示
+   */
+  async toggleBlockTypeIcons() {
+    this.showBlockTypeIcons = !this.showBlockTypeIcons;
+    
+    // 更新所有标签页的图标
+    await this.updateAllTabsBlockTypes();
+    
+    // 重新创建UI
+    await this.createTabsUI();
+    
+    // 保存设置
+    try {
+      await this.saveLayoutMode();
+      // 同步更新插件设置
+      await this.storageService.saveConfig('showBlockTypeIcons', this.showBlockTypeIcons);
+      this.log(`🎨 块类型图标显示已${this.showBlockTypeIcons ? '开启' : '关闭'}`);
+    } catch (error) {
+      this.error("保存设置失败:", error);
+    }
+  }
+
+
+  /**
+   * 更新所有标签页的块类型和图标
+   */
+  async updateAllTabsBlockTypes() {
+    this.log("🔄 开始更新所有标签页的块类型和图标...");
+    
+    if (this.firstPanelTabs.length === 0) {
+      this.log("⚠️ 没有标签页需要更新");
+      return;
+    }
+    
+    let hasUpdates = false;
+    
+    for (let i = 0; i < this.firstPanelTabs.length; i++) {
+      const tab = this.firstPanelTabs[i];
+      try {
+        // 重新获取块信息
+        const block = await orca.invokeBackend("get-block", parseInt(tab.blockId));
+        if (block) {
+          // 检测块类型
+          const blockType = await this.detectBlockType(block);
+          
+          // 获取图标（优先使用用户自定义，否则使用块类型图标）
+          let icon = tab.icon; // 保持用户自定义图标
+          if (!icon) {
+            icon = this.getBlockTypeIcon(blockType);
+          }
+          
+          // 检查是否需要更新
+          const needsUpdate = tab.blockType !== blockType || tab.icon !== icon;
+          
+          if (needsUpdate) {
+            // 更新标签信息
+            this.firstPanelTabs[i] = {
+              ...tab,
+              blockType,
+              icon
+            };
+            
+            this.log(`✅ 更新标签: ${tab.title} -> 类型: ${blockType}, 图标: ${icon}`);
+            hasUpdates = true;
+          } else {
+            this.verboseLog(`⏭️ 跳过标签: ${tab.title} (无需更新)`);
+          }
+        }
+      } catch (e) {
+        this.warn(`更新标签失败: ${tab.title}`, e);
+      }
+    }
+    
+    // 只有在有更新时才重新创建UI
+    if (hasUpdates) {
+      this.log("🔄 检测到更新，重新创建UI...");
+      await this.createTabsUI();
+    } else {
+      this.log("ℹ️ 没有标签页需要更新");
+    }
+    
+    this.log("✅ 所有标签页的块类型和图标已更新");
   }
 
   /**
@@ -2625,22 +2946,36 @@ class OrcaTabsPlugin {
   }
 
   /**
-   * 启用拖拽调整宽度功能
+   * 启用拖拽调整宽度功能（重构版）
    */
-  async enableDragResize() {
-    if (!this.isVerticalMode) {
-      this.log("⚠️ 拖拽调整宽度仅在垂直模式下可用");
-      return;
-    }
+  enableDragResize() {
+    if (!this.isVerticalMode || !this.tabContainer) return;
     
-    if (!this.tabContainer) return;
-    
-    // 移除现有的拖拽手柄
-    if (this.resizeHandle) {
-      this.resizeHandle.remove();
-    }
+    // 清理现有手柄
+    this.removeResizeHandle();
     
     // 创建拖拽手柄
+    this.createResizeHandle();
+    
+    this.log("📏 拖拽调整宽度已启用");
+  }
+  
+  /**
+   * 移除拖拽手柄
+   */
+  removeResizeHandle() {
+    if (this.resizeHandle) {
+      this.resizeHandle.remove();
+      this.resizeHandle = null;
+    }
+  }
+
+  /**
+   * 创建拖拽手柄
+   */
+  createResizeHandle() {
+    if (!this.tabContainer) return;
+
     this.resizeHandle = document.createElement('div');
     this.resizeHandle.className = 'resize-handle';
     this.resizeHandle.style.cssText = `
@@ -2650,98 +2985,277 @@ class OrcaTabsPlugin {
       width: 8px;
       height: 100%;
       cursor: col-resize;
-      background: transparent;
-      z-index: 400;
-      -webkit-app-region: no-drag;
-      app-region: no-drag;
+      background: rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+      pointer-events: auto;
     `;
-    
-    // 添加视觉指示器
-    const indicator = document.createElement('div');
-    indicator.style.cssText = `
-      position: absolute;
-      top: 50%;
-      right: 2px;
-      transform: translateY(-50%);
-      width: 2px;
-      height: 20px;
-      background: rgba(100, 100, 100, 0.5);
-      border-radius: 1px;
-    `;
-    this.resizeHandle.appendChild(indicator);
+
+    // 添加拖拽事件
+    this.resizeHandle.addEventListener('mousedown', this.handleResizeStart.bind(this));
     
     this.tabContainer.appendChild(this.resizeHandle);
-    
-    // 添加拖拽事件
-    this.setupResizeEvents();
-    
-    this.log("📏 拖拽调整宽度已启用，拖拽右侧边缘调整宽度");
   }
-  
+
   /**
-   * 设置拖拽调整大小事件
+   * 处理拖拽开始
    */
-  setupResizeEvents() {
-    if (!this.resizeHandle || !this.tabContainer) return;
-    
-    let startX = 0;
-    let startWidth = 0;
-    
-    const startResize = (e: MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      this.isResizing = true;
-      startX = e.clientX;
-      startWidth = this.verticalWidth;
-      
-      // 添加拖拽样式
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-      
-      // 添加全局事件监听器
-      document.addEventListener('mousemove', doResize);
-      document.addEventListener('mouseup', stopResize);
-    };
-    
-    const doResize = (e: MouseEvent) => {
-      if (!this.isResizing || !this.tabContainer) return;
-      
-      e.preventDefault();
-      
+  handleResizeStart(e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!this.tabContainer) return;
+
+    const startX = e.clientX;
+    const startWidth = this.verticalWidth;
+
+    const handleMouseMove = async (e: MouseEvent) => {
       const deltaX = e.clientX - startX;
       const newWidth = Math.max(120, Math.min(400, startWidth + deltaX));
       
-      // 实时更新宽度
       this.verticalWidth = newWidth;
-      this.tabContainer.style.width = `${newWidth}px`;
+      
+      // 调整面板宽度
+      try {
+        orca.nav.changeSizes(orca.state.activePanel, [newWidth]);
+        this.tabContainer!.style.width = `${newWidth}px`;
+      } catch (error) {
+        this.error("调整面板宽度失败:", error);
+      }
     };
-    
-    const stopResize = async (e: MouseEvent) => {
-      if (!this.isResizing) return;
-      
-      this.isResizing = false;
-      
-      // 恢复样式
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      
-      // 移除事件监听器
-      document.removeEventListener('mousemove', doResize);
-      document.removeEventListener('mouseup', stopResize);
+
+    const handleMouseUp = async () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
       
       // 保存设置
       try {
-        await orca.plugins.setSettings("app", "orca-tabs-plugin", {
-          verticalWidth: this.verticalWidth
-        });
-        this.log(`📏 宽度已调整为: ${this.verticalWidth}px`);
+        await this.saveLayoutMode();
+        this.log(`📏 面板宽度已调整为: ${this.verticalWidth}px`);
       } catch (error) {
         this.error("保存宽度设置失败:", error);
       }
     };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }
+
+  /**
+   * 清理拖拽功能
+   */
+  cleanupDragResize() {
+    this.removeResizeHandle();
+  }
+
+  /**
+   * 显示宽度调整对话框
+   */
+  async showWidthAdjustmentDialog() {
+    // 移除现有的对话框
+    const existingDialog = document.querySelector('.width-adjustment-dialog');
+    if (existingDialog) {
+      existingDialog.remove();
+    }
+
+    // 记录原始宽度，用于取消时恢复
+    const originalWidth = this.verticalWidth;
+
+    // 创建对话框
+    const dialog = document.createElement('div');
+    dialog.className = 'width-adjustment-dialog';
+    dialog.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+      z-index: 2000;
+      padding: 20px;
+      min-width: 300px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    `;
+
+    // 标题
+    const title = document.createElement('div');
+    title.textContent = '调整面板宽度';
+    title.style.cssText = `
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #333;
+    `;
+
+    // 当前宽度显示
+    const currentWidth = document.createElement('div');
+    currentWidth.textContent = `当前面板宽度: ${this.verticalWidth}px`;
+    currentWidth.style.cssText = `
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 16px;
+    `;
+
+    // 滑块容器
+    const sliderContainer = document.createElement('div');
+    sliderContainer.style.cssText = `
+      margin-bottom: 16px;
+    `;
+
+    // 滑块标签
+    const sliderLabel = document.createElement('div');
+    sliderLabel.textContent = '宽度 (120px - 400px)';
+    sliderLabel.style.cssText = `
+      font-size: 14px;
+      margin-bottom: 8px;
+      color: #333;
+    `;
+
+    // 滑块
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.min = '120';
+    slider.max = '400';
+    slider.value = this.verticalWidth.toString();
+    slider.style.cssText = `
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #ddd;
+      outline: none;
+      -webkit-appearance: none;
+    `;
+
+    // 滑块样式
+    slider.style.background = `
+      linear-gradient(to right, #007acc 0%, #007acc ${((this.verticalWidth - 120) / (400 - 120)) * 100}%, #ddd ${((this.verticalWidth - 120) / (400 - 120)) * 100}%, #ddd 100%)
+    `;
+
+    // 宽度显示
+    const widthDisplay = document.createElement('div');
+    widthDisplay.textContent = `${this.verticalWidth}px`;
+    widthDisplay.style.cssText = `
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: #007acc;
+      margin-top: 8px;
+    `;
+
+    // 按钮容器
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = `
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    `;
+
+    // 取消按钮
+    const cancelButton = document.createElement('button');
+    cancelButton.textContent = '取消';
+    cancelButton.style.cssText = `
+      padding: 8px 16px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: white;
+      color: #333;
+      cursor: pointer;
+      font-size: 14px;
+    `;
+
+    // 确定按钮
+    const confirmButton = document.createElement('button');
+    confirmButton.textContent = '确定';
+    confirmButton.style.cssText = `
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      background: #007acc;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+    `;
+
+    // 滑块事件
+    slider.addEventListener('input', async (e) => {
+      const newWidth = parseInt((e.target as HTMLInputElement).value);
+      widthDisplay.textContent = `${newWidth}px`;
+      
+      // 更新滑块背景
+      const percentage = ((newWidth - 120) / (400 - 120)) * 100;
+      slider.style.background = `
+        linear-gradient(to right, #007acc 0%, #007acc ${percentage}%, #ddd ${percentage}%, #ddd 100%)
+      `;
+      
+      // 实时调整面板宽度
+      try {
+        orca.nav.changeSizes(orca.state.activePanel, [newWidth]);
+        
+        if (this.tabContainer) {
+          this.tabContainer.style.width = `${newWidth}px`;
+        }
+        
+        this.verticalWidth = newWidth;
+      } catch (error) {
+        this.error("实时调整面板宽度失败:", error);
+      }
+    });
+
+    // 按钮事件
+    cancelButton.addEventListener('click', async () => {
+      // 恢复到原始宽度
+      try {
+        orca.nav.changeSizes(orca.state.activePanel, [originalWidth]);
+        
+        if (this.tabContainer) {
+          this.tabContainer.style.width = `${originalWidth}px`;
+        }
+        
+        this.verticalWidth = originalWidth;
+      } catch (error) {
+        this.error("恢复面板宽度失败:", error);
+      }
+      
+      dialog.remove();
+    });
+
+    confirmButton.addEventListener('click', async () => {
+      const newWidth = parseInt(slider.value);
+      
+      try {
+        // 保存设置（面板宽度已经在滑块移动时实时调整了）
+        await this.saveLayoutMode();
+        this.log(`📏 面板宽度设置已保存: ${newWidth}px`);
+      } catch (error) {
+        this.error("保存面板宽度设置失败:", error);
+      }
+      
+      dialog.remove();
+    });
+
+    // 点击外部关闭
+    dialog.addEventListener('click', (e) => {
+      if (e.target === dialog) {
+        dialog.remove();
+      }
+    });
+
+    // 组装对话框
+    sliderContainer.appendChild(sliderLabel);
+    sliderContainer.appendChild(slider);
+    sliderContainer.appendChild(widthDisplay);
     
-    this.resizeHandle.addEventListener('mousedown', startResize);
+    buttonContainer.appendChild(cancelButton);
+    buttonContainer.appendChild(confirmButton);
+    
+    dialog.appendChild(title);
+    dialog.appendChild(currentWidth);
+    dialog.appendChild(sliderContainer);
+    dialog.appendChild(buttonContainer);
+    
+    document.body.appendChild(dialog);
   }
   
   /**
@@ -2842,25 +3356,65 @@ class OrcaTabsPlugin {
       align-items: center;
       width: 100%;
       height: 100%;
-      gap: 4px;
+      gap: 6px;
     `;
+
+    // 创建图标容器（如果有图标）
+    if (tab.icon) {
+      const iconContainer = document.createElement('div');
+      iconContainer.style.cssText = `
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        font-size: 14px;
+        line-height: 1;
+      `;
+      
+      // 检查是否是 Tabler Icon
+      if (tab.icon.startsWith('ti ti-')) {
+        const iconElement = document.createElement('i');
+        iconElement.className = tab.icon;
+        iconContainer.appendChild(iconElement);
+      } else {
+        // 普通文本图标（如emoji）
+        iconContainer.textContent = tab.icon;
+      }
+      
+      tabContent.appendChild(iconContainer);
+    }
 
     // 创建文本容器
     const textContainer = document.createElement('div');
     textContainer.style.cssText = `
       flex: 1;
       overflow: hidden;
-      text-overflow: ellipsis;
       white-space: nowrap;
       min-width: 0;
+      display: flex;
+      align-items: center;
+      line-height: 1;
+      height: 16px;
+      position: relative;
     `;
-
-    // 设置标签文本
-    let displayText = tab.title;
-    if (tab.icon) {
-      displayText = `${tab.icon} ${tab.title}`;
-    }
-    textContainer.textContent = displayText;
+    
+    // 添加渐变遮罩效果
+    const gradientMask = document.createElement('div');
+    gradientMask.style.cssText = `
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 20px;
+      height: 100%;
+      background: linear-gradient(to right, transparent, var(--orca-bg-color, #ffffff));
+      pointer-events: none;
+      z-index: 1;
+    `;
+    
+    textContainer.appendChild(gradientMask);
+    textContainer.textContent = tab.title;
 
     // 添加文本容器到内容容器
     tabContent.appendChild(textContainer);
@@ -3568,6 +4122,12 @@ class OrcaTabsPlugin {
           defaultValue: "",
           description: "新建标签页时将导航到此块ID"
         },
+        showBlockTypeIcons: {
+          label: "显示块类型图标",
+          type: "boolean" as const,
+          defaultValue: true,
+          description: "控制标签页顶部是否显示块类型图标按钮"
+        },
       };
 
       await orca.plugins.setSettingsSchema("orca-tabs-plugin", settingsSchema);
@@ -3578,6 +4138,11 @@ class OrcaTabsPlugin {
       if (settings?.homePageBlockId) {
         this.homePageBlockId = settings.homePageBlockId;
         this.log(`🏠 主页块ID: ${this.homePageBlockId}`);
+      }
+      
+      if (settings?.showBlockTypeIcons !== undefined) {
+        this.showBlockTypeIcons = settings.showBlockTypeIcons;
+        this.log(`🎨 块类型图标显示: ${this.showBlockTypeIcons ? '开启' : '关闭'}`);
       }
       
       this.log("✅ 插件设置已注册");
@@ -3778,14 +4343,12 @@ class OrcaTabsPlugin {
         return false;
       }
 
-      // 创建标签信息
-      const tabInfo: TabInfo = {
-        blockId: blockId,
-        panelId: this.panelIds[0],
-        title: block.text || `块 ${blockId}`,
-        isPinned: false,
-        order: this.firstPanelTabs.length
-      };
+      // 使用getTabInfo方法获取完整的标签信息（包括块类型和图标）
+      const tabInfo = await this.getTabInfo(blockId, this.panelIds[0], this.firstPanelTabs.length);
+      if (!tabInfo) {
+        this.warn(`无法获取块 ${blockId} 的标签信息`);
+        return false;
+      }
 
       // 确定插入位置
       let insertIndex = this.firstPanelTabs.length; // 默认插入到末尾
@@ -5200,23 +5763,28 @@ class OrcaTabsPlugin {
       {
         text: tab.isPinned ? '取消固定' : '固定标签',
         action: () => this.toggleTabPinStatus(tab)
-      },
+      }
+    ];
+
+
+    // 添加关闭相关选项
+    menuItems.push(
       {
         text: '关闭标签',
         action: () => this.closeTab(tab),
         disabled: this.firstPanelTabs.length <= 1
-      },
+      } as any,
       {
         text: '关闭其他标签',
         action: () => this.closeOtherTabs(tab),
         disabled: this.firstPanelTabs.length <= 1
-      },
+      } as any,
       {
         text: '关闭全部标签',
         action: () => this.closeAllTabs(),
         disabled: this.firstPanelTabs.length <= 1
-      }
-    ];
+      } as any
+    );
 
     menuItems.forEach(item => {
       const menuItem = document.createElement('div');
@@ -5225,12 +5793,12 @@ class OrcaTabsPlugin {
         padding: 8px 12px;
         cursor: pointer;
         font-size: 12px;
-        color: ${item.disabled ? '#999' : '#333'};
+        color: ${(item as any).disabled ? '#999' : '#333'};
         border-bottom: 1px solid #eee;
         transition: background-color 0.2s;
       `;
       
-      if (!item.disabled) {
+      if (!(item as any).disabled) {
         menuItem.addEventListener('mouseenter', () => {
           menuItem.style.backgroundColor = '#f0f0f0';
         });
@@ -5296,6 +5864,9 @@ class OrcaTabsPlugin {
       if (saved && Array.isArray(saved)) {
         this.firstPanelTabs = saved;
         this.log(`📂 从API配置恢复了 ${this.firstPanelTabs.length} 个标签页`);
+        
+        // 检查并更新块类型和图标信息
+        await this.updateRestoredTabsBlockTypes();
       } else {
         this.firstPanelTabs = [];
         this.log(`📂 没有找到持久化的标签数据，初始化为空数组`);
@@ -5304,6 +5875,65 @@ class OrcaTabsPlugin {
       this.warn("无法恢复第一个面板标签数据:", e);
       this.firstPanelTabs = [];
     }
+  }
+
+  /**
+   * 更新从存储中恢复的标签页的块类型和图标
+   */
+  async updateRestoredTabsBlockTypes() {
+    this.log("🔄 更新从存储中恢复的标签页的块类型和图标...");
+    
+    if (this.firstPanelTabs.length === 0) {
+      this.log("⚠️ 没有标签页需要更新");
+      return;
+    }
+    
+    let hasUpdates = false;
+    
+    for (let i = 0; i < this.firstPanelTabs.length; i++) {
+      const tab = this.firstPanelTabs[i];
+      
+      // 检查是否需要更新块类型和图标
+      const needsUpdate = !tab.blockType || !tab.icon;
+      
+      if (needsUpdate) {
+        try {
+          // 重新获取块信息
+          const block = await orca.invokeBackend("get-block", parseInt(tab.blockId));
+          if (block) {
+            // 检测块类型
+            const blockType = await this.detectBlockType(block);
+            
+            // 获取图标（优先使用用户自定义，否则使用块类型图标）
+            let icon = tab.icon; // 保持用户自定义图标
+            if (!icon) {
+              icon = this.getBlockTypeIcon(blockType);
+            }
+            
+            // 更新标签信息
+            this.firstPanelTabs[i] = {
+              ...tab,
+              blockType,
+              icon
+            };
+            
+            this.log(`✅ 更新恢复的标签: ${tab.title} -> 类型: ${blockType}, 图标: ${icon}`);
+            hasUpdates = true;
+          }
+        } catch (e) {
+          this.warn(`更新恢复的标签失败: ${tab.title}`, e);
+        }
+      } else {
+        this.verboseLog(`⏭️ 跳过恢复的标签: ${tab.title} (已有块类型和图标)`);
+      }
+    }
+    
+    if (hasUpdates) {
+      this.log("🔄 检测到恢复的标签页有更新，保存到存储...");
+      await this.saveFirstPanelTabs();
+    }
+    
+    this.log("✅ 恢复的标签页块类型和图标更新完成");
   }
 
   /**
@@ -5454,9 +6084,13 @@ class OrcaTabsPlugin {
 
     // 保存位置
     if (this.isVerticalMode) {
-      await this.saveLayoutMode(); // 垂直模式保存到布局数据中
+      // 垂直模式：更新垂直位置并保存布局数据
+      this.verticalPosition = { ...this.position };
+      await this.saveLayoutMode();
     } else {
-      await this.savePosition(); // 水平模式保存到位置数据中
+      // 水平模式：更新水平位置并保存布局数据
+      this.horizontalPosition = { ...this.position };
+      await this.saveLayoutMode();
     }
   }
 
@@ -5476,12 +6110,17 @@ class OrcaTabsPlugin {
       const layoutData = {
         isVerticalMode: this.isVerticalMode,
         verticalWidth: this.verticalWidth,
-        verticalPosition: this.verticalPosition
+        verticalPosition: this.verticalPosition,
+        horizontalPosition: this.horizontalPosition, // 使用专门的水平位置属性
+        isSidebarAlignmentEnabled: this.isSidebarAlignmentEnabled,
+        isFloatingWindowVisible: this.isFloatingWindowVisible,
+        showBlockTypeIcons: this.showBlockTypeIcons,
+        showInHeadbar: this.showInHeadbar
       };
       await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.LAYOUT_MODE, layoutData);
-      this.log(`💾 布局模式已保存: ${this.isVerticalMode ? '垂直' : '水平'}, 宽度: ${this.verticalWidth}px, 位置: (${this.verticalPosition.x}, ${this.verticalPosition.y})`);
+      this.log(`💾 布局模式已保存: ${this.isVerticalMode ? '垂直' : '水平'}, 垂直宽度: ${this.verticalWidth}px, 垂直位置: (${this.verticalPosition.x}, ${this.verticalPosition.y}), 水平位置: (${this.horizontalPosition.x}, ${this.horizontalPosition.y})`);
     } catch (e) {
-      this.warn("无法保存布局模式");
+      this.error("保存布局模式失败:", e);
     }
   }
 
@@ -5570,28 +6209,53 @@ class OrcaTabsPlugin {
         isVerticalMode: boolean;
         verticalWidth: number;
         verticalPosition: {x: number, y: number};
+        horizontalPosition?: {x: number, y: number};
+        isSidebarAlignmentEnabled?: boolean;
+        isFloatingWindowVisible?: boolean;
+        showBlockTypeIcons?: boolean;
+        showInHeadbar?: boolean;
       }>(PLUGIN_STORAGE_KEYS.LAYOUT_MODE, 'orca-tabs-plugin', {
         isVerticalMode: false,
         verticalWidth: 200,
-        verticalPosition: { x: 20, y: 20 }
+        verticalPosition: { x: 20, y: 20 },
+        horizontalPosition: { x: 20, y: 20 },
+        isSidebarAlignmentEnabled: false,
+        isFloatingWindowVisible: true,
+        showBlockTypeIcons: true,
+        showInHeadbar: true
       });
       
       if (saved) {
         this.isVerticalMode = saved.isVerticalMode || false;
         this.verticalWidth = saved.verticalWidth || 200;
         this.verticalPosition = saved.verticalPosition || { x: 20, y: 20 };
-        this.log(`📐 布局模式已恢复: ${this.isVerticalMode ? '垂直' : '水平'}, 宽度: ${this.verticalWidth}px, 位置: (${this.verticalPosition.x}, ${this.verticalPosition.y})`);
+        
+        // 恢复水平位置（如果存在）
+        if (saved.horizontalPosition) {
+          this.horizontalPosition = saved.horizontalPosition;
+          this.position = { ...saved.horizontalPosition };
+        }
+        
+        // 恢复其他设置
+        this.isSidebarAlignmentEnabled = saved.isSidebarAlignmentEnabled || false;
+        this.isFloatingWindowVisible = saved.isFloatingWindowVisible !== false;
+        this.showBlockTypeIcons = saved.showBlockTypeIcons !== false;
+        this.showInHeadbar = saved.showInHeadbar !== false;
+        
+        this.log(`📐 布局模式已恢复: ${this.isVerticalMode ? '垂直' : '水平'}, 垂直宽度: ${this.verticalWidth}px, 垂直位置: (${this.verticalPosition.x}, ${this.verticalPosition.y}), 水平位置: (${this.position.x}, ${this.position.y})`);
       } else {
         this.isVerticalMode = false;
         this.verticalWidth = 200;
         this.verticalPosition = { x: 20, y: 20 };
+        this.position = { x: 20, y: 20 };
         this.log(`📐 布局模式: 水平 (默认)`);
       }
     } catch (e) {
-      this.warn("无法恢复布局模式，使用默认值");
+      this.error("恢复布局模式失败:", e);
       this.isVerticalMode = false;
       this.verticalWidth = 200;
       this.verticalPosition = { x: 20, y: 20 };
+      this.position = { x: 20, y: 20 };
     }
   }
 
@@ -6280,6 +6944,18 @@ export async function load(_name: string) {
     "重置插件缓存"
   );
 
+  // 注册切换块类型图标命令
+  orca.commands.registerCommand(
+    `${pluginName}.toggleBlockIcons`,
+    async () => {
+      if (tabsPlugin) {
+        await tabsPlugin.toggleBlockTypeIcons();
+      }
+    },
+    "切换块类型图标显示"
+  );
+
+
   if (typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS !== false) {
     console.log(t("标签页插件已启动"));
     console.log(`${pluginName} loaded.`);
@@ -6291,6 +6967,9 @@ export async function unload() {
   if (tabsPlugin) {
     // 注销顶部工具栏按钮
     tabsPlugin.unregisterHeadbarButton();
+    
+    // 清理拖拽功能
+    tabsPlugin.cleanupDragResize();
     
     tabsPlugin.destroy();
     tabsPlugin = null;
