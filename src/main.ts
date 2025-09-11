@@ -573,7 +573,7 @@ class OrcaTabsPlugin {
   }
 
   /**
-   * 防抖的标签交换函数（修复版）
+   * 防抖的标签交换函数（改进版）
    */
   async debouncedSwapTab(targetTab: TabInfo, draggingTab: TabInfo) {
     // 防止重复交换同一个目标
@@ -581,13 +581,20 @@ class OrcaTabsPlugin {
       return;
     }
     
-    // 立即执行交换，不使用延迟
+    // 清除之前的防抖定时器
+    if (this.swapDebounceTimer) {
+      clearTimeout(this.swapDebounceTimer);
+    }
+    
+    // 使用短延迟确保拖拽事件稳定
+    this.swapDebounceTimer = window.setTimeout(async () => {
       await this.swapTab(targetTab, draggingTab);
-    this.lastSwapTarget = targetTab.blockId;
+      this.lastSwapTarget = targetTab.blockId;
+    }, 16); // 一帧的时间，确保流畅性
   }
 
   /**
-   * 交换两个标签的位置（优化版）
+   * 交换两个标签的位置（改进版）
    */
   async swapTab(targetTab: TabInfo, draggingTab: TabInfo) {
     if (this.currentPanelIndex !== 0) {
@@ -598,38 +605,41 @@ class OrcaTabsPlugin {
     const targetIndex = this.firstPanelTabs.findIndex(tab => tab.blockId === targetTab.blockId);
     const draggingIndex = this.firstPanelTabs.findIndex(tab => tab.blockId === draggingTab.blockId);
     
-    if (targetIndex !== -1 && draggingIndex !== -1 && targetIndex !== draggingIndex) {
-      // 智能交换：根据拖拽方向决定交换策略
-      const isMovingRight = draggingIndex < targetIndex;
-      
-      if (isMovingRight) {
-        // 向右拖拽：将拖拽标签插入到目标标签的右边
-        const draggedTab = this.firstPanelTabs.splice(draggingIndex, 1)[0];
-        const newTargetIndex = targetIndex > draggingIndex ? targetIndex - 1 : targetIndex;
-        this.firstPanelTabs.splice(newTargetIndex + 1, 0, draggedTab);
-      } else {
-        // 向左拖拽：将拖拽标签插入到目标标签的左边
-        const draggedTab = this.firstPanelTabs.splice(draggingIndex, 1)[0];
-        this.firstPanelTabs.splice(targetIndex, 0, draggedTab);
-      }
-      
-      // 更新order属性
-      this.firstPanelTabs.forEach((tab, index) => {
-        tab.order = index;
-      });
-      
-      
-      // 重新排序（保持固定标签在前）
-      this.sortTabsByPinStatus();
-      
-      // 优化：拖拽时只保存数据，不立即更新UI（避免干扰拖拽体验）
-      await this.saveFirstPanelTabs();
-      
-      // 如果不是正在拖拽，立即更新UI；否则延迟更新
-      if (!this.draggingTab) {
-        this.debouncedUpdateTabsUI();
-      }
+    if (targetIndex === -1 || draggingIndex === -1) {
+      this.warn("无法找到目标标签或拖拽标签");
+      return;
     }
+    
+    if (targetIndex === draggingIndex) {
+      this.log("目标标签和拖拽标签相同，跳过交换");
+      return;
+    }
+    
+    this.log(`🔄 交换标签: ${draggingTab.title} (${draggingIndex}) -> ${targetTab.title} (${targetIndex})`);
+    
+    // 改进的交换逻辑：直接交换位置
+    const draggedTab = this.firstPanelTabs[draggingIndex];
+    const targetTabData = this.firstPanelTabs[targetIndex];
+    
+    // 交换位置
+    this.firstPanelTabs[targetIndex] = draggedTab;
+    this.firstPanelTabs[draggingIndex] = targetTabData;
+    
+    // 更新order属性
+    this.firstPanelTabs.forEach((tab, index) => {
+      tab.order = index;
+    });
+    
+    // 重新排序（保持固定标签在前）
+    this.sortTabsByPinStatus();
+    
+    // 保存数据
+    await this.saveFirstPanelTabs();
+    
+    // 立即更新UI以提供即时反馈
+    this.debouncedUpdateTabsUI();
+    
+    this.log(`✅ 标签交换完成: ${draggedTab.title} -> 位置 ${targetIndex}`);
   }
 
   /**
@@ -3494,6 +3504,12 @@ class OrcaTabsPlugin {
       this.draggingTab = tab;
       this.lastSwapTarget = null; // 重置上次交换目标
       
+      // 清除之前的防抖定时器
+      if (this.swapDebounceTimer) {
+        clearTimeout(this.swapDebounceTimer);
+        this.swapDebounceTimer = null;
+      }
+      
       // 设置拖拽视觉反馈
       tabElement.setAttribute('data-dragging', 'true');
       tabElement.classList.add('dragging');
@@ -3503,9 +3519,10 @@ class OrcaTabsPlugin {
         this.tabContainer.setAttribute('data-dragging', 'true');
       }
       
+      this.log(`🔄 开始拖拽标签: ${tab.title} (ID: ${tab.blockId})`);
     });
 
-    // 拖拽结束事件（修复版）
+    // 拖拽结束事件（改进版）
     tabElement.addEventListener('dragend', (e) => {
       // 清除所有拖拽状态
       this.draggingTab = null;
@@ -3524,15 +3541,13 @@ class OrcaTabsPlugin {
       // 清除视觉反馈
       this.clearDragVisualFeedback();
       
-      // 拖拽结束后更新UI
-      setTimeout(() => {
-        this.debouncedUpdateTabsUI();
-      }, 50);
+      // 拖拽结束后立即更新UI
+      this.debouncedUpdateTabsUI();
       
       this.log(`🔄 结束拖拽标签: ${tab.title}`);
     });
 
-    // 拖拽经过事件（修复版）
+    // 拖拽经过事件（改进版）
     tabElement.addEventListener('dragover', (e) => {
       // 检查是否在侧边栏拖拽区域，如果是则不处理标签拖拽
       const target = e.target as HTMLElement;
@@ -3542,17 +3557,20 @@ class OrcaTabsPlugin {
       
       if (this.draggingTab && this.draggingTab.blockId !== tab.blockId) {
         e.preventDefault(); // 允许放置（必须调用，否则无法触发后续逻辑）
+        e.stopPropagation(); // 阻止事件冒泡
         e.dataTransfer!.dropEffect = 'move';
         
         // 添加拖拽悬停效果
         this.addDragOverEffect(tabElement);
         
-        // 调用交换函数（已优化防抖）
+        // 调用交换函数（改进的防抖）
         this.debouncedSwapTab(tab, this.draggingTab);
+        
+        this.verboseLog(`🔄 拖拽经过: ${tab.title} (目标: ${this.draggingTab.title})`);
       }
     });
 
-    // 拖拽进入事件
+    // 拖拽进入事件（改进版）
     tabElement.addEventListener('dragenter', (e) => {
       // 检查是否在侧边栏拖拽区域，如果是则不处理标签拖拽
       const target = e.target as HTMLElement;
@@ -3562,21 +3580,27 @@ class OrcaTabsPlugin {
       
       if (this.draggingTab && this.draggingTab.blockId !== tab.blockId) {
         e.preventDefault();
+        e.stopPropagation();
         // 添加拖拽悬停效果
         this.addDragOverEffect(tabElement);
+        this.verboseLog(`🔄 拖拽进入: ${tab.title}`);
       }
     });
 
-    // 拖拽离开事件
+    // 拖拽离开事件（改进版）
     tabElement.addEventListener('dragleave', (e) => {
       // 检查是否真的离开了元素（而不是进入子元素）
       const rect = tabElement.getBoundingClientRect();
       const x = e.clientX;
       const y = e.clientY;
       
-      if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      // 增加容错范围，避免快速移动时误判
+      const tolerance = 5;
+      if (x < rect.left - tolerance || x > rect.right + tolerance || 
+          y < rect.top - tolerance || y > rect.bottom + tolerance) {
         // 移除拖拽悬停效果
         this.removeDragOverEffect(tabElement);
+        this.verboseLog(`🔄 拖拽离开: ${tab.title}`);
       }
     });
 
