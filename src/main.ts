@@ -1,248 +1,230 @@
+// 第三方库导入
 import { setupL10N, t } from "./libs/l10n";
 import zhCN from "./translations/zhCN";
-import { format, isToday, isYesterday, isTomorrow } from 'date-fns';
-import { zhCN as zhCNLocale, enUS as enUSLocale } from 'date-fns/locale';
 
-// 定义配置常量
-const AppKeys = {
-  CachedEditorNum: 13,
-  JournalDateFormat: 12
-} as const;
-
-// 定义属性类型常量
-const PropType = {
-  JSON: 0,
-  Text: 1
-} as const;
+// 本地模块导入
+import { AppKeys, PropType, PLUGIN_STORAGE_KEYS } from './constants';
+import { TabInfo, TabPosition, PanelTabsData } from './types';
+import { OrcaStorageService } from './services/storage';
+import { formatJournalDate, extractJournalInfo, detectBlockType, getBlockTypeIcon, isDateString, findProperty, format } from './utils/blockUtils';
+import { createContextMenuItem, createStyledElement, addHoverEffect, safeRemoveElement, findClosestParent } from './utils/domUtils';
+import { hexToRgba } from './utils/styleUtils';
+import { 
+  createDefaultLayoutConfig, 
+  createDefaultPositionConfig, 
+  validatePosition, 
+  mergeLayoutConfig, 
+  getPositionByMode, 
+  updatePositionConfig, 
+  generateLayoutLogMessage, 
+  generatePositionLogMessage,
+  type LayoutConfig 
+} from './utils/configUtils';
+import { 
+  createEventListenerCleanup, 
+  createKeyboardHandler, 
+  createMouseHandler, 
+  createResizeHandler, 
+  createTabDragHandler, 
+  createTabClickHandler, 
+  isSidebarElement, 
+  isTabElement 
+} from './utils/eventUtils';
+import { 
+  createTabBaseStyle, 
+  createTabContentContainer, 
+  createTabIconContainer, 
+  createTabTextContainer, 
+  createPinIcon, 
+  createTabTooltip, 
+  createNewTabButtonStyle, 
+  createDragHandleStyle, 
+  createResizeHandleStyle, 
+  createDragHandleHoverStyle,
+  createResizeHandleHoverStyle,
+  createOperationStateStyle,
+  createStatusElementStyle, 
+  createContextMenuStyle, 
+  createMenuItemStyle, 
+  createSeparatorStyle, 
+  createDialogStyle, 
+  createButtonStyle, 
+  createInputStyle, 
+  createSliderStyle, 
+  createTabContainerStyle 
+} from './utils/uiUtils';
+import { 
+  findLastNonPinnedTabIndex, 
+  sortTabsByPinStatus, 
+  findExistingTab, 
+  calculateSmartInsertPosition, 
+  handleTabLimit, 
+  getAdjacentTab, 
+  filterTabs, 
+  updateTabProperty, 
+  batchUpdateTabProperties, 
+  validateTabData, 
+  cleanInvalidTabs, 
+  generateTabId, 
+  areTabsEqual, 
+  findTabIndex, 
+  moveTab, 
+  swapTabs, 
+  isValidPosition, 
+  constrainPosition, 
+  calculateContainerSize, 
+  shouldUpdateUI, 
+  generateTabStats 
+} from './utils/dataUtils';
+import { 
+  calculatePanelPosition, 
+  isPositionInBounds, 
+  constrainPositionToBounds, 
+  calculateDragBounds, 
+  calculateResizeBounds, 
+  calculateSmartPosition, 
+  calculateOverlap, 
+  calculateVisibleArea, 
+  isPanelFullyVisible, 
+  calculatePanelCenter, 
+  calculateDistanceToEdges, 
+  calculateBestResizeDirection, 
+  calculateScrollPosition, 
+  calculateTabPosition, 
+  calculateMaxContainerHeight, 
+  calculateMaxContainerWidth, 
+  shouldAdjustPanelPosition, 
+  calculateAdjustedPosition 
+} from './utils/layoutUtils';
+import { 
+  createFadeInAnimation, 
+  createFadeOutAnimation, 
+  createSlideInAnimation, 
+  createSlideOutAnimation, 
+  createScaleAnimation, 
+  createBounceAnimation, 
+  createShakeAnimation, 
+  createPulseAnimation, 
+  createRotateAnimation, 
+  createColorTransitionAnimation, 
+  createHeightTransitionAnimation, 
+  createCombinedAnimation, 
+  createDelayedAnimation, 
+  createLoopAnimation, 
+  isElementInViewport, 
+  createViewportEnterAnimation, 
+  createAnimationQueue 
+} from './utils/animationUtils';
+import { 
+  debounce,
+  createBatchProcessor, 
+  createObjectPool, 
+  createLRUCache, 
+  createVirtualScroll, 
+  createLazyLoader, 
+  createTaskQueue, 
+  createResourcePreloader 
+} from './utils/performanceUtils';
+import { 
+  isDarkMode, 
+  getCurrentThemeMode, 
+  setThemeMode, 
+  updateDocumentTheme, 
+  watchThemeChange, 
+  getThemeColor, 
+  applyOklchFormula, 
+  generateGradientBackground, 
+  generateShadow, 
+  generateTransition, 
+  generateBackdropBlur, 
+  generateDarkBackdropBlur, 
+  generateBorder, 
+  generateFocusStyle, 
+  generateHoverEffect, 
+  generateActiveEffect, 
+  generateDisabledStyle, 
+  generateResponsiveBreakpoints, 
+  generateMediaQuery, 
+  generateDarkModeQuery, 
+  generatePrintStyles, 
+  generateKeyframes, 
+  generateCSSVariables, 
+  applyThemeToElement, 
+  createThemeStyleSheet, 
+  updateThemeStyleSheet,
+  type ThemeMode,
+  type ColorType,
+  type ThemeConfig,
+  DEFAULT_THEME_CONFIG
+} from './utils/themeUtils';
+import { 
+  LogManager, 
+  LogLevel, 
+  logger, 
+  createPerformanceMonitor, 
+  createDebugTools, 
+  createErrorHandler, 
+  createMemoryMonitor, 
+  createNetworkMonitor 
+} from './utils/logUtils';
+import { 
+  createTabContainer, 
+  createNewTabButton, 
+  createDragHandle, 
+  createResizeHandle, 
+  createStatusElement, 
+  createWidthAdjustmentDialog, 
+  createConfirmDialog, 
+  createInputDialog, 
+  createProgressDialog, 
+  createNotification, 
+  createLoadingIndicator, 
+  createTooltip, 
+  createContextMenu 
+} from './utils/uiCreationUtils';
+import { 
+  discoverPanels, 
+  checkPanelStatus, 
+  getAllPanelStatuses, 
+  hasPanelListChanged, 
+  getSidebarWidth, 
+  isSidebarVisible, 
+  getSidebarPosition, 
+  calculateAlignmentPosition, 
+  shouldAlignToSidebar, 
+  createPanelStatusMonitor, 
+  createSidebarAlignmentMonitor, 
+  createPanelChangeListener, 
+  calculatePanelSwitchAnimation, 
+  getPanelScreenPosition, 
+  isPanelInViewport, 
+  getPanelVisibleArea, 
+  calculatePanelRelativePosition, 
+  checkPanelOverlap, 
+  calculatePanelOverlapArea, 
+  getPanelZIndex, 
+  setPanelZIndex, 
+  getPanelOpacity, 
+  setPanelOpacity, 
+  isPanelOccluded, 
+  getPanelOccludingElements,
+  checkSidebarStatus,
+  calculateSidebarAlignmentPosition,
+  shouldPerformSidebarAlignment,
+  performSidebarAlignment,
+  createPanelSwitchAnimation,
+  getPanelSwitchHistory,
+  calculatePanelSwitchDirection,
+  getAdjacentPanels,
+  canSwitchToPanel,
+  getPanelSwitchOrder,
+  type PanelDiscoveryCache,
+  type PanelStatus,
+  type SidebarAlignmentConfig
+} from './utils/panelManagementUtils';
 
 let pluginName: string;
 
-interface TabInfo {
-  blockId: string;
-  panelId: string;
-  title: string;
-  color?: string;
-  icon?: string;
-  isJournal?: boolean;
-  isPinned?: boolean;
-  order: number;
-  scrollPosition?: { x: number; y: number }; // 滚动位置
-  blockType?: string; // 块类型
-}
-
-interface TabPosition {
-  x: number;
-  y: number;
-}
-
-interface PanelTabsData {
-  tabs: TabInfo[];
-  lastActive: number; // 时间戳
-}
-
-// 插件专用存储键定义
-const PLUGIN_STORAGE_KEYS = {
-  FIRST_PANEL_TABS: 'first-panel-tabs',      // 第一个面板的标签数据
-  CLOSED_TABS: 'closed-tabs',               // 已关闭标签列表
-  FLOATING_WINDOW_VISIBLE: 'floating-window-visible', // 浮窗可见状态
-  TABS_POSITION: 'tabs-position',           // 标签位置
-  LAYOUT_MODE: 'layout-mode',               // 布局模式
-} as const;
-
-/**
- * 基于Orca API的存储服务类
- * 提供统一的配置存储和读取接口，支持降级到localStorage
- */
-class OrcaStorageService {
-  private log(...args: any[]) {
-    if (typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS !== false) {
-      console.log('[OrcaStorageService]', ...args);
-    }
-  }
-
-  private warn(...args: any[]) {
-    console.warn('[OrcaStorageService]', ...args);
-  }
-
-  private error(...args: any[]) {
-    console.error('[OrcaStorageService]', ...args);
-  }
-
-  /**
-   * 保存数据到Orca插件存储系统
-   * @param key 存储键
-   * @param data 要保存的数据
-   * @param pluginName 插件名称（默认orca-tabs-plugin）
-   */
-  async saveConfig(key: string, data: any, pluginName: string = 'orca-tabs-plugin'): Promise<boolean> {
-    try {
-      // 将复杂对象序列化为JSON字符串
-      const serializedData = typeof data === 'string' ? data : JSON.stringify(data);
-      await orca.plugins.setData(pluginName, key, serializedData);
-      this.log(`💾 已保存插件数据 ${key}:`, data);
-      return true;
-    } catch (error) {
-      this.warn(`无法保存插件数据 ${key}，尝试降级到localStorage:`, error);
-      return this.saveToLocalStorage(key, data);
-    }
-  }
-
-  /**
-   * 从Orca插件存储系统读取数据
-   * @param key 存储键
-   * @param pluginName 插件名称（默认orca-tabs-plugin）
-   * @param defaultValue 默认值
-   */
-  async getConfig<T>(key: string, pluginName: string = 'orca-tabs-plugin', defaultValue?: T): Promise<T | null> {
-    try {
-      const result = await orca.plugins.getData(pluginName, key);
-      
-      if (result === null || result === undefined) {
-        return defaultValue || null;
-      }
-      
-      // 尝试反序列化JSON字符串
-      let parsedResult: T;
-      if (typeof result === 'string') {
-        try {
-          parsedResult = JSON.parse(result);
-        } catch (parseError) {
-          // 如果解析失败，可能是纯字符串，直接返回
-          parsedResult = result as T;
-        }
-      } else {
-        // 如果已经是对象，直接使用
-        parsedResult = result as T;
-      }
-      
-      this.log(`📂 已读取插件数据 ${key}:`, parsedResult);
-      return parsedResult;
-    } catch (error) {
-      this.warn(`无法读取插件数据 ${key}，尝试从localStorage读取:`, error);
-      return this.getFromLocalStorage(key, defaultValue);
-    }
-  }
-
-  /**
-   * 删除插件数据
-   * @param key 存储键
-   * @param pluginName 插件名称（默认orca-tabs-plugin）
-   */
-  async removeConfig(key: string, pluginName: string = 'orca-tabs-plugin'): Promise<boolean> {
-    try {
-      await orca.plugins.removeData(pluginName, key);
-      this.log(`🗑️ 已删除插件数据 ${key}`);
-      return true;
-    } catch (error) {
-      this.warn(`无法删除插件数据 ${key}，尝试从localStorage删除:`, error);
-      return this.removeFromLocalStorage(key);
-    }
-  }
-
-  /**
-   * 降级到localStorage保存
-   */
-  private saveToLocalStorage(key: string, data: any): boolean {
-    try {
-      const storageKey = this.getLocalStorageKey(key);
-      localStorage.setItem(storageKey, JSON.stringify(data));
-      this.log(`💾 已降级保存到localStorage: ${storageKey}`);
-      return true;
-    } catch (error) {
-      this.error(`无法保存到localStorage:`, error);
-      return false;
-    }
-  }
-
-  /**
-   * 从localStorage读取
-   */
-  private getFromLocalStorage<T>(key: string, defaultValue?: T): T | null {
-    try {
-      const storageKey = this.getLocalStorageKey(key);
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const result = JSON.parse(saved);
-        this.log(`📂 已从localStorage读取: ${storageKey}`);
-        return result;
-      }
-      return defaultValue || null;
-    } catch (error) {
-      this.error(`无法从localStorage读取:`, error);
-      return defaultValue || null;
-    }
-  }
-
-  /**
-   * 从localStorage删除
-   */
-  private removeFromLocalStorage(key: string): boolean {
-    try {
-      const storageKey = this.getLocalStorageKey(key);
-      localStorage.removeItem(storageKey);
-      this.log(`🗑️ 已从localStorage删除: ${storageKey}`);
-      return true;
-    } catch (error) {
-      this.error(`无法从localStorage删除:`, error);
-      return false;
-    }
-  }
-
-  /**
-   * 获取localStorage键名
-   */
-  private getLocalStorageKey(key: string): string {
-    const keyMap: Record<string, string> = {
-      [PLUGIN_STORAGE_KEYS.FIRST_PANEL_TABS]: 'orca-first-panel-tabs-api',
-      [PLUGIN_STORAGE_KEYS.CLOSED_TABS]: 'orca-closed-tabs-api',
-      [PLUGIN_STORAGE_KEYS.FLOATING_WINDOW_VISIBLE]: 'orca-tabs-visible-api',
-      [PLUGIN_STORAGE_KEYS.TABS_POSITION]: 'orca-tabs-position-api',
-      [PLUGIN_STORAGE_KEYS.LAYOUT_MODE]: 'orca-tabs-layout-api',
-    };
-    return keyMap[key] || `orca-plugin-storage-${key}`;
-  }
-
-  /**
-   * 测试API配置的序列化和反序列化
-   */
-  async testConfigSerialization(): Promise<void> {
-    try {
-      this.log("🧪 开始测试API配置序列化...");
-      
-      // 测试简单数据类型
-      const testString = "test string";
-      await this.saveConfig('test-string', testString);
-      const retrievedString = await this.getConfig<string>('test-string', 'orca-tabs-plugin');
-      this.log(`字符串测试: ${testString === retrievedString ? '✅' : '❌'}`);
-      
-      // 测试复杂对象
-      const testObject = { name: "test", value: 123, nested: { data: [1, 2, 3] } };
-      await this.saveConfig('test-object', testObject);
-      const retrievedObject = await this.getConfig<typeof testObject>('test-object', 'orca-tabs-plugin');
-      this.log(`对象测试: ${JSON.stringify(testObject) === JSON.stringify(retrievedObject) ? '✅' : '❌'}`);
-      
-      // 测试数组
-      const testArray = [1, 2, 3, { nested: true }];
-      await this.saveConfig('test-array', testArray);
-      const retrievedArray = await this.getConfig<typeof testArray>('test-array', 'orca-tabs-plugin');
-      this.log(`数组测试: ${JSON.stringify(testArray) === JSON.stringify(retrievedArray) ? '✅' : '❌'}`);
-      
-      // 清理测试数据
-      await this.removeConfig('test-string');
-      await this.removeConfig('test-object');
-      await this.removeConfig('test-array');
-      
-      this.log("🧪 API配置序列化测试完成");
-    } catch (error) {
-      this.error("API配置序列化测试失败:", error);
-    }
-  }
-
-
-  /**
-   * 获取旧的localStorage键名（用于迁移）
-   */
-}
 
 class OrcaTabsPlugin {
   private firstPanelTabs: TabInfo[] = []; // 只存储第一个面板的标签数据
@@ -251,32 +233,31 @@ class OrcaTabsPlugin {
   private currentPanelIndex = 0; // 当前面板索引
   private storageService = new OrcaStorageService(); // 存储服务实例
   
+  // 日志管理器
+  private logManager = new LogManager({
+    level: typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS_VERBOSE === true 
+      ? LogLevel.VERBOSE 
+      : LogLevel.INFO,
+    enableConsole: typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS !== false,
+    prefix: '[OrcaTabsPlugin]'
+  });
+
   // 调试日志（开发模式）
   private log(...args: any[]) {
-    // 在开发模式下启用日志（可以通过变量控制）
-    if (typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS !== false) {
-      console.log(...args);
-    }
+    this.logManager.info(args.join(' '));
   }
 
   // 详细日志（仅在需要时启用）
   private verboseLog(...args: any[]) {
-    // 只有在明确启用详细日志时才输出
-    // 使用方法：在控制台设置 window.DEBUG_ORCA_TABS_VERBOSE = true
-    if (typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS_VERBOSE === true) {
-      console.log('[OrcaTabsPlugin]', ...args);
-    }
+    this.logManager.verbose(args.join(' '));
   }
   
   private warn(...args: any[]) {
-    if (typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS !== false) {
-      console.warn(...args);
-    }
+    this.logManager.warn(args.join(' '));
   }
   
   private error(...args: any[]) {
-    // 错误日志在生产环境也保留
-    console.error(...args);
+    this.logManager.error(args.join(' '));
   }
   private tabContainer: HTMLElement | null = null;
   private cycleSwitcher: HTMLElement | null = null;
@@ -661,100 +642,32 @@ class OrcaTabsPlugin {
     this.log("🔍 开始发现面板...");
     this.lastPanelDiscoveryTime = now;
     
-    const mainSection = document.querySelector('section#main');
-    if (!mainSection) {
-      this.warn("❌ 未找到 section#main");
-      return;
-    }
-    this.log("✅ 找到 section#main");
+    const { panelIds, activePanelId, panelCount } = discoverPanels();
+    
+    this.log(`🎯 最终发现 ${panelCount} 个面板，面板ID列表:`, panelIds);
+    this.log(`🎯 活动面板: ${activePanelId || '无'}`);
 
-    const panelsRow = mainSection.querySelector('.orca-panels-row');
-    if (!panelsRow) {
-      this.warn("❌ 未找到 .orca-panels-row");
-      return;
+    // 更新面板ID列表
+    this.panelIds = panelIds;
+    
+    // 更新当前面板信息
+    if (activePanelId && activePanelId !== this.currentPanelId) {
+      this.currentPanelId = activePanelId;
+      this.currentPanelIndex = panelIds.indexOf(activePanelId);
+      this.log(`🔄 活动面板已更新: ${this.currentPanelId} (索引: ${this.currentPanelIndex})`);
     }
-    this.log("✅ 找到 .orca-panels-row");
-
-    // 检查所有可能的面板选择器
-    const allPanels = document.querySelectorAll('.orca-panel');
-    
-    const panels = panelsRow.querySelectorAll('.orca-panel');
-    this.panelIds = [];
-    
-    
-    // 详细检查每个面板
-    panels.forEach((panel, index) => {
-      const panelId = panel.getAttribute('data-panel-id');
-      const isActive = panel.classList.contains('active');
-      const isVisible = (panel as HTMLElement).offsetParent !== null; // 检查是否可见
-      const rect = panel.getBoundingClientRect();
-      const isMenuPanel = this.isMenuPanel(panel);
-      
-      this.log(`面板 ${index + 1}: ID=${panelId}, 激活=${isActive}, 可见=${isVisible}, 菜单=${isMenuPanel}, 位置=(${rect.left}, ${rect.top})`);
-      
-      if (panelId && !isMenuPanel) {
-        this.panelIds.push(panelId);
-      } else if (isMenuPanel) {
-        this.log(`🚫 跳过菜单面板: ${panelId}`);
-      } else {
-        this.warn(`❌ 面板 ${index + 1} 没有 data-panel-id 属性`);
-      }
-    });
-    
-    // 如果面板数量不足，尝试其他方法
-    if (panels.length < 2 && allPanels.length >= 2) {
-      this.log("⚠️ 在 .orca-panels-row 中面板不足，尝试从整个文档中查找...");
-      
-      allPanels.forEach((panel, index) => {
-        const panelId = panel.getAttribute('data-panel-id');
-        const isMenuPanel = this.isMenuPanel(panel);
-        if (panelId && !this.panelIds.includes(panelId) && !isMenuPanel) {
-          this.panelIds.push(panelId);
-          this.log(`➕ 从文档中找到额外面板: ID=${panelId}`);
-        } else if (isMenuPanel) {
-          this.log(`🚫 跳过菜单面板: ${panelId}`);
-        }
-      });
-    }
-    
-    // 更新当前面板信息，但保持激活状态
-    if (this.panelIds.length > 0) {
-      // 检查当前激活的面板是否还在列表中
-      const activePanel = document.querySelector('.orca-panel.active');
-      if (activePanel) {
-        const activePanelId = activePanel.getAttribute('data-panel-id');
-        const activeIndex = this.panelIds.indexOf(activePanelId || '');
-        
-        if (activeIndex !== -1) {
-          // 当前激活的面板还在列表中，保持其状态
-          this.currentPanelId = activePanelId || '';
-          this.currentPanelIndex = activeIndex;
-        } else {
-          // 当前激活的面板不在列表中，设置为第一个面板
-          this.currentPanelId = this.panelIds[0];
-          this.currentPanelIndex = 0;
-        }
-      } else {
-        // 没有激活的面板，设置为第一个面板
-        this.currentPanelId = this.panelIds[0];
-        this.currentPanelIndex = 0;
-      }
-    }
-    
-    this.log(`🎯 最终发现 ${this.panelIds.length} 个面板，面板ID列表:`, this.panelIds);
-    this.log(`🎯 当前面板: ${this.currentPanelId} (索引: ${this.currentPanelIndex})`);
     
     // 更新缓存
     this.panelDiscoveryCache = {
-      panelIds: [...this.panelIds],
+      panelIds: [...panelIds],
       timestamp: now
     };
     
     // 如果只有一个面板，显示提示
-    if (this.panelIds.length === 1) {
+    if (panelCount === 1) {
       this.log("ℹ️ 只有一个面板，不会显示切换按钮");
-    } else if (this.panelIds.length > 1) {
-      this.log(`✅ 发现 ${this.panelIds.length} 个面板，将创建循环切换器`);
+    } else if (panelCount > 1) {
+      this.log(`✅ 发现 ${panelCount} 个面板，将创建循环切换器`);
     }
   }
 
@@ -833,61 +746,16 @@ class OrcaTabsPlugin {
    * 按固定状态排序标签（固定标签在前，非固定在后）
    */
   sortTabsByPinStatus() {
-    this.firstPanelTabs.sort((a, b) => {
-      // 固定标签在前
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
-      
-      // 相同固定状态的标签保持数组中的顺序（不按order排序）
-      // 这样新插入的标签会保持在正确的位置
-      return 0;
-    });
+    this.firstPanelTabs = sortTabsByPinStatus(this.firstPanelTabs);
   }
 
   /**
    * 查找最后一个非固定标签页的索引
    */
   findLastNonPinnedTabIndex(): number {
-    // 从后往前查找第一个非固定标签页
-    for (let i = this.firstPanelTabs.length - 1; i >= 0; i--) {
-      if (!this.firstPanelTabs[i].isPinned) {
-        return i;
-      }
-    }
-    return -1; // 没有找到非固定标签页
+    return findLastNonPinnedTabIndex(this.firstPanelTabs);
   }
 
-  /**
-   * 专门格式化日记日期（用于标签显示）
-   */
-  formatJournalDate(date: Date): string {
-    try {
-      // 获取用户的日期格式设置
-      let dateFormat = orca.state.settings[AppKeys.JournalDateFormat];
-      
-      // 如果没有设置或设置无效，使用默认格式
-      if (!dateFormat || typeof dateFormat !== 'string') {
-        const locale = orca.state.locale || 'zh-CN';
-        dateFormat = locale.startsWith('zh') ? 'yyyy年MM月dd日' : 'yyyy-MM-dd';
-      }
-
-      // 判断相对日期（优先显示相对日期）
-      if (isToday(date)) {
-        return t('今天');
-      } else if (isYesterday(date)) {
-        return t('昨天');
-      } else if (isTomorrow(date)) {
-        return t('明天');
-      } else {
-        // 使用用户设置的日期格式，但需要处理星期几的中文显示
-        return this.formatDateWithPattern(date, dateFormat);
-      }
-    } catch (e) {
-      // 如果格式化失败，使用默认格式
-      this.warn("日期格式化失败:", e);
-      return this.formatDateWithPattern(date, 'yyyy-MM-dd');
-    }
-  }
 
   /**
    * 从ContentFragment数组中提取纯文本
@@ -951,33 +819,6 @@ class OrcaTabsPlugin {
     return text.trim();
   }
 
-  /**
-   * 使用BlockProperty API提取日期块信息
-   */
-  extractJournalInfo(block: any): Date | null {
-    try {
-      // 查找_repr属性（类型应该是PropType.JSON = 0）
-      const reprProp = this.findProperty(block, '_repr');
-      if (!reprProp || reprProp.type !== PropType.JSON || !reprProp.value) {
-        return null;
-      }
-
-      // 解析JSON类型的属性值
-      const reprData = typeof reprProp.value === 'string' 
-        ? JSON.parse(reprProp.value) 
-        : reprProp.value;
-
-      // 检查是否是journal类型的日期块
-      if (reprData.type === 'journal' && reprData.date) {
-        return new Date(reprData.date);
-      }
-
-      return null;
-    } catch (e) {
-      // JSON解析失败或其他错误
-      return null;
-    }
-  }
 
   /**
    * 检查content是否需要拼接多段
@@ -1041,7 +882,7 @@ class OrcaTabsPlugin {
   async detectBlockType(block: any): Promise<string> {
     try {
       // 1. 检查是否是日期块
-      const journalInfo = this.extractJournalInfo(block);
+      const journalInfo = extractJournalInfo(block);
       if (journalInfo) {
         return 'journal';
       }
@@ -1386,10 +1227,10 @@ class OrcaTabsPlugin {
       // 获取标题：优先级 日期块 > 别名 > content内容 > text内容
       try {
         // 最高优先级：检查是否是日期块
-        const journalInfo = this.extractJournalInfo(block);
+        const journalInfo = extractJournalInfo(block);
         if (journalInfo) {
           isJournal = true;
-          const formattedDate = this.formatJournalDate(journalInfo);
+          const formattedDate = formatJournalDate(journalInfo);
           title = formattedDate; // 移除文字中的图标，图标会通过icon属性单独显示
           console.log(`📅 识别为日期块: ${title}, 原始日期: ${journalInfo.toISOString()}`);
         } else if (block.aliases && block.aliases.length > 0) {
@@ -1514,65 +1355,16 @@ class OrcaTabsPlugin {
     this.log("📱 使用自动切换模式，不创建面板切换器");
 
     // 创建标签容器
-    this.tabContainer = document.createElement('div');
-    this.tabContainer.className = 'orca-tabs-container';
-    // 不再需要为切换器预留空间
-    // 根据主题模式设置背景
     const isDarkMode = orca.state.themeMode === 'dark';
     const backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.1)';
-    
-    // 根据布局模式设置不同的样式
     const currentPosition = this.isVerticalMode ? this.verticalPosition : this.position;
-    const containerStyle = this.isVerticalMode ? `
-      position: fixed;
-      top: ${currentPosition.y}px;
-      left: ${currentPosition.x}px;
-      z-index: 300;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      backdrop-filter: blur(2px);
-      -webkit-backdrop-filter: blur(2px);
-      background: ${backgroundColor};
-      border-radius: 6px;
-      padding: 4px 2px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      user-select: none;
-      max-height: 80vh;
-      flex-wrap: nowrap;
-      pointer-events: auto;
-      -webkit-app-region: no-drag;
-      width: ${this.verticalWidth}px;
-      min-width: 120px;
-      max-width: 400px;
-      align-items: stretch;
-      app-region: no-drag;
-      overflow-y: auto;
-      overflow-x: visible;
-    ` : `
-      position: fixed;
-      top: ${currentPosition.y}px;
-      left: ${currentPosition.x}px;
-      z-index: 300;
-      display: flex;
-      gap: 4px;
-      backdrop-filter: blur(2px);
-      -webkit-backdrop-filter: blur(2px);
-      background: ${backgroundColor};
-      border-radius: 6px;
-      padding: 2px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      user-select: none;
-      max-width: 80vw;
-      flex-wrap: wrap;
-      pointer-events: auto;
-      -webkit-app-region: no-drag;
-      height: 28px;
-      align-items: center;
-      app-region: no-drag;
-    `;
     
-    this.tabContainer.style.cssText = containerStyle;
+    this.tabContainer = createTabContainer(
+      this.isVerticalMode, 
+      currentPosition, 
+      this.verticalWidth, 
+      backgroundColor
+    );
     
     // 添加事件监听，只阻止标签栏内部的mousedown事件冒泡
     this.tabContainer.addEventListener('mousedown', (e) => {
@@ -1598,23 +1390,7 @@ class OrcaTabsPlugin {
     // 创建拖拽手柄
     const dragHandle = document.createElement('div');
     dragHandle.className = 'drag-handle';
-    dragHandle.style.cssText = `
-      width: 20px;
-      height: 100%;
-      background: transparent;
-      cursor: move;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      color: #666;
-      margin-right: 4px;
-      min-height: 32px;
-      flex-shrink: 0;
-      -webkit-app-region: no-drag;
-      app-region: no-drag;
-      pointer-events: auto;
-    `;
+    dragHandle.style.cssText = createDragHandleStyle();
     dragHandle.innerHTML = '⋮⋮';
 
     // 添加拖拽事件
@@ -1646,6 +1422,9 @@ class OrcaTabsPlugin {
     const style = document.createElement('style');
     style.id = 'orca-tabs-drag-styles';
     style.textContent = `
+      ${createDragHandleHoverStyle()}
+      ${createResizeHandleHoverStyle()}
+      ${createOperationStateStyle()}
       /* 拖拽中的标签样式 */
       .orca-tab[data-dragging="true"] {
         border: 2px solid #ef4444 !important;
@@ -1796,30 +1575,24 @@ class OrcaTabsPlugin {
     this.log("✅ 拖拽样式已添加");
   }
 
+  // 防抖函数实例
+  private normalDebounce = debounce(async () => {
+    await this.updateTabsUI();
+  }, 100);
+
+  private draggingDebounce = debounce(async () => {
+    await this.updateTabsUI();
+  }, 200);
+
   /**
    * 防抖更新标签页UI（防止闪烁，优化版）
    */
   debouncedUpdateTabsUI() {
     // 如果正在拖拽，延迟更新UI以避免干扰拖拽体验
     if (this.draggingTab) {
-    // 清除之前的计时器
-    if (this.updateDebounceTimer) {
-      clearTimeout(this.updateDebounceTimer);
-    }
-    
-      // 设置新的计时器，拖拽时使用更长的延迟
-    this.updateDebounceTimer = setTimeout(async () => {
-      await this.updateTabsUI();
-      }, 200); // 拖拽时200ms防抖
+      this.draggingDebounce();
     } else {
-      // 正常情况下的防抖
-      if (this.updateDebounceTimer) {
-        clearTimeout(this.updateDebounceTimer);
-      }
-      
-      this.updateDebounceTimer = setTimeout(async () => {
-        await this.updateTabsUI();
-      }, 100); // 正常情况100ms防抖
+      this.normalDebounce();
     }
   }
 
@@ -2524,33 +2297,28 @@ class OrcaTabsPlugin {
    */
   async performSidebarAlignment() {
     try {
-      const sidebarWidth = this.getSidebarWidth();
-      if (sidebarWidth === 0) return;
-
-      const appElement = document.querySelector('div#app');
-      if (!appElement) return;
-
-      const isSidebarClosed = appElement.classList.contains('sidebar-closed');
-      const isSidebarOpened = appElement.classList.contains('sidebar-opened');
-      
-      if (!isSidebarClosed && !isSidebarOpened) {
-        this.log("⚠️ 无法确定侧边栏状态，跳过对齐");
-        return;
-      }
-
       // 获取当前位置
       const currentPosition = this.getCurrentPosition();
       if (!currentPosition) return;
 
+      // 检查侧边栏状态
+      const sidebarStatus = checkSidebarStatus();
+      if (!sidebarStatus.isVisible || sidebarStatus.width === 0) {
+        this.log("⚠️ 侧边栏不可见或宽度为0，跳过对齐");
+        return;
+      }
+
       // 计算新位置
-      const newPosition = this.calculateSidebarAlignmentPosition(
-        currentPosition, 
-        sidebarWidth, 
-        isSidebarClosed, 
-        isSidebarOpened
+      const newPosition = performSidebarAlignment(
+        currentPosition,
+        sidebarStatus,
+        0 // alignmentOffset
       );
 
-      if (!newPosition) return;
+      if (!newPosition) {
+        this.log("⚠️ 无法计算对齐位置，跳过对齐");
+        return;
+      }
 
       // 更新位置
       await this.updatePosition(newPosition);
@@ -2952,17 +2720,7 @@ class OrcaTabsPlugin {
 
     this.resizeHandle = document.createElement('div');
     this.resizeHandle.className = 'resize-handle';
-    this.resizeHandle.style.cssText = `
-      position: absolute;
-      top: 0;
-      right: -4px;
-      width: 8px;
-      height: 100%;
-      cursor: col-resize;
-      background: rgba(0, 0, 0, 0.1);
-      z-index: 1000;
-      pointer-events: auto;
-    `;
+    this.resizeHandle.style.cssText = createResizeHandleStyle();
 
     // 添加拖拽事件
     this.resizeHandle.addEventListener('mousedown', this.handleResizeStart.bind(this));
@@ -3035,200 +2793,42 @@ class OrcaTabsPlugin {
     const originalWidth = this.verticalWidth;
 
     // 创建对话框
-    const dialog = document.createElement('div');
-    dialog.className = 'width-adjustment-dialog';
-    dialog.style.cssText = `
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(255, 255, 255, 0.95);
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-      z-index: 2000;
-      padding: 20px;
-      min-width: 300px;
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-    `;
-
-    // 标题
-    const title = document.createElement('div');
-    title.textContent = '调整面板宽度';
-    title.style.cssText = `
-      font-size: 16px;
-      font-weight: 600;
-      margin-bottom: 16px;
-      color: #333;
-    `;
-
-    // 当前宽度显示
-    const currentWidth = document.createElement('div');
-    currentWidth.textContent = `当前面板宽度: ${this.verticalWidth}px`;
-    currentWidth.style.cssText = `
-      font-size: 14px;
-      color: #666;
-      margin-bottom: 16px;
-    `;
-
-    // 滑块容器
-    const sliderContainer = document.createElement('div');
-    sliderContainer.style.cssText = `
-      margin-bottom: 16px;
-    `;
-
-    // 滑块标签
-    const sliderLabel = document.createElement('div');
-    sliderLabel.textContent = '宽度 (120px - 400px)';
-    sliderLabel.style.cssText = `
-      font-size: 14px;
-      margin-bottom: 8px;
-      color: #333;
-    `;
-
-    // 滑块
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = '120';
-    slider.max = '400';
-    slider.value = this.verticalWidth.toString();
-    slider.style.cssText = `
-      width: 100%;
-      height: 6px;
-      border-radius: 3px;
-      background: #ddd;
-      outline: none;
-      -webkit-appearance: none;
-    `;
-
-    // 滑块样式
-    slider.style.background = `
-      linear-gradient(to right, #007acc 0%, #007acc ${((this.verticalWidth - 120) / (400 - 120)) * 100}%, #ddd ${((this.verticalWidth - 120) / (400 - 120)) * 100}%, #ddd 100%)
-    `;
-
-    // 宽度显示
-    const widthDisplay = document.createElement('div');
-    widthDisplay.textContent = `${this.verticalWidth}px`;
-    widthDisplay.style.cssText = `
-      text-align: center;
-      font-size: 14px;
-      font-weight: 600;
-      color: #007acc;
-      margin-top: 8px;
-    `;
-
-    // 按钮容器
-    const buttonContainer = document.createElement('div');
-    buttonContainer.style.cssText = `
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-    `;
-
-    // 取消按钮
-    const cancelButton = document.createElement('button');
-    cancelButton.textContent = '取消';
-    cancelButton.style.cssText = `
-      padding: 8px 16px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      background: white;
-      color: #333;
-      cursor: pointer;
-      font-size: 14px;
-    `;
-
-    // 确定按钮
-    const confirmButton = document.createElement('button');
-    confirmButton.textContent = '确定';
-    confirmButton.style.cssText = `
-      padding: 8px 16px;
-      border: none;
-      border-radius: 4px;
-      background: #007acc;
-      color: white;
-      cursor: pointer;
-      font-size: 14px;
-    `;
-
-    // 滑块事件
-    slider.addEventListener('input', async (e) => {
-      const newWidth = parseInt((e.target as HTMLInputElement).value);
-      widthDisplay.textContent = `${newWidth}px`;
-      
-      // 更新滑块背景
-      const percentage = ((newWidth - 120) / (400 - 120)) * 100;
-      slider.style.background = `
-        linear-gradient(to right, #007acc 0%, #007acc ${percentage}%, #ddd ${percentage}%, #ddd 100%)
-      `;
-      
-      // 实时调整面板宽度
-      try {
-        orca.nav.changeSizes(orca.state.activePanel, [newWidth]);
-        
-        if (this.tabContainer) {
-          this.tabContainer.style.width = `${newWidth}px`;
+    const dialog = createWidthAdjustmentDialog(
+      this.verticalWidth,
+      async (newWidth: number) => {
+        // 实时调整面板宽度
+        try {
+          orca.nav.changeSizes(orca.state.activePanel, [newWidth]);
+          
+          if (this.tabContainer) {
+            this.tabContainer.style.width = `${newWidth}px`;
+          }
+          
+          this.verticalWidth = newWidth;
+          
+          // 实时保存设置
+          await this.saveLayoutMode();
+        } catch (error) {
+          this.error("实时调整面板宽度失败:", error);
         }
-        
-        this.verticalWidth = newWidth;
-      } catch (error) {
-        this.error("实时调整面板宽度失败:", error);
-      }
-    });
-
-    // 按钮事件
-    cancelButton.addEventListener('click', async () => {
-      // 恢复到原始宽度
-      try {
-        orca.nav.changeSizes(orca.state.activePanel, [originalWidth]);
-        
-        if (this.tabContainer) {
-          this.tabContainer.style.width = `${originalWidth}px`;
+      },
+      async () => {
+        // 恢复到原始宽度
+        try {
+          orca.nav.changeSizes(orca.state.activePanel, [originalWidth]);
+          
+          if (this.tabContainer) {
+            this.tabContainer.style.width = `${originalWidth}px`;
+          }
+          
+          this.verticalWidth = originalWidth;
+        } catch (error) {
+          this.error("恢复面板宽度失败:", error);
         }
-        
-        this.verticalWidth = originalWidth;
-      } catch (error) {
-        this.error("恢复面板宽度失败:", error);
       }
-      
-      dialog.remove();
-    });
+    );
 
-    confirmButton.addEventListener('click', async () => {
-      const newWidth = parseInt(slider.value);
-      
-      try {
-        // 保存设置（面板宽度已经在滑块移动时实时调整了）
-        await this.saveLayoutMode();
-        this.log(`📏 面板宽度设置已保存: ${newWidth}px`);
-      } catch (error) {
-        this.error("保存面板宽度设置失败:", error);
-      }
-      
-      dialog.remove();
-    });
-
-    // 点击外部关闭
-    dialog.addEventListener('click', (e) => {
-      if (e.target === dialog) {
-        dialog.remove();
-      }
-    });
-
-    // 组装对话框
-    sliderContainer.appendChild(sliderLabel);
-    sliderContainer.appendChild(slider);
-    sliderContainer.appendChild(widthDisplay);
-    
-    buttonContainer.appendChild(cancelButton);
-    buttonContainer.appendChild(confirmButton);
-    
-    dialog.appendChild(title);
-    dialog.appendChild(currentWidth);
-    dialog.appendChild(sliderContainer);
-    dialog.appendChild(buttonContainer);
-    
+    // 添加到页面
     document.body.appendChild(dialog);
   }
   
@@ -3269,139 +2869,27 @@ class OrcaTabsPlugin {
     
     // 设置样式
     const isDarkMode = orca.state.themeMode === 'dark';
-    let backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(200, 200, 200, 0.6)';
-    let textColor = isDarkMode ? '#ffffff' : '#333';
-    let fontWeight = 'normal';
-    
-    // 如果有颜色，应用颜色样式
-    if (tab.color) {
-      // 使用OKLCH公式处理颜色（仅限暗色模式）
-      backgroundColor = this.applyOklchFormula(tab.color, 'background');
-      textColor = this.applyOklchFormula(tab.color, 'text');
-      fontWeight = '600';
-    }
-
-    // 根据布局模式设置不同的标签样式
-    const tabStyle = this.isVerticalMode ? `
-      background: ${backgroundColor};
-      color: ${textColor};
-      font-weight: ${fontWeight};
-      padding: 2px 8px;
-      border-radius: 4px;
-      height: 24px;
-      max-height: 24px;
-      line-height: 20px;
-      cursor: pointer;
-      font-size: 12px;
-      width: calc(100% - 6px);
-      margin: 0 3px;
-      transition: all 0.2s ease;
-      backdrop-filter: blur(2px);
-      -webkit-backdrop-filter: blur(2px);
-      -webkit-app-region: no-drag;
-      app-region: no-drag;
-      pointer-events: auto;
-    ` : `
-      background: ${backgroundColor};
-      color: ${textColor};
-      font-weight: ${fontWeight};
-      padding: 2px 8px;
-      border-radius: 4px;
-      height: 24px;
-      max-height: 24px;
-      line-height: 20px;
-      cursor: pointer;
-      font-size: 12px;
-      max-width: 150px;
-      transition: all 0.2s ease;
-      backdrop-filter: blur(2px);
-      -webkit-backdrop-filter: blur(2px);
-      -webkit-app-region: no-drag;
-      app-region: no-drag;
-      pointer-events: auto;
-    `;
-    
+    const tabStyle = createTabBaseStyle(tab, this.isVerticalMode, isDarkMode, this.applyOklchFormula.bind(this));
     tabElement.style.cssText = tabStyle;
 
     // 创建标签内容容器
-    const tabContent = document.createElement('div');
-    tabContent.style.cssText = `
-      display: flex;
-      align-items: center;
-      width: 100%;
-      height: 100%;
-      gap: 6px;
-    `;
+    const tabContent = createTabContentContainer();
 
     // 创建图标容器（如果有图标）
     if (tab.icon) {
-      const iconContainer = document.createElement('div');
-      iconContainer.style.cssText = `
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 16px;
-        height: 16px;
-        flex-shrink: 0;
-        font-size: 14px;
-        line-height: 1;
-      `;
-      
-      // 检查是否是 Tabler Icon
-      if (tab.icon.startsWith('ti ti-')) {
-        const iconElement = document.createElement('i');
-        iconElement.className = tab.icon;
-        iconContainer.appendChild(iconElement);
-      } else {
-        // 普通文本图标（如emoji）
-        iconContainer.textContent = tab.icon;
-      }
-      
+      const iconContainer = createTabIconContainer(tab.icon);
       tabContent.appendChild(iconContainer);
     }
 
     // 创建文本容器
-    const textContainer = document.createElement('div');
-    textContainer.style.cssText = `
-      flex: 1;
-      overflow: hidden;
-      white-space: nowrap;
-      min-width: 0;
-      display: flex;
-      align-items: center;
-      line-height: 1;
-      height: 16px;
-      position: relative;
-    `;
-    
-    // 添加渐变遮罩效果
-    const gradientMask = document.createElement('div');
-    gradientMask.style.cssText = `
-      position: absolute;
-      top: 0;
-      right: 0;
-      width: 20px;
-      height: 100%;
-      background: linear-gradient(to right, transparent, var(--orca-bg-color, #ffffff));
-      pointer-events: none;
-      z-index: 1;
-    `;
-    
-    textContainer.appendChild(gradientMask);
-    textContainer.textContent = tab.title;
+    const textContainer = createTabTextContainer(tab.title);
 
     // 添加文本容器到内容容器
     tabContent.appendChild(textContainer);
 
     // 如果是固定标签，添加独立的图钉图标
     if (tab.isPinned) {
-      const pinIcon = document.createElement('span');
-      pinIcon.textContent = '📌';
-      pinIcon.style.cssText = `
-        flex-shrink: 0;
-        font-size: 10px;
-        opacity: 0.8;
-      `;
+      const pinIcon = createPinIcon();
       tabContent.appendChild(pinIcon);
     }
 
@@ -3414,11 +2902,7 @@ class OrcaTabsPlugin {
     }
     
     // 设置悬停提示
-    let tooltip = tab.title;
-    if (tab.isPinned) {
-      tooltip += " (已固定)";
-    }
-    tabElement.title = tooltip;
+    tabElement.title = createTabTooltip(tab);
 
     // 添加点击事件
     tabElement.addEventListener('click', (e) => {
@@ -3627,14 +3111,7 @@ class OrcaTabsPlugin {
   }
 
   hexToRgba(hex: string, alpha: number): string {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    if (result) {
-      const r = parseInt(result[1], 16);
-      const g = parseInt(result[2], 16);
-      const b = parseInt(result[3], 16);
-      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-    }
-    return `rgba(200, 200, 200, ${alpha})`;
+    return hexToRgba(hex, alpha);
   }
 
   /**
@@ -3760,77 +3237,7 @@ class OrcaTabsPlugin {
    * 优先使用简单的RGB调整，避免OKLCH偏色问题
    */
   private applyOklchFormula(hex: string, type: 'text' | 'background'): string {
-    // 使用Orca API检查是否为暗色模式
-    const isDarkMode = orca.state.themeMode === 'dark';
-    
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    if (!result) return hex;
-
-    const r = parseInt(result[1], 16);
-    const g = parseInt(result[2], 16);
-    const b = parseInt(result[3], 16);
-
-    if (type === 'text') {
-      // 文字颜色：根据模式调整对比度
-      const brightness = (r + g + b) / 3;
-      
-      if (isDarkMode) {
-        // 暗色模式：增亮文字
-        if (brightness < 80) {
-          // 暗色：适度增亮
-          const factor = 1.6;
-          const newR = Math.min(255, Math.round(r * factor));
-          const newG = Math.min(255, Math.round(g * factor));
-          const newB = Math.min(255, Math.round(b * factor));
-          return `rgb(${newR}, ${newG}, ${newB})`;
-        } else if (brightness < 150) {
-          // 中等亮度：轻微增亮
-          const factor = 1.3;
-          const newR = Math.min(255, Math.round(r * factor));
-          const newG = Math.min(255, Math.round(g * factor));
-          const newB = Math.min(255, Math.round(b * factor));
-          return `rgb(${newR}, ${newG}, ${newB})`;
-        } else {
-          // 亮色：保持原色或轻微增亮
-          const factor = 1.1;
-          const newR = Math.min(255, Math.round(r * factor));
-          const newG = Math.min(255, Math.round(g * factor));
-          const newB = Math.min(255, Math.round(b * factor));
-          return `rgb(${newR}, ${newG}, ${newB})`;
-        }
-      } else {
-        // 亮色模式：变暗文字以提高对比度
-        if (brightness > 200) {
-          // 很亮的颜色：大幅变暗
-          const factor = 0.4;
-          const newR = Math.max(0, Math.round(r * factor));
-          const newG = Math.max(0, Math.round(g * factor));
-          const newB = Math.max(0, Math.round(b * factor));
-          return `rgb(${newR}, ${newG}, ${newB})`;
-        } else if (brightness > 150) {
-          // 中等亮度：适度变暗
-          const factor = 0.6;
-          const newR = Math.max(0, Math.round(r * factor));
-          const newG = Math.max(0, Math.round(g * factor));
-          const newB = Math.max(0, Math.round(b * factor));
-          return `rgb(${newR}, ${newG}, ${newB})`;
-        } else {
-          // 暗色：轻微变暗
-          const factor = 0.8;
-          const newR = Math.max(0, Math.round(r * factor));
-          const newG = Math.max(0, Math.round(g * factor));
-          const newB = Math.max(0, Math.round(b * factor));
-          return `rgb(${newR}, ${newG}, ${newB})`;
-        }
-      }
-    } else {
-      // 背景颜色：根据模式调整透明度
-      if (isDarkMode) {
-        return this.hexToRgba(hex, 0.25);
-      } else {
-        return this.hexToRgba(hex, 0.35);
-      }
-    }
+    return applyOklchFormula(hex, type);
   }
 
   async switchToTab(tab: TabInfo) {
@@ -3918,7 +3325,7 @@ class OrcaTabsPlugin {
               try {
                 const block = await orca.invokeBackend("get-block", parseInt(tab.blockId));
                 if (block) {
-                  const journalInfo = this.extractJournalInfo(block);
+                  const journalInfo = extractJournalInfo(block);
                   if (journalInfo && !isNaN(journalInfo.getTime())) {
                     targetDate = journalInfo;
                     console.log(`📅 从块信息获取日期: ${journalInfo.toISOString()}`);
@@ -4604,79 +4011,7 @@ class OrcaTabsPlugin {
    * 创建上下文菜单项
    */
   private createContextMenuItem(title: string, icon: string, shortcut: string, onClick: () => void): HTMLElement {
-    const item = document.createElement('div');
-    item.className = 'orca-tabs-ref-menu-item';
-    item.setAttribute('role', 'menuitem');
-    item.style.cssText = `
-      display: flex;
-      align-items: center;
-      padding: 8px 12px;
-      cursor: pointer;
-      user-select: none;
-      transition: background-color 0.15s ease;
-      font-size: 14px;
-      line-height: 1.4;
-    `;
-    
-    // 图标
-    const iconElement = document.createElement('i');
-    iconElement.className = icon;
-    iconElement.style.cssText = `
-      margin-right: 8px;
-      font-size: 16px;
-      width: 16px;
-      text-align: center;
-      color: #666;
-    `;
-    
-    // 标题
-    const titleElement = document.createElement('span');
-    titleElement.textContent = title;
-    titleElement.style.cssText = `
-      flex: 1;
-      color: #333;
-    `;
-    
-    // 组装元素
-    item.appendChild(iconElement);
-    item.appendChild(titleElement);
-    
-    // 快捷键提示（仅当有快捷键时显示）
-    if (shortcut && shortcut.trim() !== '') {
-      const shortcutElement = document.createElement('span');
-      shortcutElement.textContent = shortcut;
-      shortcutElement.style.cssText = `
-        font-size: 12px;
-        color: #999;
-        margin-left: 12px;
-      `;
-      item.appendChild(shortcutElement);
-    }
-    
-    // 悬停效果
-    item.addEventListener('mouseenter', () => {
-      item.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
-    });
-    
-    item.addEventListener('mouseleave', () => {
-      item.style.backgroundColor = 'transparent';
-    });
-    
-    // 点击事件
-    item.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onClick();
-      
-      // 关闭菜单
-      const menu = item.closest('.orca-context-menu, .context-menu, [role="menu"]') as HTMLElement;
-      if (menu) {
-        menu.style.display = 'none';
-        menu.remove();
-      }
-    });
-    
-    return item;
+    return createContextMenuItem(title, icon, shortcut, onClick);
   }
 
   /**
@@ -6010,9 +5345,15 @@ class OrcaTabsPlugin {
     if (this.isVerticalMode) {
       this.verticalPosition.x = e.clientX - this.dragStartX;
       this.verticalPosition.y = e.clientY - this.dragStartY;
+      // 同时更新当前位置用于显示
+      this.position.x = this.verticalPosition.x;
+      this.position.y = this.verticalPosition.y;
     } else {
-    this.position.x = e.clientX - this.dragStartX;
-    this.position.y = e.clientY - this.dragStartY;
+      this.horizontalPosition.x = e.clientX - this.dragStartX;
+      this.horizontalPosition.y = e.clientY - this.dragStartY;
+      // 同时更新当前位置用于显示
+      this.position.x = this.horizontalPosition.x;
+      this.position.y = this.horizontalPosition.y;
     }
 
     // 获取容器的实际尺寸
@@ -6028,9 +5369,15 @@ class OrcaTabsPlugin {
     if (this.isVerticalMode) {
       this.verticalPosition.x = Math.max(minX, Math.min(maxX, this.verticalPosition.x));
       this.verticalPosition.y = Math.max(minY, Math.min(maxY, this.verticalPosition.y));
+      // 同步更新当前位置
+      this.position.x = this.verticalPosition.x;
+      this.position.y = this.verticalPosition.y;
     } else {
-    this.position.x = Math.max(minX, Math.min(maxX, this.position.x));
-    this.position.y = Math.max(minY, Math.min(maxY, this.position.y));
+      this.horizontalPosition.x = Math.max(minX, Math.min(maxX, this.horizontalPosition.x));
+      this.horizontalPosition.y = Math.max(minY, Math.min(maxY, this.horizontalPosition.y));
+      // 同步更新当前位置
+      this.position.x = this.horizontalPosition.x;
+      this.position.y = this.horizontalPosition.y;
     }
 
     // 只移动标签容器
@@ -6070,21 +5417,27 @@ class OrcaTabsPlugin {
     
     this.log("🔄 拖拽结束，清理所有拖拽状态");
 
-    // 保存位置
-    if (this.isVerticalMode) {
-      // 垂直模式：更新垂直位置并保存布局数据
-      this.verticalPosition = { ...this.position };
-      await this.saveLayoutMode();
-    } else {
-      // 水平模式：更新水平位置并保存布局数据
-      this.horizontalPosition = { ...this.position };
-      await this.saveLayoutMode();
-    }
+    // 保存位置（位置已经在drag方法中正确更新）
+    await this.saveLayoutMode();
+    this.log(`💾 拖拽结束，位置已保存: ${this.isVerticalMode ? '垂直' : '水平'}模式 (${this.position.x}, ${this.position.y})`);
   }
 
   async savePosition() {
     try {
-      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.TABS_POSITION, this.position);
+      // 使用配置工具函数更新位置
+      const updatedPositions = updatePositionConfig(
+        this.position,
+        this.isVerticalMode,
+        this.verticalPosition,
+        this.horizontalPosition
+      );
+      
+      this.verticalPosition = updatedPositions.verticalPosition;
+      this.horizontalPosition = updatedPositions.horizontalPosition;
+      
+      await this.saveLayoutMode(); // 保存到布局模式数据中
+      
+      this.log(`💾 位置已保存: ${generatePositionLogMessage(this.position, this.isVerticalMode)}`);
     } catch (e) {
       this.warn("无法保存标签位置");
     }
@@ -6177,12 +5530,17 @@ class OrcaTabsPlugin {
 
   async restorePosition() {
     try {
-      const saved = await this.storageService.getConfig<{x: number, y: number}>(PLUGIN_STORAGE_KEYS.TABS_POSITION, 'orca-tabs-plugin', {x: 20, y: 20});
-      if (saved) {
-        this.position = saved;
-        // 确保恢复的位置在有效范围内
-        this.constrainPosition();
-      }
+      // 使用配置工具函数获取正确的位置
+      this.position = getPositionByMode(
+        this.isVerticalMode,
+        this.verticalPosition,
+        this.horizontalPosition
+      );
+      
+      // 确保恢复的位置在有效范围内
+      this.position = validatePosition(this.position, this.isVerticalMode, this.verticalWidth);
+      
+      this.log(`📍 位置已恢复: ${generatePositionLogMessage(this.position, this.isVerticalMode)}`);
     } catch (e) {
       this.warn("无法恢复标签位置");
     }
@@ -6193,57 +5551,62 @@ class OrcaTabsPlugin {
    */
   async restoreLayoutMode() {
     try {
-      const saved = await this.storageService.getConfig<{
-        isVerticalMode: boolean;
-        verticalWidth: number;
-        verticalPosition: {x: number, y: number};
-        horizontalPosition?: {x: number, y: number};
-        isSidebarAlignmentEnabled?: boolean;
-        isFloatingWindowVisible?: boolean;
-        showBlockTypeIcons?: boolean;
-        showInHeadbar?: boolean;
-      }>(PLUGIN_STORAGE_KEYS.LAYOUT_MODE, 'orca-tabs-plugin', {
-        isVerticalMode: false,
-        verticalWidth: 200,
-        verticalPosition: { x: 20, y: 20 },
-        horizontalPosition: { x: 20, y: 20 },
-        isSidebarAlignmentEnabled: false,
-        isFloatingWindowVisible: true,
-        showBlockTypeIcons: true,
-        showInHeadbar: true
-      });
+      const saved = await this.storageService.getConfig<Partial<LayoutConfig>>(
+        PLUGIN_STORAGE_KEYS.LAYOUT_MODE, 
+        'orca-tabs-plugin', 
+        createDefaultLayoutConfig()
+      );
       
       if (saved) {
-        this.isVerticalMode = saved.isVerticalMode || false;
-        this.verticalWidth = saved.verticalWidth || 200;
-        this.verticalPosition = saved.verticalPosition || { x: 20, y: 20 };
+        // 使用配置工具函数合并配置
+        const config = mergeLayoutConfig(saved);
         
-        // 恢复水平位置（如果存在）
-        if (saved.horizontalPosition) {
-          this.horizontalPosition = saved.horizontalPosition;
-          this.position = { ...saved.horizontalPosition };
-        }
+        this.isVerticalMode = config.isVerticalMode;
+        this.verticalWidth = config.verticalWidth;
+        this.verticalPosition = config.verticalPosition;
+        this.horizontalPosition = config.horizontalPosition;
+        
+        // 根据当前布局模式设置正确的位置
+        this.position = getPositionByMode(
+          this.isVerticalMode,
+          this.verticalPosition,
+          this.horizontalPosition
+        );
         
         // 恢复其他设置
-        this.isSidebarAlignmentEnabled = saved.isSidebarAlignmentEnabled || false;
-        this.isFloatingWindowVisible = saved.isFloatingWindowVisible !== false;
-        this.showBlockTypeIcons = saved.showBlockTypeIcons !== false;
-        this.showInHeadbar = saved.showInHeadbar !== false;
+        this.isSidebarAlignmentEnabled = config.isSidebarAlignmentEnabled;
+        this.isFloatingWindowVisible = config.isFloatingWindowVisible;
+        this.showBlockTypeIcons = config.showBlockTypeIcons;
+        this.showInHeadbar = config.showInHeadbar;
         
-        this.log(`📐 布局模式已恢复: ${this.isVerticalMode ? '垂直' : '水平'}, 垂直宽度: ${this.verticalWidth}px, 垂直位置: (${this.verticalPosition.x}, ${this.verticalPosition.y}), 水平位置: (${this.position.x}, ${this.position.y})`);
+        this.log(`📐 布局模式已恢复: ${generateLayoutLogMessage(config)}, 当前位置: (${this.position.x}, ${this.position.y})`);
       } else {
-        this.isVerticalMode = false;
-        this.verticalWidth = 200;
-        this.verticalPosition = { x: 20, y: 20 };
-        this.position = { x: 20, y: 20 };
+        // 使用默认配置
+        const defaultConfig = createDefaultLayoutConfig();
+        this.isVerticalMode = defaultConfig.isVerticalMode;
+        this.verticalWidth = defaultConfig.verticalWidth;
+        this.verticalPosition = defaultConfig.verticalPosition;
+        this.horizontalPosition = defaultConfig.horizontalPosition;
+        this.position = getPositionByMode(
+          this.isVerticalMode,
+          this.verticalPosition,
+          this.horizontalPosition
+        );
         this.log(`📐 布局模式: 水平 (默认)`);
       }
     } catch (e) {
       this.error("恢复布局模式失败:", e);
-      this.isVerticalMode = false;
-      this.verticalWidth = 200;
-      this.verticalPosition = { x: 20, y: 20 };
-      this.position = { x: 20, y: 20 };
+      // 使用默认配置
+      const defaultConfig = createDefaultLayoutConfig();
+      this.isVerticalMode = defaultConfig.isVerticalMode;
+      this.verticalWidth = defaultConfig.verticalWidth;
+      this.verticalPosition = defaultConfig.verticalPosition;
+      this.horizontalPosition = defaultConfig.horizontalPosition;
+      this.position = getPositionByMode(
+        this.isVerticalMode,
+        this.verticalPosition,
+        this.horizontalPosition
+      );
     }
   }
 
@@ -6251,23 +5614,8 @@ class OrcaTabsPlugin {
    * 将位置限制在窗口边界内
    */
   constrainPosition() {
-    // 保守估计容器大小（如果还没有创建）
-    const estimatedWidth = this.isVerticalMode ? this.verticalWidth : 400;
-    const estimatedHeight = 40;
-    
-    const minX = 0; // 允许紧靠左边缘
-    const maxX = window.innerWidth - estimatedWidth;
-    const minY = 0; // 允许紧靠上边缘
-    const maxY = window.innerHeight - estimatedHeight;
-    
-    // 根据布局模式限制不同的位置
-    if (this.isVerticalMode) {
-      this.verticalPosition.x = Math.max(minX, Math.min(maxX, this.verticalPosition.x));
-      this.verticalPosition.y = Math.max(minY, Math.min(maxY, this.verticalPosition.y));
-    } else {
-      this.position.x = Math.max(minX, Math.min(maxX, this.position.x));
-      this.position.y = Math.max(minY, Math.min(maxY, this.position.y));
-    }
+    const containerHeight = this.isVerticalMode ? Math.min(this.firstPanelTabs.length * 28 + 8, window.innerHeight * 0.8) : 28;
+    this.position = constrainPositionToBounds(this.position, this.isVerticalMode, this.verticalWidth, containerHeight);
   }
 
   /**
@@ -6739,8 +6087,7 @@ class OrcaTabsPlugin {
     this.discoverPanels();
     
     // 检查面板列表是否发生变化
-    const panelListChanged = oldPanelIds.length !== this.panelIds.length || 
-      !oldPanelIds.every((id, index) => id === this.panelIds[index]);
+    const panelListChanged = hasPanelListChanged(oldPanelIds, this.panelIds);
     
     if (panelListChanged) {
       this.log(`📋 面板列表发生变化: ${oldPanelIds.length} -> ${this.panelIds.length}`);
