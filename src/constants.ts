@@ -20,4 +20,5 @@ export const PLUGIN_STORAGE_KEYS = {
   FLOATING_WINDOW_VISIBLE: 'floating-window-visible', // 浮窗可见状态
   TABS_POSITION: 'tabs-position',           // 标签位置
   LAYOUT_MODE: 'layout-mode',               // 布局模式
+  FIXED_TO_TOP: 'fixed-to-top',             // 固定到顶部状态
 } as const;

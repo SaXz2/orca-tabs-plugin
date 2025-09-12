@@ -152,6 +152,7 @@ export class OrcaStorageService {
       [PLUGIN_STORAGE_KEYS.FLOATING_WINDOW_VISIBLE]: 'orca-tabs-visible-api',
       [PLUGIN_STORAGE_KEYS.TABS_POSITION]: 'orca-tabs-position-api',
       [PLUGIN_STORAGE_KEYS.LAYOUT_MODE]: 'orca-tabs-layout-api',
+      [PLUGIN_STORAGE_KEYS.FIXED_TO_TOP]: 'orca-tabs-fixed-to-top-api',
     };
     return keyMap[key] || `orca-plugin-storage-${key}`;
   }

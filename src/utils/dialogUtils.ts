@@ -762,7 +762,7 @@ export function createWidthAdjustmentDialog(
   // 滑块
   const slider = document.createElement('input');
   slider.type = 'range';
-  slider.min = '200';
+  slider.min = '120';
   slider.max = '800';
   slider.value = currentWidth.toString();
   slider.style.cssText = createSliderStyle();
