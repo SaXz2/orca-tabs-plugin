@@ -8,6 +8,7 @@
 - **需要设置新建标签页ID，不能为空，否则会出现BUG**
 
 
+> 设置方法:选中需要设置为新标签页的块 → 右键块标 → 选中更多 → 复制块ID → 粘贴到插件设置页面中的主页块ID中
 ## 使用
 
 在右侧 [Releases](https://github.com/SaXz2/orca-tabs-plugin/releases) 选择最新版本下载
