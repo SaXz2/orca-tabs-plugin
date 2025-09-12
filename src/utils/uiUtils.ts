@@ -218,15 +218,18 @@ export function createNewTabButtonStyle(isVerticalMode: boolean): string {
  */
 export function createDragHandleStyle(): string {
   return `
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 20px;
+    width: 20px;
+    height: 100%;
+    background: transparent;
     cursor: move;
-    z-index: 9998;
-    opacity: 0;
-    background-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: #666;
+    margin-right: 4px;
+    min-height: 32px;
+    flex-shrink: 0;
     -webkit-app-region: no-drag;
     app-region: no-drag;
     pointer-events: auto;
@@ -239,64 +242,14 @@ export function createDragHandleStyle(): string {
 export function createResizeHandleStyle(): string {
   return `
     position: absolute;
-    background-color: #3498db;
-    width: 10px;
-    height: 10px;
-    right: -5px;
-    bottom: -5px;
-    z-index: 9999;
-    border-radius: 50%;
-    opacity: 0;
-    cursor: nwse-resize;
+    top: 0;
+    right: -4px;
+    width: 8px;
+    height: 100%;
+    cursor: col-resize;
+    background: rgba(0, 0, 0, 0.1);
+    z-index: 1000;
     pointer-events: auto;
-  `;
-}
-
-/**
- * 创建拖拽手柄悬停效果样式
- */
-export function createDragHandleHoverStyle(): string {
-  return `
-    .drag-handle:hover {
-      opacity: 0.3;
-      transition: opacity 0.2s ease;
-    }
-  `;
-}
-
-/**
- * 创建调整大小手柄悬停效果样式
- */
-export function createResizeHandleHoverStyle(): string {
-  return `
-    .resize-handle:hover {
-      opacity: 0.5;
-      transition: opacity 0.2s ease;
-    }
-    
-    .resize-handle.dragging {
-      opacity: 1;
-    }
-  `;
-}
-
-/**
- * 创建操作状态样式
- */
-export function createOperationStateStyle(): string {
-  return `
-    .resizing, .dragging {
-      user-select: none !important;
-      -webkit-user-select: none !important;
-    }
-    
-    body.resizing {
-      cursor: nwse-resize !important;
-    }
-    
-    body.dragging {
-      cursor: move !important;
-    }
   `;
 }
 

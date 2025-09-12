@@ -245,6 +245,51 @@ export function createPanelStatusMonitor(
   };
 }
 
+/**
+ * 创建侧边栏对齐监控器
+ */
+export function createSidebarAlignmentMonitor(
+  onSidebarChange: (width: number, visible: boolean) => void,
+  interval: number = 500
+): {
+  start: () => void;
+  stop: () => void;
+  check: () => void;
+} {
+  let intervalId: number | null = null;
+  let lastWidth = 0;
+  let lastVisible = false;
+
+  const check = () => {
+    const width = getSidebarWidth();
+    const visible = isSidebarVisible();
+    
+    if (width !== lastWidth || visible !== lastVisible) {
+      onSidebarChange(width, visible);
+      lastWidth = width;
+      lastVisible = visible;
+    }
+  };
+
+  return {
+    start: () => {
+      if (intervalId) return;
+      
+      // 初始化
+      lastWidth = getSidebarWidth();
+      lastVisible = isSidebarVisible();
+      
+      intervalId = window.setInterval(check, interval);
+    },
+    stop: () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    },
+    check
+  };
+}
 
 /**
  * 创建面板变化监听器
@@ -577,270 +622,5 @@ export function getPanelOccludingElements(panelId: string): HTMLElement[] {
   }
   
   return [elementAtCenter as HTMLElement];
-}
-
-/**
- * 检查侧边栏状态
- */
-export function checkSidebarStatus(): {
-  isClosed: boolean;
-  isOpened: boolean;
-  isVisible: boolean;
-  width: number;
-} {
-  const appElement = document.querySelector('div#app');
-  const isClosed = appElement?.classList.contains('sidebar-closed') || false;
-  const isOpened = appElement?.classList.contains('sidebar-opened') || false;
-  const width = getSidebarWidth();
-  const isVisible = isSidebarVisible();
-  
-  return {
-    isClosed,
-    isOpened,
-    isVisible,
-    width
-  };
-}
-
-/**
- * 计算侧边栏对齐位置
- */
-export function calculateSidebarAlignmentPosition(
-  currentPosition: { x: number; y: number },
-  sidebarWidth: number,
-  isSidebarClosed: boolean,
-  isSidebarOpened: boolean,
-  alignmentOffset: number = 0
-): { x: number; y: number } | null {
-  if (isSidebarClosed) {
-    // 侧边栏关闭时，标签栏应该靠近左边缘
-    return {
-      x: alignmentOffset,
-      y: currentPosition.y
-    };
-  } else if (isSidebarOpened) {
-    // 侧边栏打开时，标签栏应该对齐到侧边栏右侧
-    return {
-      x: sidebarWidth + alignmentOffset,
-      y: currentPosition.y
-    };
-  }
-  
-  return null;
-}
-
-/**
- * 检查是否需要执行侧边栏对齐
- */
-export function shouldPerformSidebarAlignment(
-  currentPosition: { x: number; y: number },
-  sidebarStatus: {
-    isClosed: boolean;
-    isOpened: boolean;
-    isVisible: boolean;
-    width: number;
-  },
-  alignmentOffset: number = 0,
-  tolerance: number = 10
-): boolean {
-  if (!sidebarStatus.isVisible || sidebarStatus.width === 0) {
-    return false;
-  }
-  
-  const targetPosition = calculateSidebarAlignmentPosition(
-    currentPosition,
-    sidebarStatus.width,
-    sidebarStatus.isClosed,
-    sidebarStatus.isOpened,
-    alignmentOffset
-  );
-  
-  if (!targetPosition) {
-    return false;
-  }
-  
-  return Math.abs(currentPosition.x - targetPosition.x) > tolerance;
-}
-
-/**
- * 创建侧边栏对齐监控器
- */
-export function createSidebarAlignmentMonitor(
-  onAlignmentNeeded: (targetPosition: { x: number; y: number }) => void,
-  onAlignmentCompleted: (oldPosition: { x: number; y: number }, newPosition: { x: number; y: number }) => void,
-  interval: number = 500
-): {
-  start: () => void;
-  stop: () => void;
-  check: () => void;
-} {
-  let intervalId: number | null = null;
-  let lastSidebarStatus: ReturnType<typeof checkSidebarStatus> | null = null;
-
-  const check = () => {
-    const currentStatus = checkSidebarStatus();
-    
-    // 检查侧边栏状态是否发生变化
-    if (!lastSidebarStatus || 
-        lastSidebarStatus.isClosed !== currentStatus.isClosed ||
-        lastSidebarStatus.isOpened !== currentStatus.isOpened ||
-        lastSidebarStatus.width !== currentStatus.width) {
-      
-      // 侧边栏状态发生变化，需要重新对齐
-      if (currentStatus.isVisible && currentStatus.width > 0) {
-        const targetPosition = calculateSidebarAlignmentPosition(
-          { x: 0, y: 0 }, // 这里需要传入当前位置
-          currentStatus.width,
-          currentStatus.isClosed,
-          currentStatus.isOpened
-        );
-        
-        if (targetPosition) {
-          onAlignmentNeeded(targetPosition);
-        }
-      }
-      
-      lastSidebarStatus = currentStatus;
-    }
-  };
-
-  return {
-    start: () => {
-      if (intervalId) return;
-      
-      // 初始化
-      lastSidebarStatus = checkSidebarStatus();
-      
-      intervalId = window.setInterval(check, interval);
-    },
-    stop: () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
-      }
-    },
-    check
-  };
-}
-
-/**
- * 执行侧边栏对齐
- */
-export function performSidebarAlignment(
-  currentPosition: { x: number; y: number },
-  sidebarStatus: {
-    isClosed: boolean;
-    isOpened: boolean;
-    isVisible: boolean;
-    width: number;
-  },
-  alignmentOffset: number = 0
-): { x: number; y: number } | null {
-  if (!sidebarStatus.isVisible || sidebarStatus.width === 0) {
-    return null;
-  }
-  
-  return calculateSidebarAlignmentPosition(
-    currentPosition,
-    sidebarStatus.width,
-    sidebarStatus.isClosed,
-    sidebarStatus.isOpened,
-    alignmentOffset
-  );
-}
-
-/**
- * 创建面板切换动画
- */
-export function createPanelSwitchAnimation(
-  fromPanelId: string,
-  toPanelId: string,
-  duration: number = 300
-): {
-  fromPanel: HTMLElement | null;
-  toPanel: HTMLElement | null;
-  animation: {
-    duration: number;
-    easing: string;
-  };
-} {
-  const fromPanel = document.querySelector(`[data-panel-id="${fromPanelId}"]`) as HTMLElement;
-  const toPanel = document.querySelector(`[data-panel-id="${toPanelId}"]`) as HTMLElement;
-  
-  return {
-    fromPanel,
-    toPanel,
-    animation: {
-      duration,
-      easing: 'ease-in-out'
-    }
-  };
-}
-
-/**
- * 获取面板切换历史
- */
-export function getPanelSwitchHistory(panelIds: string[]): string[] {
-  // 这里可以维护一个切换历史，用于实现"上一个面板"功能
-  return [...panelIds];
-}
-
-/**
- * 计算面板切换方向
- */
-export function calculatePanelSwitchDirection(
-  fromPanelId: string,
-  toPanelId: string,
-  panelIds: string[]
-): 'left' | 'right' | 'unknown' {
-  const fromIndex = panelIds.indexOf(fromPanelId);
-  const toIndex = panelIds.indexOf(toPanelId);
-  
-  if (fromIndex === -1 || toIndex === -1) {
-    return 'unknown';
-  }
-  
-  return toIndex > fromIndex ? 'right' : 'left';
-}
-
-/**
- * 获取面板的相邻面板
- */
-export function getAdjacentPanels(panelId: string, panelIds: string[]): {
-  previous: string | null;
-  next: string | null;
-} {
-  const index = panelIds.indexOf(panelId);
-  if (index === -1) {
-    return { previous: null, next: null };
-  }
-  
-  return {
-    previous: index > 0 ? panelIds[index - 1] : null,
-    next: index < panelIds.length - 1 ? panelIds[index + 1] : null
-  };
-}
-
-/**
- * 检查面板是否可以切换
- */
-export function canSwitchToPanel(panelId: string, panelIds: string[]): boolean {
-  return panelIds.includes(panelId);
-}
-
-/**
- * 获取面板的切换顺序
- */
-export function getPanelSwitchOrder(panelIds: string[], currentPanelId: string): string[] {
-  const currentIndex = panelIds.indexOf(currentPanelId);
-  if (currentIndex === -1) {
-    return panelIds;
-  }
-  
-  // 从当前面板开始，按顺序排列
-  return [
-    ...panelIds.slice(currentIndex),
-    ...panelIds.slice(0, currentIndex)
-  ];
 }
 

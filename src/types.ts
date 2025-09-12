@@ -9,6 +9,7 @@ export interface TabInfo {
   order: number;
   scrollPosition?: { x: number; y: number }; // 滚动位置
   blockType?: string; // 块类型
+  closedAt?: number; // 关闭时间戳（用于最近关闭标签页功能）
 }
 
 export interface TabPosition {
@@ -19,4 +20,13 @@ export interface TabPosition {
 export interface PanelTabsData {
   tabs: TabInfo[];
   lastActive: number; // 时间戳
+}
+
+export interface SavedTabSet {
+  id: string;
+  name: string;
+  tabs: TabInfo[];
+  createdAt: number;
+  updatedAt: number;
+  icon?: string; // 自定义图标
 }

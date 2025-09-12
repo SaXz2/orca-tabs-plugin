@@ -145,7 +145,10 @@ export class OrcaStorageService {
   private getLocalStorageKey(key: string): string {
     const keyMap: Record<string, string> = {
       [PLUGIN_STORAGE_KEYS.FIRST_PANEL_TABS]: 'orca-first-panel-tabs-api',
+      [PLUGIN_STORAGE_KEYS.SECOND_PANEL_TABS]: 'orca-second-panel-tabs-api',
       [PLUGIN_STORAGE_KEYS.CLOSED_TABS]: 'orca-closed-tabs-api',
+      [PLUGIN_STORAGE_KEYS.RECENTLY_CLOSED_TABS]: 'orca-recently-closed-tabs-api',
+      [PLUGIN_STORAGE_KEYS.SAVED_TAB_SETS]: 'orca-saved-tab-sets-api',
       [PLUGIN_STORAGE_KEYS.FLOATING_WINDOW_VISIBLE]: 'orca-tabs-visible-api',
       [PLUGIN_STORAGE_KEYS.TABS_POSITION]: 'orca-tabs-position-api',
       [PLUGIN_STORAGE_KEYS.LAYOUT_MODE]: 'orca-tabs-layout-api',

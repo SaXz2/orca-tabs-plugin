@@ -13,7 +13,10 @@ export const PropType = {
 // 插件专用存储键定义
 export const PLUGIN_STORAGE_KEYS = {
   FIRST_PANEL_TABS: 'first-panel-tabs',      // 第一个面板的标签数据
+  SECOND_PANEL_TABS: 'second-panel-tabs',    // 第二个面板的标签数据
   CLOSED_TABS: 'closed-tabs',               // 已关闭标签列表
+  RECENTLY_CLOSED_TABS: 'recently-closed-tabs', // 最近关闭的标签页列表
+  SAVED_TAB_SETS: 'saved-tab-sets',         // 保存的多标签页集合
   FLOATING_WINDOW_VISIBLE: 'floating-window-visible', // 浮窗可见状态
   TABS_POSITION: 'tabs-position',           // 标签位置
   LAYOUT_MODE: 'layout-mode',               // 布局模式
