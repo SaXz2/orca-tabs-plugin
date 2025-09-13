@@ -494,6 +494,11 @@ class OrcaTabsPlugin {
     // 加载工作区数据
     await this.loadWorkspaces();
     
+    // 页面加载完成后更新当前工作区的activeIndex
+    setTimeout(() => {
+      this.updateCurrentWorkspaceActiveIndexOnLoad();
+    }, 1000); // 延迟1秒确保页面完全加载
+    
     // 注册顶部工具栏按钮
     this.registerHeadbarButton();
     
@@ -2031,9 +2036,10 @@ class OrcaTabsPlugin {
     
     this.lastUpdateTime = now;
 
-    // 清除现有标签（保留拖拽手柄和新建按钮）
+    // 清除现有标签（保留拖拽手柄、新建按钮和工作区按钮）
     const dragHandle = this.tabContainer.querySelector('.drag-handle');
     const newTabButton = this.tabContainer.querySelector('.new-tab-button');
+    const workspaceButton = this.tabContainer.querySelector('.workspace-button');
     this.tabContainer.innerHTML = '';
     if (dragHandle) {
       this.tabContainer.appendChild(dragHandle);
@@ -2409,6 +2415,90 @@ class OrcaTabsPlugin {
     
     // 为新建标签页按钮添加右键菜单
     this.addNewTabButtonContextMenu(newTabButton);
+    
+    // 添加工作区按钮（如果启用）
+    if (this.enableWorkspaces) {
+      this.addWorkspaceButton();
+    }
+  }
+
+  /**
+   * 添加工作区按钮
+   */
+  addWorkspaceButton() {
+    if (!this.tabContainer) return;
+    
+    // 检查是否已经存在工作区按钮
+    const existingButton = this.tabContainer.querySelector('.workspace-button');
+    if (existingButton) return;
+    
+    // 创建工作区按钮
+    const workspaceButton = document.createElement('div');
+    workspaceButton.className = 'workspace-button';
+    
+    // 根据布局模式设置不同的工作区按钮样式
+    const workspaceButtonStyle = this.isVerticalMode ? `
+      width: calc(100% - 6px);
+      margin: 0 3px;
+      height: 24px;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: #666;
+      min-height: 24px;
+      flex-shrink: 0;
+      -webkit-app-region: no-drag;
+      app-region: no-drag;
+      pointer-events: auto;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    ` : `
+      width: 24px;
+      height: 24px;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: #666;
+      margin-left: 4px;
+      min-height: 24px;
+      flex-shrink: 0;
+      -webkit-app-region: no-drag;
+      app-region: no-drag;
+      pointer-events: auto;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    `;
+    
+    workspaceButton.style.cssText = workspaceButtonStyle;
+    workspaceButton.innerHTML = '📁';
+    workspaceButton.title = `工作区 (${this.workspaces?.length || 0})`;
+
+    // 添加悬停效果
+    workspaceButton.addEventListener('mouseenter', () => {
+      workspaceButton.style.background = 'rgba(0, 0, 0, 0.1)';
+      workspaceButton.style.color = '#333';
+    });
+    
+    workspaceButton.addEventListener('mouseleave', () => {
+      workspaceButton.style.background = 'transparent';
+      workspaceButton.style.color = '#666';
+    });
+
+    // 添加点击事件
+    workspaceButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.log('📁 点击工作区按钮');
+      this.showWorkspaceMenu(e);
+    });
+
+    this.tabContainer.appendChild(workspaceButton);
   }
   
   /**
@@ -3158,28 +3248,9 @@ class OrcaTabsPlugin {
         });
       }
 
-      // 注册工作区按钮（根据设置决定是否显示）
-      if (this.enableWorkspaces && typeof window !== 'undefined') {
-        orca.headbar.registerHeadbarButton('orca-tabs-plugin.workspaceButton', () => {
-          const React = (window as any).React;
-          const Button = orca.components.Button;
-          
-          return React.createElement(Button, {
-            variant: 'plain',
-            onClick: (event: MouseEvent) => this.showWorkspaceMenu(event),
-            title: `工作区 (${this.workspaces?.length || 0})`,
-            style: {
-              color: (this.workspaces?.length || 0) > 0 ? '#10b981' : '#999',
-              transition: 'color 0.2s ease'
-            }
-          }, React.createElement('i', {
-            className: 'ti ti-folder'
-          }));
-        });
-      }
 
       
-      this.log(`🔘 顶部工具栏按钮已注册 (切换按钮: 总是显示, 调试按钮: ${this.showInHeadbar ? '显示' : '隐藏'}, 最近关闭: ${this.enableRecentlyClosedTabs ? '显示' : '隐藏'}, 保存标签页: ${this.enableMultiTabSaving ? '显示' : '隐藏'}, 工作区: ${this.enableWorkspaces ? '显示' : '隐藏'})`);
+      this.log(`🔘 顶部工具栏按钮已注册 (切换按钮: 总是显示, 调试按钮: ${this.showInHeadbar ? '显示' : '隐藏'}, 最近关闭: ${this.enableRecentlyClosedTabs ? '显示' : '隐藏'}, 保存标签页: ${this.enableMultiTabSaving ? '显示' : '隐藏'})`);
     } catch (error) {
       this.error("注册顶部工具栏按钮失败:", error);
     }
@@ -3201,9 +3272,6 @@ class OrcaTabsPlugin {
       
       // 注销保存标签页按钮
       orca.headbar.unregisterHeadbarButton('orca-tabs-plugin.savedTabsButton');
-      
-      // 注销工作区按钮
-      orca.headbar.unregisterHeadbarButton('orca-tabs-plugin.workspaceButton');
       
       this.log("🔘 顶部工具栏按钮已注销");
     } catch (error) {
@@ -4325,7 +4393,8 @@ class OrcaTabsPlugin {
     // 初始化设置状态
     this.lastSettings = {
       showInHeadbar: this.showInHeadbar,
-      homePageBlockId: this.homePageBlockId
+      homePageBlockId: this.homePageBlockId,
+      enableWorkspaces: this.enableWorkspaces
     };
     
     // 每2秒检查一次设置变化
@@ -4357,6 +4426,16 @@ class OrcaTabsPlugin {
         this.homePageBlockId = currentSettings.homePageBlockId;
         this.log(`🏠 设置变化：主页块ID已更新为 ${this.homePageBlockId}`);
         this.lastSettings.homePageBlockId = this.homePageBlockId;
+      }
+      
+      if (currentSettings.enableWorkspaces !== this.lastSettings.enableWorkspaces) {
+        const oldValue = this.enableWorkspaces;
+        this.enableWorkspaces = currentSettings.enableWorkspaces;
+        this.log(`📁 设置变化：工作区功能 ${oldValue ? '开启' : '关闭'} -> ${this.enableWorkspaces ? '开启' : '关闭'}`);
+        
+        // 重新更新UI以显示或隐藏工作区按钮
+        this.debouncedUpdateTabsUI();
+        this.lastSettings.enableWorkspaces = this.enableWorkspaces;
       }
     } catch (error) {
       this.error("检查设置变化失败:", error);
@@ -5118,7 +5197,8 @@ class OrcaTabsPlugin {
    * 获取当前激活的标签
    */
   getCurrentActiveTab(): TabInfo | null {
-    const currentTabs = this.getCurrentPanelTabs();
+    // 工作区功能启用时，总是使用第一个面板的数据
+    const currentTabs = this.enableWorkspaces ? this.firstPanelTabs : this.getCurrentPanelTabs();
     
     if (currentTabs.length === 0) return null;
     
@@ -5133,7 +5213,14 @@ class OrcaTabsPlugin {
     if (!blockId) return null;
     
     // 在当前面板标签中查找对应的标签
-    return currentTabs.find(tab => tab.blockId === blockId) || null;
+    const activeTab = currentTabs.find(tab => tab.blockId === blockId) || null;
+    
+    // 如果启用了工作区功能且有当前工作区，实时更新activeIndex
+    if (this.enableWorkspaces && this.currentWorkspace && activeTab) {
+      this.updateCurrentWorkspaceActiveIndex(activeTab);
+    }
+    
+    return activeTab;
   }
 
   /**
@@ -8146,14 +8233,14 @@ class OrcaTabsPlugin {
         await this.performUpdateTabSet(selectedIndex);
       } else {
         // 创建模式：检查输入名称
-        const name = input.value.trim();
-        if (!name) {
-          orca.notify('warn', '请输入名称');
-          return;
-        }
-        
-        dialog.remove();
-        await this.performSaveTabSet(name);
+      const name = input.value.trim();
+      if (!name) {
+        orca.notify('warn', '请输入名称');
+        return;
+      }
+      
+      dialog.remove();
+      await this.performSaveTabSet(name);
       }
     };
 
@@ -9314,11 +9401,25 @@ class OrcaTabsPlugin {
    */
   private async performSaveWorkspace(name: string, description: string) {
     try {
-      const currentTabs = this.getCurrentPanelTabs();
+      // 工作区保存时，总是使用第一个面板的数据
+      const currentTabs = this.firstPanelTabs;
+      const currentActiveTab = this.getCurrentActiveTab();
+      
+      // 为每个标签页添加序号，并标记当前激活的标签页（从1开始）
+      const tabsWithIndex = currentTabs.map((tab, index) => {
+        const tabWithIndex = { ...tab };
+        // 如果是当前激活的标签页，记录其序号（从1开始）
+        if (currentActiveTab && tab.blockId === currentActiveTab.blockId) {
+          tabWithIndex.activeIndex = index + 1; // 从1开始
+          this.log(`💾 保存新工作区时记录激活标签页: ${tab.title} (序号: ${index + 1})`);
+        }
+        return tabWithIndex;
+      });
+      
       const workspace: Workspace = {
         id: `workspace_${Date.now()}`,
         name,
-        tabs: [...currentTabs],
+        tabs: tabsWithIndex,
         createdAt: Date.now(),
         updatedAt: Date.now(),
         description: description || undefined
@@ -9498,6 +9599,7 @@ class OrcaTabsPlugin {
         orca.notify('error', '工作区不存在');
         return;
       }
+      
 
       // 保存当前工作区（如果存在）
       if (this.currentWorkspace) {
@@ -9508,20 +9610,131 @@ class OrcaTabsPlugin {
       this.currentWorkspace = workspaceId;
       await this.saveWorkspaces();
 
-      // 清空当前标签页
-      this.firstPanelTabs = [];
-      this.secondPanelTabs = [];
-
-      // 加载工作区的标签页
-      for (const tab of workspace.tabs) {
-        await this.addTabToPanel(tab.blockId, 'end', true);
-      }
+      // 完全替换当前标签页集合
+      await this.replaceCurrentTabsWithWorkspace(workspace.tabs);
 
       this.log(`🔄 已切换到工作区: "${workspace.name}"`);
       orca.notify('success', `已切换到工作区: ${workspace.name}`);
     } catch (error) {
       this.error("切换工作区失败:", error);
       orca.notify('error', '切换工作区失败');
+    }
+  }
+
+  /**
+   * 用工作区的标签页完全替换当前标签页
+   */
+  private async replaceCurrentTabsWithWorkspace(workspaceTabs: TabInfo[]) {
+    try {
+      // 清空当前标签页数据
+      this.firstPanelTabs = [];
+      this.secondPanelTabs = [];
+
+      // 重新获取每个标签页的最新信息（包括块类型图标）
+      const updatedTabs: TabInfo[] = [];
+      for (const tab of workspaceTabs) {
+        try {
+          // 重新获取标签页信息，确保包含最新的块类型和图标
+          const updatedTab = await this.getTabInfo(tab.blockId, this.currentPanelId, updatedTabs.length);
+          if (updatedTab) {
+            // 保留工作区保存的一些重要信息（如备注、固定状态、激活序号等）
+            updatedTab.notes = tab.notes;
+            updatedTab.isPinned = tab.isPinned;
+            updatedTab.order = tab.order;
+            updatedTab.scrollPosition = tab.scrollPosition;
+            updatedTab.activeIndex = tab.activeIndex; // 保留激活序号！
+            updatedTabs.push(updatedTab);
+          } else {
+            // 如果无法获取最新信息，使用原始数据
+            updatedTabs.push(tab);
+          }
+        } catch (error) {
+          this.warn(`无法更新标签页信息 ${tab.title}:`, error);
+          // 如果更新失败，使用原始数据
+          updatedTabs.push(tab);
+        }
+      }
+
+
+      // 工作区切换时，总是设置到第一个面板（索引0）
+      this.firstPanelTabs = updatedTabs;
+      await this.saveFirstPanelTabs();
+      
+      // 如果当前面板不是第一个面板，切换到第一个面板
+      if (this.currentPanelIndex !== 0) {
+        this.currentPanelIndex = 0;
+        this.currentPanelId = this.panelIds[0];
+        this.log(`🔄 工作区切换：切换到第一个面板 (索引: 0)`);
+      }
+
+      // 更新UI显示
+      this.debouncedUpdateTabsUI();
+
+      // 延迟导航，确保UI更新完成后再导航
+      setTimeout(async () => {
+        // 导航到正确的标签页（优先使用activeIndex，否则使用第一个）
+        if (updatedTabs.length > 0) {
+          let targetTab = updatedTabs[0]; // 默认第一个标签页
+          
+          // 查找有activeIndex的标签页，优先选择activeIndex最大的（表示这是最后激活的标签页）
+          const activeTabs = updatedTabs.filter(tab => tab.activeIndex !== undefined);
+          if (activeTabs.length > 0) {
+            // 找到activeIndex最大的标签页
+            const activeTab = activeTabs.reduce((max, current) => 
+              (current.activeIndex || 0) > (max.activeIndex || 0) ? current : max
+            );
+            targetTab = activeTab;
+            this.log(`🎯 导航到工作区中最后激活的标签页: ${targetTab.title} (序号: ${activeTab.activeIndex})`);
+          } else {
+            this.log(`🎯 工作区中没有记录激活标签页，导航到第一个标签页: ${targetTab.title}`);
+          }
+          
+          await orca.nav.goTo("block", { blockId: parseInt(targetTab.blockId) }, this.currentPanelId);
+        }
+      }, 100); // 延迟100ms确保UI更新完成
+
+      this.log(`📋 已替换当前标签页，共 ${updatedTabs.length} 个标签，块类型图标已更新`);
+    } catch (error) {
+      this.error("替换标签页失败:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * 页面加载完成后更新当前工作区的activeIndex
+   */
+  private async updateCurrentWorkspaceActiveIndexOnLoad() {
+    if (!this.enableWorkspaces || !this.currentWorkspace) return;
+
+    const currentActiveTab = this.getCurrentActiveTab();
+    if (currentActiveTab) {
+      await this.updateCurrentWorkspaceActiveIndex(currentActiveTab);
+      this.log(`🔄 页面加载完成后更新工作区activeIndex: ${currentActiveTab.title}`);
+    }
+  }
+
+  /**
+   * 实时更新当前工作区的activeIndex
+   */
+  private async updateCurrentWorkspaceActiveIndex(activeTab: TabInfo) {
+    if (!this.currentWorkspace) return;
+
+    const workspace = this.workspaces.find(w => w.id === this.currentWorkspace);
+    if (workspace) {
+      // 工作区更新时，总是使用第一个面板的数据
+      const currentTabs = this.firstPanelTabs;
+      const activeIndex = currentTabs.findIndex(tab => tab.blockId === activeTab.blockId);
+      
+      if (activeIndex !== -1) {
+        // 更新工作区中对应标签页的activeIndex（从1开始）
+        const workspaceTab = workspace.tabs.find(tab => tab.blockId === activeTab.blockId);
+        if (workspaceTab) {
+          workspaceTab.activeIndex = activeIndex + 1; // 从1开始
+          workspace.updatedAt = Date.now();
+          await this.saveWorkspaces();
+          this.log(`🔄 实时更新工作区activeIndex: ${activeTab.title} (序号: ${activeIndex + 1})`);
+        }
+      }
     }
   }
 
@@ -9533,7 +9746,22 @@ class OrcaTabsPlugin {
 
     const workspace = this.workspaces.find(w => w.id === this.currentWorkspace);
     if (workspace) {
-      workspace.tabs = [...this.getCurrentPanelTabs()];
+      // 工作区更新时，总是使用第一个面板的数据
+      const currentTabs = this.firstPanelTabs;
+      const currentActiveTab = this.getCurrentActiveTab();
+      
+      // 为每个标签页添加序号，并标记当前激活的标签页（从1开始）
+      const tabsWithIndex = currentTabs.map((tab, index) => {
+        const tabWithIndex = { ...tab };
+        // 如果是当前激活的标签页，记录其序号（从1开始）
+        if (currentActiveTab && tab.blockId === currentActiveTab.blockId) {
+          tabWithIndex.activeIndex = index + 1; // 从1开始
+          this.log(`💾 保存工作区时记录激活标签页: ${tab.title} (序号: ${index + 1})`);
+        }
+        return tabWithIndex;
+      });
+      
+      workspace.tabs = tabsWithIndex;
       workspace.updatedAt = Date.now();
       await this.saveWorkspaces();
     }
