@@ -8579,65 +8579,16 @@ class OrcaTabsPlugin {
         justify-content: center;
         min-height: 20px;
       `;
-      
-      // 构建标签信息HTML
-      let tabInfoHTML = `
+      tabInfo.innerHTML = `
         <div style="font-size: 14px; color: #333; font-weight: 500; line-height: 1.2; margin-bottom: 2px;">${tab.title}</div>
         <div style="font-size: 12px; color: #666; line-height: 1.2;">ID: ${tab.blockId}</div>
       `;
-      
-      // 如果有备注，显示备注
-      if (tab.notes && tab.notes.trim()) {
-        tabInfoHTML += `
-          <div style="font-size: 11px; color: #888; line-height: 1.2; margin-top: 2px; font-style: italic;">
-            💭 ${tab.notes}
-          </div>
-        `;
-      }
-      
-      tabInfo.innerHTML = tabInfoHTML;
       tabItem.appendChild(tabInfo);
-
-      // 添加操作按钮容器
-      const actionContainer = document.createElement('div');
-      actionContainer.style.cssText = `
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-left: 8px;
-      `;
-
-      // 添加备注按钮
-      const notesBtn = document.createElement('button');
-      notesBtn.style.cssText = `
-        width: 24px;
-        height: 24px;
-        border: none;
-        border-radius: 4px;
-        background: ${tab.notes ? '#3b82f6' : '#f3f4f6'};
-        color: ${tab.notes ? 'white' : '#666'};
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        transition: all 0.2s;
-      `;
-      notesBtn.innerHTML = '💭';
-      notesBtn.title = tab.notes ? `备注: ${tab.notes}` : '添加备注';
-      notesBtn.onclick = (e) => {
-        e.stopPropagation();
-        // 找到对应的标签集合
-        const tabSet = this.savedTabSets.find(ts => ts.tabs === tabs);
-        if (tabSet) {
-          this.editTabNotes(tab, tabSet, index);
-        }
-      };
-      actionContainer.appendChild(notesBtn);
 
       // 添加序号
       const orderNumber = document.createElement('div');
       orderNumber.style.cssText = `
+        margin-left: 8px;
         font-size: 12px;
         color: #999;
         background: rgba(0, 0, 0, 0.1);
@@ -8651,9 +8602,7 @@ class OrcaTabsPlugin {
         flex-shrink: 0;
       `;
       orderNumber.textContent = (index + 1).toString();
-      actionContainer.appendChild(orderNumber);
-
-      tabItem.appendChild(actionContainer);
+      tabItem.appendChild(orderNumber);
 
       // 拖拽事件
       tabItem.addEventListener('dragstart', (e) => {
@@ -8818,202 +8767,6 @@ class OrcaTabsPlugin {
     // 将拖拽事件监听器添加到容器，以便监听所有子元素
     container.addEventListener('dragstart', handleDragStart);
     container.addEventListener('dragend', handleDragEnd);
-  }
-
-  /**
-   * 编辑标签备注
-   */
-  editTabNotes(tab: TabInfo, tabSet: SavedTabSet, tabIndex: number) {
-    this.log(`编辑标签备注: ${tab.title} (块ID: ${tab.blockId})`);
-    
-    // 移除现有的备注编辑对话框
-    const existingDialog = document.querySelector('.tab-notes-edit-dialog');
-    if (existingDialog) {
-      existingDialog.remove();
-    }
-
-    // 创建备注编辑对话框
-    const dialog = document.createElement('div');
-    dialog.className = 'tab-notes-edit-dialog';
-    dialog.style.cssText = `
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(255, 255, 255, 0.95);
-      border: 1px solid #ddd;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-      z-index: 9999;
-      width: 500px;
-      max-width: 90vw;
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-    `;
-
-    // 创建对话框内容
-    const content = document.createElement('div');
-    content.style.cssText = `
-      padding: 20px;
-    `;
-
-    // 标题
-    const title = document.createElement('div');
-    title.style.cssText = `
-      font-size: 16px;
-      font-weight: 600;
-      color: #333;
-      margin-bottom: 16px;
-      text-align: center;
-    `;
-    title.textContent = `编辑备注 - ${tab.title}`;
-
-    // 标签信息
-    const tabInfo = document.createElement('div');
-    tabInfo.style.cssText = `
-      background: #f8f9fa;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 16px;
-      font-size: 14px;
-      color: #666;
-    `;
-    tabInfo.innerHTML = `
-      <div><strong>标签标题:</strong> ${tab.title}</div>
-      <div><strong>块ID:</strong> ${tab.blockId}</div>
-    `;
-
-    // 备注输入框
-    const label = document.createElement('div');
-    label.style.cssText = `
-      font-size: 14px;
-      font-weight: 500;
-      color: #333;
-      margin-bottom: 8px;
-    `;
-    label.textContent = '备注内容:';
-
-    const textarea = document.createElement('textarea');
-    textarea.style.cssText = `
-      width: 100%;
-      height: 120px;
-      padding: 12px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      font-size: 14px;
-      font-family: inherit;
-      resize: vertical;
-      outline: none;
-      box-sizing: border-box;
-    `;
-    textarea.placeholder = '请输入标签备注...';
-    textarea.value = tab.notes || '';
-
-    // 按钮容器
-    const buttonContainer = document.createElement('div');
-    buttonContainer.style.cssText = `
-      display: flex;
-      gap: 12px;
-      justify-content: flex-end;
-      margin-top: 16px;
-    `;
-
-    // 取消按钮
-    const cancelBtn = document.createElement('button');
-    cancelBtn.style.cssText = `
-      padding: 8px 16px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      background: #fff;
-      color: #666;
-      cursor: pointer;
-      font-size: 14px;
-    `;
-    cancelBtn.textContent = '取消';
-    cancelBtn.onclick = () => {
-      dialog.remove();
-      // 重新显示标签集合详情
-      this.showTabSetDetails(tabSet);
-    };
-
-    // 保存按钮
-    const saveBtn = document.createElement('button');
-    saveBtn.style.cssText = `
-      padding: 8px 16px;
-      border: none;
-      border-radius: 8px;
-      background: #3b82f6;
-      color: white;
-      cursor: pointer;
-      font-size: 14px;
-    `;
-    saveBtn.textContent = '保存';
-    saveBtn.onclick = async () => {
-      const newNotes = textarea.value.trim();
-      
-      try {
-        // 更新标签备注
-        tab.notes = newNotes;
-        
-        // 更新标签集合数据
-        tabSet.tabs[tabIndex] = tab;
-        tabSet.updatedAt = Date.now();
-        
-        // 保存数据
-        await this.saveSavedTabSets();
-        
-        // 关闭对话框
-        dialog.remove();
-        
-        // 重新渲染标签集合详情
-        this.showTabSetDetails(tabSet);
-        
-        // 显示成功提示
-        orca.notify('success', '备注已保存');
-        
-        this.log(`✅ 标签备注已更新: ${tab.title} - ${newNotes || '(无备注)'}`);
-      } catch (error) {
-        this.error("保存备注失败:", error);
-        orca.notify('error', '保存备注失败');
-      }
-    };
-
-    // 组装对话框
-    buttonContainer.appendChild(cancelBtn);
-    buttonContainer.appendChild(saveBtn);
-    
-    content.appendChild(title);
-    content.appendChild(tabInfo);
-    content.appendChild(label);
-    content.appendChild(textarea);
-    content.appendChild(buttonContainer);
-    
-    dialog.appendChild(content);
-    document.body.appendChild(dialog);
-
-    // 聚焦到输入框
-    textarea.focus();
-    textarea.select();
-
-    // 点击外部关闭对话框
-    dialog.addEventListener('click', (e) => {
-      if (e.target === dialog) {
-        dialog.remove();
-        // 重新显示标签集合详情
-        this.showTabSetDetails(tabSet);
-      }
-    });
-
-    // ESC键关闭对话框
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        dialog.remove();
-        // 重新显示标签集合详情
-        this.showTabSetDetails(tabSet);
-        document.removeEventListener('keydown', handleKeyDown);
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
   }
 
   /**
@@ -9209,61 +8962,16 @@ class OrcaTabsPlugin {
           justify-content: center;
           min-height: 20px;
         `;
-        
-        // 构建标签信息HTML
-        let tabInfoHTML = `
+        tabInfo.innerHTML = `
           <div style="font-size: 14px; color: #333; font-weight: 500; line-height: 1.2; margin-bottom: 2px;">${tab.title}</div>
           <div style="font-size: 12px; color: #666; line-height: 1.2;">ID: ${tab.blockId}</div>
         `;
-        
-        // 如果有备注，显示备注
-        if (tab.notes && tab.notes.trim()) {
-          tabInfoHTML += `
-            <div style="font-size: 11px; color: #888; line-height: 1.2; margin-top: 2px; font-style: italic;">
-              💭 ${tab.notes}
-            </div>
-          `;
-        }
-        
-        tabInfo.innerHTML = tabInfoHTML;
         tabItem.appendChild(tabInfo);
-
-        // 添加操作按钮容器
-        const actionContainer = document.createElement('div');
-        actionContainer.style.cssText = `
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          margin-left: 8px;
-        `;
-
-        // 添加备注按钮
-        const notesBtn = document.createElement('button');
-        notesBtn.style.cssText = `
-          width: 24px;
-          height: 24px;
-          border: none;
-          border-radius: 4px;
-          background: ${tab.notes ? '#3b82f6' : '#f3f4f6'};
-          color: ${tab.notes ? 'white' : '#666'};
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 12px;
-          transition: all 0.2s;
-        `;
-        notesBtn.innerHTML = '💭';
-        notesBtn.title = tab.notes ? `备注: ${tab.notes}` : '添加备注';
-        notesBtn.onclick = (e) => {
-          e.stopPropagation();
-          this.editTabNotes(tab, tabSet, index);
-        };
-        actionContainer.appendChild(notesBtn);
 
         // 添加序号
         const orderNumber = document.createElement('div');
         orderNumber.style.cssText = `
+          margin-left: 8px;
           font-size: 12px;
           color: #999;
           background: rgba(0, 0, 0, 0.1);
@@ -9277,9 +8985,7 @@ class OrcaTabsPlugin {
           flex-shrink: 0;
         `;
         orderNumber.textContent = (index + 1).toString();
-        actionContainer.appendChild(orderNumber);
-
-        tabItem.appendChild(actionContainer);
+        tabItem.appendChild(orderNumber);
 
         // 拖拽事件
         tabItem.addEventListener('dragstart', (e) => {

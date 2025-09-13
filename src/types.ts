@@ -10,6 +10,7 @@ export interface TabInfo {
   scrollPosition?: { x: number; y: number }; // 滚动位置
   blockType?: string; // 块类型
   closedAt?: number; // 关闭时间戳（用于最近关闭标签页功能）
+  notes?: string; // 备注
 }
 
 export interface TabPosition {
