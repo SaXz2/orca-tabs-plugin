@@ -194,8 +194,8 @@ function J() {
   return De;
 }
 function _(a, e) {
-  var r, l, c, h;
-  const t = J(), n = (e == null ? void 0 : e.weekStartsOn) ?? ((l = (r = e == null ? void 0 : e.locale) == null ? void 0 : r.options) == null ? void 0 : l.weekStartsOn) ?? t.weekStartsOn ?? ((h = (c = t.locale) == null ? void 0 : c.options) == null ? void 0 : h.weekStartsOn) ?? 0, i = L(a, e == null ? void 0 : e.in), o = i.getDay(), s = (o < n ? 7 : 0) + o - n;
+  var r, c, l, h;
+  const t = J(), n = (e == null ? void 0 : e.weekStartsOn) ?? ((c = (r = e == null ? void 0 : e.locale) == null ? void 0 : r.options) == null ? void 0 : c.weekStartsOn) ?? t.weekStartsOn ?? ((h = (l = t.locale) == null ? void 0 : l.options) == null ? void 0 : h.weekStartsOn) ?? 0, i = L(a, e == null ? void 0 : e.in), o = i.getDay(), s = (o < n ? 7 : 0) + o - n;
   return i.setDate(i.getDate() - s), i.setHours(0, 0, 0, 0), i;
 }
 function X(a, e) {
@@ -239,8 +239,8 @@ function Ae(a, e, t) {
     t == null ? void 0 : t.in,
     a,
     e
-  ), o = G(n), s = G(i), r = +o - ae(o), l = +s - ae(s);
-  return Math.round((r - l) / Me);
+  ), o = G(n), s = G(i), r = +o - ae(o), c = +s - ae(s);
+  return Math.round((r - c) / Me);
 }
 function Be(a, e) {
   const t = ve(a, e), n = $(a, 0);
@@ -547,17 +547,17 @@ function H(a) {
     const n = t.width, i = n && a.matchPatterns[n] || a.matchPatterns[a.defaultMatchWidth], o = e.match(i);
     if (!o)
       return null;
-    const s = o[0], r = n && a.parsePatterns[n] || a.parsePatterns[a.defaultParseWidth], l = Array.isArray(r) ? tt(r, (d) => d.test(s)) : (
+    const s = o[0], r = n && a.parsePatterns[n] || a.parsePatterns[a.defaultParseWidth], c = Array.isArray(r) ? tt(r, (d) => d.test(s)) : (
       // [TODO] -- I challenge you to fix the type
       et(r, (d) => d.test(s))
     );
-    let c;
-    c = a.valueCallback ? a.valueCallback(l) : l, c = t.valueCallback ? (
+    let l;
+    l = a.valueCallback ? a.valueCallback(c) : c, l = t.valueCallback ? (
       // [TODO] -- I challenge you to fix the type
-      t.valueCallback(c)
-    ) : c;
+      t.valueCallback(l)
+    ) : l;
     const h = e.slice(s.length);
-    return { value: c, rest: h };
+    return { value: l, rest: h };
   };
 }
 function et(a, e) {
@@ -710,14 +710,14 @@ function we(a, e) {
   var h, d, p, u;
   const t = L(a, e == null ? void 0 : e.in), n = t.getFullYear(), i = J(), o = (e == null ? void 0 : e.firstWeekContainsDate) ?? ((d = (h = e == null ? void 0 : e.locale) == null ? void 0 : h.options) == null ? void 0 : d.firstWeekContainsDate) ?? i.firstWeekContainsDate ?? ((u = (p = i.locale) == null ? void 0 : p.options) == null ? void 0 : u.firstWeekContainsDate) ?? 1, s = $((e == null ? void 0 : e.in) || a, 0);
   s.setFullYear(n + 1, 0, o), s.setHours(0, 0, 0, 0);
-  const r = _(s, e), l = $((e == null ? void 0 : e.in) || a, 0);
-  l.setFullYear(n, 0, o), l.setHours(0, 0, 0, 0);
-  const c = _(l, e);
-  return +t >= +r ? n + 1 : +t >= +c ? n : n - 1;
+  const r = _(s, e), c = $((e == null ? void 0 : e.in) || a, 0);
+  c.setFullYear(n, 0, o), c.setHours(0, 0, 0, 0);
+  const l = _(c, e);
+  return +t >= +r ? n + 1 : +t >= +l ? n : n - 1;
 }
 function yt(a, e) {
-  var r, l, c, h;
-  const t = J(), n = (e == null ? void 0 : e.firstWeekContainsDate) ?? ((l = (r = e == null ? void 0 : e.locale) == null ? void 0 : r.options) == null ? void 0 : l.firstWeekContainsDate) ?? t.firstWeekContainsDate ?? ((h = (c = t.locale) == null ? void 0 : c.options) == null ? void 0 : h.firstWeekContainsDate) ?? 1, i = we(a, e), o = $((e == null ? void 0 : e.in) || a, 0);
+  var r, c, l, h;
+  const t = J(), n = (e == null ? void 0 : e.firstWeekContainsDate) ?? ((c = (r = e == null ? void 0 : e.locale) == null ? void 0 : r.options) == null ? void 0 : c.firstWeekContainsDate) ?? t.firstWeekContainsDate ?? ((h = (l = t.locale) == null ? void 0 : l.options) == null ? void 0 : h.firstWeekContainsDate) ?? 1, i = we(a, e), o = $((e == null ? void 0 : e.in) || a, 0);
   return o.setFullYear(i, 0, n), o.setHours(0, 0, 0, 0), _(o, e);
 }
 function vt(a, e) {
@@ -1356,7 +1356,7 @@ function B(a, e, t) {
   const n = J(), i = n.locale ?? ft, o = n.firstWeekContainsDate ?? ((d = (h = n.locale) == null ? void 0 : h.options) == null ? void 0 : d.firstWeekContainsDate) ?? 1, s = n.weekStartsOn ?? ((u = (p = n.locale) == null ? void 0 : p.options) == null ? void 0 : u.weekStartsOn) ?? 0, r = L(a, t == null ? void 0 : t.in);
   if (!Oe(r))
     throw new RangeError("Invalid time value");
-  let l = e.match(Mt).map((g) => {
+  let c = e.match(Mt).map((g) => {
     const b = g[0];
     if (b === "p" || b === "P") {
       const f = wt[b];
@@ -1377,18 +1377,18 @@ function B(a, e, t) {
       );
     return { isToken: !1, value: g };
   });
-  i.localize.preprocessor && (l = i.localize.preprocessor(r, l));
-  const c = {
+  i.localize.preprocessor && (c = i.localize.preprocessor(r, c));
+  const l = {
     firstWeekContainsDate: o,
     weekStartsOn: s,
     locale: i
   };
-  return l.map((g) => {
+  return c.map((g) => {
     if (!g.isToken) return g.value;
     const b = g.value;
     (Et(b) || St(b)) && Pt(b, e, String(a));
     const f = se[b[0]];
-    return f(r, b, i.localize, c);
+    return f(r, b, i.localize, l);
   }).join("");
 }
 function zt(a) {
@@ -1516,8 +1516,8 @@ function Vt(a, e, t, n) {
     i.style.backgroundColor = "transparent";
   }), i.addEventListener("click", (r) => {
     r.preventDefault(), r.stopPropagation(), n();
-    const l = i.closest('.orca-context-menu, .context-menu, [role="menu"]');
-    l && (l.style.display = "none", l.remove());
+    const c = i.closest('.orca-context-menu, .context-menu, [role="menu"]');
+    c && (c.style.display = "none", c.remove());
   }), i;
 }
 function Yt(a, e) {
@@ -1812,7 +1812,7 @@ function ln(a, e, t = {}) {
       updateOrder: n = !0,
       saveData: i = !0,
       updateUI: o = !0
-    } = t, s = e.findIndex((l) => l.blockId === a.blockId);
+    } = t, s = e.findIndex((c) => c.blockId === a.blockId);
     if (s === -1)
       return {
         success: !1,
@@ -1838,16 +1838,16 @@ function cn(a, e, t, n = {}) {
       updateUI: i = !0,
       saveData: o = !0,
       validateData: s = !0
-    } = n, r = t.findIndex((l) => l.blockId === a.blockId);
+    } = n, r = t.findIndex((c) => c.blockId === a.blockId);
     if (r === -1)
       return {
         success: !1,
         message: `标签不存在: ${a.title}`
       };
     if (s) {
-      const l = hn(e);
-      if (!l.success)
-        return l;
+      const c = hn(e);
+      if (!c.success)
+        return c;
     }
     return t[r] = { ...t[r], ...e }, {
       success: !0,
@@ -1920,7 +1920,7 @@ function bn(a, e) {
   return e === "background" ? `oklch(${Math.max(0.1, o * 0.3)} ${Math.min(0.4, s * 1.2)} ${r})` : `oklch(${Math.min(0.9, o * 1.5)} ${Math.max(0.05, s * 0.6)} ${r})`;
 }
 function fn(a, e, t) {
-  const n = a <= 0.04045 ? a / 12.92 : Math.pow((a + 0.055) / 1.055, 2.4), i = e <= 0.04045 ? e / 12.92 : Math.pow((e + 0.055) / 1.055, 2.4), o = t <= 0.04045 ? t / 12.92 : Math.pow((t + 0.055) / 1.055, 2.4), s = n * 0.4124564 + i * 0.3575761 + o * 0.1804375, r = n * 0.2126729 + i * 0.7151522 + o * 0.072175, l = n * 0.0193339 + i * 0.119192 + o * 0.9503041, c = Math.cbrt(0.8189330101 * s + 0.3618667424 * r - 0.1288597137 * l), h = Math.cbrt(0.0329845436 * s + 0.9293118715 * r + 0.0361456387 * l), d = Math.cbrt(0.0482003018 * s + 0.2643662691 * r + 0.633851707 * l), p = c, u = Math.sqrt(h * h + d * d), g = Math.atan2(d, h) * (180 / Math.PI);
+  const n = a <= 0.04045 ? a / 12.92 : Math.pow((a + 0.055) / 1.055, 2.4), i = e <= 0.04045 ? e / 12.92 : Math.pow((e + 0.055) / 1.055, 2.4), o = t <= 0.04045 ? t / 12.92 : Math.pow((t + 0.055) / 1.055, 2.4), s = n * 0.4124564 + i * 0.3575761 + o * 0.1804375, r = n * 0.2126729 + i * 0.7151522 + o * 0.072175, c = n * 0.0193339 + i * 0.119192 + o * 0.9503041, l = Math.cbrt(0.8189330101 * s + 0.3618667424 * r - 0.1288597137 * c), h = Math.cbrt(0.0329845436 * s + 0.9293118715 * r + 0.0361456387 * c), d = Math.cbrt(0.0482003018 * s + 0.2643662691 * r + 0.633851707 * c), p = l, u = Math.sqrt(h * h + d * d), g = Math.atan2(d, h) * (180 / Math.PI);
   return [p, u, g];
 }
 var V = /* @__PURE__ */ ((a) => (a[a.ERROR = 0] = "ERROR", a[a.WARN = 1] = "WARN", a[a.INFO = 2] = "INFO", a[a.DEBUG = 3] = "DEBUG", a[a.VERBOSE = 4] = "VERBOSE", a))(V || {});
@@ -1972,7 +1972,7 @@ class Z {
   logToConsole(e) {
     const { timestamp: t, level: n, message: i, data: o, source: s } = e;
     V[n];
-    const r = this.config.enableTimestamps ? new Date(t).toLocaleTimeString() : "", l = `${this.config.prefix}${r ? ` [${r}]` : ""}`, c = s ? ` [${s}]` : "", h = `${l}${c} ${i}`;
+    const r = this.config.enableTimestamps ? new Date(t).toLocaleTimeString() : "", c = `${this.config.prefix}${r ? ` [${r}]` : ""}`, l = s ? ` [${s}]` : "", h = `${c}${l} ${i}`;
     if (this.config.enableColors && typeof window < "u") {
       const d = this.colors[n];
       console.log(`%c${h}`, `color: ${d}`, o || "");
@@ -2112,18 +2112,18 @@ function yn(a, e, t) {
   `;
   const r = document.createElement("input");
   r.type = "range", r.min = "120", r.max = "800", r.value = a.toString(), r.style.cssText = on();
-  const l = document.createElement("div");
-  l.className = "dialog-width-display", l.style.cssText = `
+  const c = document.createElement("div");
+  c.className = "dialog-width-display", c.style.cssText = `
     text-align: center;
     margin-top: 10px;
     font-size: 14px;
     color: #666;
-  `, l.textContent = `当前宽度: ${a}px`, r.oninput = () => {
+  `, c.textContent = `当前宽度: ${a}px`, r.oninput = () => {
     const p = parseInt(r.value);
-    l.textContent = `当前宽度: ${p}px`, e(p);
-  }, s.appendChild(r), s.appendChild(l), n.appendChild(s);
-  const c = document.createElement("div");
-  c.className = "dialog-buttons", c.style.cssText = `
+    c.textContent = `当前宽度: ${p}px`, e(p);
+  }, s.appendChild(r), s.appendChild(c), n.appendChild(s);
+  const l = document.createElement("div");
+  l.className = "dialog-buttons", l.style.cssText = `
     display: flex;
     justify-content: flex-end;
     gap: 10px;
@@ -2135,7 +2135,7 @@ function yn(a, e, t) {
   const d = document.createElement("button");
   return d.className = "btn btn-secondary", d.textContent = "取消", d.style.cssText = he(), d.onclick = () => {
     t(), pe(n);
-  }, c.appendChild(h), c.appendChild(d), n.appendChild(c), n;
+  }, l.appendChild(h), l.appendChild(d), n.appendChild(l), n;
 }
 function pe(a) {
   a && a.parentNode && a.parentNode.removeChild(a);
@@ -2646,7 +2646,7 @@ class kn {
    * 交换两个标签的位置（改进版）
    */
   async swapTab(e, t) {
-    const n = this.getCurrentPanelTabs(), i = n.findIndex((l) => l.blockId === e.blockId), o = n.findIndex((l) => l.blockId === t.blockId);
+    const n = this.getCurrentPanelTabs(), i = n.findIndex((c) => c.blockId === e.blockId), o = n.findIndex((c) => c.blockId === t.blockId);
     if (i === -1 || o === -1) {
       this.warn("无法找到目标标签或拖拽标签");
       return;
@@ -2657,8 +2657,8 @@ class kn {
     }
     this.log(`🔄 交换标签: ${t.title} (${o}) -> ${e.title} (${i})`);
     const s = n[o], r = n[i];
-    n[i] = s, n[o] = r, n.forEach((l, c) => {
-      l.order = c;
+    n[i] = s, n[o] = r, n.forEach((c, l) => {
+      c.order = l;
     }), this.sortTabsByPinStatus(), this.currentPanelIndex === 0 ? await this.saveFirstPanelTabs() : await this.saveSecondPanelTabs(), this.debouncedUpdateTabsUI(), this.log(`✅ 标签交换完成: ${s.title} -> 位置 ${i}`);
   }
   /* ———————————————————————————————————————————————————————————————————————————— */
@@ -2798,19 +2798,19 @@ class kn {
         }
       if (e.content && Array.isArray(e.content)) {
         if (e.content.some(
-          (l) => l && typeof l == "object" && l.type === "code"
+          (c) => c && typeof c == "object" && c.type === "code"
         ))
           return "code";
         if (e.content.some(
-          (l) => l && typeof l == "object" && l.type === "table"
+          (c) => c && typeof c == "object" && c.type === "table"
         ))
           return "table";
         if (e.content.some(
-          (l) => l && typeof l == "object" && l.type === "image"
+          (c) => c && typeof c == "object" && c.type === "image"
         ))
           return "image";
         if (e.content.some(
-          (l) => l && typeof l == "object" && l.type === "link"
+          (c) => c && typeof c == "object" && c.type === "link"
         ))
           return "link";
       }
@@ -3013,31 +3013,31 @@ class kn {
     try {
       const i = await orca.invokeBackend("get-block", parseInt(e));
       if (!i) return null;
-      let o = "", s = "", r = "", l = !1, c = "";
-      c = await this.detectBlockType(i), this.log(`🔍 检测到块类型: ${c} (块ID: ${e})`), i.aliases && i.aliases.length > 0 && this.log(`🏷️ 别名块详细信息: blockId=${e}, aliases=${JSON.stringify(i.aliases)}, 检测到的类型=${c}`);
+      let o = "", s = "", r = "", c = !1, l = "";
+      l = await this.detectBlockType(i), this.log(`🔍 检测到块类型: ${l} (块ID: ${e})`), i.aliases && i.aliases.length > 0 && this.log(`🏷️ 别名块详细信息: blockId=${e}, aliases=${JSON.stringify(i.aliases)}, 检测到的类型=${l}`);
       try {
         const h = ee(i);
         if (h)
-          l = !0, o = Rt(h), console.log(`📅 识别为日期块: ${o}, 原始日期: ${h.toISOString()}`);
+          c = !0, o = Rt(h), console.log(`📅 识别为日期块: ${o}, 原始日期: ${h.toISOString()}`);
         else if (i.aliases && i.aliases.length > 0)
           o = i.aliases[0];
         else if (i.content && i.content.length > 0)
           this.needsContentConcatenation(i.content) && i.text ? o = i.text.substring(0, 50) : o = (await this.extractTextFromContent(i.content)).substring(0, 50);
         else if (i.text) {
           let d = i.text.substring(0, 50);
-          if (c === "list") {
+          if (l === "list") {
             const p = i.text.split(`
 `)[0].trim();
             p && (d = p.replace(/^[-*+]\s+/, "").replace(/^\d+\.\s+/, ""));
-          } else if (c === "table") {
+          } else if (l === "table") {
             const p = i.text.split(`
 `)[0].trim();
             p && (d = p.replace(/\|/g, "").trim());
-          } else if (c === "quote") {
+          } else if (l === "quote") {
             const p = i.text.split(`
 `)[0].trim();
             p && (d = p.replace(/^>\s+/, ""));
-          } else if (c === "image") {
+          } else if (l === "image") {
             const p = i.text.match(/caption:\s*(.+)/i);
             p && p[1] ? d = p[1].trim() : d = i.text.trim();
           }
@@ -3049,9 +3049,9 @@ class kn {
       }
       try {
         const h = this.findProperty(i, "_color"), d = this.findProperty(i, "_icon");
-        h && h.type === 1 && (s = h.value), d && d.type === 1 ? (r = d.value, this.log(`🎨 使用用户自定义图标: ${r} (块ID: ${e})`)) : (this.showBlockTypeIcons || c === "journal") && (r = this.getBlockTypeIcon(c), this.log(`🎨 使用块类型图标: ${r} (块类型: ${c}, 块ID: ${e})`));
+        h && h.type === 1 && (s = h.value), d && d.type === 1 ? (r = d.value, this.log(`🎨 使用用户自定义图标: ${r} (块ID: ${e})`)) : (this.showBlockTypeIcons || l === "journal") && (r = this.getBlockTypeIcon(l), this.log(`🎨 使用块类型图标: ${r} (块类型: ${l}, 块ID: ${e})`));
       } catch (h) {
-        this.warn("获取属性失败:", h), r = this.getBlockTypeIcon(c);
+        this.warn("获取属性失败:", h), r = this.getBlockTypeIcon(l);
       }
       return {
         blockId: e,
@@ -3059,11 +3059,11 @@ class kn {
         title: o || `块 ${e}`,
         color: s,
         icon: r,
-        isJournal: l,
+        isJournal: c,
         isPinned: !1,
         // 新标签默认不固定
         order: n,
-        blockType: c
+        blockType: l
       };
     } catch (i) {
       return this.error("获取标签信息失败:", i), null;
@@ -3122,11 +3122,11 @@ class kn {
     } else
       document.body.appendChild(this.tabContainer);
     this.tabContainer.addEventListener("mousedown", (r) => {
-      const l = r.target;
-      l.closest(".orca-tab, .new-tab-button, .drag-handle") && !l.closest(".sidebar, .side-panel, .panel-resize, .resize-handle, .orca-sidebar, .orca-panel, .orca-menu") && r.stopPropagation();
+      const c = r.target;
+      c.closest(".orca-tab, .new-tab-button, .drag-handle") && !c.closest(".sidebar, .side-panel, .panel-resize, .resize-handle, .orca-sidebar, .orca-panel, .orca-menu") && r.stopPropagation();
     }), this.tabContainer.addEventListener("click", (r) => {
-      const l = r.target;
-      l.closest(".orca-tab, .new-tab-button, .drag-handle") && !l.closest(".sidebar, .side-panel, .panel-resize, .resize-handle, .orca-sidebar, .orca-panel, .orca-menu") && (r.stopPropagation(), console.log(`🖱️ 标签栏容器点击事件被阻止: ${l.className}`));
+      const c = r.target;
+      c.closest(".orca-tab, .new-tab-button, .drag-handle") && !c.closest(".sidebar, .side-panel, .panel-resize, .resize-handle, .orca-sidebar, .orca-panel, .orca-menu") && (r.stopPropagation(), console.log(`🖱️ 标签栏容器点击事件被阻止: ${c.className}`));
     });
     const s = document.createElement("div");
     s.className = "drag-handle", s.style.cssText = `
@@ -3257,19 +3257,19 @@ class kn {
 
       /* 聚焦状态的标签样式 */
       .orca-tab[data-focused="true"] {
-        opacity: 1;
-        border: 2px solid #3b82f6;
-        box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2), 0 2px 8px rgba(59, 130, 246, 0.3);
-        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
-        transform: scale(1.02);
-        transition: all 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        opacity: 1 !important;
+        border: 2px solid #3b82f6 !important;
+        box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2), 0 2px 8px rgba(59, 130, 246, 0.3) !important;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05)) !important;
+        transform: scale(1.02) !important;
+        transition: all 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
       }
 
       /* 暗色模式下的聚焦样式 */
       .dark .orca-tab[data-focused="true"] {
-        border: 2px solid #60a5fa;
-        box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.3), 0 2px 8px rgba(96, 165, 250, 0.2);
-        background: linear-gradient(135deg, rgba(96, 165, 250, 0.15), rgba(96, 165, 250, 0.08));
+        border: 2px solid #60a5fa !important;
+        box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.3), 0 2px 8px rgba(96, 165, 250, 0.2) !important;
+        background: linear-gradient(135deg, rgba(96, 165, 250, 0.15), rgba(96, 165, 250, 0.08)) !important;
       }
 
       /* 拖拽时的光标样式 */
@@ -3391,13 +3391,13 @@ class kn {
     this.tabContainer.querySelector(".new-tab-button"), this.tabContainer.innerHTML = "", t && this.tabContainer.appendChild(t);
     const n = this.panelIds.length > 0 && document.querySelector(`.orca-panel[data-panel-id="${this.panelIds[0]}"]`), i = this.currentPanelIndex === 0;
     if (n && i ? (this.log("📋 显示第一个面板的固化标签页"), this.sortTabsByPinStatus(), this.firstPanelTabs.forEach((o, s) => {
-      var l;
+      var c;
       const r = this.createTabElement(o);
-      (l = this.tabContainer) == null || l.appendChild(r);
+      (c = this.tabContainer) == null || c.appendChild(r);
     }), this.addNewTabButton()) : await this.showCurrentPanelTabsSync(), this.isFixedToTop) {
-      const o = orca.state.themeMode === "dark", s = o ? "rgba(255, 255, 255, 0.1)" : "rgba(200, 200, 200, 0.6)", r = o ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.1)", l = o ? "#ffffff" : "#333", c = this.tabContainer.querySelectorAll(".orca-tab");
-      c.forEach((d) => {
-        d.style.cssText += `
+      const o = orca.state.themeMode === "dark", s = o ? "rgba(255, 255, 255, 0.1)" : "rgba(200, 200, 200, 0.6)", r = o ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.1)", c = o ? "#ffffff" : "#333", l = this.tabContainer.querySelectorAll(".orca-tab");
+      l.forEach((d) => {
+        d.style.cssText = `
           display: flex;
           align-items: center;
           padding: 4px 8px;
@@ -3411,7 +3411,13 @@ class kn {
           cursor: pointer;
           transition: all 0.2s ease;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-          color: ${l};
+          color: ${c};
+          max-width: 150px;
+          backdrop-filter: blur(2px);
+          -webkit-backdrop-filter: blur(2px);
+          -webkit-app-region: no-drag;
+          app-region: no-drag;
+          pointer-events: auto;
         `;
       });
       const h = this.tabContainer.querySelector(".new-tab-button");
@@ -3429,8 +3435,8 @@ class kn {
           cursor: pointer;
           transition: all 0.2s ease;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-          color: ${l};
-        `), this.log(`📌 固定到顶部模式样式已应用，标签页数量: ${c.length}`);
+          color: ${c};
+        `), this.log(`📌 固定到顶部模式样式已应用，标签页数量: ${l.length}`);
     }
     this.isUpdating = !1;
   }
@@ -3481,11 +3487,11 @@ class kn {
     const t = e.querySelectorAll(".orca-hideable"), n = this.getCurrentPanelTabs(), i = [];
     let o = 0;
     for (const r of t) {
-      const l = r.querySelector(".orca-block-editor");
-      if (!l) continue;
-      const c = l.getAttribute("data-block-id");
+      const c = r.querySelector(".orca-block-editor");
       if (!c) continue;
-      const h = await this.getTabInfo(c, this.currentPanelId, o++);
+      const l = c.getAttribute("data-block-id");
+      if (!l) continue;
+      const h = await this.getTabInfo(l, this.currentPanelId, o++);
       h && i.push(h);
     }
     const s = this.mergeTabsIntelligently(n, i);
@@ -3498,7 +3504,7 @@ class kn {
     const n = [], i = new Set(e.map((o) => o.blockId));
     for (const o of e)
       if (t.some((r) => r.blockId === o.blockId)) {
-        const r = t.find((l) => l.blockId === o.blockId);
+        const r = t.find((c) => c.blockId === o.blockId);
         r ? n.push({
           ...o,
           title: r.title,
@@ -3627,14 +3633,14 @@ class kn {
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
     `;
-    const l = [
+    const c = [
       {
         text: "新建标签页",
         action: () => this.createNewTab(),
         icon: "+"
       }
     ];
-    this.isFixedToTop && l.push(
+    this.isFixedToTop && c.push(
       {
         text: "---",
         action: () => {
@@ -3646,7 +3652,7 @@ class kn {
         action: () => this.toggleFixedToTop(),
         icon: "📌"
       }
-    ), this.isFixedToTop || l.push(
+    ), this.isFixedToTop || c.push(
       {
         text: "---",
         action: () => {
@@ -3658,7 +3664,7 @@ class kn {
         action: () => this.toggleLayoutMode(),
         icon: this.isVerticalMode ? "⏸" : "⏵"
       }
-    ), !this.isVerticalMode && !this.isFixedToTop && l.push(
+    ), !this.isVerticalMode && !this.isFixedToTop && c.push(
       {
         text: "---",
         action: () => {
@@ -3670,7 +3676,7 @@ class kn {
         action: () => this.toggleFixedToTop(),
         icon: "📌"
       }
-    ), this.isVerticalMode && !this.isFixedToTop && l.push(
+    ), this.isVerticalMode && !this.isFixedToTop && c.push(
       {
         text: "---",
         action: () => {
@@ -3682,7 +3688,7 @@ class kn {
         action: () => this.showWidthAdjustmentDialog(),
         icon: "📏"
       }
-    ), this.isFixedToTop || l.push(
+    ), this.isFixedToTop || c.push(
       {
         text: "---",
         action: () => {
@@ -3694,7 +3700,7 @@ class kn {
         action: () => this.toggleSidebarAlignment(),
         icon: this.isSidebarAlignmentEnabled ? "🔴" : "🟢"
       }
-    ), this.enableMultiTabSaving && l.push(
+    ), this.enableMultiTabSaving && c.push(
       {
         text: "---",
         action: () => {
@@ -3706,7 +3712,7 @@ class kn {
         action: () => this.saveCurrentTabs(),
         icon: "💾"
       }
-    ), l.forEach((h) => {
+    ), c.forEach((h) => {
       if (h.separator) {
         const u = document.createElement("div");
         u.style.cssText = `
@@ -3743,11 +3749,11 @@ class kn {
         h.action && h.action(), n.remove();
       }), n.appendChild(d);
     }), document.body.appendChild(n);
-    const c = (h) => {
-      n.contains(h.target) || (n.remove(), document.removeEventListener("click", c));
+    const l = (h) => {
+      n.contains(h.target) || (n.remove(), document.removeEventListener("click", l));
     };
     setTimeout(() => {
-      document.addEventListener("click", c);
+      document.addEventListener("click", l);
     }, 100);
   }
   /* ———————————————————————————————————————————————————————————————————————————— */
@@ -4144,12 +4150,12 @@ class kn {
   handleResizeStart(e) {
     if (e.preventDefault(), e.stopPropagation(), !this.tabContainer) return;
     const t = e.clientX, n = this.verticalWidth, i = async (s) => {
-      const r = s.clientX - t, l = Math.max(120, Math.min(400, n + r));
-      this.verticalWidth = l;
+      const r = s.clientX - t, c = Math.max(120, Math.min(400, n + r));
+      this.verticalWidth = c;
       try {
-        orca.nav.changeSizes(orca.state.activePanel, [l]), this.tabContainer.style.width = `${l}px`;
-      } catch (c) {
-        this.error("调整面板宽度失败:", c);
+        orca.nav.changeSizes(orca.state.activePanel, [c]), this.tabContainer.style.width = `${c}px`;
+      } catch (l) {
+        this.error("调整面板宽度失败:", l);
       }
     }, o = async () => {
       document.removeEventListener("mousemove", i), document.removeEventListener("mouseup", o);
@@ -4209,23 +4215,23 @@ class kn {
     this.verboseLog(`🔧 创建标签元素: ${e.title} (ID: ${e.blockId})`);
     const t = document.createElement("div");
     t.className = "orca-tab", t.setAttribute("data-tab-id", e.blockId), this.isTabActive(e) && t.setAttribute("data-focused", "true");
-    const i = orca.state.themeMode === "dark", o = Jt(e, this.isVerticalMode, i, this.applyOklchFormula.bind(this));
-    t.style.cssText = o;
-    const s = Zt();
+    const i = orca.state.themeMode === "dark", o = this.isVerticalMode && !this.isFixedToTop, s = Jt(e, o, i, this.applyOklchFormula.bind(this));
+    t.style.cssText = s;
+    const r = Zt();
     if (e.icon && this.showBlockTypeIcons) {
       const l = Qt(e.icon);
-      s.appendChild(l);
+      r.appendChild(l);
     }
-    const r = Kt(e.title);
-    if (s.appendChild(r), e.isPinned) {
+    const c = Kt(e.title);
+    if (r.appendChild(c), e.isPinned) {
       const l = en();
-      s.appendChild(l);
+      r.appendChild(l);
     }
-    return t.appendChild(s), this.isVerticalMode && !this.resizeHandle && this.enableDragResize(), t.title = tn(e), t.addEventListener("click", (l) => {
-      var h;
+    return t.appendChild(r), this.isVerticalMode && !this.resizeHandle && this.enableDragResize(), t.title = tn(e), t.addEventListener("click", (l) => {
+      var d;
       console.log(`🖱️ 标签点击事件触发: ${e.title} (ID: ${e.blockId})`), l.preventDefault(), l.stopPropagation(), l.stopImmediatePropagation(), this.log(`🖱️ 点击标签: ${e.title} (ID: ${e.blockId})`);
-      const c = (h = this.tabContainer) == null ? void 0 : h.querySelectorAll(".orca-tab");
-      c == null || c.forEach((d) => d.removeAttribute("data-focused")), t.setAttribute("data-focused", "true"), this.switchToTab(e);
+      const h = (d = this.tabContainer) == null ? void 0 : d.querySelectorAll(".orca-tab");
+      h == null || h.forEach((p) => p.removeAttribute("data-focused")), t.setAttribute("data-focused", "true"), this.switchToTab(e);
     }), t.addEventListener("mousedown", (l) => {
       console.log(`🖱️ 标签mousedown事件触发: ${e.title} (ID: ${e.blockId})`);
     }), t.addEventListener("dblclick", (l) => {
@@ -4235,32 +4241,32 @@ class kn {
     }), t.addEventListener("keydown", (l) => {
       (l.target === t || t.contains(l.target)) && (l.key === "F2" ? (l.preventDefault(), l.stopPropagation(), this.renameTab(e)) : l.ctrlKey && l.key === "p" ? (l.preventDefault(), l.stopPropagation(), this.toggleTabPinStatus(e)) : l.ctrlKey && l.key === "w" && (l.preventDefault(), l.stopPropagation(), this.closeTab(e)));
     }), this.addOrcaContextMenu(t, e), t.draggable = !0, t.addEventListener("dragstart", (l) => {
-      var h;
+      var d;
       if (l.target.closest(".sidebar, .side-panel, .panel-resize, .resize-handle, .orca-sidebar, .orca-panel, .orca-menu, .orca-recents-menu, [data-panel-id]")) {
         l.preventDefault();
         return;
       }
-      l.dataTransfer.effectAllowed = "move", (h = l.dataTransfer) == null || h.setData("text/plain", e.blockId), this.draggingTab = e, this.lastSwapTarget = null, this.swapDebounceTimer && (clearTimeout(this.swapDebounceTimer), this.swapDebounceTimer = null), t.setAttribute("data-dragging", "true"), t.classList.add("dragging"), this.tabContainer && this.tabContainer.setAttribute("data-dragging", "true"), this.log(`🔄 开始拖拽标签: ${e.title} (ID: ${e.blockId})`);
+      l.dataTransfer.effectAllowed = "move", (d = l.dataTransfer) == null || d.setData("text/plain", e.blockId), this.draggingTab = e, this.lastSwapTarget = null, this.swapDebounceTimer && (clearTimeout(this.swapDebounceTimer), this.swapDebounceTimer = null), t.setAttribute("data-dragging", "true"), t.classList.add("dragging"), this.tabContainer && this.tabContainer.setAttribute("data-dragging", "true"), this.log(`🔄 开始拖拽标签: ${e.title} (ID: ${e.blockId})`);
     }), t.addEventListener("dragend", (l) => {
       this.draggingTab = null, this.lastSwapTarget = null, this.swapDebounceTimer && (clearTimeout(this.swapDebounceTimer), this.swapDebounceTimer = null), this.dragOverTimer && (clearTimeout(this.dragOverTimer), this.dragOverTimer = null), this.clearDropIndicator(), this.hideDropZoneIndicator(), this.clearDragVisualFeedback(), this.debouncedUpdateTabsUI(), this.log(`🔄 结束拖拽标签: ${e.title}`);
     }), t.addEventListener("dragover", (l) => {
       if (!l.target.closest(".sidebar, .side-panel, .panel-resize, .resize-handle, .orca-sidebar, .orca-panel, .orca-menu, .orca-recents-menu, [data-panel-id]") && this.draggingTab && this.draggingTab.blockId !== e.blockId) {
         if (l.preventDefault(), l.stopPropagation(), l.dataTransfer.dropEffect = "move", !this.dragOverTab || this.dragOverTab.blockId !== e.blockId) {
-          const h = t.getBoundingClientRect(), d = h.top + h.height / 2, p = l.clientY < d ? "before" : "after";
-          this.updateDropIndicator(t, p), this.dragOverTab = e;
+          const d = t.getBoundingClientRect(), p = d.top + d.height / 2, u = l.clientY < p ? "before" : "after";
+          this.updateDropIndicator(t, u), this.dragOverTab = e;
         }
         this.debouncedSwapTab(e, this.draggingTab), this.verboseLog(`🔄 拖拽经过: ${e.title} (目标: ${this.draggingTab.title})`);
       }
     }), t.addEventListener("dragenter", (l) => {
       l.target.closest(".sidebar, .side-panel, .panel-resize, .resize-handle, .orca-sidebar, .orca-panel, .orca-menu, .orca-recents-menu, [data-panel-id]") || this.draggingTab && this.draggingTab.blockId !== e.blockId && (l.preventDefault(), l.stopPropagation(), this.verboseLog(`🔄 拖拽进入: ${e.title}`));
     }), t.addEventListener("dragleave", (l) => {
-      const c = t.getBoundingClientRect(), h = l.clientX, d = l.clientY, p = 5;
-      (h < c.left - p || h > c.right + p || d < c.top - p || d > c.bottom + p) && this.verboseLog(`🔄 拖拽离开: ${e.title}`);
+      const h = t.getBoundingClientRect(), d = l.clientX, p = l.clientY, u = 5;
+      (d < h.left - u || d > h.right + u || p < h.top - u || p > h.bottom + u) && this.verboseLog(`🔄 拖拽离开: ${e.title}`);
     }), t.addEventListener("drop", (l) => {
-      var h;
+      var d;
       l.preventDefault();
-      const c = (h = l.dataTransfer) == null ? void 0 : h.getData("text/plain");
-      this.log(`🔄 拖拽放置: ${c} -> ${e.blockId}`);
+      const h = (d = l.dataTransfer) == null ? void 0 : d.getData("text/plain");
+      this.log(`🔄 拖拽放置: ${h} -> ${e.blockId}`);
     }), t;
   }
   hexToRgba(e, t) {
@@ -4285,8 +4291,8 @@ class kn {
     if (n) {
       let i = parseInt(n[1], 16), o = parseInt(n[2], 16), s = parseInt(n[3], 16);
       i = Math.floor(i * (1 - t)), o = Math.floor(o * (1 - t)), s = Math.floor(s * (1 - t));
-      const r = i.toString(16).padStart(2, "0"), l = o.toString(16).padStart(2, "0"), c = s.toString(16).padStart(2, "0");
-      return `#${r}${l}${c}`;
+      const r = i.toString(16).padStart(2, "0"), c = o.toString(16).padStart(2, "0"), l = s.toString(16).padStart(2, "0");
+      return `#${r}${c}${l}`;
     }
     return e;
   }
@@ -4294,14 +4300,14 @@ class kn {
    * RGB转OKLCH颜色空间
    */
   rgbToOklch(e, t, n) {
-    const i = e / 255, o = t / 255, s = n / 255, r = (O) => O <= 0.04045 ? O / 12.92 : Math.pow((O + 0.055) / 1.055, 2.4), l = r(i), c = r(o), h = r(s), d = l * 0.4124564 + c * 0.3575761 + h * 0.1804375, p = l * 0.2126729 + c * 0.7151522 + h * 0.072175, u = l * 0.0193339 + c * 0.119192 + h * 0.9503041, g = 0.2104542553 * d + 0.793617785 * p - 0.0040720468 * u, b = 1.9779984951 * d - 2.428592205 * p + 0.4505937099 * u, f = 0.0259040371 * d + 0.7827717662 * p - 0.808675766 * u, x = Math.cbrt(g), v = Math.cbrt(b), w = Math.cbrt(f), I = 0.2104542553 * x + 0.793617785 * v + 0.0040720468 * w, T = 1.9779984951 * x - 2.428592205 * v + 0.4505937099 * w, E = 0.0259040371 * x + 0.7827717662 * v - 0.808675766 * w, y = Math.sqrt(T * T + E * E), M = Math.atan2(E, T) * 180 / Math.PI, D = M < 0 ? M + 360 : M;
+    const i = e / 255, o = t / 255, s = n / 255, r = (O) => O <= 0.04045 ? O / 12.92 : Math.pow((O + 0.055) / 1.055, 2.4), c = r(i), l = r(o), h = r(s), d = c * 0.4124564 + l * 0.3575761 + h * 0.1804375, p = c * 0.2126729 + l * 0.7151522 + h * 0.072175, u = c * 0.0193339 + l * 0.119192 + h * 0.9503041, g = 0.2104542553 * d + 0.793617785 * p - 0.0040720468 * u, b = 1.9779984951 * d - 2.428592205 * p + 0.4505937099 * u, f = 0.0259040371 * d + 0.7827717662 * p - 0.808675766 * u, x = Math.cbrt(g), v = Math.cbrt(b), w = Math.cbrt(f), I = 0.2104542553 * x + 0.793617785 * v + 0.0040720468 * w, T = 1.9779984951 * x - 2.428592205 * v + 0.4505937099 * w, E = 0.0259040371 * x + 0.7827717662 * v - 0.808675766 * w, y = Math.sqrt(T * T + E * E), M = Math.atan2(E, T) * 180 / Math.PI, D = M < 0 ? M + 360 : M;
     return { l: I, c: y, h: D };
   }
   /**
    * OKLCH转RGB颜色空间
    */
   oklchToRgb(e, t, n) {
-    const i = n * Math.PI / 180, o = t * Math.cos(i), s = t * Math.sin(i), r = e, l = o, c = s, h = r * r * r, d = l * l * l, p = c * c * c, u = 1.0478112 * h + 0.0228866 * d - 0.050217 * p, g = 0.0295424 * h + 0.9904844 * d + 0.0170491 * p, b = -92345e-7 * h + 0.0150436 * d + 0.7521316 * p, f = 3.2404542 * u - 1.5371385 * g - 0.4985314 * b, x = -0.969266 * u + 1.8760108 * g + 0.041556 * b, v = 0.0556434 * u - 0.2040259 * g + 1.0572252 * b, w = (y) => y <= 31308e-7 ? 12.92 * y : 1.055 * Math.pow(y, 1 / 2.4) - 0.055, I = Math.max(0, Math.min(255, Math.round(w(f) * 255))), T = Math.max(0, Math.min(255, Math.round(w(x) * 255))), E = Math.max(0, Math.min(255, Math.round(w(v) * 255)));
+    const i = n * Math.PI / 180, o = t * Math.cos(i), s = t * Math.sin(i), r = e, c = o, l = s, h = r * r * r, d = c * c * c, p = l * l * l, u = 1.0478112 * h + 0.0228866 * d - 0.050217 * p, g = 0.0295424 * h + 0.9904844 * d + 0.0170491 * p, b = -92345e-7 * h + 0.0150436 * d + 0.7521316 * p, f = 3.2404542 * u - 1.5371385 * g - 0.4985314 * b, x = -0.969266 * u + 1.8760108 * g + 0.041556 * b, v = 0.0556434 * u - 0.2040259 * g + 1.0572252 * b, w = (y) => y <= 31308e-7 ? 12.92 * y : 1.055 * Math.pow(y, 1 / 2.4) - 0.055, I = Math.max(0, Math.min(255, Math.round(w(f) * 255))), T = Math.max(0, Math.min(255, Math.round(w(x) * 255))), E = Math.max(0, Math.min(255, Math.round(w(v) * 255)));
     return { r: I, g: T, b: E };
   }
   /**
@@ -4592,7 +4598,7 @@ class kn {
       const o = this.getCurrentActiveTab();
       let s = n.length;
       if (o) {
-        const r = n.findIndex((l) => l.blockId === o.blockId);
+        const r = n.findIndex((c) => c.blockId === o.blockId);
         r !== -1 && (s = r + 1, this.log(`🎯 将在聚焦标签 "${o.title}" 后面插入新标签: "${i.title}"`));
       } else
         this.log("🎯 没有聚焦标签，将添加到末尾");
@@ -4600,12 +4606,12 @@ class kn {
         n.splice(s, 0, i), this.verboseLog(`➕ 在位置 ${s} 插入新标签: ${i.title}`);
         const r = this.findLastNonPinnedTabIndex();
         if (r !== -1) {
-          const l = n[r];
-          n.splice(r, 1), this.log(`🗑️ 删除末尾的非固定标签: "${l.title}" 来保持数量限制`);
+          const c = n[r];
+          n.splice(r, 1), this.log(`🗑️ 删除末尾的非固定标签: "${c.title}" 来保持数量限制`);
         } else {
-          const l = n.findIndex((c) => c.blockId === i.blockId);
-          if (l !== -1) {
-            n.splice(l, 1), this.log(`⚠️ 所有标签都是固定的，无法添加新标签: "${i.title}"`);
+          const c = n.findIndex((l) => l.blockId === i.blockId);
+          if (c !== -1) {
+            n.splice(c, 1), this.log(`⚠️ 所有标签都是固定的，无法添加新标签: "${i.title}"`);
             return;
           }
         }
@@ -4662,7 +4668,7 @@ class kn {
       const r = await this.getTabInfo(e, this.currentPanelId, i.length);
       if (!r)
         return this.warn(`无法获取块 ${e} 的标签信息`), !1;
-      let l = i.length, c = !1;
+      let c = i.length, l = !1;
       if (t === "replace") {
         const h = this.getCurrentActiveTab();
         if (!h)
@@ -4670,19 +4676,19 @@ class kn {
         const d = i.findIndex((p) => p.blockId === h.blockId);
         if (d === -1)
           return this.warn("无法找到聚焦标签在数组中的位置"), !1;
-        h.isPinned ? (this.log("📌 聚焦标签是固定的，拒绝替换操作，改为在其后面插入"), l = d + 1, c = !1) : (l = d, c = !0);
+        h.isPinned ? (this.log("📌 聚焦标签是固定的，拒绝替换操作，改为在其后面插入"), c = d + 1, l = !1) : (c = d, l = !0);
       } else if (t === "after") {
         const h = this.getCurrentActiveTab();
         if (h) {
           const d = i.findIndex((p) => p.blockId === h.blockId);
-          d !== -1 && (l = d + 1, this.log("📌 在聚焦标签后面插入新标签"));
+          d !== -1 && (c = d + 1, this.log("📌 在聚焦标签后面插入新标签"));
         }
       }
       if (i.length >= this.maxTabs)
-        if (c)
-          i[l] = r;
+        if (l)
+          i[c] = r;
         else {
-          i.splice(l, 0, r);
+          i.splice(c, 0, r);
           const h = this.findLastNonPinnedTabIndex();
           if (h !== -1)
             i.splice(h, 1);
@@ -4693,7 +4699,7 @@ class kn {
           }
         }
       else
-        c ? i[l] = r : i.splice(l, 0, r);
+        l ? i[c] = r : i.splice(c, 0, r);
       return this.currentPanelIndex === 0 ? await this.saveFirstPanelTabs() : await this.saveSecondPanelTabs(), await this.updateTabsUI(), n && await orca.nav.goTo("block", { blockId: parseInt(e) }, this.currentPanelId), !0;
     } catch (i) {
       return this.error("添加标签页时出错:", i), !1;
@@ -4726,9 +4732,9 @@ class kn {
             return this.log(`🔗 从元素中提取到块引用ID: ${r}`), r;
         }
         const s = i.dataset;
-        for (const [r, l] of Object.entries(s))
-          if ((r.toLowerCase().includes("block") || r.toLowerCase().includes("ref")) && l && !isNaN(parseInt(l)))
-            return this.log(`🔗 从data属性 ${r} 中提取到块引用ID: ${l}`), l;
+        for (const [r, c] of Object.entries(s))
+          if ((r.toLowerCase().includes("block") || r.toLowerCase().includes("ref")) && c && !isNaN(parseInt(c)))
+            return this.log(`🔗 从data属性 ${r} 中提取到块引用ID: ${c}`), c;
         i = i.parentElement;
       }
       if (e.textContent) {
@@ -4846,7 +4852,7 @@ class kn {
             y: i.scrollTop || 0
           };
           n.viewState.scrollPosition = s;
-          const r = this.firstPanelTabs.findIndex((l) => l.blockId === e.blockId);
+          const r = this.firstPanelTabs.findIndex((c) => c.blockId === e.blockId);
           r !== -1 && (this.firstPanelTabs[r].scrollPosition = s, await this.saveFirstPanelTabs()), this.log(`📝 记录标签 "${e.title}" 滚动位置到viewState:`, s, "容器:", i.className);
         } else
           this.warn(`未找到标签 "${e.title}" 的滚动容器`);
@@ -4870,14 +4876,14 @@ class kn {
           return;
         }
         let r = null;
-        const l = document.querySelector(`.orca-block-editor[data-block-id="${e.blockId}"]`);
-        if (l) {
-          const c = l.closest(".orca-panel");
-          c && (r = c.querySelector(".orca-panel-content, .orca-editor-content, .scroll-container, .orca-scroll-container"));
+        const c = document.querySelector(`.orca-block-editor[data-block-id="${e.blockId}"]`);
+        if (c) {
+          const l = c.closest(".orca-panel");
+          l && (r = l.querySelector(".orca-panel-content, .orca-editor-content, .scroll-container, .orca-scroll-container"));
         }
         if (!r) {
-          const c = document.querySelector(".orca-panel.active");
-          c && (r = c.querySelector(".orca-panel-content, .orca-editor-content, .scroll-container, .orca-scroll-container"));
+          const l = document.querySelector(".orca-panel.active");
+          l && (r = l.querySelector(".orca-panel-content, .orca-editor-content, .scroll-container, .orca-scroll-container"));
         }
         r || (r = document.body.scrollTop > 0 ? document.body : document.documentElement), r ? (r.scrollLeft = t.x, r.scrollTop = t.y, this.log(`🔄 恢复标签 "${e.title}" 滚动位置:`, t, "容器:", r.className, `尝试${s}`)) : setTimeout(() => o(s + 1), 200 * s);
       };
@@ -4901,13 +4907,13 @@ class kn {
       "body",
       "html"
     ].forEach((o) => {
-      document.querySelectorAll(o).forEach((r, l) => {
-        const c = r;
-        (c.scrollTop > 0 || c.scrollLeft > 0) && this.log(`容器 ${o}[${l}]:`, {
-          scrollTop: c.scrollTop,
-          scrollLeft: c.scrollLeft,
-          className: c.className,
-          id: c.id
+      document.querySelectorAll(o).forEach((r, c) => {
+        const l = r;
+        (l.scrollTop > 0 || l.scrollLeft > 0) && this.log(`容器 ${o}[${c}]:`, {
+          scrollTop: l.scrollTop,
+          scrollLeft: l.scrollLeft,
+          className: l.className,
+          id: l.id
         });
       });
     });
@@ -4996,8 +5002,8 @@ class kn {
     if (n !== -1) {
       const i = this.getCurrentActiveTab(), o = i && i.blockId === e.blockId, s = o ? this.getAdjacentTab(e) : null;
       if (this.closedTabs.add(e.blockId), this.enableRecentlyClosedTabs) {
-        const r = { ...e, closedAt: Date.now() }, l = this.recentlyClosedTabs.findIndex((c) => c.blockId === e.blockId);
-        l !== -1 && this.recentlyClosedTabs.splice(l, 1), this.recentlyClosedTabs.unshift(r), this.recentlyClosedTabs.length > 20 && (this.recentlyClosedTabs = this.recentlyClosedTabs.slice(0, 20)), await this.saveRecentlyClosedTabs();
+        const r = { ...e, closedAt: Date.now() }, c = this.recentlyClosedTabs.findIndex((l) => l.blockId === e.blockId);
+        c !== -1 && this.recentlyClosedTabs.splice(c, 1), this.recentlyClosedTabs.unshift(r), this.recentlyClosedTabs.length > 20 && (this.recentlyClosedTabs = this.recentlyClosedTabs.slice(0, 20)), await this.saveRecentlyClosedTabs();
       }
       t.splice(n, 1), this.debouncedUpdateTabsUI(), this.currentPanelIndex === 0 ? await this.saveFirstPanelTabs() : await this.saveSecondPanelTabs(), await this.saveClosedTabs(), this.log(`🗑️ 标签 "${e.title}" 已关闭，已添加到关闭列表`), o && s ? (this.log(`🔄 自动切换到相邻标签: "${s.title}"`), await this.switchToTab(s)) : o && !s && this.log("⚠️ 关闭了激活标签但没有相邻标签可切换");
     }
@@ -5049,10 +5055,10 @@ class kn {
     const i = t.textContent, o = t.style.cssText, s = document.createElement("input");
     s.type = "text", s.value = e.title, s.className = "inline-rename-input";
     const r = orca.state.themeMode === "dark";
-    let l = r ? "rgba(255, 255, 255, 0.1)" : "rgba(200, 200, 200, 0.6)", c = r ? "#ffffff" : "#333";
-    e.color && (l = this.applyOklchFormula(e.color, "background"), c = this.applyOklchFormula(e.color, "text")), s.style.cssText = `
-      background: ${l};
-      color: ${c};
+    let c = r ? "rgba(255, 255, 255, 0.1)" : "rgba(200, 200, 200, 0.6)", l = r ? "#ffffff" : "#333";
+    e.color && (c = this.applyOklchFormula(e.color, "background"), l = this.applyOklchFormula(e.color, "text")), s.style.cssText = `
+      background: ${c};
+      color: ${l};
       border: 2px solid #3b82f6;
       border-radius: 8px;
       padding: 4px 12px;
@@ -5109,7 +5115,7 @@ class kn {
       let x = d.left, v = d.top - b - 10;
       x + g > p - f && (x = p - g - f), x < f && (x = f), v < f && (v = d.bottom + 10, v + b > u - f && (v = (u - b) / 2)), v + b > u - f && (v = u - b - f), x = Math.max(f, Math.min(x, p - g - f)), v = Math.max(f, Math.min(v, u - b - f)), s = { x: `${x}px`, y: `${v}px` };
     }
-    const r = orca.components.InputBox, l = t.createElement(r, {
+    const r = orca.components.InputBox, c = t.createElement(r, {
       label: "重命名标签",
       defaultValue: e.title,
       onConfirm: (d, p, u) => {
@@ -5127,16 +5133,16 @@ class kn {
       },
       onClick: d
     }, ""));
-    n.render(l, i), setTimeout(() => {
+    n.render(c, i), setTimeout(() => {
       const d = i.querySelector("div");
       d && d.click();
     }, 0);
-    const c = () => {
+    const l = () => {
       setTimeout(() => {
         n.unmountComponentAtNode(i), i.remove();
       }, 100);
     }, h = (d) => {
-      d.key === "Escape" && (c(), document.removeEventListener("keydown", h));
+      d.key === "Escape" && (l(), document.removeEventListener("keydown", h));
     };
     document.addEventListener("keydown", h);
   }
@@ -5206,21 +5212,21 @@ class kn {
     }), r.addEventListener("mouseleave", () => {
       r.style.backgroundColor = "#6b7280";
     }), o.appendChild(s), o.appendChild(r), n.appendChild(i), n.appendChild(o);
-    const l = document.querySelector(`[data-tab-id="${e.blockId}"]`);
-    if (l) {
-      const p = l.getBoundingClientRect();
+    const c = document.querySelector(`[data-tab-id="${e.blockId}"]`);
+    if (c) {
+      const p = c.getBoundingClientRect();
       n.style.left = `${p.left}px`, n.style.top = `${p.top - 60}px`;
     } else
       n.style.left = "50%", n.style.top = "50%", n.style.transform = "translate(-50%, -50%)";
     document.body.appendChild(n), i.focus(), i.select();
-    const c = () => {
+    const l = () => {
       const p = i.value.trim();
       p && p !== e.title && this.updateTabTitle(e, p), n.remove();
     }, h = () => {
       n.remove();
     };
-    s.addEventListener("click", c), r.addEventListener("click", h), i.addEventListener("keydown", (p) => {
-      p.key === "Enter" ? (p.preventDefault(), c()) : p.key === "Escape" && (p.preventDefault(), h());
+    s.addEventListener("click", l), r.addEventListener("click", h), i.addEventListener("keydown", (p) => {
+      p.key === "Enter" ? (p.preventDefault(), l()) : p.key === "Escape" && (p.preventDefault(), h());
     });
     const d = (p) => {
       n.contains(p.target) || (h(), document.removeEventListener("click", d));
@@ -5270,9 +5276,9 @@ class kn {
       height: 100%;
       pointer-events: none;
     `, e.appendChild(o);
-    const s = orca.components.ContextMenu, r = orca.components.Menu, l = orca.components.MenuText, c = orca.components.MenuSeparator, h = n.createElement(s, {
+    const s = orca.components.ContextMenu, r = orca.components.Menu, c = orca.components.MenuText, l = orca.components.MenuSeparator, h = n.createElement(s, {
       menu: (u) => n.createElement(r, {}, [
-        n.createElement(l, {
+        n.createElement(c, {
           key: "rename",
           title: "重命名标签",
           preIcon: "ti ti-edit",
@@ -5281,7 +5287,7 @@ class kn {
             u(), this.renameTab(t);
           }
         }),
-        n.createElement(l, {
+        n.createElement(c, {
           key: "pin",
           title: t.isPinned ? "取消固定" : "固定标签",
           preIcon: t.isPinned ? "ti ti-pin-off" : "ti ti-pin",
@@ -5290,8 +5296,8 @@ class kn {
             u(), this.toggleTabPinStatus(t);
           }
         }),
-        n.createElement(c, { key: "separator1" }),
-        n.createElement(l, {
+        n.createElement(l, { key: "separator1" }),
+        n.createElement(c, {
           key: "close",
           title: "关闭标签",
           preIcon: "ti ti-x",
@@ -5301,7 +5307,7 @@ class kn {
             u(), this.closeTab(t);
           }
         }),
-        n.createElement(l, {
+        n.createElement(c, {
           key: "closeOthers",
           title: "关闭其他标签",
           preIcon: "ti ti-x",
@@ -5310,7 +5316,7 @@ class kn {
             u(), this.closeOtherTabs(t);
           }
         }),
-        n.createElement(l, {
+        n.createElement(c, {
           key: "closeAll",
           title: "关闭全部标签",
           preIcon: "ti ti-x",
@@ -5396,21 +5402,21 @@ class kn {
         disabled: this.firstPanelTabs.length <= 1
       }
     ), o.forEach((r) => {
-      const l = document.createElement("div");
-      l.textContent = r.text, l.style.cssText = `
+      const c = document.createElement("div");
+      c.textContent = r.text, c.style.cssText = `
         padding: 12px 16px;
         cursor: pointer;
         font-size: 14px;
         color: ${r.disabled ? "#999" : "#333"};
         border-bottom: 1px solid #eee;
         transition: background-color 0.2s;
-      `, r.disabled || (l.addEventListener("mouseenter", () => {
-        l.style.backgroundColor = "#f0f0f0";
-      }), l.addEventListener("mouseleave", () => {
-        l.style.backgroundColor = "transparent";
-      }), l.addEventListener("click", () => {
+      `, r.disabled || (c.addEventListener("mouseenter", () => {
+        c.style.backgroundColor = "#f0f0f0";
+      }), c.addEventListener("mouseleave", () => {
+        c.style.backgroundColor = "transparent";
+      }), c.addEventListener("click", () => {
         r.action(), i.remove();
-      })), i.appendChild(l);
+      })), i.appendChild(c);
     }), document.body.appendChild(i);
     const s = (r) => {
       i.contains(r.target) || (i.remove(), document.removeEventListener("click", s));
@@ -5776,9 +5782,9 @@ class kn {
       return;
     }
     let s = this.firstPanelTabs.length, r = !1;
-    const l = (p = this.tabContainer) == null ? void 0 : p.querySelector('.orca-tab[data-focused="true"]');
-    if (l) {
-      const u = l.getAttribute("data-tab-id");
+    const c = (p = this.tabContainer) == null ? void 0 : p.querySelector('.orca-tab[data-focused="true"]');
+    if (c) {
+      const u = c.getAttribute("data-tab-id");
       if (u) {
         const g = this.firstPanelTabs.findIndex((b) => b.blockId === u);
         g !== -1 ? this.firstPanelTabs[g].isPinned ? (s = g + 1, r = !1, this.log("📌 聚焦标签是固定的，将在其后面插入新标签")) : (s = g, r = !0, this.log("🎯 聚焦标签不是固定的，将替换聚焦标签")) : this.log("🎯 聚焦的标签不在数组中，插入到末尾");
@@ -5787,22 +5793,22 @@ class kn {
     } else
       this.log("🎯 没有找到聚焦的标签，将替换最后一个非固定标签");
     this.log(`🎯 最终计算的insertIndex: ${s}, 是否替换聚焦标签: ${r}`);
-    const c = await this.getTabInfo(i, e, this.firstPanelTabs.length);
-    if (c) {
-      if (this.verboseLog(`📋 检测到新的激活页面: "${c.title}"`), this.firstPanelTabs.length >= this.maxTabs)
+    const l = await this.getTabInfo(i, e, this.firstPanelTabs.length);
+    if (l) {
+      if (this.verboseLog(`📋 检测到新的激活页面: "${l.title}"`), this.firstPanelTabs.length >= this.maxTabs)
         if (r && s < this.firstPanelTabs.length) {
           const u = this.firstPanelTabs[s];
-          this.firstPanelTabs[s] = c, this.log(`🔄 替换聚焦标签: "${u.title}" -> "${c.title}"`), this.log("🎯 替换后数组:", this.firstPanelTabs.map((g, b) => `${b}:${g.title}`));
+          this.firstPanelTabs[s] = l, this.log(`🔄 替换聚焦标签: "${u.title}" -> "${l.title}"`), this.log("🎯 替换后数组:", this.firstPanelTabs.map((g, b) => `${b}:${g.title}`));
         } else if (s < this.firstPanelTabs.length) {
-          this.log("🎯 插入前数组:", this.firstPanelTabs.map((g, b) => `${b}:${g.title}`)), this.firstPanelTabs.splice(s + 1, 0, c), this.log(`➕ 在位置 ${s + 1} 插入新标签: ${c.title}`), this.verboseLog("🎯 插入后数组:", this.firstPanelTabs.map((g, b) => `${b}:${g.title}`));
+          this.log("🎯 插入前数组:", this.firstPanelTabs.map((g, b) => `${b}:${g.title}`)), this.firstPanelTabs.splice(s + 1, 0, l), this.log(`➕ 在位置 ${s + 1} 插入新标签: ${l.title}`), this.verboseLog("🎯 插入后数组:", this.firstPanelTabs.map((g, b) => `${b}:${g.title}`));
           const u = this.findLastNonPinnedTabIndex();
           if (u !== -1) {
             const g = this.firstPanelTabs[u];
             this.firstPanelTabs.splice(u, 1), this.log(`🗑️ 删除末尾的非固定标签: "${g.title}" 来保持数量限制`), this.log("🎯 最终数组:", this.firstPanelTabs.map((b, f) => `${f}:${b.title}`));
           } else {
-            const g = this.firstPanelTabs.findIndex((b) => b.blockId === c.blockId);
+            const g = this.firstPanelTabs.findIndex((b) => b.blockId === l.blockId);
             if (g !== -1) {
-              this.firstPanelTabs.splice(g, 1), this.log(`⚠️ 所有标签都是固定的，无法添加新标签: "${c.title}"`);
+              this.firstPanelTabs.splice(g, 1), this.log(`⚠️ 所有标签都是固定的，无法添加新标签: "${l.title}"`);
               return;
             }
           }
@@ -5810,18 +5816,18 @@ class kn {
           const u = this.findLastNonPinnedTabIndex();
           if (u !== -1) {
             const g = this.firstPanelTabs[u];
-            this.firstPanelTabs[u] = c, this.log(`🔄 没有聚焦标签，替换最后一个非固定标签: "${g.title}" -> "${c.title}"`);
+            this.firstPanelTabs[u] = l, this.log(`🔄 没有聚焦标签，替换最后一个非固定标签: "${g.title}" -> "${l.title}"`);
           } else {
-            this.log(`⚠️ 所有标签都是固定的，无法添加新标签: "${c.title}"`);
+            this.log(`⚠️ 所有标签都是固定的，无法添加新标签: "${l.title}"`);
             return;
           }
         }
       else if (r && s < this.firstPanelTabs.length) {
         const u = this.firstPanelTabs[s];
-        this.firstPanelTabs[s] = c, this.log(`🔄 替换聚焦标签: "${u.title}" -> "${c.title}"`), this.log("🎯 替换后数组:", this.firstPanelTabs.map((g, b) => `${b}:${g.title}`));
+        this.firstPanelTabs[s] = l, this.log(`🔄 替换聚焦标签: "${u.title}" -> "${l.title}"`), this.log("🎯 替换后数组:", this.firstPanelTabs.map((g, b) => `${b}:${g.title}`));
       } else
-        this.firstPanelTabs.splice(s, 0, c), this.verboseLog(`➕ 在位置 ${s} 插入新标签: ${c.title}`), this.verboseLog("🎯 插入后数组:", this.firstPanelTabs.map((u, g) => `${g}:${u.title}`));
-      this.closedTabs.has(i) && (this.closedTabs.delete(i), await this.saveClosedTabs(), this.log(`🔄 标签 "${c.title}" 重新显示，从已关闭列表中移除`)), await this.saveFirstPanelTabs(), this.debouncedUpdateTabsUI();
+        this.firstPanelTabs.splice(s, 0, l), this.verboseLog(`➕ 在位置 ${s} 插入新标签: ${l.title}`), this.verboseLog("🎯 插入后数组:", this.firstPanelTabs.map((u, g) => `${g}:${u.title}`));
+      this.closedTabs.has(i) && (this.closedTabs.delete(i), await this.saveClosedTabs(), this.log(`🔄 标签 "${l.title}" 重新显示，从已关闭列表中移除`)), await this.saveFirstPanelTabs(), this.debouncedUpdateTabsUI();
     } else
       this.log("无法获取激活页面的标签信息");
   }
@@ -5830,8 +5836,8 @@ class kn {
       let n = !1, i = !1, o = !1, s = this.currentPanelIndex;
       t.forEach((r) => {
         if (r.type === "childList") {
-          const l = r.target;
-          if ((l.classList.contains("orca-panels-row") || l.closest(".orca-panels-row")) && (this.verboseLog("🔍 检测到面板行变化，检查新面板..."), i = !0), r.addedNodes.length > 0 && l.closest(".orca-panel")) {
+          const c = r.target;
+          if ((c.classList.contains("orca-panels-row") || c.closest(".orca-panels-row")) && (this.verboseLog("🔍 检测到面板行变化，检查新面板..."), i = !0), r.addedNodes.length > 0 && c.closest(".orca-panel")) {
             for (const h of r.addedNodes)
               if (h.nodeType === Node.ELEMENT_NODE) {
                 const d = h;
@@ -6055,8 +6061,8 @@ class kn {
       max-height: 350px;
       overflow-y: auto;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    `, e.forEach((c, h) => {
-      if (c.label === "---") {
+    `, e.forEach((l, h) => {
+      if (l.label === "---") {
         const u = document.createElement("div");
         u.style.cssText = `
           height: 1px;
@@ -6076,7 +6082,7 @@ class kn {
         border-bottom: 1px solid #f0f0f0;
         transition: background-color 0.2s ease;
         min-height: 24px;
-      `, c.icon) {
+      `, l.icon) {
         const u = document.createElement("div");
         if (u.style.cssText = `
           margin-right: 8px;
@@ -6087,15 +6093,15 @@ class kn {
           display: flex;
           align-items: center;
           justify-content: center;
-        `, c.icon.startsWith("ti ti-")) {
+        `, l.icon.startsWith("ti ti-")) {
           const g = document.createElement("i");
-          g.className = c.icon, u.appendChild(g);
+          g.className = l.icon, u.appendChild(g);
         } else
-          u.textContent = c.icon;
+          u.textContent = l.icon;
         d.appendChild(u);
       }
       const p = document.createElement("span");
-      p.textContent = c.label, p.style.cssText = `
+      p.textContent = l.label, p.style.cssText = `
         flex: 1;
         white-space: nowrap;
         overflow: hidden;
@@ -6105,16 +6111,16 @@ class kn {
       }), d.addEventListener("mouseleave", () => {
         d.style.backgroundColor = "transparent";
       }), d.addEventListener("click", () => {
-        c.onClick(), i.remove();
+        l.onClick(), i.remove();
       }), i.appendChild(d);
     }), document.body.appendChild(i);
     const o = i.getBoundingClientRect(), s = window.innerWidth, r = window.innerHeight;
     o.right > s && (i.style.left = `${s - o.width - 10}px`), o.bottom > r && (i.style.top = `${r - o.height - 10}px`);
-    const l = (c) => {
-      i.contains(c.target) || (i.remove(), document.removeEventListener("click", l), document.removeEventListener("contextmenu", l));
+    const c = (l) => {
+      i.contains(l.target) || (i.remove(), document.removeEventListener("click", c), document.removeEventListener("contextmenu", c));
     };
     setTimeout(() => {
-      document.addEventListener("click", l), document.addEventListener("contextmenu", l);
+      document.addEventListener("click", c), document.addEventListener("contextmenu", c);
     }, 0);
   }
   /**
@@ -6224,8 +6230,8 @@ class kn {
       max-height: 400px;
       overflow-y: auto;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    `, e.forEach((c, h) => {
-      if (c.label === "---") {
+    `, e.forEach((l, h) => {
+      if (l.label === "---") {
         const u = document.createElement("div");
         u.style.cssText = `
           height: 1px;
@@ -6245,7 +6251,7 @@ class kn {
         border-bottom: 1px solid #f0f0f0;
         transition: background-color 0.2s ease;
         min-height: 24px;
-      `, c.icon) {
+      `, l.icon) {
         const u = document.createElement("div");
         if (u.style.cssText = `
           margin-right: 8px;
@@ -6256,15 +6262,15 @@ class kn {
           display: flex;
           align-items: center;
           justify-content: center;
-        `, c.icon.startsWith("ti ti-")) {
+        `, l.icon.startsWith("ti ti-")) {
           const g = document.createElement("i");
-          g.className = c.icon, u.appendChild(g);
+          g.className = l.icon, u.appendChild(g);
         } else
-          u.textContent = c.icon;
+          u.textContent = l.icon;
         d.appendChild(u);
       }
       const p = document.createElement("span");
-      p.textContent = c.label, p.style.cssText = `
+      p.textContent = l.label, p.style.cssText = `
         flex: 1;
         white-space: nowrap;
         overflow: hidden;
@@ -6274,16 +6280,16 @@ class kn {
       }), d.addEventListener("mouseleave", () => {
         d.style.backgroundColor = "transparent";
       }), d.addEventListener("click", () => {
-        c.onClick(), i.remove();
+        l.onClick(), i.remove();
       }), i.appendChild(d);
     }), document.body.appendChild(i);
     const o = i.getBoundingClientRect(), s = window.innerWidth, r = window.innerHeight;
     o.right > s && (i.style.left = `${s - o.width - 10}px`), o.bottom > r && (i.style.top = `${r - o.height - 10}px`);
-    const l = (c) => {
-      i.contains(c.target) || (i.remove(), document.removeEventListener("click", l), document.removeEventListener("contextmenu", l));
+    const c = (l) => {
+      i.contains(l.target) || (i.remove(), document.removeEventListener("click", c), document.removeEventListener("contextmenu", c));
     };
     setTimeout(() => {
-      document.addEventListener("click", l), document.addEventListener("contextmenu", l);
+      document.addEventListener("click", c), document.addEventListener("contextmenu", c);
     }, 0);
   }
   /**
@@ -6362,9 +6368,9 @@ class kn {
       cursor: pointer;
       transition: all 0.2s;
     `;
-    let l = !1;
-    const c = () => {
-      l = !1, s.style.cssText = `
+    let c = !1;
+    const l = () => {
+      c = !1, s.style.cssText = `
         flex: 1;
         padding: 8px 12px;
         border: 1px solid #3b82f6;
@@ -6386,7 +6392,7 @@ class kn {
         transition: all 0.2s;
       `, d.style.display = "block", g.style.display = "none", T();
     }, h = () => {
-      l = !0, r.style.cssText = `
+      c = !0, r.style.cssText = `
         flex: 1;
         padding: 8px 12px;
         border: 1px solid #3b82f6;
@@ -6408,7 +6414,7 @@ class kn {
         transition: all 0.2s;
       `, d.style.display = "none", g.style.display = "block", T();
     };
-    s.onclick = c, r.onclick = h, o.appendChild(s), o.appendChild(r), i.appendChild(o);
+    s.onclick = l, r.onclick = h, o.appendChild(s), o.appendChild(r), i.appendChild(o);
     const d = document.createElement("div");
     d.style.cssText = `
       display: block;
@@ -6510,10 +6516,10 @@ class kn {
       I.style.backgroundColor = "#3b82f6";
     });
     const T = () => {
-      I.textContent = l ? "更新" : "保存";
+      I.textContent = c ? "更新" : "保存";
     };
     I.onclick = async () => {
-      if (l) {
+      if (c) {
         const y = parseInt(f.value);
         if (isNaN(y) || y < 0 || y >= this.savedTabSets.length) {
           orca.notify("warn", "请选择要更新的标签页集合");
@@ -6633,13 +6639,13 @@ class kn {
     }), r.addEventListener("blur", () => {
       r.style.borderColor = "#ddd";
     });
-    const l = document.createElement("option");
-    l.value = "", l.textContent = "请选择标签组...", r.appendChild(l), this.savedTabSets.forEach((u, g) => {
+    const c = document.createElement("option");
+    c.value = "", c.textContent = "请选择标签组...", r.appendChild(c), this.savedTabSets.forEach((u, g) => {
       const b = document.createElement("option");
       b.value = g.toString(), b.textContent = `${u.name} (${u.tabs.length}个标签)`, r.appendChild(b);
     }), o.appendChild(r), n.appendChild(o);
-    const c = document.createElement("div");
-    c.style.cssText = `
+    const l = document.createElement("div");
+    l.style.cssText = `
       padding: 20px;
       display: flex;
       gap: 8px;
@@ -6681,7 +6687,7 @@ class kn {
         return;
       }
       n.remove(), await this.addTabToGroup(e, u);
-    }, c.appendChild(h), c.appendChild(d), n.appendChild(c), document.body.appendChild(n), setTimeout(() => {
+    }, l.appendChild(h), l.appendChild(d), n.appendChild(l), document.body.appendChild(n), setTimeout(() => {
       r.focus();
     }, 100), r.addEventListener("keydown", (u) => {
       u.key === "Enter" ? (u.preventDefault(), d.click()) : u.key === "Escape" && (u.preventDefault(), h.click());
@@ -6752,9 +6758,9 @@ class kn {
    * 重新渲染可排序的标签列表
    */
   renderSortableTabs(e, t) {
-    e.innerHTML = "", t.forEach((r, l) => {
-      const c = document.createElement("div");
-      c.className = "sortable-tab-item", c.draggable = !0, c.dataset.index = l.toString(), c.style.cssText = `
+    e.innerHTML = "", t.forEach((r, c) => {
+      const l = document.createElement("div");
+      l.className = "sortable-tab-item", l.draggable = !0, l.dataset.index = c.toString(), l.style.cssText = `
         display: flex;
         align-items: center;
         padding: 8px 12px;
@@ -6777,7 +6783,7 @@ class kn {
         justify-content: center;
         width: 16px;
         height: 20px;
-      `, h.innerHTML = "⋮⋮", c.appendChild(h), r.icon) {
+      `, h.innerHTML = "⋮⋮", l.appendChild(h), r.icon) {
         const f = document.createElement("div");
         if (f.style.cssText = `
           margin-right: 8px;
@@ -6794,7 +6800,7 @@ class kn {
           x.className = r.icon, f.appendChild(x);
         } else
           f.textContent = r.icon;
-        c.appendChild(f);
+        l.appendChild(f);
       }
       const d = document.createElement("div");
       d.style.cssText = `
@@ -6812,7 +6818,7 @@ class kn {
           <div style="font-size: 11px; color: #888; line-height: 1.2; margin-top: 2px; font-style: italic;">
             💭 ${r.notes}
           </div>
-        `), d.innerHTML = p, c.appendChild(d);
+        `), d.innerHTML = p, l.appendChild(d);
       const u = document.createElement("div");
       u.style.cssText = `
         display: flex;
@@ -6837,7 +6843,7 @@ class kn {
       `, g.innerHTML = "💭", g.title = r.notes ? `备注: ${r.notes}` : "添加备注", g.onclick = (f) => {
         f.stopPropagation();
         const x = this.savedTabSets.find((v) => v.tabs === t);
-        x && this.editTabNotes(r, x, l);
+        x && this.editTabNotes(r, x, c);
       }, u.appendChild(g);
       const b = document.createElement("div");
       b.style.cssText = `
@@ -6852,29 +6858,29 @@ class kn {
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-      `, b.textContent = (l + 1).toString(), u.appendChild(b), c.appendChild(u), c.addEventListener("dragstart", (f) => {
-        f.dataTransfer.setData("text/plain", l.toString()), f.dataTransfer.effectAllowed = "move", c.style.opacity = "0.5", c.style.transform = "rotate(2deg)";
-      }), c.addEventListener("dragend", (f) => {
-        c.style.opacity = "1", c.style.transform = "rotate(0deg)";
-      }), c.addEventListener("dragover", (f) => {
-        f.preventDefault(), f.dataTransfer.dropEffect = "move", c.style.borderColor = "#3b82f6", c.style.backgroundColor = "rgba(59, 130, 246, 0.1)";
-      }), c.addEventListener("dragleave", (f) => {
-        c.style.borderColor = "#e0e0e0", c.style.backgroundColor = "rgba(255, 255, 255, 0.8)";
-      }), c.addEventListener("drop", (f) => {
+      `, b.textContent = (c + 1).toString(), u.appendChild(b), l.appendChild(u), l.addEventListener("dragstart", (f) => {
+        f.dataTransfer.setData("text/plain", c.toString()), f.dataTransfer.effectAllowed = "move", l.style.opacity = "0.5", l.style.transform = "rotate(2deg)";
+      }), l.addEventListener("dragend", (f) => {
+        l.style.opacity = "1", l.style.transform = "rotate(0deg)";
+      }), l.addEventListener("dragover", (f) => {
+        f.preventDefault(), f.dataTransfer.dropEffect = "move", l.style.borderColor = "#3b82f6", l.style.backgroundColor = "rgba(59, 130, 246, 0.1)";
+      }), l.addEventListener("dragleave", (f) => {
+        l.style.borderColor = "#e0e0e0", l.style.backgroundColor = "rgba(255, 255, 255, 0.8)";
+      }), l.addEventListener("drop", (f) => {
         f.preventDefault(), f.stopPropagation();
-        const x = parseInt(f.dataTransfer.getData("text/plain")), v = l;
+        const x = parseInt(f.dataTransfer.getData("text/plain")), v = c;
         if (x !== v) {
           const w = t[x];
           t.splice(x, 1), t.splice(v, 0, w), this.renderSortableTabs(e, t);
           const I = this.savedTabSets.find((T) => T.tabs === t);
           I && (I.tabs = [...t], I.updatedAt = Date.now(), this.saveSavedTabSets(), orca.notify("success", "标签顺序已更新"));
         }
-        c.style.borderColor = "#e0e0e0", c.style.backgroundColor = "rgba(255, 255, 255, 0.8)";
-      }), c.addEventListener("mouseenter", () => {
-        c.style.backgroundColor = "rgba(59, 130, 246, 0.05)", c.style.borderColor = "#3b82f6";
-      }), c.addEventListener("mouseleave", () => {
-        c.style.backgroundColor = "rgba(255, 255, 255, 0.8)", c.style.borderColor = "#e0e0e0";
-      }), e.appendChild(c);
+        l.style.borderColor = "#e0e0e0", l.style.backgroundColor = "rgba(255, 255, 255, 0.8)";
+      }), l.addEventListener("mouseenter", () => {
+        l.style.backgroundColor = "rgba(59, 130, 246, 0.05)", l.style.borderColor = "#3b82f6";
+      }), l.addEventListener("mouseleave", () => {
+        l.style.backgroundColor = "rgba(255, 255, 255, 0.8)", l.style.borderColor = "#e0e0e0";
+      }), e.appendChild(l);
     });
     const n = document.createElement("div");
     n.className = "delete-zone", n.style.cssText = `
@@ -6907,10 +6913,10 @@ class kn {
       n.style.transform = "scale(1)", n.style.boxShadow = "0 4px 12px rgba(239, 68, 68, 0.3)";
     }), n.addEventListener("drop", (r) => {
       if (r.preventDefault(), r.stopPropagation(), i >= 0 && i < t.length) {
-        const l = t[i];
+        const c = t[i];
         t.splice(i, 1), this.renderSortableTabs(e, t);
-        const c = this.savedTabSets.find((h) => h.tabs === t);
-        c && (c.tabs = [...t], c.updatedAt = Date.now(), this.saveSavedTabSets(), orca.notify("success", `已删除标签: ${l.title}`));
+        const l = this.savedTabSets.find((h) => h.tabs === t);
+        l && (l.tabs = [...t], l.updatedAt = Date.now(), this.saveSavedTabSets(), orca.notify("success", `已删除标签: ${c.title}`));
       }
       n.style.display = "none", n.style.transform = "translateY(-10px)";
     }), e.addEventListener("dragstart", o), e.addEventListener("dragend", s);
@@ -6950,25 +6956,25 @@ class kn {
       margin-bottom: 16px;
       text-align: center;
     `, r.textContent = `编辑备注 - ${e.title}`;
-    const l = document.createElement("div");
-    l.style.cssText = `
+    const c = document.createElement("div");
+    c.style.cssText = `
       background: #f8f9fa;
       border-radius: 8px;
       padding: 12px;
       margin-bottom: 16px;
       font-size: 14px;
       color: #666;
-    `, l.innerHTML = `
+    `, c.innerHTML = `
       <div><strong>标签标题:</strong> ${e.title}</div>
       <div><strong>块ID:</strong> ${e.blockId}</div>
     `;
-    const c = document.createElement("div");
-    c.style.cssText = `
+    const l = document.createElement("div");
+    l.style.cssText = `
       font-size: 14px;
       font-weight: 500;
       color: #333;
       margin-bottom: 8px;
-    `, c.textContent = "备注内容:";
+    `, l.textContent = "备注内容:";
     const h = document.createElement("textarea");
     h.style.cssText = `
       width: 100%;
@@ -7017,7 +7023,7 @@ class kn {
       } catch (f) {
         this.error("保存备注失败:", f), orca.notify("error", "保存备注失败");
       }
-    }, d.appendChild(p), d.appendChild(u), s.appendChild(r), s.appendChild(l), s.appendChild(c), s.appendChild(h), s.appendChild(d), o.appendChild(s), document.body.appendChild(o), h.focus(), h.select(), o.addEventListener("click", (b) => {
+    }, d.appendChild(p), d.appendChild(u), s.appendChild(r), s.appendChild(c), s.appendChild(l), s.appendChild(h), s.appendChild(d), o.appendChild(s), document.body.appendChild(o), h.focus(), h.select(), o.addEventListener("click", (b) => {
       b.target === o && (o.remove(), this.showTabSetDetails(t));
     });
     const g = (b) => {
@@ -7275,14 +7281,14 @@ class kn {
       }), b.addEventListener("dragstart", w), b.addEventListener("dragend", I), d.appendChild(b), s.appendChild(d);
     }
     i.appendChild(s);
-    const l = document.createElement("div");
-    l.style.cssText = `
+    const c = document.createElement("div");
+    c.style.cssText = `
       padding: 20px;
       display: flex;
       justify-content: flex-end;
     `;
-    const c = document.createElement("button");
-    c.textContent = "关闭", c.style.cssText = `
+    const l = document.createElement("button");
+    l.textContent = "关闭", l.style.cssText = `
       background: #6b7280;
       color: white;
       border: none;
@@ -7291,13 +7297,13 @@ class kn {
       font-size: 14px;
       cursor: pointer;
       transition: background-color 0.2s;
-    `, c.addEventListener("mouseenter", () => {
-      c.style.backgroundColor = "#4b5563";
-    }), c.addEventListener("mouseleave", () => {
-      c.style.backgroundColor = "#6b7280";
-    }), c.onclick = () => {
+    `, l.addEventListener("mouseenter", () => {
+      l.style.backgroundColor = "#4b5563";
+    }), l.addEventListener("mouseleave", () => {
+      l.style.backgroundColor = "#6b7280";
+    }), l.onclick = () => {
       i.remove(), t && this.manageSavedTabSets();
-    }, l.appendChild(c), i.appendChild(l), document.body.appendChild(i);
+    }, c.appendChild(l), i.appendChild(c), document.body.appendChild(i);
     const h = (d) => {
       i.contains(d.target) || (i.remove(), t && this.manageSavedTabSets(), document.removeEventListener("click", h));
     };
@@ -7338,15 +7344,15 @@ class kn {
     r.style.cssText = `
       padding: 0 20px;
     `;
-    const l = document.createElement("label");
-    l.style.cssText = `
+    const c = document.createElement("label");
+    c.style.cssText = `
       display: block;
       margin-bottom: 8px;
       font-size: 14px;
       color: #333;
-    `, l.textContent = "请输入新的名称:", r.appendChild(l);
-    const c = document.createElement("input");
-    c.type = "text", c.value = e.name, c.style.cssText = `
+    `, c.textContent = "请输入新的名称:", r.appendChild(c);
+    const l = document.createElement("input");
+    l.type = "text", l.value = e.name, l.style.cssText = `
       width: 100%;
       padding: 8px 12px;
       border: 1px solid #ddd;
@@ -7357,11 +7363,11 @@ class kn {
       transition: border-color 0.2s;
       pointer-events: auto;
       user-select: text;
-    `, c.addEventListener("focus", () => {
-      c.style.borderColor = "#3b82f6";
-    }), c.addEventListener("blur", () => {
-      c.style.borderColor = "#ddd";
-    }), r.appendChild(c), o.appendChild(r);
+    `, l.addEventListener("focus", () => {
+      l.style.borderColor = "#3b82f6";
+    }), l.addEventListener("blur", () => {
+      l.style.borderColor = "#ddd";
+    }), r.appendChild(l), o.appendChild(r);
     const h = document.createElement("div");
     h.style.cssText = `
       padding: 20px;
@@ -7401,7 +7407,7 @@ class kn {
     }), p.addEventListener("mouseleave", () => {
       p.style.backgroundColor = "#3b82f6";
     }), p.onclick = async () => {
-      const g = c.value.trim();
+      const g = l.value.trim();
       if (!g) {
         orca.notify("warn", "请输入名称");
         return;
@@ -7416,8 +7422,8 @@ class kn {
       }
       e.name = g, e.updatedAt = Date.now(), await this.saveSavedTabSets(), o.remove(), n.remove(), this.manageSavedTabSets(), orca.notify("success", "重命名成功");
     }, h.appendChild(d), h.appendChild(p), o.appendChild(h), document.body.appendChild(o), setTimeout(() => {
-      c.focus(), c.select();
-    }, 100), c.addEventListener("keydown", (g) => {
+      l.focus(), l.select();
+    }, 100), l.addEventListener("keydown", (g) => {
       g.key === "Enter" ? (g.preventDefault(), p.click()) : g.key === "Escape" && (g.preventDefault(), d.click());
     });
     const u = (g) => {
@@ -7464,19 +7470,19 @@ class kn {
         return;
       }
       e.name = h, e.updatedAt = Date.now(), await this.saveSavedTabSets(), n.textContent = h, orca.notify("success", "重命名成功");
-    }, l = () => {
+    }, c = () => {
       n.textContent = s;
     };
     o.addEventListener("keydown", (h) => {
-      h.key === "Enter" ? (h.preventDefault(), r()) : h.key === "Escape" && (h.preventDefault(), l());
+      h.key === "Enter" ? (h.preventDefault(), r()) : h.key === "Escape" && (h.preventDefault(), c());
     });
-    let c = null;
+    let l = null;
     o.addEventListener("blur", () => {
-      c && clearTimeout(c), c = window.setTimeout(() => {
+      l && clearTimeout(l), l = window.setTimeout(() => {
         r();
       }, 100);
     }), o.addEventListener("focus", () => {
-      c && (clearTimeout(c), c = null);
+      l && (clearTimeout(l), l = null);
     });
   }
   /**
@@ -7507,13 +7513,13 @@ class kn {
       color: #333;
       margin-bottom: 16px;
     `, r.textContent = "选择图标", s.appendChild(r);
-    const l = document.createElement("div");
-    l.style.cssText = `
+    const c = document.createElement("div");
+    c.style.cssText = `
       padding: 0 20px;
       max-height: 300px;
       overflow-y: auto;
     `;
-    const c = [
+    const l = [
       { name: "默认", value: "", icon: "📁" },
       { name: "工作", value: "ti ti-briefcase", icon: "💼" },
       { name: "学习", value: "ti ti-school", icon: "📚" },
@@ -7535,7 +7541,7 @@ class kn {
       grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
       gap: 8px;
       margin-bottom: 16px;
-    `, c.forEach((g) => {
+    `, l.forEach((g) => {
       const b = document.createElement("div");
       b.style.cssText = `
         display: flex;
@@ -7569,7 +7575,7 @@ class kn {
       }), b.addEventListener("mouseleave", () => {
         b.style.backgroundColor = e.icon === g.value ? "#e3f2fd" : "white", b.style.borderColor = "#e0e0e0";
       }), h.appendChild(b);
-    }), l.appendChild(h), s.appendChild(l);
+    }), c.appendChild(h), s.appendChild(c);
     const d = document.createElement("div");
     d.style.cssText = `
       padding: 20px;
@@ -7637,9 +7643,9 @@ class kn {
       padding: 0 20px;
       max-height: 300px;
       overflow-y: auto;
-    `, this.savedTabSets.forEach((r, l) => {
-      const c = document.createElement("div");
-      c.style.cssText = `
+    `, this.savedTabSets.forEach((r, c) => {
+      const l = document.createElement("div");
+      l.style.cssText = `
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -7649,10 +7655,10 @@ class kn {
         margin-bottom: 8px;
         background: rgba(249, 249, 249, 0.8);
         transition: background-color 0.2s;
-      `, c.addEventListener("mouseenter", () => {
-        c.style.backgroundColor = "rgba(240, 240, 240, 0.8)";
-      }), c.addEventListener("mouseleave", () => {
-        c.style.backgroundColor = "rgba(249, 249, 249, 0.8)";
+      `, l.addEventListener("mouseenter", () => {
+        l.style.backgroundColor = "rgba(240, 240, 240, 0.8)";
+      }), l.addEventListener("mouseleave", () => {
+        l.style.backgroundColor = "rgba(249, 249, 249, 0.8)";
       });
       const h = document.createElement("div");
       h.style.cssText = `
@@ -7685,7 +7691,7 @@ class kn {
           d.textContent = "📁";
       };
       p(), d.addEventListener("click", () => {
-        this.editTabSetIcon(r, l, d, p, e);
+        this.editTabSetIcon(r, c, d, p, e);
       }), d.addEventListener("mouseenter", () => {
         d.style.backgroundColor = "rgba(59, 130, 246, 0.1)";
       }), d.addEventListener("mouseleave", () => {
@@ -7711,7 +7717,7 @@ class kn {
         display: flex;
         align-items: center;
       `, g.textContent = r.name, g.title = "点击编辑名称", g.addEventListener("click", () => {
-        this.editTabSetName(r, l, g, e);
+        this.editTabSetName(r, c, g, e);
       }), g.addEventListener("mouseenter", () => {
         g.style.backgroundColor = "rgba(59, 130, 246, 0.1)";
       }), g.addEventListener("mouseleave", () => {
@@ -7742,7 +7748,7 @@ class kn {
       }), x.addEventListener("mouseleave", () => {
         x.style.backgroundColor = "#3b82f6";
       }), x.onclick = () => {
-        this.loadSavedTabSet(r, l), e.remove();
+        this.loadSavedTabSet(r, c), e.remove();
       };
       const v = document.createElement("button");
       v.textContent = "查看", v.style.cssText = `
@@ -7776,8 +7782,8 @@ class kn {
       }), w.addEventListener("mouseleave", () => {
         w.style.backgroundColor = "#ef4444";
       }), w.onclick = () => {
-        confirm(`确定要删除标签页集合 "${r.name}" 吗？`) && (this.savedTabSets.splice(l, 1), this.saveSavedTabSets(), e.remove(), this.manageSavedTabSets());
-      }, f.appendChild(x), f.appendChild(v), f.appendChild(w), c.appendChild(h), c.appendChild(f), n.appendChild(c);
+        confirm(`确定要删除标签页集合 "${r.name}" 吗？`) && (this.savedTabSets.splice(c, 1), this.saveSavedTabSets(), e.remove(), this.manageSavedTabSets());
+      }, f.appendChild(x), f.appendChild(v), f.appendChild(w), l.appendChild(h), l.appendChild(f), n.appendChild(l);
     }), e.appendChild(n);
     const i = document.createElement("div");
     i.style.cssText = `

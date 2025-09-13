@@ -1868,19 +1868,19 @@ class OrcaTabsPlugin {
 
       /* 聚焦状态的标签样式 */
       .orca-tab[data-focused="true"] {
-        opacity: 1;
-        border: 2px solid #3b82f6;
-        box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2), 0 2px 8px rgba(59, 130, 246, 0.3);
-        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
-        transform: scale(1.02);
-        transition: all 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        opacity: 1 !important;
+        border: 2px solid #3b82f6 !important;
+        box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2), 0 2px 8px rgba(59, 130, 246, 0.3) !important;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05)) !important;
+        transform: scale(1.02) !important;
+        transition: all 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
       }
 
       /* 暗色模式下的聚焦样式 */
       .dark .orca-tab[data-focused="true"] {
-        border: 2px solid #60a5fa;
-        box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.3), 0 2px 8px rgba(96, 165, 250, 0.2);
-        background: linear-gradient(135deg, rgba(96, 165, 250, 0.15), rgba(96, 165, 250, 0.08));
+        border: 2px solid #60a5fa !important;
+        box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.3), 0 2px 8px rgba(96, 165, 250, 0.2) !important;
+        background: linear-gradient(135deg, rgba(96, 165, 250, 0.15), rgba(96, 165, 250, 0.08)) !important;
       }
 
       /* 拖拽时的光标样式 */
@@ -2065,7 +2065,8 @@ class OrcaTabsPlugin {
       // 调整标签页样式以适应顶部工具栏
       const tabs = this.tabContainer.querySelectorAll('.orca-tab');
       tabs.forEach(tab => {
-        (tab as HTMLElement).style.cssText += `
+        // 只设置基础样式，不覆盖聚焦样式
+        (tab as HTMLElement).style.cssText = `
           display: flex;
           align-items: center;
           padding: 4px 8px;
@@ -2080,6 +2081,12 @@ class OrcaTabsPlugin {
           transition: all 0.2s ease;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
           color: ${textColor};
+          max-width: 150px;
+          backdrop-filter: blur(2px);
+          -webkit-backdrop-filter: blur(2px);
+          -webkit-app-region: no-drag;
+          app-region: no-drag;
+          pointer-events: auto;
         `;
       });
       
@@ -3542,7 +3549,9 @@ class OrcaTabsPlugin {
     
     // 设置样式
     const isDarkMode = orca.state.themeMode === 'dark';
-    const tabStyle = createTabBaseStyle(tab, this.isVerticalMode, isDarkMode, this.applyOklchFormula.bind(this));
+    // 固定到顶部模式使用水平布局样式
+    const useVerticalStyle = this.isVerticalMode && !this.isFixedToTop;
+    const tabStyle = createTabBaseStyle(tab, useVerticalStyle, isDarkMode, this.applyOklchFormula.bind(this));
     tabElement.style.cssText = tabStyle;
 
     // 创建标签内容容器
