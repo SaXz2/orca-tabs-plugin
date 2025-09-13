@@ -7276,18 +7276,16 @@ class kn {
    */
   async performSaveWorkspace(e, t) {
     try {
-      const n = this.firstPanelTabs, i = this.getCurrentActiveTab(), o = n.map((r, l) => {
-        const c = { ...r };
-        return i && r.blockId === i.blockId && (c.activeIndex = l + 1, this.log(`💾 保存新工作区时记录激活标签页: ${r.title} (序号: ${l + 1})`)), c;
-      }), a = {
+      const n = this.firstPanelTabs, i = this.getCurrentActiveTab(), o = {
         id: `workspace_${Date.now()}`,
         name: e,
-        tabs: o,
+        tabs: n,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-        description: t || void 0
+        description: t || void 0,
+        lastActiveTabId: i ? i.blockId : void 0
       };
-      this.workspaces.push(a), await this.saveWorkspaces(), this.log(`💾 工作区已保存: "${e}" (${n.length}个标签)`), orca.notify("success", `工作区已保存: ${e}`);
+      this.workspaces.push(o), await this.saveWorkspaces(), this.log(`💾 工作区已保存: "${e}" (${n.length}个标签)`), orca.notify("success", `工作区已保存: ${e}`);
     } catch (n) {
       this.error("保存工作区失败:", n), orca.notify("error", "保存工作区失败");
     }
@@ -7409,7 +7407,7 @@ class kn {
         orca.notify("error", "工作区不存在");
         return;
       }
-      this.currentWorkspace && await this.saveCurrentTabsToWorkspace(), this.currentWorkspace = e, await this.saveWorkspaces(), await this.replaceCurrentTabsWithWorkspace(t.tabs), this.log(`🔄 已切换到工作区: "${t.name}"`), orca.notify("success", `已切换到工作区: ${t.name}`);
+      this.currentWorkspace && await this.saveCurrentTabsToWorkspace(), this.currentWorkspace = e, await this.saveWorkspaces(), await this.replaceCurrentTabsWithWorkspace(t.tabs, t), this.log(`🔄 已切换到工作区: "${t.name}"`), orca.notify("success", `已切换到工作区: ${t.name}`);
     } catch (t) {
       this.error("切换工作区失败:", t), orca.notify("error", "切换工作区失败");
     }
@@ -7417,56 +7415,49 @@ class kn {
   /**
    * 用工作区的标签页完全替换当前标签页
    */
-  async replaceCurrentTabsWithWorkspace(e) {
+  async replaceCurrentTabsWithWorkspace(e, t) {
     try {
       this.firstPanelTabs = [], this.secondPanelTabs = [];
-      const t = [];
-      for (const n of e)
+      const n = [];
+      for (const o of e)
         try {
-          const i = await this.getTabInfo(n.blockId, this.currentPanelId, t.length);
-          i ? (i.notes = n.notes, i.isPinned = n.isPinned, i.order = n.order, i.scrollPosition = n.scrollPosition, i.activeIndex = n.activeIndex, t.push(i)) : t.push(n);
-        } catch (i) {
-          this.warn(`无法更新标签页信息 ${n.title}:`, i), t.push(n);
+          const a = await this.getTabInfo(o.blockId, this.currentPanelId, n.length);
+          a ? (a.notes = o.notes, a.isPinned = o.isPinned, a.order = o.order, a.scrollPosition = o.scrollPosition, n.push(a)) : n.push(o);
+        } catch (a) {
+          this.warn(`无法更新标签页信息 ${o.title}:`, a), n.push(o);
         }
-      this.firstPanelTabs = t, await this.saveFirstPanelTabs(), this.currentPanelIndex !== 0 && (this.currentPanelIndex = 0, this.currentPanelId = this.panelIds[0], this.log("🔄 工作区切换：切换到第一个面板 (索引: 0)")), this.debouncedUpdateTabsUI(), setTimeout(async () => {
-        if (t.length > 0) {
-          let n = t[0];
-          const i = t.filter((o) => o.activeIndex !== void 0);
-          if (i.length > 0) {
-            const o = i.reduce(
-              (a, r) => (r.activeIndex || 0) > (a.activeIndex || 0) ? r : a
-            );
-            n = o, this.log(`🎯 导航到工作区中最后激活的标签页: ${n.title} (序号: ${o.activeIndex})`);
+      this.firstPanelTabs = n, await this.saveFirstPanelTabs(), this.currentPanelIndex !== 0 && (this.currentPanelIndex = 0, this.currentPanelId = this.panelIds[0], this.log("🔄 工作区切换：切换到第一个面板 (索引: 0)")), this.debouncedUpdateTabsUI();
+      const i = t.lastActiveTabId;
+      setTimeout(async () => {
+        if (n.length > 0) {
+          let o = n[0];
+          if (i) {
+            const a = n.find((r) => r.blockId === i);
+            a ? (o = a, this.log(`🎯 导航到工作区中最后激活的标签页: ${o.title} (ID: ${i})`)) : this.log(`🎯 工作区中记录的最后激活标签页不存在，导航到第一个标签页: ${o.title}`);
           } else
-            this.log(`🎯 工作区中没有记录激活标签页，导航到第一个标签页: ${n.title}`);
-          await orca.nav.goTo("block", { blockId: parseInt(n.blockId) }, this.currentPanelId);
+            this.log(`🎯 工作区中没有记录最后激活标签页，导航到第一个标签页: ${o.title}`);
+          await orca.nav.goTo("block", { blockId: parseInt(o.blockId) }, this.currentPanelId);
         }
-      }, 100), this.log(`📋 已替换当前标签页，共 ${t.length} 个标签，块类型图标已更新`);
-    } catch (t) {
-      throw this.error("替换标签页失败:", t), t;
+      }, 100), this.log(`📋 已替换当前标签页，共 ${n.length} 个标签，块类型图标已更新`);
+    } catch (n) {
+      throw this.error("替换标签页失败:", n), n;
     }
   }
   /**
-   * 页面加载完成后更新当前工作区的activeIndex
+   * 页面加载完成后更新当前工作区的最后激活标签页
    */
   async updateCurrentWorkspaceActiveIndexOnLoad() {
     if (!this.enableWorkspaces || !this.currentWorkspace) return;
     const e = this.getCurrentActiveTab();
-    e && (await this.updateCurrentWorkspaceActiveIndex(e), this.log(`🔄 页面加载完成后更新工作区activeIndex: ${e.title}`));
+    e && (await this.updateCurrentWorkspaceActiveIndex(e), this.log(`🔄 页面加载完成后更新工作区最后激活标签页: ${e.title}`));
   }
   /**
-   * 实时更新当前工作区的activeIndex
+   * 实时更新当前工作区的最后激活标签页
    */
   async updateCurrentWorkspaceActiveIndex(e) {
     if (!this.currentWorkspace) return;
     const t = this.workspaces.find((n) => n.id === this.currentWorkspace);
-    if (t) {
-      const i = this.firstPanelTabs.findIndex((o) => o.blockId === e.blockId);
-      if (i !== -1) {
-        const o = t.tabs.find((a) => a.blockId === e.blockId);
-        o && (o.activeIndex = i + 1, t.updatedAt = Date.now(), await this.saveWorkspaces(), this.log(`🔄 实时更新工作区activeIndex: ${e.title} (序号: ${i + 1})`));
-      }
-    }
+    t && (t.lastActiveTabId = e.blockId, t.updatedAt = Date.now(), await this.saveWorkspaces(), this.log(`🔄 实时更新工作区最后激活标签页: ${e.title} (ID: ${e.blockId})`));
   }
   /**
    * 保存当前标签页到当前工作区
@@ -7475,11 +7466,8 @@ class kn {
     if (!this.currentWorkspace) return;
     const e = this.workspaces.find((t) => t.id === this.currentWorkspace);
     if (e) {
-      const t = this.firstPanelTabs, n = this.getCurrentActiveTab(), i = t.map((o, a) => {
-        const r = { ...o };
-        return n && o.blockId === n.blockId && (r.activeIndex = a + 1, this.log(`💾 保存工作区时记录激活标签页: ${o.title} (序号: ${a + 1})`)), r;
-      });
-      e.tabs = i, e.updatedAt = Date.now(), await this.saveWorkspaces();
+      const t = this.firstPanelTabs, n = this.getCurrentActiveTab();
+      e.tabs = t, e.lastActiveTabId = n ? n.blockId : void 0, e.updatedAt = Date.now(), await this.saveWorkspaces();
     }
   }
   /**

@@ -11,7 +11,6 @@ export interface TabInfo {
   blockType?: string; // 块类型
   closedAt?: number; // 关闭时间戳（用于最近关闭标签页功能）
   notes?: string; // 备注
-  activeIndex?: number; // 当前激活的标签页序号（从0开始）
 }
 
 export interface TabPosition {
@@ -41,4 +40,5 @@ export interface Workspace {
   updatedAt: number;
   icon?: string; // 自定义图标
   description?: string; // 工作区描述
+  lastActiveTabId?: string; // 最后激活的标签页ID
 }
