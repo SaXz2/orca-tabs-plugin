@@ -31,3 +31,13 @@ export interface SavedTabSet {
   updatedAt: number;
   icon?: string; // 自定义图标
 }
+
+export interface Workspace {
+  id: string;
+  name: string;
+  tabs: TabInfo[];
+  createdAt: number;
+  updatedAt: number;
+  icon?: string; // 自定义图标
+  description?: string; // 工作区描述
+}

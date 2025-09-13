@@ -8,7 +8,7 @@ import zhCN from "./translations/zhCN";
 
 // 本地模块导入
 import { AppKeys, PropType, PLUGIN_STORAGE_KEYS } from './constants';
-import { TabInfo, TabPosition, PanelTabsData, SavedTabSet } from './types';
+import { TabInfo, TabPosition, PanelTabsData, SavedTabSet, Workspace } from './types';
 import { OrcaStorageService } from './services/storage';
 // 块处理工具函数
 import { formatJournalDate, extractJournalInfo, detectBlockType, getBlockTypeIcon, isDateString, findProperty, format } from './utils/blockUtils';
@@ -437,6 +437,12 @@ class OrcaTabsPlugin {
   private recentlyClosedTabs: TabInfo[] = []; // 最近关闭的标签页列表（按时间倒序）
   private savedTabSets: SavedTabSet[] = []; // 保存的多标签页集合
   private previousTabSet: TabInfo[] | null = null; // 记录上一个标签集合
+  
+  // 工作区功能相关
+  private workspaces: Workspace[] = []; // 工作区列表
+  private currentWorkspace: string | null = null; // 当前工作区ID
+  private enableWorkspaces: boolean = true; // 是否启用工作区功能
+  
   private dialogZIndex = 2000; // 对话框层级管理器
 
   /**
@@ -485,6 +491,8 @@ class OrcaTabsPlugin {
     // 恢复浮窗可见状态
     await this.restoreFloatingWindowVisibility();
     
+    // 加载工作区数据
+    await this.loadWorkspaces();
     
     // 注册顶部工具栏按钮
     this.registerHeadbarButton();
@@ -3150,8 +3158,28 @@ class OrcaTabsPlugin {
         });
       }
 
+      // 注册工作区按钮（根据设置决定是否显示）
+      if (this.enableWorkspaces && typeof window !== 'undefined') {
+        orca.headbar.registerHeadbarButton('orca-tabs-plugin.workspaceButton', () => {
+          const React = (window as any).React;
+          const Button = orca.components.Button;
+          
+          return React.createElement(Button, {
+            variant: 'plain',
+            onClick: (event: MouseEvent) => this.showWorkspaceMenu(event),
+            title: `工作区 (${this.workspaces?.length || 0})`,
+            style: {
+              color: (this.workspaces?.length || 0) > 0 ? '#10b981' : '#999',
+              transition: 'color 0.2s ease'
+            }
+          }, React.createElement('i', {
+            className: 'ti ti-folder'
+          }));
+        });
+      }
+
       
-      this.log(`🔘 顶部工具栏按钮已注册 (切换按钮: 总是显示, 调试按钮: ${this.showInHeadbar ? '显示' : '隐藏'}, 最近关闭: ${this.enableRecentlyClosedTabs ? '显示' : '隐藏'}, 保存标签页: ${this.enableMultiTabSaving ? '显示' : '隐藏'})`);
+      this.log(`🔘 顶部工具栏按钮已注册 (切换按钮: 总是显示, 调试按钮: ${this.showInHeadbar ? '显示' : '隐藏'}, 最近关闭: ${this.enableRecentlyClosedTabs ? '显示' : '隐藏'}, 保存标签页: ${this.enableMultiTabSaving ? '显示' : '隐藏'}, 工作区: ${this.enableWorkspaces ? '显示' : '隐藏'})`);
     } catch (error) {
       this.error("注册顶部工具栏按钮失败:", error);
     }
@@ -3173,6 +3201,9 @@ class OrcaTabsPlugin {
       
       // 注销保存标签页按钮
       orca.headbar.unregisterHeadbarButton('orca-tabs-plugin.savedTabsButton');
+      
+      // 注销工作区按钮
+      orca.headbar.unregisterHeadbarButton('orca-tabs-plugin.workspaceButton');
       
       this.log("🔘 顶部工具栏按钮已注销");
     } catch (error) {
@@ -4243,6 +4274,12 @@ class OrcaTabsPlugin {
           defaultValue: true,
           description: "控制是否启用多标签页保存功能，可以保存当前多个标签页的集合并随时恢复"
         },
+        enableWorkspaces: {
+          label: "启用工作区功能",
+          type: "boolean" as const,
+          defaultValue: true,
+          description: "控制是否启用工作区功能，可以保存当前标签页为工作区并快速切换"
+        },
       };
 
       await orca.plugins.setSettingsSchema("orca-tabs-plugin", settingsSchema);
@@ -4268,6 +4305,11 @@ class OrcaTabsPlugin {
       if (settings?.enableMultiTabSaving !== undefined) {
         this.enableMultiTabSaving = settings.enableMultiTabSaving;
         this.log(`💾 多标签页保存功能: ${this.enableMultiTabSaving ? '开启' : '关闭'}`);
+      }
+      
+      if (settings?.enableWorkspaces !== undefined) {
+        this.enableWorkspaces = settings.enableWorkspaces;
+        this.log(`📁 工作区功能: ${this.enableWorkspaces ? '开启' : '关闭'}`);
       }
       
       this.log("✅ 插件设置已注册");
@@ -9023,6 +9065,661 @@ class OrcaTabsPlugin {
       }
     };
     document.addEventListener('keydown', handleKeyDown);
+  }
+
+  /* ———————————————————————————————————————————————————————————————————————————— */
+  /* 工作区功能 - Workspace Management */
+  /* ———————————————————————————————————————————————————————————————————————————— */
+
+  /**
+   * 加载工作区数据
+   */
+  private async loadWorkspaces() {
+    try {
+      const workspacesData = await this.storageService.getConfig(PLUGIN_STORAGE_KEYS.WORKSPACES);
+      if (workspacesData && Array.isArray(workspacesData)) {
+        this.workspaces = workspacesData;
+        this.log(`📁 已加载 ${this.workspaces.length} 个工作区`);
+      }
+
+      const currentWorkspaceId = await this.storageService.getConfig(PLUGIN_STORAGE_KEYS.CURRENT_WORKSPACE);
+      if (currentWorkspaceId && typeof currentWorkspaceId === 'string') {
+        this.currentWorkspace = currentWorkspaceId;
+        this.log(`📁 当前工作区: ${currentWorkspaceId}`);
+      }
+
+      const enableWorkspaces = await this.storageService.getConfig(PLUGIN_STORAGE_KEYS.ENABLE_WORKSPACES);
+      if (typeof enableWorkspaces === 'boolean') {
+        this.enableWorkspaces = enableWorkspaces;
+      }
+    } catch (error) {
+      this.error("加载工作区数据失败:", error);
+    }
+  }
+
+  /**
+   * 保存工作区数据
+   */
+  private async saveWorkspaces() {
+    try {
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.WORKSPACES, this.workspaces);
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.CURRENT_WORKSPACE, this.currentWorkspace);
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.ENABLE_WORKSPACES, this.enableWorkspaces);
+      this.log(`💾 工作区数据已保存`);
+    } catch (error) {
+      this.error("保存工作区数据失败:", error);
+    }
+  }
+
+  /**
+   * 保存当前标签页为工作区
+   */
+  async saveCurrentWorkspace() {
+    if (!this.enableWorkspaces) {
+      orca.notify('warn', '工作区功能已禁用');
+      return;
+    }
+
+    const currentTabs = this.getCurrentPanelTabs();
+    if (currentTabs.length === 0) {
+      orca.notify('warn', '当前没有标签页可保存');
+      return;
+    }
+
+    this.showSaveWorkspaceDialog();
+  }
+
+  /**
+   * 显示保存工作区对话框
+   */
+  private showSaveWorkspaceDialog() {
+    // 移除现有对话框
+    const existingDialog = document.querySelector('.save-workspace-dialog');
+    if (existingDialog) {
+      existingDialog.remove();
+    }
+
+    const dialog = document.createElement('div');
+    dialog.className = 'save-workspace-dialog';
+    dialog.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      z-index: ${this.getNextDialogZIndex()};
+      width: 400px;
+      max-width: 90vw;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+      padding: 20px;
+    `;
+
+    // 标题
+    const title = document.createElement('div');
+    title.style.cssText = `
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 16px;
+      text-align: center;
+    `;
+    title.textContent = '保存工作区';
+
+    // 工作区名称输入
+    const nameLabel = document.createElement('div');
+    nameLabel.style.cssText = `
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 8px;
+    `;
+    nameLabel.textContent = '工作区名称:';
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.placeholder = '请输入工作区名称...';
+    nameInput.style.cssText = `
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+      box-sizing: border-box;
+      margin-bottom: 12px;
+    `;
+
+    // 工作区描述输入
+    const descLabel = document.createElement('div');
+    descLabel.style.cssText = `
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 8px;
+    `;
+    descLabel.textContent = '工作区描述 (可选):';
+
+    const descInput = document.createElement('textarea');
+    descInput.placeholder = '请输入工作区描述...';
+    descInput.style.cssText = `
+      width: 100%;
+      height: 60px;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+      box-sizing: border-box;
+      resize: vertical;
+      margin-bottom: 16px;
+    `;
+
+    // 按钮容器
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = `
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    `;
+
+    // 取消按钮
+    const cancelBtn = document.createElement('button');
+    cancelBtn.style.cssText = `
+      padding: 8px 16px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: #fff;
+      color: #666;
+      cursor: pointer;
+      font-size: 14px;
+    `;
+    cancelBtn.textContent = '取消';
+    cancelBtn.onclick = () => {
+      dialog.remove();
+    };
+
+    // 保存按钮
+    const saveBtn = document.createElement('button');
+    saveBtn.style.cssText = `
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      background: #3b82f6;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+    `;
+    saveBtn.textContent = '保存';
+    saveBtn.onclick = async () => {
+      const name = nameInput.value.trim();
+      if (!name) {
+        orca.notify('warn', '请输入工作区名称');
+        return;
+      }
+
+      // 检查名称是否已存在
+      if (this.workspaces.some(w => w.name === name)) {
+        orca.notify('warn', '工作区名称已存在');
+        return;
+      }
+
+      await this.performSaveWorkspace(name, descInput.value.trim());
+      dialog.remove();
+    };
+
+    // 组装对话框
+    buttonContainer.appendChild(cancelBtn);
+    buttonContainer.appendChild(saveBtn);
+    
+    content.appendChild(title);
+    content.appendChild(nameLabel);
+    content.appendChild(nameInput);
+    content.appendChild(descLabel);
+    content.appendChild(descInput);
+    content.appendChild(buttonContainer);
+    
+    dialog.appendChild(content);
+    document.body.appendChild(dialog);
+
+    // 聚焦到输入框
+    nameInput.focus();
+
+    // 点击外部关闭对话框
+    dialog.addEventListener('click', (e) => {
+      if (e.target === dialog) {
+        dialog.remove();
+      }
+    });
+
+    // ESC键关闭对话框
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        dialog.remove();
+        document.removeEventListener('keydown', handleKeyDown);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+  }
+
+  /**
+   * 执行保存工作区
+   */
+  private async performSaveWorkspace(name: string, description: string) {
+    try {
+      const currentTabs = this.getCurrentPanelTabs();
+      const workspace: Workspace = {
+        id: `workspace_${Date.now()}`,
+        name,
+        tabs: [...currentTabs],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        description: description || undefined
+      };
+
+      this.workspaces.push(workspace);
+      await this.saveWorkspaces();
+
+      this.log(`💾 工作区已保存: "${name}" (${currentTabs.length}个标签)`);
+      orca.notify('success', `工作区已保存: ${name}`);
+    } catch (error) {
+      this.error("保存工作区失败:", error);
+      orca.notify('error', '保存工作区失败');
+    }
+  }
+
+  /**
+   * 显示工作区切换菜单
+   */
+  showWorkspaceMenu(event?: MouseEvent) {
+    if (!this.enableWorkspaces) {
+      orca.notify('warn', '工作区功能已禁用');
+      return;
+    }
+
+    // 移除现有菜单
+    const existingMenu = document.querySelector('.workspace-menu');
+    if (existingMenu) {
+      existingMenu.remove();
+    }
+
+    const menu = document.createElement('div');
+    menu.className = 'workspace-menu';
+    menu.style.cssText = `
+      position: fixed;
+      top: ${event ? event.clientY + 10 : 60}px;
+      left: ${event ? event.clientX : 20}px;
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      z-index: ${this.getNextDialogZIndex()};
+      min-width: 200px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    `;
+
+    // 菜单标题
+    const title = document.createElement('div');
+    title.style.cssText = `
+      padding: 12px 16px;
+      border-bottom: 1px solid #eee;
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+    `;
+    title.textContent = '工作区';
+
+    // 保存当前工作区选项
+    const saveCurrentItem = document.createElement('div');
+    saveCurrentItem.style.cssText = `
+      padding: 12px 16px;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid #eee;
+    `;
+    saveCurrentItem.innerHTML = `
+      <i class="ti ti-plus" style="font-size: 14px; color: #3b82f6;"></i>
+      <span>保存当前工作区</span>
+    `;
+    saveCurrentItem.onclick = () => {
+      menu.remove();
+      this.saveCurrentWorkspace();
+    };
+
+    // 工作区列表
+    const workspacesList = document.createElement('div');
+    workspacesList.style.cssText = `
+      max-height: 300px;
+      overflow-y: auto;
+    `;
+
+    if (this.workspaces.length === 0) {
+      const emptyItem = document.createElement('div');
+      emptyItem.style.cssText = `
+        padding: 12px 16px;
+        color: #666;
+        font-size: 14px;
+        text-align: center;
+      `;
+      emptyItem.textContent = '暂无工作区';
+      workspacesList.appendChild(emptyItem);
+    } else {
+      this.workspaces.forEach(workspace => {
+        const workspaceItem = document.createElement('div');
+        workspaceItem.style.cssText = `
+          padding: 12px 16px;
+          cursor: pointer;
+          font-size: 14px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          border-bottom: 1px solid #eee;
+          ${this.currentWorkspace === workspace.id ? 'background: rgba(59, 130, 246, 0.1);' : ''}
+        `;
+        
+        const icon = workspace.icon || 'ti ti-folder';
+        workspaceItem.innerHTML = `
+          <i class="${icon}" style="font-size: 14px; color: #3b82f6;"></i>
+          <div style="flex: 1;">
+            <div style="font-weight: 500;">${workspace.name}</div>
+            ${workspace.description ? `<div style="font-size: 12px; color: #666; margin-top: 2px;">${workspace.description}</div>` : ''}
+            <div style="font-size: 11px; color: #999; margin-top: 2px;">${workspace.tabs.length}个标签</div>
+          </div>
+          ${this.currentWorkspace === workspace.id ? '<i class="ti ti-check" style="font-size: 14px; color: #3b82f6;"></i>' : ''}
+        `;
+        
+        workspaceItem.onclick = () => {
+          menu.remove();
+          this.switchToWorkspace(workspace.id);
+        };
+        
+        workspacesList.appendChild(workspaceItem);
+      });
+    }
+
+    // 管理选项
+    const manageItem = document.createElement('div');
+    manageItem.style.cssText = `
+      padding: 12px 16px;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-top: 1px solid #eee;
+    `;
+    manageItem.innerHTML = `
+      <i class="ti ti-settings" style="font-size: 14px; color: #666;"></i>
+      <span>管理工作区</span>
+    `;
+    manageItem.onclick = () => {
+      menu.remove();
+      this.manageWorkspaces();
+    };
+
+    // 组装菜单
+    menu.appendChild(title);
+    menu.appendChild(saveCurrentItem);
+    menu.appendChild(workspacesList);
+    menu.appendChild(manageItem);
+
+    document.body.appendChild(menu);
+
+    // 点击外部关闭菜单
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!menu.contains(e.target as Node)) {
+        menu.remove();
+        document.removeEventListener('click', handleClickOutside);
+      }
+    };
+    setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 100);
+  }
+
+  /**
+   * 切换到指定工作区
+   */
+  private async switchToWorkspace(workspaceId: string) {
+    try {
+      const workspace = this.workspaces.find(w => w.id === workspaceId);
+      if (!workspace) {
+        orca.notify('error', '工作区不存在');
+        return;
+      }
+
+      // 保存当前工作区（如果存在）
+      if (this.currentWorkspace) {
+        await this.saveCurrentTabsToWorkspace();
+      }
+
+      // 切换到新工作区
+      this.currentWorkspace = workspaceId;
+      await this.saveWorkspaces();
+
+      // 清空当前标签页
+      this.firstPanelTabs = [];
+      this.secondPanelTabs = [];
+
+      // 加载工作区的标签页
+      for (const tab of workspace.tabs) {
+        await this.addTabToPanel(tab.blockId, 'end', true);
+      }
+
+      this.log(`🔄 已切换到工作区: "${workspace.name}"`);
+      orca.notify('success', `已切换到工作区: ${workspace.name}`);
+    } catch (error) {
+      this.error("切换工作区失败:", error);
+      orca.notify('error', '切换工作区失败');
+    }
+  }
+
+  /**
+   * 保存当前标签页到当前工作区
+   */
+  private async saveCurrentTabsToWorkspace() {
+    if (!this.currentWorkspace) return;
+
+    const workspace = this.workspaces.find(w => w.id === this.currentWorkspace);
+    if (workspace) {
+      workspace.tabs = [...this.getCurrentPanelTabs()];
+      workspace.updatedAt = Date.now();
+      await this.saveWorkspaces();
+    }
+  }
+
+  /**
+   * 管理工作区
+   */
+  private manageWorkspaces() {
+    // 移除现有对话框
+    const existingDialog = document.querySelector('.manage-workspaces-dialog');
+    if (existingDialog) {
+      existingDialog.remove();
+    }
+
+    const dialog = document.createElement('div');
+    dialog.className = 'manage-workspaces-dialog';
+    dialog.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      z-index: ${this.getNextDialogZIndex()};
+      width: 600px;
+      max-width: 90vw;
+      max-height: 80vh;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+      padding: 20px;
+    `;
+
+    // 标题
+    const title = document.createElement('div');
+    title.style.cssText = `
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 20px;
+      text-align: center;
+    `;
+    title.textContent = '管理工作区';
+
+    // 工作区列表
+    const workspacesList = document.createElement('div');
+    workspacesList.style.cssText = `
+      max-height: 400px;
+      overflow-y: auto;
+      margin-bottom: 20px;
+    `;
+
+    if (this.workspaces.length === 0) {
+      const emptyItem = document.createElement('div');
+      emptyItem.style.cssText = `
+        padding: 40px;
+        text-align: center;
+        color: #666;
+        font-size: 14px;
+      `;
+      emptyItem.textContent = '暂无工作区';
+      workspacesList.appendChild(emptyItem);
+    } else {
+      this.workspaces.forEach(workspace => {
+        const workspaceItem = document.createElement('div');
+        workspaceItem.style.cssText = `
+          display: flex;
+          align-items: center;
+          padding: 12px;
+          border: 1px solid #eee;
+          border-radius: 8px;
+          margin-bottom: 8px;
+          background: ${this.currentWorkspace === workspace.id ? 'rgba(59, 130, 246, 0.05)' : '#fff'};
+        `;
+
+        const icon = workspace.icon || 'ti ti-folder';
+        workspaceItem.innerHTML = `
+          <i class="${icon}" style="font-size: 20px; color: #3b82f6; margin-right: 12px;"></i>
+          <div style="flex: 1;">
+            <div style="font-weight: 500; font-size: 14px; margin-bottom: 4px;">${workspace.name}</div>
+            ${workspace.description ? `<div style="font-size: 12px; color: #666; margin-bottom: 4px;">${workspace.description}</div>` : ''}
+            <div style="font-size: 11px; color: #999;">${workspace.tabs.length}个标签 • 创建于 ${new Date(workspace.createdAt).toLocaleString()}</div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            ${this.currentWorkspace === workspace.id ? '<span style="color: #3b82f6; font-size: 12px;">当前</span>' : ''}
+            <button class="delete-workspace-btn" data-workspace-id="${workspace.id}" style="
+              padding: 4px 8px;
+              border: 1px solid #ef4444;
+              border-radius: 4px;
+              background: #fff;
+              color: #ef4444;
+              cursor: pointer;
+              font-size: 12px;
+            ">删除</button>
+          </div>
+        `;
+
+        workspacesList.appendChild(workspaceItem);
+      });
+    }
+
+    // 按钮容器
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = `
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    `;
+
+    // 关闭按钮
+    const closeBtn = document.createElement('button');
+    closeBtn.style.cssText = `
+      padding: 8px 16px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: #fff;
+      color: #666;
+      cursor: pointer;
+      font-size: 14px;
+    `;
+    closeBtn.textContent = '关闭';
+    closeBtn.onclick = () => {
+      dialog.remove();
+    };
+
+    // 组装对话框
+    buttonContainer.appendChild(closeBtn);
+    
+    content.appendChild(title);
+    content.appendChild(workspacesList);
+    content.appendChild(buttonContainer);
+    
+    dialog.appendChild(content);
+    document.body.appendChild(dialog);
+
+    // 绑定删除按钮事件
+    const deleteButtons = dialog.querySelectorAll('.delete-workspace-btn');
+    deleteButtons.forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const workspaceId = (e.target as HTMLElement).getAttribute('data-workspace-id');
+        if (workspaceId) {
+          await this.deleteWorkspace(workspaceId);
+          dialog.remove();
+          this.manageWorkspaces(); // 重新打开管理对话框
+        }
+      });
+    });
+
+    // 点击外部关闭对话框
+    dialog.addEventListener('click', (e) => {
+      if (e.target === dialog) {
+        dialog.remove();
+      }
+    });
+  }
+
+  /**
+   * 删除工作区
+   */
+  private async deleteWorkspace(workspaceId: string) {
+    try {
+      const workspace = this.workspaces.find(w => w.id === workspaceId);
+      if (!workspace) {
+        orca.notify('error', '工作区不存在');
+        return;
+      }
+
+      if (this.currentWorkspace === workspaceId) {
+        this.currentWorkspace = null;
+      }
+
+      this.workspaces = this.workspaces.filter(w => w.id !== workspaceId);
+      await this.saveWorkspaces();
+
+      this.log(`🗑️ 工作区已删除: "${workspace.name}"`);
+      orca.notify('success', `工作区已删除: ${workspace.name}`);
+    } catch (error) {
+      this.error("删除工作区失败:", error);
+      orca.notify('error', '删除工作区失败');
+    }
   }
 
   /**
