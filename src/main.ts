@@ -2556,6 +2556,10 @@ class OrcaTabsPlugin {
       existingMenu.remove();
     }
 
+    // 检测暗色模式
+    const isDarkMode = document.documentElement.classList.contains('dark') || 
+                      (window as any).orca?.state?.themeMode === 'dark';
+
     // 创建右键菜单
     const menu = document.createElement('div');
     menu.className = 'new-tab-context-menu';
@@ -2584,8 +2588,8 @@ class OrcaTabsPlugin {
       position: fixed;
       left: ${left}px;
       top: ${top}px;
-      background: rgba(255, 255, 255, 0.95);
-      border: 1px solid #ddd;
+      background: ${isDarkMode ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)'};
+      border: 1px solid ${isDarkMode ? '#444' : '#ddd'};
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       z-index: 1000;
@@ -2705,7 +2709,7 @@ class OrcaTabsPlugin {
         const separator = document.createElement('div');
         separator.style.cssText = `
           height: 1px;
-          background: #ddd;
+          background: ${isDarkMode ? '#444' : '#ddd'};
           margin: 4px 8px;
         `;
         menu.appendChild(separator);
@@ -2720,7 +2724,7 @@ class OrcaTabsPlugin {
         align-items: center;
         gap: 10px;
         font-size: 14px;
-        color: #333;
+        color: ${isDarkMode ? '#ffffff' : '#333'};
         transition: background-color 0.2s ease;
       `;
       
@@ -2740,7 +2744,7 @@ class OrcaTabsPlugin {
       menuItem.appendChild(text);
       
       menuItem.addEventListener('mouseenter', () => {
-        menuItem.style.backgroundColor = 'rgba(0, 0, 0, 0.1)';
+        menuItem.style.backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
       });
       
       menuItem.addEventListener('mouseleave', () => {
@@ -4999,9 +5003,13 @@ class OrcaTabsPlugin {
       if (existingItems.length > 0) {
         const separator = document.createElement('div');
         separator.className = 'orca-tabs-ref-menu-separator';
+        // 检测暗色模式
+        const isDarkMode = document.documentElement.classList.contains('dark') || 
+                          (window as any).orca?.state?.themeMode === 'dark';
+        
         separator.style.cssText = `
           height: 1px;
-          background: rgba(0, 0, 0, 0.1);
+          background: ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
           margin: 4px 8px;
         `;
         targetMenu.appendChild(separator);
@@ -5012,12 +5020,16 @@ class OrcaTabsPlugin {
         const addToGroupItem = document.createElement('div');
         addToGroupItem.className = 'orca-tabs-ref-menu-item';
         addToGroupItem.setAttribute('role', 'menuitem');
+        // 检测暗色模式
+        const isDarkMode = document.documentElement.classList.contains('dark') || 
+                          (window as any).orca?.state?.themeMode === 'dark';
+        
         addToGroupItem.style.cssText = `
           padding: 12px 16px;
           cursor: pointer;
           font-size: 14px;
-          color: #333;
-          border-bottom: 1px solid #eee;
+          color: ${isDarkMode ? '#ffffff' : '#333'};
+          border-bottom: 1px solid ${isDarkMode ? '#444' : '#eee'};
           transition: background-color 0.2s;
           display: flex;
           align-items: center;
@@ -5030,7 +5042,7 @@ class OrcaTabsPlugin {
         `;
         
         addToGroupItem.addEventListener('mouseenter', () => {
-          addToGroupItem.style.backgroundColor = '#f0f0f0';
+          addToGroupItem.style.backgroundColor = isDarkMode ? '#444' : '#f0f0f0';
         });
         addToGroupItem.addEventListener('mouseleave', () => {
           addToGroupItem.style.backgroundColor = 'transparent';
@@ -6155,6 +6167,10 @@ class OrcaTabsPlugin {
       existingMenu.remove();
     }
 
+    // 检测暗色模式
+    const isDarkMode = document.documentElement.classList.contains('dark') || 
+                      (window as any).orca?.state?.themeMode === 'dark';
+
     // 创建右键菜单
     const menu = document.createElement('div');
     menu.className = 'tab-context-menu';
@@ -6162,8 +6178,8 @@ class OrcaTabsPlugin {
       position: fixed;
       left: ${e.clientX}px;
       top: ${e.clientY}px;
-      background: rgba(255, 255, 255, 0.95);
-      border: 1px solid #ddd;
+      background: ${isDarkMode ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)'};
+      border: 1px solid ${isDarkMode ? '#444' : '#ddd'};
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       z-index: 1000;
@@ -6219,14 +6235,14 @@ class OrcaTabsPlugin {
         padding: 12px 16px;
         cursor: pointer;
         font-size: 14px;
-        color: ${(item as any).disabled ? '#999' : '#333'};
-        border-bottom: 1px solid #eee;
+        color: ${(item as any).disabled ? (isDarkMode ? '#666' : '#999') : (isDarkMode ? '#ffffff' : '#333')};
+        border-bottom: 1px solid ${isDarkMode ? '#444' : '#eee'};
         transition: background-color 0.2s;
       `;
       
       if (!(item as any).disabled) {
         menuItem.addEventListener('mouseenter', () => {
-          menuItem.style.backgroundColor = '#f0f0f0';
+          menuItem.style.backgroundColor = isDarkMode ? '#444' : '#f0f0f0';
         });
         menuItem.addEventListener('mouseleave', () => {
           menuItem.style.backgroundColor = 'transparent';
@@ -7561,14 +7577,18 @@ class OrcaTabsPlugin {
       existingMenu.remove();
     }
 
+    // 检测暗色模式
+    const isDarkMode = document.documentElement.classList.contains('dark') || 
+                      (window as any).orca?.state?.themeMode === 'dark';
+
     const menu = document.createElement('div');
     menu.className = 'recently-closed-tabs-menu';
     menu.style.cssText = `
       position: fixed;
       left: ${position.x}px;
       top: ${position.y}px;
-      background: white;
-      border: 1px solid #e0e0e0;
+      background: ${isDarkMode ? 'rgba(30, 30, 30, 0.95)' : 'white'};
+      border: 1px solid ${isDarkMode ? '#444' : '#e0e0e0'};
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
       z-index: 10000;
@@ -7585,7 +7605,7 @@ class OrcaTabsPlugin {
         const separator = document.createElement('div');
         separator.style.cssText = `
           height: 1px;
-          background: linear-gradient(to right, transparent, #e0e0e0, transparent);
+          background: linear-gradient(to right, transparent, ${isDarkMode ? '#444' : '#e0e0e0'}, transparent);
           margin: 4px 8px;
         `;
         menu.appendChild(separator);
@@ -7600,8 +7620,8 @@ class OrcaTabsPlugin {
         padding: 12px 16px;
         cursor: pointer;
         font-size: 14px;
-        color: #333;
-        border-bottom: 1px solid #f0f0f0;
+        color: ${isDarkMode ? '#ffffff' : '#333'};
+        border-bottom: 1px solid ${isDarkMode ? '#444' : '#f0f0f0'};
         transition: background-color 0.2s ease;
         min-height: 24px;
       `;
@@ -7612,7 +7632,7 @@ class OrcaTabsPlugin {
         iconElement.style.cssText = `
           margin-right: 8px;
           font-size: 14px;
-          color: #666;
+          color: ${isDarkMode ? '#cccccc' : '#666'};
           width: 16px;
           text-align: center;
           display: flex;
@@ -7646,7 +7666,7 @@ class OrcaTabsPlugin {
 
       // 悬停效果
       menuItem.addEventListener('mouseenter', () => {
-        menuItem.style.backgroundColor = '#f5f5f5';
+        menuItem.style.backgroundColor = isDarkMode ? '#444' : '#f5f5f5';
       });
       menuItem.addEventListener('mouseleave', () => {
         menuItem.style.backgroundColor = 'transparent';
@@ -7844,14 +7864,18 @@ class OrcaTabsPlugin {
       existingMenu.remove();
     }
 
+    // 检测暗色模式
+    const isDarkMode = document.documentElement.classList.contains('dark') || 
+                      (window as any).orca?.state?.themeMode === 'dark';
+
     const menu = document.createElement('div');
     menu.className = 'multi-tab-saving-menu';
     menu.style.cssText = `
       position: fixed;
       left: ${position.x}px;
       top: ${position.y}px;
-      background: white;
-      border: 1px solid #e0e0e0;
+      background: ${isDarkMode ? 'rgba(30, 30, 30, 0.95)' : 'white'};
+      border: 1px solid ${isDarkMode ? '#444' : '#e0e0e0'};
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
       z-index: 10000;
@@ -7868,7 +7892,7 @@ class OrcaTabsPlugin {
         const separator = document.createElement('div');
         separator.style.cssText = `
           height: 1px;
-          background: #e0e0e0;
+          background: ${isDarkMode ? '#444' : '#e0e0e0'};
           margin: 4px 0;
         `;
         menu.appendChild(separator);
@@ -7883,8 +7907,8 @@ class OrcaTabsPlugin {
         padding: 12px 16px;
         cursor: pointer;
         font-size: 14px;
-        color: #333;
-        border-bottom: 1px solid #f0f0f0;
+        color: ${isDarkMode ? '#ffffff' : '#333'};
+        border-bottom: 1px solid ${isDarkMode ? '#444' : '#f0f0f0'};
         transition: background-color 0.2s ease;
         min-height: 24px;
       `;
@@ -7895,7 +7919,7 @@ class OrcaTabsPlugin {
         iconElement.style.cssText = `
           margin-right: 8px;
           font-size: 14px;
-          color: #666;
+          color: ${isDarkMode ? '#cccccc' : '#666'};
           width: 16px;
           text-align: center;
           display: flex;
@@ -7929,7 +7953,7 @@ class OrcaTabsPlugin {
 
       // 悬停效果
       menuItem.addEventListener('mouseenter', () => {
-        menuItem.style.backgroundColor = '#f5f5f5';
+        menuItem.style.backgroundColor = isDarkMode ? '#444' : '#f5f5f5';
       });
       menuItem.addEventListener('mouseleave', () => {
         menuItem.style.backgroundColor = 'transparent';
@@ -8265,7 +8289,11 @@ class OrcaTabsPlugin {
     cancelBtn.addEventListener('mouseleave', () => {
       cancelBtn.style.backgroundColor = '#6b7280';
     });
-    cancelBtn.onclick = () => dialog.remove();
+    cancelBtn.onclick = () => {
+      dialog.remove();
+      // 重新显示管理页面
+      this.manageSavedTabSets();
+    };
 
     const saveBtn = document.createElement('button');
     saveBtn.textContent = '保存';
@@ -8525,7 +8553,11 @@ class OrcaTabsPlugin {
     cancelBtn.addEventListener('mouseleave', () => {
       cancelBtn.style.backgroundColor = '#6b7280';
     });
-    cancelBtn.onclick = () => dialog.remove();
+    cancelBtn.onclick = () => {
+      dialog.remove();
+      // 重新显示管理页面
+      this.manageSavedTabSets();
+    };
 
     const addBtn = document.createElement('button');
     addBtn.textContent = '添加';
@@ -8716,6 +8748,10 @@ class OrcaTabsPlugin {
    * 重新渲染可排序的标签列表
    */
   renderSortableTabs(container: HTMLElement, tabs: TabInfo[]) {
+    // 检测暗色模式
+    const isDarkMode = document.documentElement.classList.contains('dark') ||
+                      (window as any).orca?.state?.themeMode === 'dark';
+    
     // 清空容器
     container.innerHTML = '';
     
@@ -8759,7 +8795,7 @@ class OrcaTabsPlugin {
         iconElement.style.cssText = `
           margin-right: 8px;
           font-size: 14px;
-          color: #666;
+          color: ${isDarkMode ? '#cccccc' : '#666'};
           width: 16px;
           height: 20px;
           display: flex;
@@ -8839,7 +8875,9 @@ class OrcaTabsPlugin {
         // 找到对应的标签集合
         const tabSet = this.savedTabSets.find(ts => ts.tabs === tabs);
         if (tabSet) {
-          this.editTabNotes(tab, tabSet, index);
+          // 通过blockId查找标签在集合中的实际索引
+          const actualIndex = tabSet.tabs.findIndex(t => t.blockId === tab.blockId);
+          this.editTabNotes(tab, tabSet, actualIndex);
         }
       };
       actionContainer.appendChild(notesBtn);
@@ -9297,6 +9335,10 @@ class OrcaTabsPlugin {
       existingDialog.remove();
     }
 
+    // 检测暗色模式
+    const isDarkMode = document.documentElement.classList.contains('dark') || 
+                      (window as any).orca?.state?.themeMode === 'dark';
+
     const dialog = document.createElement('div');
     dialog.className = 'save-workspace-dialog';
     dialog.style.cssText = `
@@ -9304,8 +9346,8 @@ class OrcaTabsPlugin {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(255, 255, 255, 0.95);
-      border: 1px solid #ddd;
+      background: ${isDarkMode ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)'};
+      border: 1px solid ${isDarkMode ? '#444' : '#ddd'};
       border-radius: 12px;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
       z-index: ${this.getNextDialogZIndex()};
@@ -9325,7 +9367,7 @@ class OrcaTabsPlugin {
     title.style.cssText = `
       font-size: 16px;
       font-weight: 600;
-      color: #333;
+      color: ${isDarkMode ? '#ffffff' : '#333'};
       margin-bottom: 16px;
       text-align: center;
     `;
@@ -9336,7 +9378,7 @@ class OrcaTabsPlugin {
     nameLabel.style.cssText = `
       font-size: 14px;
       font-weight: 500;
-      color: #333;
+      color: ${isDarkMode ? '#ffffff' : '#333'};
       margin-bottom: 8px;
     `;
     nameLabel.textContent = '工作区名称:';
@@ -9347,12 +9389,14 @@ class OrcaTabsPlugin {
     nameInput.style.cssText = `
       width: 100%;
       padding: 8px 12px;
-      border: 1px solid #ddd;
+      border: 1px solid ${isDarkMode ? '#444' : '#ddd'};
       border-radius: 6px;
       font-size: 14px;
       outline: none;
       box-sizing: border-box;
       margin-bottom: 12px;
+      background: ${isDarkMode ? '#1a1a1a' : '#ffffff'};
+      color: ${isDarkMode ? '#ffffff' : '#333'};
     `;
 
     // 工作区描述输入
@@ -9360,7 +9404,7 @@ class OrcaTabsPlugin {
     descLabel.style.cssText = `
       font-size: 14px;
       font-weight: 500;
-      color: #333;
+      color: ${isDarkMode ? '#ffffff' : '#333'};
       margin-bottom: 8px;
     `;
     descLabel.textContent = '工作区描述 (可选):';
@@ -9371,13 +9415,15 @@ class OrcaTabsPlugin {
       width: 100%;
       height: 60px;
       padding: 8px 12px;
-      border: 1px solid #ddd;
+      border: 1px solid ${isDarkMode ? '#444' : '#ddd'};
       border-radius: 6px;
       font-size: 14px;
       outline: none;
       box-sizing: border-box;
       resize: vertical;
       margin-bottom: 16px;
+      background: ${isDarkMode ? '#1a1a1a' : '#ffffff'};
+      color: ${isDarkMode ? '#ffffff' : '#333'};
     `;
 
     // 按钮容器
@@ -9392,16 +9438,18 @@ class OrcaTabsPlugin {
     const cancelBtn = document.createElement('button');
     cancelBtn.style.cssText = `
       padding: 8px 16px;
-      border: 1px solid #ddd;
+      border: 1px solid ${isDarkMode ? '#444' : '#ddd'};
       border-radius: 6px;
-      background: #fff;
-      color: #666;
+      background: ${isDarkMode ? '#1a1a1a' : '#fff'};
+      color: ${isDarkMode ? '#999' : '#666'};
       cursor: pointer;
       font-size: 14px;
     `;
     cancelBtn.textContent = '取消';
     cancelBtn.onclick = () => {
       dialog.remove();
+      // 重新显示工作区菜单
+      this.showWorkspaceMenu();
     };
 
     // 保存按钮
@@ -9512,14 +9560,18 @@ class OrcaTabsPlugin {
       existingMenu.remove();
     }
 
+    // 检测暗色模式
+    const isDarkMode = document.documentElement.classList.contains('dark') || 
+                      (window as any).orca?.state?.themeMode === 'dark';
+
     const menu = document.createElement('div');
     menu.className = 'workspace-menu';
     menu.style.cssText = `
       position: fixed;
       top: ${event ? event.clientY + 10 : 60}px;
       left: ${event ? event.clientX : 20}px;
-      background: rgba(255, 255, 255, 0.95);
-      border: 1px solid #ddd;
+      background: ${isDarkMode ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)'};
+      border: 1px solid ${isDarkMode ? '#444' : '#ddd'};
       border-radius: 12px;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
       z-index: ${this.getNextDialogZIndex()};
@@ -9532,10 +9584,10 @@ class OrcaTabsPlugin {
     const title = document.createElement('div');
     title.style.cssText = `
       padding: 12px 16px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid ${isDarkMode ? '#444' : '#eee'};
       font-size: 14px;
       font-weight: 600;
-      color: #333;
+      color: ${isDarkMode ? '#ffffff' : '#333'};
     `;
     title.textContent = '工作区';
 
@@ -9548,7 +9600,8 @@ class OrcaTabsPlugin {
       display: flex;
       align-items: center;
       gap: 8px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid ${isDarkMode ? '#444' : '#eee'};
+      color: ${isDarkMode ? '#ffffff' : '#333'};
     `;
     saveCurrentItem.innerHTML = `
       <i class="ti ti-plus" style="font-size: 14px; color: #3b82f6;"></i>
@@ -9570,7 +9623,7 @@ class OrcaTabsPlugin {
       const emptyItem = document.createElement('div');
       emptyItem.style.cssText = `
         padding: 12px 16px;
-        color: #666;
+        color: ${isDarkMode ? '#999' : '#666'};
         font-size: 14px;
         text-align: center;
       `;
@@ -9586,7 +9639,8 @@ class OrcaTabsPlugin {
           display: flex;
           align-items: center;
           gap: 8px;
-          border-bottom: 1px solid #eee;
+          border-bottom: 1px solid ${isDarkMode ? '#444' : '#eee'};
+          color: ${isDarkMode ? '#ffffff' : '#333'};
           ${this.currentWorkspace === workspace.id ? 'background: rgba(59, 130, 246, 0.1);' : ''}
         `;
         
@@ -9594,9 +9648,9 @@ class OrcaTabsPlugin {
         workspaceItem.innerHTML = `
           <i class="${icon}" style="font-size: 14px; color: #3b82f6;"></i>
           <div style="flex: 1;">
-            <div style="font-weight: 500;">${workspace.name}</div>
-            ${workspace.description ? `<div style="font-size: 12px; color: #666; margin-top: 2px;">${workspace.description}</div>` : ''}
-            <div style="font-size: 11px; color: #999; margin-top: 2px;">${workspace.tabs.length}个标签</div>
+            <div style="font-weight: 500; color: ${isDarkMode ? '#ffffff' : '#333'};"">${workspace.name}</div>
+            ${workspace.description ? `<div style="font-size: 12px; color: ${isDarkMode ? '#999' : '#666'}; margin-top: 2px;">${workspace.description}</div>` : ''}
+            <div style="font-size: 11px; color: ${isDarkMode ? '#777' : '#999'}; margin-top: 2px;">${workspace.tabs.length}个标签</div>
           </div>
           ${this.currentWorkspace === workspace.id ? '<i class="ti ti-check" style="font-size: 14px; color: #3b82f6;"></i>' : ''}
         `;
@@ -9619,10 +9673,11 @@ class OrcaTabsPlugin {
       display: flex;
       align-items: center;
       gap: 8px;
-      border-top: 1px solid #eee;
+      border-top: 1px solid ${isDarkMode ? '#444' : '#eee'};
+      color: ${isDarkMode ? '#ffffff' : '#333'};
     `;
     manageItem.innerHTML = `
-      <i class="ti ti-settings" style="font-size: 14px; color: #666;"></i>
+      <i class="ti ti-settings" style="font-size: 14px; color: ${isDarkMode ? '#999' : '#666'};"></i>
       <span>管理工作区</span>
     `;
     manageItem.onclick = () => {
@@ -9818,6 +9873,10 @@ class OrcaTabsPlugin {
       existingDialog.remove();
     }
 
+    // 检测暗色模式
+    const isDarkMode = document.documentElement.classList.contains('dark') || 
+                      (window as any).orca?.state?.themeMode === 'dark';
+
     const dialog = document.createElement('div');
     dialog.className = 'manage-workspaces-dialog';
     dialog.style.cssText = `
@@ -9825,8 +9884,8 @@ class OrcaTabsPlugin {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(255, 255, 255, 0.95);
-      border: 1px solid #ddd;
+      background: ${isDarkMode ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)'};
+      border: 1px solid ${isDarkMode ? '#444' : '#ddd'};
       border-radius: 12px;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
       z-index: ${this.getNextDialogZIndex()};
@@ -9847,7 +9906,7 @@ class OrcaTabsPlugin {
     title.style.cssText = `
       font-size: 18px;
       font-weight: 600;
-      color: #333;
+      color: ${isDarkMode ? '#ffffff' : '#333'};
       margin-bottom: 20px;
       text-align: center;
     `;
@@ -9866,7 +9925,7 @@ class OrcaTabsPlugin {
       emptyItem.style.cssText = `
         padding: 40px;
         text-align: center;
-        color: #666;
+        color: ${isDarkMode ? '#999' : '#666'};
         font-size: 14px;
       `;
       emptyItem.textContent = '暂无工作区';
@@ -9878,19 +9937,19 @@ class OrcaTabsPlugin {
           display: flex;
           align-items: center;
           padding: 12px;
-          border: 1px solid #eee;
+          border: 1px solid ${isDarkMode ? '#444' : '#eee'};
           border-radius: 8px;
           margin-bottom: 8px;
-          background: ${this.currentWorkspace === workspace.id ? 'rgba(59, 130, 246, 0.05)' : '#fff'};
+          background: ${this.currentWorkspace === workspace.id ? 'rgba(59, 130, 246, 0.05)' : (isDarkMode ? '#1a1a1a' : '#fff')};
         `;
 
         const icon = workspace.icon || 'ti ti-folder';
         workspaceItem.innerHTML = `
           <i class="${icon}" style="font-size: 20px; color: #3b82f6; margin-right: 12px;"></i>
           <div style="flex: 1;">
-            <div style="font-weight: 500; font-size: 14px; margin-bottom: 4px;">${workspace.name}</div>
-            ${workspace.description ? `<div style="font-size: 12px; color: #666; margin-bottom: 4px;">${workspace.description}</div>` : ''}
-            <div style="font-size: 11px; color: #999;">${workspace.tabs.length}个标签 • 创建于 ${new Date(workspace.createdAt).toLocaleString()}</div>
+            <div style="font-weight: 500; font-size: 14px; margin-bottom: 4px; color: ${isDarkMode ? '#ffffff' : '#333'};"">${workspace.name}</div>
+            ${workspace.description ? `<div style="font-size: 12px; color: ${isDarkMode ? '#999' : '#666'}; margin-bottom: 4px;">${workspace.description}</div>` : ''}
+            <div style="font-size: 11px; color: ${isDarkMode ? '#777' : '#999'};"">${workspace.tabs.length}个标签 • 创建于 ${new Date(workspace.createdAt).toLocaleString()}</div>
           </div>
           <div style="display: flex; gap: 8px;">
             ${this.currentWorkspace === workspace.id ? '<span style="color: #3b82f6; font-size: 12px;">当前</span>' : ''}
@@ -9898,7 +9957,7 @@ class OrcaTabsPlugin {
               padding: 4px 8px;
               border: 1px solid #ef4444;
               border-radius: 4px;
-              background: #fff;
+              background: ${isDarkMode ? '#1a1a1a' : '#fff'};
               color: #ef4444;
               cursor: pointer;
               font-size: 12px;
@@ -9922,10 +9981,10 @@ class OrcaTabsPlugin {
     const closeBtn = document.createElement('button');
     closeBtn.style.cssText = `
       padding: 8px 16px;
-      border: 1px solid #ddd;
+      border: 1px solid ${isDarkMode ? '#444' : '#ddd'};
       border-radius: 6px;
-      background: #fff;
-      color: #666;
+      background: ${isDarkMode ? '#1a1a1a' : '#fff'};
+      color: ${isDarkMode ? '#999' : '#666'};
       cursor: pointer;
       font-size: 14px;
     `;
@@ -9995,6 +10054,10 @@ class OrcaTabsPlugin {
    * 显示标签集合详情
    */
   showTabSetDetails(tabSet: SavedTabSet, parentDialog?: HTMLElement) {
+    // 检测暗色模式
+    const isDarkMode = document.documentElement.classList.contains('dark') ||
+                      (window as any).orca?.state?.themeMode === 'dark';
+    
     // 移除现有详情对话框
     const existingDialog = document.querySelector('.tabset-details-dialog');
     if (existingDialog) {
@@ -10012,7 +10075,7 @@ class OrcaTabsPlugin {
       border: 1px solid #ddd;
       border-radius: 8px;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-      z-index: ${this.getNextDialogZIndex()};
+      z-index: ${this.getNextDialogZIndex() + 200};
       width: 500px;
       max-height: 600px;
       backdrop-filter: blur(8px);
@@ -10155,7 +10218,7 @@ class OrcaTabsPlugin {
           iconElement.style.cssText = `
             margin-right: 8px;
             font-size: 14px;
-            color: #666;
+            color: ${isDarkMode ? '#cccccc' : '#666'};
             width: 16px;
             height: 20px;
             display: flex;
@@ -10232,7 +10295,9 @@ class OrcaTabsPlugin {
         notesBtn.title = tab.notes ? `备注: ${tab.notes}` : '添加备注';
         notesBtn.onclick = (e) => {
           e.stopPropagation();
-          this.editTabNotes(tab, tabSet, index);
+          // 通过blockId查找标签在集合中的实际索引
+          const actualIndex = tabSet.tabs.findIndex(t => t.blockId === tab.blockId);
+          this.editTabNotes(tab, tabSet, actualIndex);
         };
         actionContainer.appendChild(notesBtn);
 
@@ -10979,8 +11044,15 @@ class OrcaTabsPlugin {
       return;
     }
 
+    // 移除现有的管理对话框
+    const existingDialog = document.querySelector('.manage-saved-tabsets-dialog');
+    if (existingDialog) {
+      existingDialog.remove();
+    }
+
     // 创建管理对话框
     const dialog = document.createElement('div');
+    dialog.className = 'manage-saved-tabsets-dialog';
     dialog.style.cssText = `
       position: fixed;
       top: 50%;
