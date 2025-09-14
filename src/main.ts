@@ -344,8 +344,8 @@ class OrcaTabsPlugin {
   private logManager = new LogManager({
     level: typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS_VERBOSE === true 
       ? LogLevel.VERBOSE 
-      : LogLevel.INFO,
-    enableConsole: typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS !== false,
+      : LogLevel.WARN, // 只显示警告和错误
+    enableConsole: typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS === true,
     prefix: '[OrcaTabsPlugin]'
   });
   
@@ -3381,24 +3381,38 @@ class OrcaTabsPlugin {
           // 检测块类型
           const blockType = await this.detectBlockType(block);
           
-          // 获取图标（优先使用用户自定义，否则使用块类型图标）
-          let icon = tab.icon; // 保持用户自定义图标
-          if (!icon) {
+          // 获取颜色和图标（优先使用用户自定义，否则使用块类型图标）
+          const colorProp = this.findProperty(block, '_color');
+          const iconProp = this.findProperty(block, '_icon');
+          
+          let color = tab.color; // 保持现有颜色
+          let icon = tab.icon; // 保持现有图标
+          
+          // 更新颜色
+          if (colorProp && colorProp.type === 1) {
+            color = colorProp.value;
+          }
+          
+          // 更新图标
+          if (iconProp && iconProp.type === 1) {
+            icon = iconProp.value;
+          } else if (!icon) {
             icon = this.getBlockTypeIcon(blockType);
           }
           
           // 检查是否需要更新
-          const needsUpdate = tab.blockType !== blockType || tab.icon !== icon;
+          const needsUpdate = tab.blockType !== blockType || tab.icon !== icon || tab.color !== color;
           
           if (needsUpdate) {
             // 更新标签信息
             this.firstPanelTabs[i] = {
               ...tab,
               blockType,
-              icon
+              icon,
+              color
             };
             
-            this.log(`✅ 更新标签: ${tab.title} -> 类型: ${blockType}, 图标: ${icon}`);
+            this.log(`✅ 更新标签: ${tab.title} -> 类型: ${blockType}, 图标: ${icon}, 颜色: ${color}`);
             hasUpdates = true;
           } else {
             this.verboseLog(`⏭️ 跳过标签: ${tab.title} (无需更新)`);

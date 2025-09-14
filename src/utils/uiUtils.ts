@@ -12,7 +12,7 @@ export function createTabBaseStyle(
   tab: TabInfo,
   isVerticalMode: boolean,
   isDarkMode: boolean,
-  applyOklchFormula: (hex: string, type: 'text' | 'background') => string
+  applyOklchFormula: (hex: string, type: 'text' | 'background', isDarkMode?: boolean) => string
 ): string {
   // 根据主题模式设置默认颜色
   let backgroundColor: string;
@@ -34,8 +34,9 @@ export function createTabBaseStyle(
     try {
       // 确保颜色值以#开头
       const colorHex = tab.color.startsWith('#') ? tab.color : `#${tab.color}`;
-      backgroundColor = applyOklchFormula(colorHex, 'background');
-      textColor = applyOklchFormula(colorHex, 'text');
+      
+      backgroundColor = applyOklchFormula(colorHex, 'background', isDarkMode);
+      textColor = applyOklchFormula(colorHex, 'text', isDarkMode);
       fontWeight = '600';
     } catch (error) {
       // 如果颜色处理失败，使用默认颜色

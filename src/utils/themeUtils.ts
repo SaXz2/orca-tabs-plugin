@@ -118,7 +118,7 @@ export function getThemeColor(
 /**
  * 应用OKLCH颜色公式
  */
-export function applyOklchFormula(hex: string, type: 'text' | 'background'): string {
+export function applyOklchFormula(hex: string, type: 'text' | 'background', isDarkMode?: boolean): string {
   try {
     // 确保颜色值以#开头
     const colorHex = hex.startsWith('#') ? hex : `#${hex}`;
@@ -130,33 +130,35 @@ export function applyOklchFormula(hex: string, type: 'text' | 'background'): str
     }
     
     // 将十六进制颜色转换为RGB
-    const r = parseInt(colorHex.slice(1, 3), 16) / 255;
-    const g = parseInt(colorHex.slice(3, 5), 16) / 255;
-    const b = parseInt(colorHex.slice(5, 7), 16) / 255;
+    const r = parseInt(colorHex.slice(1, 3), 16);
+    const g = parseInt(colorHex.slice(3, 5), 16);
+    const b = parseInt(colorHex.slice(5, 7), 16);
 
-    // 转换为OKLCH
-    const [l, c, h] = rgbToOklch(r, g, b);
+    // 如果没有传入isDarkMode参数，则自动检测
+    const darkMode = isDarkMode !== undefined ? isDarkMode : 
+      (document.documentElement.classList.contains('dark') || 
+       (window as any).orca?.state?.themeMode === 'dark');
 
     if (type === 'background') {
-      // 背景色：降低亮度，增加饱和度，使用rgba作为后备
-      const lightness = Math.max(0.1, Math.min(0.4, l * 0.4));
-      const chroma = Math.min(0.3, c * 1.1);
-      const hue = isNaN(h) ? 0 : h;
-      return `oklch(${lightness} ${chroma} ${hue})`;
+      // 背景色：使用OKLCH from语法，基于原色生成背景色
+      return `oklch(from rgb(${r}, ${g}, ${b}) calc(l * 0.8) calc(c * 1.5) h / 25%)`;
     } else {
-      // 文字色：提高亮度，降低饱和度，使用rgba作为后备
-      const lightness = Math.min(0.9, Math.max(0.2, l * 1.3));
-      const chroma = Math.max(0.05, Math.min(0.2, c * 0.7));
-      const hue = isNaN(h) ? 0 : h;
-      return `oklch(${lightness} ${chroma} ${hue})`;
+      // 文字色：使用OKLCH from语法，基于原色生成文字色
+      if (darkMode) {
+        // 暗色模式：提高亮度，保持饱和度
+        return `oklch(from rgb(${r}, ${g}, ${b}) calc(l * 1.6) c h)`;
+      } else {
+        // 亮色模式：降低亮度，保持饱和度
+        return `oklch(from rgb(${r}, ${g}, ${b}) calc(l * 0.6) c h)`;
+      }
     }
   } catch (error) {
-    console.warn('OKLCH颜色转换失败:', error);
+    console.warn('颜色转换失败:', error);
     // 回退到简单的颜色处理
     if (type === 'background') {
-      return hex + '20'; // 添加透明度
+      return 'rgba(0, 0, 0, 0.1)';
     } else {
-      return hex;
+      return '#333333';
     }
   }
 }
@@ -170,12 +172,12 @@ function rgbToOklch(r: number, g: number, b: number): [number, number, number] {
   const linearG = g <= 0.04045 ? g / 12.92 : Math.pow((g + 0.055) / 1.055, 2.4);
   const linearB = b <= 0.04045 ? b / 12.92 : Math.pow((b + 0.055) / 1.055, 2.4);
 
-  // 转换为XYZ
+  // 转换为XYZ (使用sRGB到XYZ的转换矩阵)
   const x = linearR * 0.4124564 + linearG * 0.3575761 + linearB * 0.1804375;
   const y = linearR * 0.2126729 + linearG * 0.7151522 + linearB * 0.0721750;
   const z = linearR * 0.0193339 + linearG * 0.1191920 + linearB * 0.9503041;
 
-  // 转换为OKLAB
+  // 转换为OKLAB (使用正确的OKLAB转换矩阵)
   const l = Math.cbrt(0.8189330101 * x + 0.3618667424 * y - 0.1288597137 * z);
   const a = Math.cbrt(0.0329845436 * x + 0.9293118715 * y + 0.0361456387 * z);
   const b_lab = Math.cbrt(0.0482003018 * x + 0.2643662691 * y + 0.6338517070 * z);
@@ -185,7 +187,10 @@ function rgbToOklch(r: number, g: number, b: number): [number, number, number] {
   const c_oklch = Math.sqrt(a * a + b_lab * b_lab);
   const h_oklch = Math.atan2(b_lab, a) * (180 / Math.PI);
 
-  return [l_oklch, c_oklch, h_oklch];
+  // 确保色相在0-360度范围内
+  const h_normalized = h_oklch < 0 ? h_oklch + 360 : h_oklch;
+
+  return [l_oklch, c_oklch, h_normalized];
 }
 
 /**
