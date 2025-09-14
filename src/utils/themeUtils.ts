@@ -119,20 +119,45 @@ export function getThemeColor(
  * 应用OKLCH颜色公式
  */
 export function applyOklchFormula(hex: string, type: 'text' | 'background'): string {
-  // 将十六进制颜色转换为RGB
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  try {
+    // 确保颜色值以#开头
+    const colorHex = hex.startsWith('#') ? hex : `#${hex}`;
+    
+    // 验证十六进制颜色格式
+    if (!/^#[0-9A-Fa-f]{6}$/.test(colorHex)) {
+      console.warn('无效的十六进制颜色格式:', colorHex);
+      return type === 'background' ? 'rgba(0, 0, 0, 0.1)' : '#333333';
+    }
+    
+    // 将十六进制颜色转换为RGB
+    const r = parseInt(colorHex.slice(1, 3), 16) / 255;
+    const g = parseInt(colorHex.slice(3, 5), 16) / 255;
+    const b = parseInt(colorHex.slice(5, 7), 16) / 255;
 
-  // 转换为OKLCH
-  const [l, c, h] = rgbToOklch(r, g, b);
+    // 转换为OKLCH
+    const [l, c, h] = rgbToOklch(r, g, b);
 
-  if (type === 'background') {
-    // 背景色：降低亮度，增加饱和度
-    return `oklch(${Math.max(0.1, l * 0.3)} ${Math.min(0.4, c * 1.2)} ${h})`;
-  } else {
-    // 文字色：提高亮度，降低饱和度
-    return `oklch(${Math.min(0.9, l * 1.5)} ${Math.max(0.05, c * 0.6)} ${h})`;
+    if (type === 'background') {
+      // 背景色：降低亮度，增加饱和度，使用rgba作为后备
+      const lightness = Math.max(0.1, Math.min(0.4, l * 0.4));
+      const chroma = Math.min(0.3, c * 1.1);
+      const hue = isNaN(h) ? 0 : h;
+      return `oklch(${lightness} ${chroma} ${hue})`;
+    } else {
+      // 文字色：提高亮度，降低饱和度，使用rgba作为后备
+      const lightness = Math.min(0.9, Math.max(0.2, l * 1.3));
+      const chroma = Math.max(0.05, Math.min(0.2, c * 0.7));
+      const hue = isNaN(h) ? 0 : h;
+      return `oklch(${lightness} ${chroma} ${hue})`;
+    }
+  } catch (error) {
+    console.warn('OKLCH颜色转换失败:', error);
+    // 回退到简单的颜色处理
+    if (type === 'background') {
+      return hex + '20'; // 添加透明度
+    } else {
+      return hex;
+    }
   }
 }
 

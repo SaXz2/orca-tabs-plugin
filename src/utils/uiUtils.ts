@@ -14,15 +14,33 @@ export function createTabBaseStyle(
   isDarkMode: boolean,
   applyOklchFormula: (hex: string, type: 'text' | 'background') => string
 ): string {
-  let backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(200, 200, 200, 0.6)';
-  let textColor = isDarkMode ? '#ffffff' : '#333';
+  // 根据主题模式设置默认颜色
+  let backgroundColor: string;
+  let textColor: string;
   let fontWeight = 'normal';
+  
+  if (isDarkMode) {
+    // 暗色模式
+    backgroundColor = 'rgba(255, 255, 255, 0.1)';
+    textColor = '#ffffff';
+  } else {
+    // 亮色模式
+    backgroundColor = 'rgba(200, 200, 200, 0.6)';
+    textColor = '#333333';
+  }
   
   // 如果有颜色，应用颜色样式
   if (tab.color) {
-    backgroundColor = applyOklchFormula(tab.color, 'background');
-    textColor = applyOklchFormula(tab.color, 'text');
-    fontWeight = '600';
+    try {
+      // 确保颜色值以#开头
+      const colorHex = tab.color.startsWith('#') ? tab.color : `#${tab.color}`;
+      backgroundColor = applyOklchFormula(colorHex, 'background');
+      textColor = applyOklchFormula(colorHex, 'text');
+      fontWeight = '600';
+    } catch (error) {
+      // 如果颜色处理失败，使用默认颜色
+      console.warn('颜色处理失败，使用默认颜色:', error);
+    }
   }
 
   return isVerticalMode ? `

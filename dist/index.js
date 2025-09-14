@@ -196,23 +196,23 @@ function ye(s, e, t) {
   return isNaN(e) ? $(s, NaN) : (e && n.setDate(n.getDate() + e), n);
 }
 let De = {};
-function J() {
+function Z() {
   return De;
 }
 function _(s, e) {
   var r, l, c, h;
-  const t = J(), n = (e == null ? void 0 : e.weekStartsOn) ?? ((l = (r = e == null ? void 0 : e.locale) == null ? void 0 : r.options) == null ? void 0 : l.weekStartsOn) ?? t.weekStartsOn ?? ((h = (c = t.locale) == null ? void 0 : c.options) == null ? void 0 : h.weekStartsOn) ?? 0, i = L(s, e == null ? void 0 : e.in), o = i.getDay(), a = (o < n ? 7 : 0) + o - n;
+  const t = Z(), n = (e == null ? void 0 : e.weekStartsOn) ?? ((l = (r = e == null ? void 0 : e.locale) == null ? void 0 : r.options) == null ? void 0 : l.weekStartsOn) ?? t.weekStartsOn ?? ((h = (c = t.locale) == null ? void 0 : c.options) == null ? void 0 : h.weekStartsOn) ?? 0, i = L(s, e == null ? void 0 : e.in), o = i.getDay(), a = (o < n ? 7 : 0) + o - n;
   return i.setDate(i.getDate() - a), i.setHours(0, 0, 0, 0), i;
 }
-function X(s, e) {
+function G(s, e) {
   return _(s, { ...e, weekStartsOn: 1 });
 }
 function ve(s, e) {
   const t = L(s, e == null ? void 0 : e.in), n = t.getFullYear(), i = $(t, 0);
   i.setFullYear(n + 1, 0, 4), i.setHours(0, 0, 0, 0);
-  const o = X(i), a = $(t, 0);
+  const o = G(i), a = $(t, 0);
   a.setFullYear(n, 0, 4), a.setHours(0, 0, 0, 0);
-  const r = X(a);
+  const r = G(a);
   return t.getTime() >= o.getTime() ? n + 1 : t.getTime() >= r.getTime() ? n : n - 1;
 }
 function se(s) {
@@ -236,7 +236,7 @@ function Te(s, ...e) {
   );
   return e.map(t);
 }
-function G(s, e) {
+function J(s, e) {
   const t = L(s, e == null ? void 0 : e.in);
   return t.setHours(0, 0, 0, 0), t;
 }
@@ -245,12 +245,12 @@ function Ae(s, e, t) {
     t == null ? void 0 : t.in,
     s,
     e
-  ), o = G(n), a = G(i), r = +o - se(o), l = +a - se(a);
+  ), o = J(n), a = J(i), r = +o - se(o), l = +a - se(a);
   return Math.round((r - l) / Me);
 }
 function ze(s, e) {
   const t = ve(s, e), n = $(s, 0);
-  return n.setFullYear(t, 0, 4), n.setHours(0, 0, 0, 0), X(n);
+  return n.setFullYear(t, 0, 4), n.setHours(0, 0, 0, 0), G(n);
 }
 function te(s) {
   return $(s, Date.now());
@@ -261,7 +261,7 @@ function ne(s, e, t) {
     s,
     e
   );
-  return +G(n) == +G(i);
+  return +J(n) == +J(i);
 }
 function Be(s) {
   return s instanceof Date || typeof s == "object" && Object.prototype.toString.call(s) === "[object Date]";
@@ -340,7 +340,7 @@ const Ne = {
   const i = Ne[s];
   return typeof i == "string" ? n = i : e === 1 ? n = i.one : n = i.other.replace("{{count}}", e.toString()), t != null && t.addSuffix ? t.comparison && t.comparison > 0 ? "in " + n : n + " ago" : n;
 };
-function Q(s) {
+function ee(s) {
   return (e = {}) => {
     const t = e.width ? String(e.width) : s.defaultWidth;
     return s.formats[t] || s.formats[s.defaultWidth];
@@ -351,27 +351,27 @@ const Re = {
   long: "MMMM do, y",
   medium: "MMM d, y",
   short: "MM/dd/yyyy"
-}, qe = {
+}, He = {
   full: "h:mm:ss a zzzz",
   long: "h:mm:ss a z",
   medium: "h:mm:ss a",
   short: "h:mm a"
-}, He = {
+}, qe = {
   full: "{{date}} 'at' {{time}}",
   long: "{{date}} 'at' {{time}}",
   medium: "{{date}}, {{time}}",
   short: "{{date}}, {{time}}"
 }, _e = {
-  date: Q({
+  date: ee({
     formats: Re,
     defaultWidth: "full"
   }),
-  time: Q({
-    formats: qe,
+  time: ee({
+    formats: He,
     defaultWidth: "full"
   }),
-  dateTime: Q({
-    formats: He,
+  dateTime: ee({
+    formats: qe,
     defaultWidth: "full"
   })
 }, Ve = {
@@ -548,7 +548,7 @@ const Ye = {
     defaultFormattingWidth: "wide"
   })
 };
-function q(s) {
+function H(s) {
   return (e, t = {}) => {
     const n = t.width, i = n && s.matchPatterns[n] || s.matchPatterns[s.defaultMatchWidth], o = e.match(i);
     if (!o)
@@ -661,32 +661,32 @@ const it = /^(\d+)(th|st|nd|rd)?/i, ot = /\d+/i, st = {
     parsePattern: ot,
     valueCallback: (s) => parseInt(s, 10)
   }),
-  era: q({
+  era: H({
     matchPatterns: st,
     defaultMatchWidth: "wide",
     parsePatterns: at,
     defaultParseWidth: "any"
   }),
-  quarter: q({
+  quarter: H({
     matchPatterns: rt,
     defaultMatchWidth: "wide",
     parsePatterns: ct,
     defaultParseWidth: "any",
     valueCallback: (s) => s + 1
   }),
-  month: q({
+  month: H({
     matchPatterns: lt,
     defaultMatchWidth: "wide",
     parsePatterns: dt,
     defaultParseWidth: "any"
   }),
-  day: q({
+  day: H({
     matchPatterns: ht,
     defaultMatchWidth: "wide",
     parsePatterns: ut,
     defaultParseWidth: "any"
   }),
-  dayPeriod: q({
+  dayPeriod: H({
     matchPatterns: pt,
     defaultMatchWidth: "any",
     parsePatterns: gt,
@@ -709,12 +709,12 @@ function mt(s, e) {
   return Ae(t, Oe(t)) + 1;
 }
 function xt(s, e) {
-  const t = L(s, e == null ? void 0 : e.in), n = +X(t) - +ze(t);
+  const t = L(s, e == null ? void 0 : e.in), n = +G(t) - +ze(t);
   return Math.round(n / xe) + 1;
 }
 function we(s, e) {
   var h, d, p, u;
-  const t = L(s, e == null ? void 0 : e.in), n = t.getFullYear(), i = J(), o = (e == null ? void 0 : e.firstWeekContainsDate) ?? ((d = (h = e == null ? void 0 : e.locale) == null ? void 0 : h.options) == null ? void 0 : d.firstWeekContainsDate) ?? i.firstWeekContainsDate ?? ((u = (p = i.locale) == null ? void 0 : p.options) == null ? void 0 : u.firstWeekContainsDate) ?? 1, a = $((e == null ? void 0 : e.in) || s, 0);
+  const t = L(s, e == null ? void 0 : e.in), n = t.getFullYear(), i = Z(), o = (e == null ? void 0 : e.firstWeekContainsDate) ?? ((d = (h = e == null ? void 0 : e.locale) == null ? void 0 : h.options) == null ? void 0 : d.firstWeekContainsDate) ?? i.firstWeekContainsDate ?? ((u = (p = i.locale) == null ? void 0 : p.options) == null ? void 0 : u.firstWeekContainsDate) ?? 1, a = $((e == null ? void 0 : e.in) || s, 0);
   a.setFullYear(n + 1, 0, o), a.setHours(0, 0, 0, 0);
   const r = _(a, e), l = $((e == null ? void 0 : e.in) || s, 0);
   l.setFullYear(n, 0, o), l.setHours(0, 0, 0, 0);
@@ -723,7 +723,7 @@ function we(s, e) {
 }
 function yt(s, e) {
   var r, l, c, h;
-  const t = J(), n = (e == null ? void 0 : e.firstWeekContainsDate) ?? ((l = (r = e == null ? void 0 : e.locale) == null ? void 0 : r.options) == null ? void 0 : l.firstWeekContainsDate) ?? t.firstWeekContainsDate ?? ((h = (c = t.locale) == null ? void 0 : c.options) == null ? void 0 : h.firstWeekContainsDate) ?? 1, i = we(s, e), o = $((e == null ? void 0 : e.in) || s, 0);
+  const t = Z(), n = (e == null ? void 0 : e.firstWeekContainsDate) ?? ((l = (r = e == null ? void 0 : e.locale) == null ? void 0 : r.options) == null ? void 0 : l.firstWeekContainsDate) ?? t.firstWeekContainsDate ?? ((h = (c = t.locale) == null ? void 0 : c.options) == null ? void 0 : h.firstWeekContainsDate) ?? 1, i = we(s, e), o = $((e == null ? void 0 : e.in) || s, 0);
   return o.setFullYear(i, 0, n), o.setHours(0, 0, 0, 0), _(o, e);
 }
 function vt(s, e) {
@@ -1359,7 +1359,7 @@ function $t(s, e, t) {
 const Lt = /[yYQqMLwIdDecihHKkms]o|(\w)\1*|''|'(''|[^'])+('|$)|./g, Mt = /P+p+|P+|p+|''|'(''|[^'])+('|$)|./g, Dt = /^'([^]*?)'?$/, At = /''/g, zt = /[a-zA-Z]/;
 function z(s, e, t) {
   var h, d, p, u;
-  const n = J(), i = n.locale ?? ft, o = n.firstWeekContainsDate ?? ((d = (h = n.locale) == null ? void 0 : h.options) == null ? void 0 : d.firstWeekContainsDate) ?? 1, a = n.weekStartsOn ?? ((u = (p = n.locale) == null ? void 0 : p.options) == null ? void 0 : u.weekStartsOn) ?? 0, r = L(s, t == null ? void 0 : t.in);
+  const n = Z(), i = n.locale ?? ft, o = n.firstWeekContainsDate ?? ((d = (h = n.locale) == null ? void 0 : h.options) == null ? void 0 : d.firstWeekContainsDate) ?? 1, a = n.weekStartsOn ?? ((u = (p = n.locale) == null ? void 0 : p.options) == null ? void 0 : u.weekStartsOn) ?? 0, r = L(s, t == null ? void 0 : t.in);
   if (!We(r))
     throw new RangeError("Invalid time value");
   let l = e.match(Mt).map((g) => {
@@ -1455,9 +1455,9 @@ function Rt(s) {
     return console.warn("日期格式化失败:", e), s.toLocaleDateString();
   }
 }
-function ee(s) {
+function Y(s) {
   try {
-    const e = qt(s, "_repr");
+    const e = Ht(s, "_repr");
     if (!e || e.type !== me.JSON || !e.value)
       return null;
     const t = typeof e.value == "string" ? JSON.parse(e.value) : e.value;
@@ -1466,10 +1466,10 @@ function ee(s) {
     return console.warn("提取日期块信息失败:", e), null;
   }
 }
-function qt(s, e) {
+function Ht(s, e) {
   return !s.properties || !Array.isArray(s.properties) ? null : s.properties.find((t) => t.name === e);
 }
-function Ht(s) {
+function qt(s) {
   if (!Array.isArray(s) || s.length === 0)
     return !1;
   let e = 0, t = 0;
@@ -1534,7 +1534,7 @@ function Ut(s, e) {
   }
   return `rgba(200, 200, 200, ${e})`;
 }
-function j() {
+function X() {
   return {
     isVerticalMode: !1,
     verticalWidth: 200,
@@ -1554,7 +1554,7 @@ function Yt(s, e, t = 200) {
   };
 }
 function jt(s) {
-  const e = j();
+  const e = X();
   return {
     isVerticalMode: s.isVerticalMode ?? e.isVerticalMode,
     verticalWidth: s.verticalWidth ?? e.verticalWidth,
@@ -1566,7 +1566,7 @@ function jt(s) {
     showInHeadbar: s.showInHeadbar ?? e.showInHeadbar
   };
 }
-function Y(s, e, t) {
+function j(s, e, t) {
   return s ? { ...e } : { ...t };
 }
 function Xt(s, e, t, n) {
@@ -1585,8 +1585,15 @@ function de(s, e) {
   return `位置已${e ? "垂直" : "水平"}模式 (${s.x}, ${s.y})`;
 }
 function Jt(s, e, t, n) {
-  let i = t ? "rgba(255, 255, 255, 0.1)" : "rgba(200, 200, 200, 0.6)", o = t ? "#ffffff" : "#333", a = "normal";
-  return s.color && (i = n(s.color, "background"), o = n(s.color, "text"), a = "600"), e ? `
+  let i, o, a = "normal";
+  if (t ? (i = "rgba(255, 255, 255, 0.1)", o = "#ffffff") : (i = "rgba(200, 200, 200, 0.6)", o = "#333333"), s.color)
+    try {
+      const r = s.color.startsWith("#") ? s.color : `#${s.color}`;
+      i = n(r, "background"), o = n(r, "text"), a = "600";
+    } catch (r) {
+      console.warn("颜色处理失败，使用默认颜色:", r);
+    }
+  return e ? `
     background: ${i};
     color: ${o};
     font-weight: ${a};
@@ -1922,8 +1929,21 @@ function ue(s, e, t = !1) {
   }, i;
 }
 function bn(s, e) {
-  const t = parseInt(s.slice(1, 3), 16) / 255, n = parseInt(s.slice(3, 5), 16) / 255, i = parseInt(s.slice(5, 7), 16) / 255, [o, a, r] = fn(t, n, i);
-  return e === "background" ? `oklch(${Math.max(0.1, o * 0.3)} ${Math.min(0.4, a * 1.2)} ${r})` : `oklch(${Math.min(0.9, o * 1.5)} ${Math.max(0.05, a * 0.6)} ${r})`;
+  try {
+    const t = s.startsWith("#") ? s : `#${s}`;
+    if (!/^#[0-9A-Fa-f]{6}$/.test(t))
+      return console.warn("无效的十六进制颜色格式:", t), e === "background" ? "rgba(0, 0, 0, 0.1)" : "#333333";
+    const n = parseInt(t.slice(1, 3), 16) / 255, i = parseInt(t.slice(3, 5), 16) / 255, o = parseInt(t.slice(5, 7), 16) / 255, [a, r, l] = fn(n, i, o);
+    if (e === "background") {
+      const c = Math.max(0.1, Math.min(0.4, a * 0.4)), h = Math.min(0.3, r * 1.1), d = isNaN(l) ? 0 : l;
+      return `oklch(${c} ${h} ${d})`;
+    } else {
+      const c = Math.min(0.9, Math.max(0.2, a * 1.3)), h = Math.max(0.05, Math.min(0.2, r * 0.7)), d = isNaN(l) ? 0 : l;
+      return `oklch(${c} ${h} ${d})`;
+    }
+  } catch (t) {
+    return console.warn("OKLCH颜色转换失败:", t), e === "background" ? s + "20" : s;
+  }
 }
 function fn(s, e, t) {
   const n = s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4), i = e <= 0.04045 ? e / 12.92 : Math.pow((e + 0.055) / 1.055, 2.4), o = t <= 0.04045 ? t / 12.92 : Math.pow((t + 0.055) / 1.055, 2.4), a = n * 0.4124564 + i * 0.3575761 + o * 0.1804375, r = n * 0.2126729 + i * 0.7151522 + o * 0.072175, l = n * 0.0193339 + i * 0.119192 + o * 0.9503041, c = Math.cbrt(0.8189330101 * a + 0.3618667424 * r - 0.1288597137 * l), h = Math.cbrt(0.0329845436 * a + 0.9293118715 * r + 0.0361456387 * l), d = Math.cbrt(0.0482003018 * a + 0.2643662691 * r + 0.633851707 * l), p = c, u = Math.sqrt(h * h + d * d), g = Math.atan2(d, h) * (180 / Math.PI);
@@ -1939,7 +1959,7 @@ const mn = {
   enableColors: !0,
   prefix: "[OrcaTabs]"
 };
-class Z {
+class K {
   constructor(e = {}) {
     m(this, "config");
     m(this, "storage", []);
@@ -2093,11 +2113,11 @@ class Z {
    * 创建子日志器
    */
   createChild(e) {
-    const t = new Z(this.config);
+    const t = new K(this.config);
     return t.config.prefix = `${this.config.prefix}[${e}]`, t;
   }
 }
-new Z();
+new K();
 function xn(s, e, t, n) {
   const i = document.createElement("div");
   i.className = "orca-tabs-container";
@@ -2304,7 +2324,7 @@ function Tn() {
 function wn(s, e) {
   return s.length !== e.length ? !0 : !s.every((t, n) => t === e[n]);
 }
-let H;
+let q;
 class kn {
   constructor() {
     /* ———————————————————————————————————————————————————————————————————————————— */
@@ -2325,7 +2345,7 @@ class kn {
     /* 日志管理 - Log Management */
     /* ———————————————————————————————————————————————————————————————————————————— */
     // 日志管理器
-    m(this, "logManager", new Z({
+    m(this, "logManager", new K({
       level: typeof window < "u" && window.DEBUG_ORCA_TABS_VERBOSE === !0 ? V.VERBOSE : V.INFO,
       enableConsole: typeof window < "u" && window.DEBUG_ORCA_TABS !== !1,
       prefix: "[OrcaTabsPlugin]"
@@ -2765,7 +2785,7 @@ class kn {
    * 检查content是否主要是文本+块引用的组合
    */
   isTextWithBlockRefs(e) {
-    return Ht(e);
+    return qt(e);
   }
   /* ———————————————————————————————————————————————————————————————————————————— */
   /* 块类型检测和处理 - Block Type Detection and Processing */
@@ -2775,7 +2795,7 @@ class kn {
    */
   async detectBlockType(e) {
     try {
-      if (ee(e))
+      if (Y(e))
         return "journal";
       if (e["data-type"]) {
         const i = e["data-type"];
@@ -3031,7 +3051,7 @@ class kn {
       let o = "", a = "", r = "", l = !1, c = "";
       c = await this.detectBlockType(i), this.log(`🔍 检测到块类型: ${c} (块ID: ${e})`), i.aliases && i.aliases.length > 0 && this.log(`🏷️ 别名块详细信息: blockId=${e}, aliases=${JSON.stringify(i.aliases)}, 检测到的类型=${c}`);
       try {
-        const h = ee(i);
+        const h = Y(i);
         if (h)
           l = !0, o = Rt(h), console.log(`📅 识别为日期块: ${o}, 原始日期: ${h.toISOString()}`);
         else if (i.aliases && i.aliases.length > 0)
@@ -3412,28 +3432,41 @@ class kn {
     }), this.addNewTabButton()) : await this.showCurrentPanelTabsSync(), this.isFixedToTop) {
       const o = orca.state.themeMode === "dark", a = o ? "rgba(255, 255, 255, 0.1)" : "rgba(200, 200, 200, 0.6)", r = o ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.1)", l = o ? "#ffffff" : "#333", c = this.tabContainer.querySelectorAll(".orca-tab");
       c.forEach((d) => {
-        d.style.cssText = `
-          display: flex;
-          align-items: center;
-          padding: 4px 8px;
-          background: ${a};
-          border-radius: 4px;
-          border: 1px solid ${r};
-          font-size: 12px;
-          height: 24px;
-          min-width: auto;
-          white-space: nowrap;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-          color: ${l};
-          max-width: 150px;
-          backdrop-filter: blur(2px);
-          -webkit-backdrop-filter: blur(2px);
-          -webkit-app-region: no-drag;
-          app-region: no-drag;
-          pointer-events: auto;
-        `;
+        const p = d.getAttribute("data-tab-id");
+        if (!p) return;
+        const g = this.getCurrentPanelTabs().find((b) => b.blockId === p);
+        if (g) {
+          let b, f, x = "normal";
+          if (o ? (b = "rgba(255, 255, 255, 0.1)", f = "#ffffff") : (b = "rgba(200, 200, 200, 0.6)", f = "#333333"), g.color)
+            try {
+              b = this.applyOklchFormula(g.color, "background"), f = this.applyOklchFormula(g.color, "text"), x = "600";
+            } catch (v) {
+              console.warn("颜色处理失败，使用默认颜色:", v);
+            }
+          d.style.cssText = `
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+            background: ${b};
+            border-radius: 4px;
+            border: 1px solid ${r};
+            font-size: 12px;
+            height: 24px;
+            min-width: auto;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            color: ${f};
+            font-weight: ${x};
+            max-width: 150px;
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            -webkit-app-region: no-drag;
+            app-region: no-drag;
+            pointer-events: auto;
+          `;
+        }
       });
       const h = this.tabContainer.querySelector(".new-tab-button");
       h && (h.style.cssText += `
@@ -4283,7 +4316,7 @@ class kn {
     this.verboseLog(`🔧 创建标签元素: ${e.title} (ID: ${e.blockId})`);
     const t = document.createElement("div");
     t.className = "orca-tab", t.setAttribute("data-tab-id", e.blockId), this.isTabActive(e) && t.setAttribute("data-focused", "true");
-    const i = orca.state.themeMode === "dark", o = this.isVerticalMode && !this.isFixedToTop, a = Jt(e, o, i, this.applyOklchFormula.bind(this));
+    const i = orca.state.themeMode === "dark", o = this.isVerticalMode && !this.isFixedToTop, a = Jt(e, o, i, (c, h) => this.applyOklchFormula(c, h));
     t.style.cssText = a;
     const r = Zt();
     if (e.icon && this.showBlockTypeIcons) {
@@ -4410,79 +4443,88 @@ class kn {
       try {
         if (e.isJournal) {
           console.log(`🚀 尝试使用 orca.nav.goTo 导航到日期块 ${e.blockId}, 标题: ${e.title}`), this.log(`🚀 尝试使用 orca.nav.goTo 导航到日期块 ${e.blockId}`);
-          let i = null;
-          if (console.log(`🔍 检查日期块标题: ${e.title}`), e.title.includes("今天") || e.title.includes("Today")) {
-            console.log("📅 使用原生命令跳转到今天");
-            try {
-              await orca.commands.invokeCommand("core.goToday"), console.log("✅ 今天导航成功");
-              return;
-            } catch (o) {
-              console.log("❌ 今天导航失败:", o), i = /* @__PURE__ */ new Date(), console.log(`📅 回退到日期格式: ${i.toISOString()}`);
+          let i = null, o = !1;
+          console.log(`🔍 检查日期块标题: ${e.title}`);
+          try {
+            const a = await orca.invokeBackend("get-block", parseInt(e.blockId));
+            if (a) {
+              const r = Y(a);
+              r && !isNaN(r.getTime()) && (i = r, console.log(`📅 从块信息获取日期: ${r.toISOString()}`), o = !1);
             }
-          } else if (e.title.includes("昨天") || e.title.includes("Yesterday")) {
-            console.log("📅 使用原生命令跳转到昨天");
-            try {
-              await orca.commands.invokeCommand("core.goYesterday"), console.log("✅ 昨天导航成功");
-              return;
-            } catch (o) {
-              console.log("❌ 昨天导航失败:", o), i = /* @__PURE__ */ new Date(), i.setDate(i.getDate() - 1), console.log(`📅 回退到日期格式: ${i.toISOString()}`);
-            }
-          } else if (e.title.includes("明天") || e.title.includes("Tomorrow")) {
-            console.log("📅 使用原生命令跳转到明天");
-            try {
-              await orca.commands.invokeCommand("core.goTomorrow"), console.log("✅ 明天导航成功");
-              return;
-            } catch (o) {
-              console.log("❌ 明天导航失败:", o), i = /* @__PURE__ */ new Date(), i.setDate(i.getDate() + 1), console.log(`📅 回退到日期格式: ${i.toISOString()}`);
-            }
-          } else {
-            const o = e.title.match(/(\d{4}-\d{2}-\d{2})/);
-            if (o) {
-              const a = o[1];
-              i = /* @__PURE__ */ new Date(a + "T00:00:00.000Z"), isNaN(i.getTime()) ? (console.log(`❌ 无效的日期格式: ${a}`), i = null) : console.log(`📅 从标题提取日期: ${a} -> ${i.toISOString()}`);
+          } catch (a) {
+            console.log("❌ 获取块信息失败:", a);
+          }
+          if (!i)
+            if (e.title.includes("今天") || e.title.includes("Today")) {
+              console.log("📅 使用原生命令跳转到今天");
+              try {
+                await orca.commands.invokeCommand("core.goToday"), console.log("✅ 今天导航成功"), o = !0;
+              } catch (a) {
+                console.log("❌ 今天导航失败:", a), i = /* @__PURE__ */ new Date(), console.log(`📅 回退到日期格式: ${i.toISOString()}`);
+              }
+            } else if (e.title.includes("昨天") || e.title.includes("Yesterday")) {
+              console.log("📅 使用原生命令跳转到昨天");
+              try {
+                await orca.commands.invokeCommand("core.goYesterday"), console.log("✅ 昨天导航成功"), o = !0;
+              } catch (a) {
+                console.log("❌ 昨天导航失败:", a), i = /* @__PURE__ */ new Date(), i.setDate(i.getDate() - 1), console.log(`📅 回退到日期格式: ${i.toISOString()}`);
+              }
+            } else if (e.title.includes("明天") || e.title.includes("Tomorrow")) {
+              console.log("📅 使用原生命令跳转到明天");
+              try {
+                await orca.commands.invokeCommand("core.goTomorrow"), console.log("✅ 明天导航成功"), o = !0;
+              } catch (a) {
+                console.log("❌ 明天导航失败:", a), i = /* @__PURE__ */ new Date(), i.setDate(i.getDate() + 1), console.log(`📅 回退到日期格式: ${i.toISOString()}`);
+              }
             } else {
-              console.log(`🔍 尝试从块信息中获取原始日期: ${e.blockId}`);
-              try {
-                const a = await orca.invokeBackend("get-block", parseInt(e.blockId));
-                if (a) {
-                  const r = ee(a);
-                  r && !isNaN(r.getTime()) ? (i = r, console.log(`📅 从块信息获取日期: ${r.toISOString()}`)) : console.log("❌ 块信息中未找到有效日期信息");
-                } else
-                  console.log("❌ 无法获取块信息");
-              } catch (a) {
-                console.log("❌ 获取块信息失败:", a), this.warn("无法获取块信息:", a);
+              const a = e.title.match(/(\d{4}-\d{2}-\d{2})/);
+              if (a) {
+                const r = a[1];
+                i = /* @__PURE__ */ new Date(r + "T00:00:00.000Z"), isNaN(i.getTime()) ? (console.log(`❌ 无效的日期格式: ${r}`), i = null) : console.log(`📅 从标题提取日期: ${r} -> ${i.toISOString()}`);
+              } else {
+                console.log(`🔍 尝试从块信息中获取原始日期: ${e.blockId}`);
+                try {
+                  const r = await orca.invokeBackend("get-block", parseInt(e.blockId));
+                  if (r) {
+                    const l = Y(r);
+                    l && !isNaN(l.getTime()) ? (i = l, console.log(`📅 从块信息获取日期: ${l.toISOString()}`)) : console.log("❌ 块信息中未找到有效日期信息");
+                  } else
+                    console.log("❌ 无法获取块信息");
+                } catch (r) {
+                  console.log("❌ 获取块信息失败:", r), this.warn("无法获取块信息:", r);
+                }
               }
             }
-          }
-          if (i) {
-            console.log(`📅 使用日期导航: ${i.toISOString().split("T")[0]}`), this.log(`📅 使用日期导航: ${i.toISOString().split("T")[0]}`);
-            try {
-              if (isNaN(i.getTime()))
-                throw new Error("Invalid date");
-              console.log(`📅 使用简单日期格式: ${i.toISOString()}`), await orca.nav.goTo("journal", { date: i }, n), console.log("✅ 日期导航成功");
-            } catch (o) {
-              console.log("❌ 日期导航失败:", o);
+          if (!o)
+            if (i) {
+              console.log(`📅 使用日期导航: ${i.toISOString().split("T")[0]}`), this.log(`📅 使用日期导航: ${i.toISOString().split("T")[0]}`);
               try {
-                console.log("🔄 尝试 Orca 日期格式");
-                const a = {
-                  t: 2,
-                  // 2 for full/absolute date
-                  v: i.getTime()
-                  // 使用时间戳
-                };
-                console.log("📅 使用 Orca 日期格式:", a), await orca.nav.goTo("journal", { date: a }, n), console.log("✅ Orca 日期导航成功");
+                if (isNaN(i.getTime()))
+                  throw new Error("Invalid date");
+                console.log(`📅 使用简单日期格式: ${i.toISOString()}`), await orca.nav.goTo("journal", { date: i }, n), console.log("✅ 日期导航成功");
               } catch (a) {
-                throw console.log("❌ Orca 日期导航也失败:", a), a;
+                console.log("❌ 日期导航失败:", a);
+                try {
+                  console.log("🔄 尝试 Orca 日期格式");
+                  const r = {
+                    t: 2,
+                    // 2 for full/absolute date
+                    v: i.getTime()
+                    // 使用时间戳
+                  };
+                  console.log("📅 使用 Orca 日期格式:", r), await orca.nav.goTo("journal", { date: r }, n), console.log("✅ Orca 日期导航成功");
+                } catch (r) {
+                  throw console.log("❌ Orca 日期导航也失败:", r), r;
+                }
+              }
+            } else {
+              console.log("⚠️ 未找到日期信息，尝试使用块ID导航"), this.log("⚠️ 未找到日期信息，尝试使用块ID导航");
+              try {
+                await orca.nav.goTo("block", { blockId: parseInt(e.blockId) }, n), console.log("✅ 块ID导航成功");
+              } catch (a) {
+                throw console.log("❌ 块ID导航失败:", a), a;
               }
             }
-          } else {
-            console.log("⚠️ 未找到日期信息，尝试使用块ID导航"), this.log("⚠️ 未找到日期信息，尝试使用块ID导航");
-            try {
-              await orca.nav.goTo("block", { blockId: parseInt(e.blockId) }, n), console.log("✅ 块ID导航成功");
-            } catch (o) {
-              throw console.log("❌ 块ID导航失败:", o), o;
-            }
-          }
         } else
           this.log(`🚀 尝试使用 orca.nav.goTo 导航到块 ${e.blockId}`), await orca.nav.goTo("block", { blockId: parseInt(e.blockId) }, n);
         this.log("✅ orca.nav.goTo 导航成功");
@@ -5763,7 +5805,7 @@ class kn {
   }
   async restorePosition() {
     try {
-      this.position = Y(
+      this.position = j(
         this.isVerticalMode,
         this.verticalPosition,
         this.horizontalPosition
@@ -5780,18 +5822,18 @@ class kn {
       const e = await this.storageService.getConfig(
         w.LAYOUT_MODE,
         "orca-tabs-plugin",
-        j()
+        X()
       );
       if (e) {
         const t = jt(e);
-        this.isVerticalMode = t.isVerticalMode, this.verticalWidth = t.verticalWidth, this.verticalPosition = t.verticalPosition, this.horizontalPosition = t.horizontalPosition, this.position = Y(
+        this.isVerticalMode = t.isVerticalMode, this.verticalWidth = t.verticalWidth, this.verticalPosition = t.verticalPosition, this.horizontalPosition = t.horizontalPosition, this.position = j(
           this.isVerticalMode,
           this.verticalPosition,
           this.horizontalPosition
         ), this.isSidebarAlignmentEnabled = t.isSidebarAlignmentEnabled, this.isFloatingWindowVisible = t.isFloatingWindowVisible, this.showBlockTypeIcons = t.showBlockTypeIcons, this.showInHeadbar = t.showInHeadbar, this.log(`📐 布局模式已恢复: ${Gt(t)}, 当前位置: (${this.position.x}, ${this.position.y})`);
       } else {
-        const t = j();
-        this.isVerticalMode = t.isVerticalMode, this.verticalWidth = t.verticalWidth, this.verticalPosition = t.verticalPosition, this.horizontalPosition = t.horizontalPosition, this.position = Y(
+        const t = X();
+        this.isVerticalMode = t.isVerticalMode, this.verticalWidth = t.verticalWidth, this.verticalPosition = t.verticalPosition, this.horizontalPosition = t.horizontalPosition, this.position = j(
           this.isVerticalMode,
           this.verticalPosition,
           this.horizontalPosition
@@ -5799,8 +5841,8 @@ class kn {
       }
     } catch (e) {
       this.error("恢复布局模式失败:", e);
-      const t = j();
-      this.isVerticalMode = t.isVerticalMode, this.verticalWidth = t.verticalWidth, this.verticalPosition = t.verticalPosition, this.horizontalPosition = t.horizontalPosition, this.position = Y(
+      const t = X();
+      this.isVerticalMode = t.isVerticalMode, this.verticalWidth = t.verticalWidth, this.verticalPosition = t.verticalPosition, this.horizontalPosition = t.horizontalPosition, this.position = j(
         this.isVerticalMode,
         this.verticalPosition,
         this.horizontalPosition
@@ -7770,8 +7812,8 @@ class kn {
         `, F.innerHTML = "💭", F.title = T.notes ? `备注: ${T.notes}` : "添加备注", F.onclick = (E) => {
           E.stopPropagation(), this.editTabNotes(T, e, S);
         }, U.appendChild(F);
-        const K = document.createElement("div");
-        K.style.cssText = `
+        const Q = document.createElement("div");
+        Q.style.cssText = `
           font-size: 12px;
           color: #999;
           background: rgba(0, 0, 0, 0.1);
@@ -7783,7 +7825,7 @@ class kn {
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
-        `, K.textContent = (S + 1).toString(), U.appendChild(K), y.appendChild(U), y.addEventListener("dragstart", (E) => {
+        `, Q.textContent = (S + 1).toString(), U.appendChild(Q), y.appendChild(U), y.addEventListener("dragstart", (E) => {
           E.dataTransfer.setData("text/plain", S.toString()), E.dataTransfer.effectAllowed = "move", y.style.opacity = "0.5", y.style.transform = "rotate(2deg)";
         }), y.addEventListener("dragend", (E) => {
           y.style.opacity = "1", y.style.transform = "rotate(0deg)";
@@ -8378,24 +8420,24 @@ class kn {
 }
 let P = null;
 async function In(s) {
-  H = s, Se(orca.state.locale, { "zh-CN": $e }), P = new kn(), document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", () => {
+  q = s, Se(orca.state.locale, { "zh-CN": $e }), P = new kn(), document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => P == null ? void 0 : P.init(), 500);
   }) : setTimeout(() => P == null ? void 0 : P.init(), 500), orca.commands.registerCommand(
-    `${H}.resetCache`,
+    `${q}.resetCache`,
     async () => {
       P && await P.resetCache();
     },
     "重置插件缓存"
   ), orca.commands.registerCommand(
-    `${H}.toggleBlockIcons`,
+    `${q}.toggleBlockIcons`,
     async () => {
       P && await P.toggleBlockTypeIcons();
     },
     "切换块类型图标显示"
-  ), typeof window < "u" && window.DEBUG_ORCA_TABS !== !1 && (console.log(Pe("标签页插件已启动")), console.log(`${H} loaded.`));
+  ), typeof window < "u" && window.DEBUG_ORCA_TABS !== !1 && (console.log(Pe("标签页插件已启动")), console.log(`${q} loaded.`));
 }
 async function En() {
-  P && (P.unregisterHeadbarButton(), P.cleanupDragResize(), P.destroy(), P = null), orca.commands.unregisterCommand(`${H}.resetCache`);
+  P && (P.unregisterHeadbarButton(), P.cleanupDragResize(), P.destroy(), P = null), orca.commands.unregisterCommand(`${q}.resetCache`);
 }
 export {
   In as load,

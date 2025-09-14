@@ -2078,30 +2078,64 @@ class OrcaTabsPlugin {
       
       // 调整标签页样式以适应顶部工具栏
       const tabs = this.tabContainer.querySelectorAll('.orca-tab');
-      tabs.forEach(tab => {
-        // 只设置基础样式，不覆盖聚焦样式
-        (tab as HTMLElement).style.cssText = `
-          display: flex;
-          align-items: center;
-          padding: 4px 8px;
-          background: ${backgroundColor};
-          border-radius: 4px;
-          border: 1px solid ${borderColor};
-          font-size: 12px;
-          height: 24px;
-          min-width: auto;
-          white-space: nowrap;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-          color: ${textColor};
-          max-width: 150px;
-          backdrop-filter: blur(2px);
-          -webkit-backdrop-filter: blur(2px);
-          -webkit-app-region: no-drag;
-          app-region: no-drag;
-          pointer-events: auto;
-        `;
+      tabs.forEach(tabElement => {
+        const tabId = tabElement.getAttribute('data-tab-id');
+        if (!tabId) return;
+        
+        // 查找对应的标签信息
+        const currentTabs = this.getCurrentPanelTabs();
+        const tabInfo = currentTabs.find(tab => tab.blockId === tabId);
+        
+        if (tabInfo) {
+          // 使用正确的颜色逻辑
+          let tabBackgroundColor: string;
+          let tabTextColor: string;
+          let fontWeight = 'normal';
+          
+          if (isDarkMode) {
+            tabBackgroundColor = 'rgba(255, 255, 255, 0.1)';
+            tabTextColor = '#ffffff';
+          } else {
+            tabBackgroundColor = 'rgba(200, 200, 200, 0.6)';
+            tabTextColor = '#333333';
+          }
+          
+          // 如果有颜色，应用颜色样式
+          if (tabInfo.color) {
+            try {
+              tabBackgroundColor = this.applyOklchFormula(tabInfo.color, 'background');
+              tabTextColor = this.applyOklchFormula(tabInfo.color, 'text');
+              fontWeight = '600';
+            } catch (error) {
+              console.warn('颜色处理失败，使用默认颜色:', error);
+            }
+          }
+          
+          // 只设置基础样式，不覆盖聚焦样式
+          (tabElement as HTMLElement).style.cssText = `
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+            background: ${tabBackgroundColor};
+            border-radius: 4px;
+            border: 1px solid ${borderColor};
+            font-size: 12px;
+            height: 24px;
+            min-width: auto;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            color: ${tabTextColor};
+            font-weight: ${fontWeight};
+            max-width: 150px;
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            -webkit-app-region: no-drag;
+            app-region: no-drag;
+            pointer-events: auto;
+          `;
+        }
       });
       
       // 调整新建标签页按钮样式
@@ -3650,7 +3684,7 @@ class OrcaTabsPlugin {
     const isDarkMode = orca.state.themeMode === 'dark';
     // 固定到顶部模式使用水平布局样式
     const useVerticalStyle = this.isVerticalMode && !this.isFixedToTop;
-    const tabStyle = createTabBaseStyle(tab, useVerticalStyle, isDarkMode, this.applyOklchFormula.bind(this));
+    const tabStyle = createTabBaseStyle(tab, useVerticalStyle, isDarkMode, (hex: string, type: 'text' | 'background') => this.applyOklchFormula(hex, type));
     tabElement.style.cssText = tabStyle;
 
     // 创建标签内容容器
@@ -4065,122 +4099,145 @@ class OrcaTabsPlugin {
           
           // 从标签标题中提取日期信息
           let targetDate: Date | null = null;
+          let useCommand = false;
           
-          // 检查相对日期，使用 Orca 原生命令
+          // 检查相对日期，但优先使用标签创建时的具体日期
           console.log(`🔍 检查日期块标题: ${tab.title}`);
-          if (tab.title.includes('今天') || tab.title.includes('Today')) {
-            console.log(`📅 使用原生命令跳转到今天`);
-            try {
-              await orca.commands.invokeCommand('core.goToday');
-              console.log(`✅ 今天导航成功`);
-              return; // 直接返回，不需要后续处理
-            } catch (e) {
-              console.log(`❌ 今天导航失败:`, e);
-              // 如果原生命令失败，回退到日期格式
-              targetDate = new Date();
-              console.log(`📅 回退到日期格式: ${targetDate.toISOString()}`);
+          
+          // 首先尝试从块信息中获取原始日期
+          try {
+            const block = await orca.invokeBackend("get-block", parseInt(tab.blockId));
+            if (block) {
+              const journalInfo = extractJournalInfo(block);
+              if (journalInfo && !isNaN(journalInfo.getTime())) {
+                targetDate = journalInfo;
+                console.log(`📅 从块信息获取日期: ${journalInfo.toISOString()}`);
+                useCommand = false; // 使用具体日期而不是相对命令
+              }
             }
-          } else if (tab.title.includes('昨天') || tab.title.includes('Yesterday')) {
-            console.log(`📅 使用原生命令跳转到昨天`);
-            try {
-              await orca.commands.invokeCommand('core.goYesterday');
-              console.log(`✅ 昨天导航成功`);
-              return; // 直接返回，不需要后续处理
-            } catch (e) {
-              console.log(`❌ 昨天导航失败:`, e);
-              // 如果原生命令失败，回退到日期格式
-              targetDate = new Date();
-              targetDate.setDate(targetDate.getDate() - 1);
-              console.log(`📅 回退到日期格式: ${targetDate.toISOString()}`);
-            }
-          } else if (tab.title.includes('明天') || tab.title.includes('Tomorrow')) {
-            console.log(`📅 使用原生命令跳转到明天`);
-            try {
-              await orca.commands.invokeCommand('core.goTomorrow');
-              console.log(`✅ 明天导航成功`);
-              return; // 直接返回，不需要后续处理
-            } catch (e) {
-              console.log(`❌ 明天导航失败:`, e);
-              // 如果原生命令失败，回退到日期格式
-              targetDate = new Date();
-              targetDate.setDate(targetDate.getDate() + 1);
-              console.log(`📅 回退到日期格式: ${targetDate.toISOString()}`);
-            }
-          } else {
-            // 尝试从标题中提取日期
-            const dateMatch = tab.title.match(/(\d{4}-\d{2}-\d{2})/);
-            if (dateMatch) {
-              const dateStr = dateMatch[1];
-              targetDate = new Date(dateStr + 'T00:00:00.000Z'); // 确保是UTC时间
-              if (isNaN(targetDate.getTime())) {
-                console.log(`❌ 无效的日期格式: ${dateStr}`);
-                targetDate = null;
-              } else {
-                console.log(`📅 从标题提取日期: ${dateStr} -> ${targetDate.toISOString()}`);
+          } catch (e) {
+            console.log(`❌ 获取块信息失败:`, e);
+          }
+          
+          // 如果没有获取到具体日期，再使用相对日期命令
+          if (!targetDate) {
+            if (tab.title.includes('今天') || tab.title.includes('Today')) {
+              console.log(`📅 使用原生命令跳转到今天`);
+              try {
+                await orca.commands.invokeCommand('core.goToday');
+                console.log(`✅ 今天导航成功`);
+                useCommand = true;
+              } catch (e) {
+                console.log(`❌ 今天导航失败:`, e);
+                // 如果原生命令失败，回退到日期格式
+                targetDate = new Date();
+                console.log(`📅 回退到日期格式: ${targetDate.toISOString()}`);
+              }
+            } else if (tab.title.includes('昨天') || tab.title.includes('Yesterday')) {
+              console.log(`📅 使用原生命令跳转到昨天`);
+              try {
+                await orca.commands.invokeCommand('core.goYesterday');
+                console.log(`✅ 昨天导航成功`);
+                useCommand = true;
+              } catch (e) {
+                console.log(`❌ 昨天导航失败:`, e);
+                // 如果原生命令失败，回退到日期格式
+                targetDate = new Date();
+                targetDate.setDate(targetDate.getDate() - 1);
+                console.log(`📅 回退到日期格式: ${targetDate.toISOString()}`);
+              }
+            } else if (tab.title.includes('明天') || tab.title.includes('Tomorrow')) {
+              console.log(`📅 使用原生命令跳转到明天`);
+              try {
+                await orca.commands.invokeCommand('core.goTomorrow');
+                console.log(`✅ 明天导航成功`);
+                useCommand = true;
+              } catch (e) {
+                console.log(`❌ 明天导航失败:`, e);
+                // 如果原生命令失败，回退到日期格式
+                targetDate = new Date();
+                targetDate.setDate(targetDate.getDate() + 1);
+                console.log(`📅 回退到日期格式: ${targetDate.toISOString()}`);
               }
             } else {
-              // 尝试从块信息中获取原始日期
-              console.log(`🔍 尝试从块信息中获取原始日期: ${tab.blockId}`);
-              try {
-                const block = await orca.invokeBackend("get-block", parseInt(tab.blockId));
-                if (block) {
-                  const journalInfo = extractJournalInfo(block);
-                  if (journalInfo && !isNaN(journalInfo.getTime())) {
-                    targetDate = journalInfo;
-                    console.log(`📅 从块信息获取日期: ${journalInfo.toISOString()}`);
-                  } else {
-                    console.log(`❌ 块信息中未找到有效日期信息`);
-                  }
+              // 尝试从标题中提取日期
+              const dateMatch = tab.title.match(/(\d{4}-\d{2}-\d{2})/);
+              if (dateMatch) {
+                const dateStr = dateMatch[1];
+                targetDate = new Date(dateStr + 'T00:00:00.000Z'); // 确保是UTC时间
+                if (isNaN(targetDate.getTime())) {
+                  console.log(`❌ 无效的日期格式: ${dateStr}`);
+                  targetDate = null;
                 } else {
-                  console.log(`❌ 无法获取块信息`);
+                  console.log(`📅 从标题提取日期: ${dateStr} -> ${targetDate.toISOString()}`);
                 }
-              } catch (e) {
-                console.log(`❌ 获取块信息失败:`, e);
-                this.warn("无法获取块信息:", e);
+              } else {
+                // 尝试从块信息中获取原始日期
+                console.log(`🔍 尝试从块信息中获取原始日期: ${tab.blockId}`);
+                try {
+                  const block = await orca.invokeBackend("get-block", parseInt(tab.blockId));
+                  if (block) {
+                    const journalInfo = extractJournalInfo(block);
+                    if (journalInfo && !isNaN(journalInfo.getTime())) {
+                      targetDate = journalInfo;
+                      console.log(`📅 从块信息获取日期: ${journalInfo.toISOString()}`);
+                    } else {
+                      console.log(`❌ 块信息中未找到有效日期信息`);
+                    }
+                  } else {
+                    console.log(`❌ 无法获取块信息`);
+                  }
+                } catch (e) {
+                  console.log(`❌ 获取块信息失败:`, e);
+                  this.warn("无法获取块信息:", e);
+                }
               }
             }
           }
           
-          if (targetDate) {
-            console.log(`📅 使用日期导航: ${targetDate.toISOString().split('T')[0]}`);
-            this.log(`📅 使用日期导航: ${targetDate.toISOString().split('T')[0]}`);
-            try {
-              // 确保日期是有效的
-              if (isNaN(targetDate.getTime())) {
-                throw new Error("Invalid date");
-              }
-              
-              // 使用简单的 Date 对象格式
-              console.log(`📅 使用简单日期格式: ${targetDate.toISOString()}`);
-              await orca.nav.goTo("journal", { date: targetDate }, targetPanelId);
-              console.log(`✅ 日期导航成功`);
-            } catch (e) {
-              console.log(`❌ 日期导航失败:`, e);
-              // 如果简单格式失败，尝试 Orca 格式
+          // 如果使用了原生命令，直接继续后续处理
+          if (!useCommand) {
+            if (targetDate) {
+              console.log(`📅 使用日期导航: ${targetDate.toISOString().split('T')[0]}`);
+              this.log(`📅 使用日期导航: ${targetDate.toISOString().split('T')[0]}`);
               try {
-                console.log(`🔄 尝试 Orca 日期格式`);
-                const journalDate = {
-                  t: 2, // 2 for full/absolute date
-                  v: targetDate.getTime() // 使用时间戳
-                };
-                console.log(`📅 使用 Orca 日期格式:`, journalDate);
-                await orca.nav.goTo("journal", { date: journalDate }, targetPanelId);
-                console.log(`✅ Orca 日期导航成功`);
-              } catch (e2) {
-                console.log(`❌ Orca 日期导航也失败:`, e2);
-                throw e2;
+                // 确保日期是有效的
+                if (isNaN(targetDate.getTime())) {
+                  throw new Error("Invalid date");
+                }
+                
+                // 使用简单的 Date 对象格式
+                console.log(`📅 使用简单日期格式: ${targetDate.toISOString()}`);
+                await orca.nav.goTo("journal", { date: targetDate }, targetPanelId);
+                console.log(`✅ 日期导航成功`);
+              } catch (e) {
+                console.log(`❌ 日期导航失败:`, e);
+                // 如果简单格式失败，尝试 Orca 格式
+                try {
+                  console.log(`🔄 尝试 Orca 日期格式`);
+                  const journalDate = {
+                    t: 2, // 2 for full/absolute date
+                    v: targetDate.getTime() // 使用时间戳
+                  };
+                  console.log(`📅 使用 Orca 日期格式:`, journalDate);
+                  await orca.nav.goTo("journal", { date: journalDate }, targetPanelId);
+                  console.log(`✅ Orca 日期导航成功`);
+                } catch (e2) {
+                  console.log(`❌ Orca 日期导航也失败:`, e2);
+                  throw e2;
+                }
               }
-            }
-          } else {
-            // 如果没有找到日期，尝试使用块ID
-            console.log(`⚠️ 未找到日期信息，尝试使用块ID导航`);
-            this.log(`⚠️ 未找到日期信息，尝试使用块ID导航`);
-            try {
-              await orca.nav.goTo("block", { blockId: parseInt(tab.blockId) }, targetPanelId);
-              console.log(`✅ 块ID导航成功`);
-            } catch (e) {
-              console.log(`❌ 块ID导航失败:`, e);
-              throw e;
+            } else {
+              // 如果没有找到日期，尝试使用块ID
+              console.log(`⚠️ 未找到日期信息，尝试使用块ID导航`);
+              this.log(`⚠️ 未找到日期信息，尝试使用块ID导航`);
+              try {
+                await orca.nav.goTo("block", { blockId: parseInt(tab.blockId) }, targetPanelId);
+                console.log(`✅ 块ID导航成功`);
+              } catch (e) {
+                console.log(`❌ 块ID导航失败:`, e);
+                throw e;
+              }
             }
           }
         } else {
