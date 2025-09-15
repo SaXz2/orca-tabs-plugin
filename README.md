@@ -15,14 +15,19 @@
 
 **插件结构目录**
 ```
-orca/
-└── plugins/
-    └── orca-tabs-plugin-1.0.0/
-        ├── dist/
-        ├── icon.png
-        ├── LICENSE
-        ├── package.json
-        └── README.md
+my-orca-plugin/
+├── dist/                     # Compiled code
+│   ├── index.js              # Compiled plugin file
+├── src/
+│   ├── main.ts               # Entry file, contains plugin registration and initialization logic
+│   ├── orca.d.ts             # Plugin API type definition file
+│   └── styles/               # CSS style files
+├── icon.png                  # Plugin icon image
+├── package.json              # Project configuration
+├── tsconfig.json             # TypeScript configuration
+├── vite.config.js            # Vite build configuration (if using Vite)
+└── README.md                 # Plugin documentation
+
 ```
 
 **插件放置到对应位置以后需要重启 Orca Note**
