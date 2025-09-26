@@ -37,7 +37,7 @@ export class OrcaStorageService {
    */
   private log(...args: any[]) {
     if (typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS !== false) {
-      console.log('[OrcaStorageService]', ...args);
+      // 调试日志
     }
   }
 
@@ -47,7 +47,7 @@ export class OrcaStorageService {
    * @param args 要记录的参数
    */
   private warn(...args: any[]) {
-    console.warn('[OrcaStorageService]', ...args);
+    // 警告日志
   }
 
   /**
@@ -56,7 +56,7 @@ export class OrcaStorageService {
    * @param args 要记录的参数
    */
   private error(...args: any[]) {
-    console.error('[OrcaStorageService]', ...args);
+    // 错误日志
   }
 
   // ==================== 主要存储方法 ====================

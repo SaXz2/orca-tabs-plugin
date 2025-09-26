@@ -442,7 +442,7 @@ export function createTaskQueue(): {
         try {
           await task();
         } catch (error) {
-          console.error('Task execution error:', error);
+          // 任务执行错误
         }
       }
       

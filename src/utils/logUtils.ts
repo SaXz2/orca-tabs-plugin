@@ -114,12 +114,11 @@ export class LogManager {
     const sourceStr = source ? ` [${source}]` : '';
     const fullMessage = `${prefix}${sourceStr} ${message}`;
 
+    // 日志输出已禁用
     if (this.config.enableColors && typeof window !== 'undefined') {
-      const color = this.colors[level];
-      console.log(`%c${fullMessage}`, `color: ${color}`, data || '');
+      // 彩色日志输出已禁用
     } else {
-      const consoleMethod = this.getConsoleMethod(level);
-      consoleMethod(fullMessage, data || '');
+      // 控制台日志输出已禁用
     }
   }
 
@@ -127,19 +126,8 @@ export class LogManager {
    * 获取控制台方法
    */
   private getConsoleMethod(level: LogLevel): (...args: any[]) => void {
-    switch (level) {
-      case LogLevel.ERROR:
-        return console.error;
-      case LogLevel.WARN:
-        return console.warn;
-      case LogLevel.INFO:
-        return console.info;
-      case LogLevel.DEBUG:
-      case LogLevel.VERBOSE:
-        return console.log;
-      default:
-        return console.log;
-    }
+    // 控制台方法已禁用
+    return () => {};
   }
 
   /**
@@ -236,14 +224,14 @@ export class LogManager {
    * 性能计时器
    */
   time(label: string): void {
-    console.time(`${this.config.prefix} ${label}`);
+    // 性能计时已禁用
   }
 
   /**
    * 结束性能计时
    */
   timeEnd(label: string): void {
-    console.timeEnd(`${this.config.prefix} ${label}`);
+    // 性能计时结束已禁用
   }
 
   /**
@@ -327,28 +315,28 @@ export function createDebugTools(): {
     inspect: (obj: any, name?: string) => {
       const label = name || 'Object';
       logger.debug(`Inspecting ${label}:`, obj);
-      console.table(obj);
+      // 控制台表格输出已禁用
     },
     trace: (message: string) => {
       logger.debug(`Trace: ${message}`);
-      console.trace();
+      // 控制台跟踪输出已禁用
     },
     assert: (condition: any, message: string) => {
       if (!condition) {
         logger.error(`Assertion failed: ${message}`);
-        console.assert(condition, message);
+        // 控制台断言输出已禁用
       }
     },
     count: (label: string) => {
       logger.debug(`Count ${label}`);
-      console.count(label);
+      // 控制台计数输出已禁用
     },
     group: (label: string) => {
       logger.debug(`Group: ${label}`);
-      console.group(label);
+      // 控制台分组输出已禁用
     },
     groupEnd: () => {
-      console.groupEnd();
+      // 控制台分组结束输出已禁用
     }
   };
 }

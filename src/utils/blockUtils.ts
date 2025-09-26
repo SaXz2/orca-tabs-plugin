@@ -106,7 +106,6 @@ export function formatJournalDate(date: Date): string {
       return date.toLocaleDateString();
     }
   } catch (e) {
-    console.warn("日期格式化失败:", e);
     return date.toLocaleDateString();
   }
 }
@@ -134,7 +133,6 @@ export function extractJournalInfo(block: any): Date | null {
 
     return null;
   } catch (e) {
-    console.warn("提取日期块信息失败:", e);
     return null;
   }
 }
@@ -153,7 +151,6 @@ export async function detectBlockType(block: any): Promise<string> {
     // 2. 检查 data-type 属性（最高优先级）
     if (block['data-type']) {
       const dataType = block['data-type'];
-      console.log(`🔍 检测到 data-type: ${dataType}`);
       
       // 映射一些常见的data-type到我们的类型
       const typeMap: { [key: string]: string } = {
@@ -173,7 +170,6 @@ export async function detectBlockType(block: any): Promise<string> {
 
     // 3. 检查别名块
     if (block.aliases && block.aliases.length > 0) {
-      console.log(`🏷️ 检测到别名块: aliases=${JSON.stringify(block.aliases)}`);
       
       const alias = block.aliases[0];
       if (alias) {
@@ -188,7 +184,6 @@ export async function detectBlockType(block: any): Promise<string> {
             return 'alias';
           }
         } catch (e) {
-          console.warn("检查别名块类型失败:", e);
           return 'alias';
         }
       }
@@ -206,7 +201,7 @@ export async function detectBlockType(block: any): Promise<string> {
           return reprData.type;
         }
       } catch (e) {
-        console.warn("解析_repr属性失败:", e);
+        // 解析_repr属性失败
       }
     }
 
@@ -294,7 +289,6 @@ export async function detectBlockType(block: any): Promise<string> {
 
     return 'default';
   } catch (e) {
-    console.warn("检测块类型失败:", e);
     return 'default';
   }
 }
@@ -320,7 +314,6 @@ export function getBlockTypeIcon(blockType: string): string {
   };
 
   const icon = iconMap[blockType] || iconMap['default'];
-  console.log(`🎨 为块类型 "${blockType}" 分配图标: ${icon}`);
   return icon;
 }
 

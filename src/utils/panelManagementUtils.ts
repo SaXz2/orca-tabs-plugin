@@ -41,13 +41,11 @@ export function discoverPanels(): {
 } {
   const mainSection = document.querySelector('section#main');
   if (!mainSection) {
-    console.warn("❌ 未找到 section#main");
     return { panelIds: [], activePanelId: null, panelCount: 0 };
   }
 
   const panelsRow = mainSection.querySelector('.orca-panels-row');
   if (!panelsRow) {
-    console.warn("❌ 未找到 .orca-panels-row");
     return { panelIds: [], activePanelId: null, panelCount: 0 };
   }
 

@@ -125,7 +125,6 @@ export function applyOklchFormula(hex: string, type: 'text' | 'background', isDa
     
     // 验证十六进制颜色格式
     if (!/^#[0-9A-Fa-f]{6}$/.test(colorHex)) {
-      console.warn('无效的十六进制颜色格式:', colorHex);
       return type === 'background' ? 'rgba(0, 0, 0, 0.1)' : '#333333';
     }
     
@@ -153,7 +152,6 @@ export function applyOklchFormula(hex: string, type: 'text' | 'background', isDa
       }
     }
   } catch (error) {
-    console.warn('颜色转换失败:', error);
     // 回退到简单的颜色处理
     if (type === 'background') {
       return 'rgba(0, 0, 0, 0.1)';

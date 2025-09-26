@@ -40,7 +40,6 @@ export function createTabBaseStyle(
       fontWeight = '600';
     } catch (error) {
       // 如果颜色处理失败，使用默认颜色
-      console.warn('颜色处理失败，使用默认颜色:', error);
     }
   }
 

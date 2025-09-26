@@ -544,7 +544,7 @@ export async function scanBlocks(blocks: { [blockId: string]: any }): Promise<Bl
       const result = await scanBlock(blockId, block);
       results.push(result);
     } catch (error) {
-      console.warn(`扫描块 ${blockId} 失败:`, error);
+      // 扫描块失败
     }
   }
   
