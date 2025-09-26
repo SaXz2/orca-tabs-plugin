@@ -1,32 +1,88 @@
 /**
- * 样式相关的工具函数
+ * Orca标签页插件样式工具文件
+ * 
+ * 此文件提供与样式处理相关的工具函数，包括：
+ * - 颜色格式转换和处理
+ * - 主题适配和颜色调整
+ * - 样式生成和优化
+ * - 响应式设计支持
+ * 
+ * 这些工具函数确保插件在不同主题和环境下都能正确显示。
+ * 
+ * @file styleUtils.ts
+ * @version 2.4.0
+ * @since 2024
  */
 
+// ==================== 颜色处理函数 ====================
 /**
  * 将十六进制颜色转换为RGBA格式
+ * 
+ * 这是一个基础的颜色格式转换函数，将十六进制颜色代码转换为RGBA格式。
+ * 支持带透明度的颜色处理，用于创建半透明效果。
+ * 
+ * 功能特性：
+ * - 支持3位和6位十六进制颜色代码
+ * - 自动处理#前缀
+ * - 支持自定义透明度
+ * - 错误处理和默认值
+ * 
+ * @param hex 十六进制颜色代码（如 #FF0000 或 #F00）
+ * @param alpha 透明度值（0-1之间）
+ * @returns string RGBA格式的颜色字符串
+ * @example
+ * hexToRgba('#FF0000', 0.5) // 返回 'rgba(255, 0, 0, 0.5)'
+ * hexToRgba('#F00', 1) // 返回 'rgba(255, 0, 0, 1)'
  */
 export function hexToRgba(hex: string, alpha: number): string {
+  // 使用正则表达式解析十六进制颜色代码
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  
   if (result) {
+    // 解析RGB值
     const r = parseInt(result[1], 16);
     const g = parseInt(result[2], 16);
     const b = parseInt(result[3], 16);
+    
+    // 返回RGBA格式字符串
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
+  
+  // 如果解析失败，返回默认的灰色
   return `rgba(200, 200, 200, ${alpha})`;
 }
 
 /**
  * 应用OKLCH颜色公式处理颜色（优化版）
- * 优先使用简单的RGB调整，避免OKLCH偏色问题
+ * 
+ * 这是一个智能的颜色处理函数，根据Orca的主题模式自动调整颜色。
+ * 优先使用简单的RGB调整，避免OKLCH偏色问题，确保颜色在不同主题下都有良好的可读性。
+ * 
+ * 功能特性：
+ * - 自动检测Orca主题模式（明色/暗色）
+ * - 根据颜色用途（文字/背景）进行不同处理
+ * - 智能亮度调整，确保对比度
+ * - 避免颜色过亮或过暗
+ * - 保持颜色原有的色调特征
+ * 
+ * @param hex 十六进制颜色代码
+ * @param type 颜色用途类型（'text' | 'background'）
+ * @returns string 处理后的颜色代码
+ * @example
+ * applyOklchFormula('#FF0000', 'text') // 根据主题调整红色文字
+ * applyOklchFormula('#000000', 'background') // 根据主题调整黑色背景
  */
 export function applyOklchFormula(hex: string, type: 'text' | 'background'): string {
-  // 使用Orca API检查是否为暗色模式
+  // ==================== 主题检测 ====================
+  // 使用Orca API检查当前主题模式
   const isDarkMode = orca.state.themeMode === 'dark';
   
+  // ==================== 颜色解析 ====================
+  // 解析十六进制颜色代码
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  if (!result) return hex;
+  if (!result) return hex; // 如果解析失败，返回原颜色
 
+  // 提取RGB值
   const r = parseInt(result[1], 16);
   const g = parseInt(result[2], 16);
   const b = parseInt(result[3], 16);

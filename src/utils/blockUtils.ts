@@ -1,25 +1,64 @@
+/**
+ * Orca标签页插件块处理工具文件
+ * 
+ * 此文件提供与Orca块相关的工具函数，包括：
+ * - 日期格式化和处理
+ * - 块类型检测和识别
+ * - 块属性提取和操作
+ * - 块内容分析和处理
+ * 
+ * 这些工具函数是插件与Orca块系统交互的核心组件。
+ * 
+ * @file blockUtils.ts
+ * @version 2.4.0
+ * @since 2024
+ */
+
+// ==================== 依赖导入 ====================
+// 日期处理库 - 提供强大的日期格式化和操作功能
 import { format, isToday, isYesterday, isTomorrow } from 'date-fns';
+// 国际化支持 - 提供多语言日期格式支持
 import { zhCN as zhCNLocale, enUS as enUSLocale } from 'date-fns/locale';
+// 常量定义 - 导入应用配置常量和属性类型
 import { AppKeys, PropType } from '../constants';
 
+// ==================== 导出声明 ====================
 // 导出 date-fns 的 format 函数供其他模块使用
 export { format };
 
+// ==================== 日期处理函数 ====================
 /**
  * 专门格式化日记日期（用于标签显示）
+ * 
+ * 这是一个智能的日期格式化函数，专门用于在标签页中显示日记日期。
+ * 支持用户自定义格式、相对日期显示和多语言支持。
+ * 
+ * 功能特性：
+ * - 支持用户自定义日期格式
+ * - 智能相对日期显示（今天、昨天、明天）
+ * - 多语言支持（中文、英文）
+ * - 星期几的中文处理
+ * - 错误处理和降级机制
+ * 
+ * @param date 要格式化的日期对象
+ * @returns string 格式化后的日期字符串
+ * @throws 当日期格式无效时抛出错误
  */
 export function formatJournalDate(date: Date): string {
   try {
-    // 获取用户的日期格式设置
+    // ==================== 获取用户设置 ====================
+    // 从Orca设置中获取用户的日期格式偏好
     let dateFormat = orca.state.settings[AppKeys.JournalDateFormat];
     
     // 如果没有设置或设置无效，使用默认格式
     if (!dateFormat || typeof dateFormat !== 'string') {
       const locale = orca.state.locale || 'zh-CN';
+      // 根据语言环境选择默认格式
       dateFormat = locale.startsWith('zh') ? 'yyyy年MM月dd日' : 'yyyy-MM-dd';
     }
 
-    // 检查相对日期
+    // ==================== 相对日期处理 ====================
+    // 检查是否为相对日期，提供更友好的显示
     if (isToday(date)) {
       return '今天';
     } else if (isYesterday(date)) {
