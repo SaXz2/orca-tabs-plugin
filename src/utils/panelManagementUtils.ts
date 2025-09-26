@@ -68,6 +68,21 @@ export function discoverPanels(): {
     }
   });
 
+  // 按照 data-panel-id 的值进行排序，确保第一个面板始终是持久化面板
+  panelIds.sort((a, b) => {
+    // 尝试将 panelId 转换为数字进行比较
+    const numA = parseInt(a);
+    const numB = parseInt(b);
+    
+    // 如果都是数字，按数字大小排序
+    if (!isNaN(numA) && !isNaN(numB)) {
+      return numA - numB;
+    }
+    
+    // 如果不是数字，按字符串排序
+    return a.localeCompare(b);
+  });
+
   return {
     panelIds,
     activePanelId,
