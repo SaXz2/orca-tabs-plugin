@@ -3407,7 +3407,24 @@ class Ie {
     var d, u, h;
     const t = this.panelIds[0], e = document.querySelector(`.orca-panel[data-panel-id="${t}"]`);
     if (!e) return;
-    const n = e.querySelector('.orca-hideable:not([style*="display: none"]) .orca-block-editor[data-block-id]');
+    
+    // 查找所有可见的 hideable 元素，然后过滤掉位于弹窗内的元素
+    const hideables = e.querySelectorAll('.orca-hideable:not([style*="display: none"])');
+    let n = null;
+    
+    for (const hideable of hideables) {
+      // 跳过位于 .orca-popup.orca-block-preview-popup 内的元素
+      if (this.isInsidePopup(hideable)) {
+        continue;
+      }
+      
+      const blockEditor = hideable.querySelector('.orca-block-editor[data-block-id]');
+      if (blockEditor) {
+        n = blockEditor;
+        break;
+      }
+    }
+    
     if (!n) {
       this.log("第一个面板中没有找到激活的块编辑器");
       return;

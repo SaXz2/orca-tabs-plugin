@@ -57,6 +57,11 @@ export function discoverPanels(): {
   panels.forEach((panel) => {
     const panelId = panel.getAttribute('data-panel-id');
     if (panelId) {
+      // 排除特殊的悬浮面板（如 _reference）
+      if (panelId.startsWith('_')) {
+        return; // 跳过特殊面板
+      }
+      
       panelIds.push(panelId);
       
       // 检查是否为活动面板

@@ -3,6 +3,7 @@
  */
 
 import { TabInfo, TabPosition } from '../types';
+import { areTabsEqual } from './tabOperationsUtils';
 
 /**
  * 查找最后一个非固定标签的索引
@@ -208,26 +209,7 @@ export function cleanInvalidTabs(tabs: TabInfo[]): TabInfo[] {
   return tabs.filter(tab => validateTabData(tab));
 }
 
-/**
- * 生成标签ID
- */
-export function generateTabId(blockId: string, panelId: string): string {
-  return `${panelId}-${blockId}`;
-}
-
-/**
- * 比较标签是否相同
- */
-export function areTabsEqual(tab1: TabInfo, tab2: TabInfo): boolean {
-  return tab1.blockId === tab2.blockId && tab1.panelId === tab2.panelId;
-}
-
-/**
- * 查找标签索引
- */
-export function findTabIndex(tabs: TabInfo[], blockId: string): number {
-  return tabs.findIndex(tab => tab.blockId === blockId);
-}
+// 注意：generateTabId, areTabsEqual, findTabIndex 函数已移动到 tabOperationsUtils.ts 中，避免重复定义
 
 /**
  * 移动标签位置

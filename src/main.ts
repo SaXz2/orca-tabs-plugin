@@ -147,9 +147,6 @@ import {
   batchUpdateTabProperties, 
   validateTabData, 
   cleanInvalidTabs, 
-  generateTabId, 
-  areTabsEqual, 
-  findTabIndex, 
   moveTab, 
   swapTabs, 
   isValidPosition, 
@@ -765,10 +762,10 @@ class OrcaTabsPlugin {
     // 恢复多标签页集合
     await this.restoreSavedTabSets();
     
-    // 设置当前活动面板
+    // 设置当前活动面板，排除特殊面板
     const currentActivePanel = document.querySelector('.orca-panel.active');
     const activePanelId = currentActivePanel?.getAttribute('data-panel-id');
-    if (activePanelId) {
+    if (activePanelId && !activePanelId.startsWith('_')) {
       this.currentPanelId = activePanelId;
       this.currentPanelIndex = this.getPanelIds().indexOf(activePanelId);
       this.log(`🎯 当前活动面板: ${activePanelId} (索引: ${this.currentPanelIndex})`);
@@ -1231,10 +1228,15 @@ class OrcaTabsPlugin {
     const newPanelIds: string[] = [];
     let activePanelId: string | null = null;
     
-    // 按DOM顺序收集面板ID
+    // 按DOM顺序收集面板ID，排除特殊面板
     panels.forEach(panel => {
       const panelId = panel.getAttribute('data-panel-id');
       if (panelId) {
+        // 排除特殊的悬浮面板（如 _reference）
+        if (panelId.startsWith('_')) {
+          return; // 跳过特殊面板
+        }
+        
         newPanelIds.push(panelId);
         
         // 检查是否为激活面板
@@ -2628,7 +2630,7 @@ class OrcaTabsPlugin {
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             color: ${tabTextColor};
             font-weight: ${fontWeight};
-            max-width: 150px;
+            max-width: 100px;
             backdrop-filter: blur(2px);
             -webkit-backdrop-filter: blur(2px);
             -webkit-app-region: no-drag;
@@ -6081,7 +6083,7 @@ class OrcaTabsPlugin {
       font-weight: 600;
       outline: none;
       width: 100%;
-      max-width: 150px;
+      max-width: 100px;
       box-sizing: border-box;
       -webkit-app-region: no-drag;
       app-region: no-drag;
@@ -7675,7 +7677,7 @@ class OrcaTabsPlugin {
     const activePanel = document.querySelector('.orca-panel.active');
     if (activePanel) {
       const panelId = activePanel.getAttribute('data-panel-id');
-      if (panelId) {
+      if (panelId && !panelId.startsWith('_')) { // 排除特殊面板
         const index = this.getPanelIds().indexOf(panelId);
         if (index !== -1) {
           // 修复: 记录面板索引变化
@@ -7830,8 +7832,12 @@ class OrcaTabsPlugin {
    * 检查面板状态是否发生变化
    */
   async checkPanelStatusChange() {
-    // 快速检查面板数量是否变化
-    const currentPanelCount = document.querySelectorAll('.orca-panel:not([data-menu-panel="true"])').length;
+    // 快速检查面板数量是否变化，排除特殊面板
+    const allPanels = document.querySelectorAll('.orca-panel:not([data-menu-panel="true"])');
+    const currentPanelCount = Array.from(allPanels).filter(panel => {
+      const panelId = panel.getAttribute('data-panel-id');
+      return panelId && !panelId.startsWith('_'); // 排除特殊面板
+    }).length;
     
     // 如果面板数量没有变化，跳过完整发现
     if (currentPanelCount === this.getPanelIds().length && this.panelDiscoveryCache) {
@@ -7883,11 +7889,11 @@ class OrcaTabsPlugin {
       }
     }
     
-    // 检查当前活动面板
+    // 检查当前活动面板，排除特殊面板
     const activePanel = document.querySelector('.orca-panel.active');
     if (activePanel) {
       const panelId = activePanel.getAttribute('data-panel-id');
-      if (panelId && (panelId !== this.currentPanelId || '' || panelListChanged)) {
+      if (panelId && !panelId.startsWith('_') && (panelId !== this.currentPanelId || '' || panelListChanged)) {
         // 面板发生了切换或面板列表发生变化
         const oldIndex = this.currentPanelIndex;
         const newIndex = this.getPanelIds().indexOf(panelId);

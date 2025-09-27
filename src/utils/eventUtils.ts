@@ -35,31 +35,7 @@ export function createDragHandlers(
   };
 }
 
-/**
- * 创建防抖函数
- */
-export function createDebounce<T extends (...args: any[]) => any>(
-  func: T,
-  delay: number
-): T & { cancel: () => void } {
-  let timeoutId: number | null = null;
-  
-  const debounced = ((...args: Parameters<T>) => {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-    timeoutId = setTimeout(() => func(...args), delay);
-  }) as T & { cancel: () => void };
-  
-  debounced.cancel = () => {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-      timeoutId = null;
-    }
-  };
-  
-  return debounced;
-}
+// 注意：防抖函数已移动到 performanceUtils.ts 中，使用 debounce 函数
 
 /**
  * 创建节流函数

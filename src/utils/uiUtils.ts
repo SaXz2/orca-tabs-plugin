@@ -21,11 +21,11 @@ export function createTabBaseStyle(
   
   if (isDarkMode) {
     // 暗色模式
-    backgroundColor = 'rgba(255, 255, 255, 0.1)';
+    backgroundColor = 'color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 40%))';
     textColor = '#ffffff';
   } else {
     // 亮色模式
-    backgroundColor = 'rgba(200, 200, 200, 0.6)';
+    backgroundColor = 'color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 10%))';
     textColor = '#333333';
   }
   
@@ -73,7 +73,7 @@ export function createTabBaseStyle(
     line-height: 20px;
     cursor: pointer;
     font-size: 12px;
-    max-width: 150px;
+    max-width: 100px;
     transition: all 0.2s ease;
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
