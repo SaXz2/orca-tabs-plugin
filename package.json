@@ -1,6 +1,6 @@
 {
   "name": "orca-plugin-template",
-  "version": "2.5.2",
+  "version": "2.5.3",
   "type": "module",
   "main": "dist/index.js",
   "files": [
@@ -40,7 +40,6 @@
     "vite": "^5.2.0"
   },
   "dependencies": {
-    "date-fns": "^4.1.0",
-    "liquid-glass-react": "^1.1.1"
+    "date-fns": "^4.1.0"
   }
 }
