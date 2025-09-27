@@ -3670,14 +3670,14 @@ class xn {
     } else
       this.log("⚠️ 没有可显示的面板，跳过标签页显示");
     if (this.addNewTabButton(), this.addWorkspaceButton(), this.isFixedToTop) {
-      const i = orca.state.themeMode === "dark", o = i ? "rgba(255, 255, 255, 0.1)" : "rgba(200, 200, 200, 0.6)", r = i ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.1)", c = i ? "#ffffff" : "#333", l = this.tabContainer.querySelectorAll(".orca-tab");
+      const i = orca.state.themeMode === "dark", o = i ? "color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 40%))" : "color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 10%))", r = i ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.1)", c = i ? "#ffffff" : "#333", l = this.tabContainer.querySelectorAll(".orca-tab");
       l.forEach((u) => {
         const h = u.getAttribute("data-tab-id");
         if (!h) return;
         const p = this.getCurrentPanelTabs().find((b) => b.blockId === h);
         if (p) {
           let b, f, v = "normal";
-          if (i ? (b = "rgba(255, 255, 255, 0.1)", f = "#ffffff") : (b = "rgba(200, 200, 200, 0.6)", f = "#333333"), p.color)
+          if (i ? (b = "color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 40%))", f = "#ffffff") : (b = "color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 10%))", f = "#333333"), p.color)
             try {
               b = this.applyOklchFormula(p.color, "background"), f = this.applyOklchFormula(p.color, "text"), v = "600";
             } catch {

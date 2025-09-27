@@ -2575,7 +2575,7 @@ class OrcaTabsPlugin {
     if (this.isFixedToTop) {
       // 获取当前主题模式
       const isDarkMode = orca.state.themeMode === 'dark';
-      const backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(200, 200, 200, 0.6)';
+      const backgroundColor = isDarkMode ? 'color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 40%))' : 'color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 10%))';
       const borderColor = isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)';
       const textColor = isDarkMode ? '#ffffff' : '#333';
       
@@ -2596,10 +2596,10 @@ class OrcaTabsPlugin {
           let fontWeight = 'normal';
           
           if (isDarkMode) {
-            tabBackgroundColor = 'rgba(255, 255, 255, 0.1)';
+            tabBackgroundColor = 'color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 40%))';
             tabTextColor = '#ffffff';
           } else {
-            tabBackgroundColor = 'rgba(200, 200, 200, 0.6)';
+            tabBackgroundColor = 'color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 10%))';
             tabTextColor = '#333333';
           }
           
