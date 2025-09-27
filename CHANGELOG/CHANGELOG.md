@@ -1,5 +1,43 @@
 # Orca Tabs Plugin - 版本更新日志
 
+## v2.5.4 - 2024年12月
+
+### 🐛 Bug 修复
+
+#### 1. 修复 package-lock.json 同步问题
+- **Lockfile 更新**: 更新了 `package-lock.json` 以与 `package.json` 保持同步
+- **依赖清理**: 完全移除了 `liquid-glass-react` 相关的所有引用
+- **构建修复**: 解决了 `npm ci` 命令的依赖解析错误
+
+#### 2. GitHub Actions 构建稳定性
+- **CI/CD 修复**: 确保 GitHub Actions 能够成功执行 `npm ci`
+- **依赖一致性**: 保证开发环境和 CI 环境的依赖完全一致
+- **构建可靠性**: 提高自动化构建的成功率
+
+### 🔧 技术改进
+
+#### 依赖管理完善
+- 同步了 `package.json` 和 `package-lock.json`
+- 清理了所有未使用的依赖引用
+- 优化了构建过程的稳定性
+
+### 📝 代码变更统计
+- 更新文件: `package-lock.json`
+- 修复问题: npm ci 依赖解析错误
+- 优化构建: CI/CD 流程稳定性
+
+### 🎯 影响范围
+- 修复了 GitHub Actions 构建失败问题
+- 提高了 CI/CD 流程的可靠性
+- 确保了依赖管理的一致性
+
+### ✅ 测试建议
+1. 验证 GitHub Actions 构建流程
+2. 测试本地 `npm ci` 命令
+3. 确认所有依赖正确安装
+
+---
+
 ## v2.5.3 - 2024年12月
 
 ### 🐛 Bug 修复
