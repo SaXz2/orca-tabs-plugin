@@ -362,7 +362,7 @@ export function createProgressDialog(config: ProgressDialogConfig): {
     width: 100%;
     height: 8px;
     background-color: #e0e0e0;
-    border-radius: 4px;
+    border-radius: var(--orca-radius-md);
     overflow: hidden;
   `;
   
@@ -465,7 +465,7 @@ export function createNotification(
     background-color: ${colors[type]};
     color: white;
     padding: 12px 20px;
-    border-radius: 4px;
+    border-radius: var(--orca-radius-md);
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     z-index: 10000;
     max-width: 300px;
@@ -572,13 +572,13 @@ export function createTooltip(
   
   const themeStyles = {
     light: {
-      backgroundColor: '#333',
-      color: '#fff',
+      backgroundColor: 'var(--orca-color-bg-1)',
+      color: 'var(--orca-color-text-1)',
       border: '1px solid #555'
     },
     dark: {
-      backgroundColor: '#fff',
-      color: '#333',
+      backgroundColor: 'var(--orca-color-bg-1)',
+      color: 'var(--orca-color-text-1)',
       border: '1px solid #ddd'
     }
   };
@@ -593,7 +593,7 @@ export function createTooltip(
     color: ${currentTheme.color};
     border: ${currentTheme.border};
     padding: 8px 12px;
-    border-radius: 4px;
+    border-radius: var(--orca-radius-md);
     font-size: 12px;
     z-index: 10000;
     max-width: ${maxWidth}px;
@@ -651,13 +651,13 @@ export function createContextMenu(config: ContextMenuConfig): HTMLElement {
   
   const themeStyles = {
     light: {
-      backgroundColor: '#fff',
+      backgroundColor: 'var(--orca-color-bg-1)',
       color: '#333',
       border: '1px solid #ddd',
       shadow: '0 2px 8px rgba(0,0,0,0.15)'
     },
     dark: {
-      backgroundColor: '#333',
+      backgroundColor: 'var(--orca-color-bg-1)',
       color: '#fff',
       border: '1px solid #555',
       shadow: '0 2px 8px rgba(0,0,0,0.3)'
@@ -1069,7 +1069,7 @@ export function addDialogStyles(): void {
       width: 100%;
       height: 8px;
       background-color: #e0e0e0;
-      border-radius: 4px;
+      border-radius: var(--orca-radius-md);
       overflow: hidden;
     }
     
@@ -1103,9 +1103,9 @@ export function addDialogStyles(): void {
     }
     
     .btn {
-      padding: 8px 16px;
+      padding: .175rem var(--orca-spacing-md);
       border: none;
-      border-radius: 4px;
+      border-radius: var(--orca-radius-md);
       cursor: pointer;
       font-size: 14px;
       transition: background-color 0.2s ease;

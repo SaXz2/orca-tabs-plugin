@@ -74,8 +74,11 @@ export function hexToRgba(hex: string, alpha: number): string {
  */
 export function applyOklchFormula(hex: string, type: 'text' | 'background'): string {
   // ==================== 主题检测 ====================
-  // 使用Orca API检查当前主题模式
-  const isDarkMode = orca.state.themeMode === 'dark';
+  // 优化主题检测：优先使用DOM检测，减少对orca.state的依赖
+  const isDarkMode = document.documentElement.hasAttribute('data-theme') 
+    ? document.documentElement.getAttribute('data-theme') === 'dark'
+    : document.documentElement.classList.contains('dark') || 
+      (typeof orca !== 'undefined' && orca?.state?.themeMode === 'dark');
   
   // ==================== 颜色解析 ====================
   // 解析十六进制颜色代码

@@ -16,7 +16,7 @@ export function createTabContainer(
   backgroundColor: string
 ): HTMLElement {
   const container = document.createElement('div');
-  container.className = 'orca-tabs-container';
+  container.className = 'orca-tabs-plugin orca-tabs-container';
   
   const containerStyle = createTabContainerStyle(isVerticalMode, position, backgroundColor, verticalWidth);
   container.style.cssText = containerStyle;
@@ -52,7 +52,7 @@ export function createNewTabButton(
     -webkit-app-region: no-drag;
     app-region: no-drag;
     pointer-events: auto;
-    border-radius: 4px;
+    border-radius: var(--orca-radius-md);
     transition: all 0.2s ease;
   ` : `
     width: 24px;
@@ -70,7 +70,7 @@ export function createNewTabButton(
     -webkit-app-region: no-drag;
     app-region: no-drag;
     pointer-events: auto;
-    border-radius: 4px;
+    border-radius: var(--orca-radius-md);
     transition: all 0.2s ease;
   `;
   
@@ -111,7 +111,7 @@ export function createDragHandle(
     -webkit-app-region: no-drag;
     app-region: no-drag;
     pointer-events: auto;
-    border-radius: 4px;
+    border-radius: var(--orca-radius-md);
     transition: all 0.2s ease;
   ` : `
     width: 20px;
@@ -181,7 +181,7 @@ export function createStatusElement(
     color: #333;
     font-weight: normal;
     padding: 6px 12px;
-    border-radius: 6px;
+    border-radius: var(--orca-radius-md);
     font-size: 12px;
     white-space: nowrap;
     backdrop-filter: blur(2px);
@@ -288,8 +288,8 @@ export function createWidthAdjustmentDialog(
 
   // 取消按钮
   const cancelButton = document.createElement('button');
+  cancelButton.className = createButtonStyle('secondary');
   cancelButton.textContent = '取消';
-  cancelButton.style.cssText = createButtonStyle('secondary');
   cancelButton.addEventListener('click', () => {
     onCancel();
     safeRemoveElement(dialog);
@@ -297,8 +297,8 @@ export function createWidthAdjustmentDialog(
 
   // 确认按钮
   const confirmButton = document.createElement('button');
+  confirmButton.className = createButtonStyle('primary');
   confirmButton.textContent = '确认';
-  confirmButton.style.cssText = createButtonStyle('primary');
   confirmButton.addEventListener('click', () => {
     // 确认按钮只是关闭对话框，实际保存已经在onInput中处理
     safeRemoveElement(dialog);
@@ -365,8 +365,8 @@ export function createConfirmDialog(
 
   // 取消按钮
   const cancelButton = document.createElement('button');
+  cancelButton.className = createButtonStyle('secondary');
   cancelButton.textContent = '取消';
-  cancelButton.style.cssText = createButtonStyle('secondary');
   cancelButton.addEventListener('click', () => {
     if (onCancel) onCancel();
     safeRemoveElement(dialog);
@@ -374,8 +374,8 @@ export function createConfirmDialog(
 
   // 确认按钮
   const confirmButton = document.createElement('button');
+  confirmButton.className = createButtonStyle('danger');
   confirmButton.textContent = '确认';
-  confirmButton.style.cssText = createButtonStyle('danger');
   confirmButton.addEventListener('click', () => {
     onConfirm();
     safeRemoveElement(dialog);
@@ -436,8 +436,8 @@ export function createInputDialog(
 
   // 取消按钮
   const cancelButton = document.createElement('button');
+  cancelButton.className = createButtonStyle('secondary');
   cancelButton.textContent = '取消';
-  cancelButton.style.cssText = createButtonStyle('secondary');
   cancelButton.addEventListener('click', () => {
     if (onCancel) onCancel();
     safeRemoveElement(dialog);
@@ -445,8 +445,8 @@ export function createInputDialog(
 
   // 确认按钮
   const confirmButton = document.createElement('button');
+  confirmButton.className = createButtonStyle('primary');
   confirmButton.textContent = '确认';
-  confirmButton.style.cssText = createButtonStyle('primary');
   confirmButton.addEventListener('click', () => {
     onConfirm(input.value);
     safeRemoveElement(dialog);
@@ -515,7 +515,7 @@ export function createProgressDialog(
     width: 100%;
     height: 8px;
     background: #e5e5e5;
-    border-radius: 4px;
+    border-radius: var(--orca-radius-md);
     overflow: hidden;
     margin-bottom: 16px;
   `;
@@ -526,7 +526,7 @@ export function createProgressDialog(
     width: 0%;
     height: 100%;
     background: #007acc;
-    border-radius: 4px;
+    border-radius: var(--orca-radius-md);
     transition: width 0.3s ease;
   `;
 
@@ -593,7 +593,7 @@ export function createNotification(
     background: ${colors[type]};
     color: white;
     padding: 12px 16px;
-    border-radius: 6px;
+    border-radius: var(--orca-radius-md);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     z-index: 10000;
     display: flex;
@@ -619,28 +619,10 @@ export function createNotification(
 
   // 关闭按钮
   const closeButton = document.createElement('button');
+  closeButton.className = 'orca-button';
   closeButton.textContent = '×';
-  closeButton.style.cssText = `
-    background: none;
-    border: none;
-    color: white;
-    font-size: 18px;
-    cursor: pointer;
-    padding: 0;
-    margin-left: auto;
-    opacity: 0.7;
-    transition: opacity 0.2s;
-  `;
   closeButton.addEventListener('click', () => {
     safeRemoveElement(notification);
-  });
-
-  // 悬停效果
-  closeButton.addEventListener('mouseenter', () => {
-    closeButton.style.opacity = '1';
-  });
-  closeButton.addEventListener('mouseleave', () => {
-    closeButton.style.opacity = '0.7';
   });
 
   // 组装通知
@@ -743,7 +725,7 @@ export function createTooltip(
     background: rgba(0, 0, 0, 0.8);
     color: white;
     padding: 6px 8px;
-    border-radius: 4px;
+    border-radius: var(--orca-radius-md);
     font-size: 12px;
     z-index: 10000;
     pointer-events: none;

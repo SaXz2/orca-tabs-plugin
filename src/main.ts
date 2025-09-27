@@ -965,7 +965,7 @@ class OrcaTabsPlugin {
         e.dataTransfer!.dropEffect = 'move';
         
         // 检查是否拖拽到标签栏外部
-        const tabsContainer = document.querySelector('.orca-tabs-container');
+        const tabsContainer = document.querySelector('.orca-tabs-plugin .orca-tabs-container');
         if (tabsContainer && !tabsContainer.contains(e.target as Node)) {
           // 显示删除提示
           this.showDropZoneIndicator(e.clientX, e.clientY);
@@ -981,7 +981,7 @@ class OrcaTabsPlugin {
         e.stopPropagation();
         
         // 检查是否拖拽到标签栏外部
-        const tabsContainer = document.querySelector('.orca-tabs-container');
+        const tabsContainer = document.querySelector('.orca-tabs-plugin .orca-tabs-container');
         if (tabsContainer && !tabsContainer.contains(e.target as Node)) {
           // 删除标签页
           this.closeTab(this.draggingTab);
@@ -998,7 +998,7 @@ class OrcaTabsPlugin {
   clearDragVisualFeedback() {
     if (this.tabContainer) {
       // 移除所有拖拽相关的CSS类
-      const tabs = this.tabContainer.querySelectorAll('.orca-tab');
+      const tabs = this.tabContainer.querySelectorAll('.orca-tabs-plugin .orca-tab');
       tabs.forEach(tab => {
         tab.removeAttribute('data-dragging');
         tab.removeAttribute('data-drag-over');
@@ -1024,7 +1024,7 @@ class OrcaTabsPlugin {
     indicator.style.cssText = `
       position: absolute;
       height: 2px;
-      background: #3b82f6;
+      background: var(--orca-color-primary-5);
       border-radius: 1px;
       z-index: 1000;
       pointer-events: none;
@@ -2094,9 +2094,8 @@ class OrcaTabsPlugin {
     // 不再创建循环切换器，因为标签页会自动切换
     this.log("📱 使用自动切换模式，不创建面板切换器");
 
-    // 创建标签容器
-    const isDarkMode = orca.state.themeMode === 'dark';
-    const backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.1)';
+    // 创建标签容器 - 使用指定的CSS变量，并添加透明度
+    const backgroundColor = 'color-mix(in srgb, var(--orca-color-bg-2), transparent 50%)';
     
     // 根据固定到顶部模式决定位置
     let currentPosition: TabPosition;
@@ -2150,7 +2149,7 @@ class OrcaTabsPlugin {
           left: 0;
           right: 0;
           z-index: 10000;
-          background: rgba(255, 255, 255, 0.95);
+          background-color: var(--orca-color-bg-1);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
           border-bottom: 2px solid rgba(0, 0, 0, 0.15);
@@ -2167,7 +2166,7 @@ class OrcaTabsPlugin {
           height: 32px;
           background: rgba(255, 255, 255, 0.1);
           border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 6px;
+          border-radius: var(--orca-radius-md);
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
           backdrop-filter: blur(8px);
           -webkit-backdrop-filter: blur(8px);
@@ -2190,7 +2189,7 @@ class OrcaTabsPlugin {
     this.tabContainer.addEventListener('mousedown', (e) => {
       const target = e.target as HTMLElement;
       // 只阻止标签栏内部元素的mousedown事件，不影响侧边栏
-      if (target.closest('.orca-tab, .new-tab-button, .drag-handle') && 
+      if (target.closest('.orca-tabs-plugin .orca-tab, .new-tab-button, .drag-handle') && 
           !target.closest('.sidebar, .side-panel, .panel-resize, .resize-handle, .orca-sidebar, .orca-panel, .orca-menu')) {
         e.stopPropagation();
       }
@@ -2200,7 +2199,7 @@ class OrcaTabsPlugin {
     this.tabContainer.addEventListener('click', (e) => {
       // 只阻止标签栏内部的点击事件冒泡，不影响侧边栏
       const target = e.target as HTMLElement;
-      if (target.closest('.orca-tab, .new-tab-button, .drag-handle') && 
+      if (target.closest('.orca-tabs-plugin .orca-tab, .new-tab-button, .drag-handle') && 
           !target.closest('.sidebar, .side-panel, .panel-resize, .resize-handle, .orca-sidebar, .orca-panel, .orca-menu')) {
         e.stopPropagation();
       }
@@ -2268,8 +2267,40 @@ class OrcaTabsPlugin {
     const style = document.createElement('style');
     style.id = 'orca-tabs-drag-styles';
     style.textContent = `
+      /* CSS变量定义 - 支持主题自动切换 */
+      :root {
+        --orca-tab-bg: color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 10%));
+        --orca-tab-border: rgba(0, 0, 0, 0.1);
+        --orca-tab-hover-border: rgba(0, 0, 0, 0.2);
+        --orca-tab-active-border: rgba(0, 0, 0, 0.3);
+        --orca-tab-container-bg: rgba(255, 255, 255, 0.1);
+        --orca-input-bg: rgba(200, 200, 200, 0.6);
+      }
+      
+      /* 暗色模式的CSS变量 */
+      :root[data-theme="dark"],
+      .dark {
+        --orca-tab-bg: color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 40%));
+        --orca-tab-border: rgba(255, 255, 255, 0.2);
+        --orca-tab-hover-border: rgba(255, 255, 255, 0.3);
+        --orca-tab-active-border: rgba(255, 255, 255, 0.4);
+        --orca-input-bg: rgba(255, 255, 255, 0.1);
+      }
+      
+      /* 有颜色标签的CSS变量 */
+      .orca-tabs-plugin .orca-tab {
+        --orca-tab-colored-bg: oklch(from var(--tab-color, #3b82f6) calc(l * 0.8) calc(c * 1.5) h / 25%);
+        --orca-tab-colored-text: oklch(from var(--tab-color, #3b82f6) calc(l * 0.6) c h);
+      }
+      
+      /* 暗色模式下有颜色标签的CSS变量 */
+      :root[data-theme="dark"] .orca-tabs-plugin .orca-tab,
+      .dark .orca-tabs-plugin .orca-tab {
+        --orca-tab-colored-text: oklch(from var(--tab-color, #3b82f6) calc(l * 1.6) c h);
+      }
+      
       /* 拖拽中的标签样式 */
-      .orca-tab[data-dragging="true"] {
+      .orca-tabs-plugin .orca-tabs-plugin .orca-tabs-plugin .orca-tab[data-dragging="true"] {
         border: 2px solid #ef4444;
         margin: 0 12px;
         transform: rotate(2deg);
@@ -2282,16 +2313,16 @@ class OrcaTabsPlugin {
       }
 
       /* 拖拽悬停目标样式 */
-      .orca-tab[data-drag-over="true"] {
-        border: 2px solid #3b82f6;
+      .orca-tabs-plugin .orca-tab[data-drag-over="true"] {
+        border: 2px solid var(--orca-color-primary-5);
         transform: scale(1.02);
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
+        box-shadow: 0 4px 12px color-mix(in srgb, var(--orca-color-primary-5), transparent 70%);
+        background: color-mix(in srgb, var(--orca-color-primary-5), transparent 95%);
         position: relative;
       }
 
       /* 拖拽悬停目标指示器 */
-      .orca-tab[data-drag-over="true"]::before {
+      .orca-tabs-plugin .orca-tab[data-drag-over="true"]::before {
         content: '';
         position: absolute;
         left: -2px;
@@ -2299,9 +2330,9 @@ class OrcaTabsPlugin {
         transform: translateY(-50%);
         width: 4px;
         height: 60%;
-        background: #3b82f6;
+        background: var(--orca-color-primary-5);
         border-radius: 2px;
-        box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+        box-shadow: 0 0 8px color-mix(in srgb, var(--orca-color-primary-5), transparent 40%);
         animation: dragIndicator 0.3s ease-in-out;
       }
 
@@ -2318,87 +2349,93 @@ class OrcaTabsPlugin {
       }
 
       /* 拖拽容器状态 */
-      .orca-tabs-container[data-dragging="true"] {
-        background: rgba(255, 255, 255, 0.15);
+      .orca-tabs-plugin .orca-tabs-plugin .orca-tabs-plugin .orca-tabs-container[data-dragging="true"] {
+        background-color: var(--orca-color-bg-1);
         border: 2px dashed rgba(239, 68, 68, 0.4);
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
       }
 
       /* 拖拽时的过渡动画 */
-      .orca-tab {
+      .orca-tabs-plugin .orca-tab {
         transition: all 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         will-change: transform, box-shadow, background, opacity, border;
       }
 
       /* 未选中标签的基础样式 */
-      .orca-tab {
+      .orca-tabs-plugin .orca-tab {
         opacity: 0.85;
         border: 1px solid transparent;
       }
 
-      /* 选中/悬停的标签样式 */
-      .orca-tab:hover:not([data-dragging="true"]):not([data-drag-over="true"]) {
-        opacity: 1;
-        border: 1px solid rgba(0, 0, 0, 0.2);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        transform: scale(1.02);
-        transition: all 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      /* 暗色模式下的标签边框 */
+      :root[data-theme="dark"] .orca-tabs-plugin .orca-tab,
+      .dark .orca-tabs-plugin .orca-tab {
+        border: 1px solid color-mix(in srgb, var(--orca-color-text-1), transparent 35%);
       }
 
-      /* 暗色模式下的选中样式 */
-      .dark .orca-tab:hover:not([data-dragging="true"]):not([data-drag-over="true"]) {
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+      /* 选中/悬停的标签样式 - 使用CSS变量自动响应主题变化，但排除聚焦状态 */
+      .orca-tabs-plugin .orca-tab:hover:not([data-dragging="true"]):not([data-drag-over="true"]):not([data-focused="true"]) {
+        opacity: 1 !important;
+        border: 1px solid var(--orca-tab-hover-border) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+        transform: scale(1.02) !important;
+        transition: all 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
       }
 
-      /* 点击/激活状态的标签样式 */
-      .orca-tab:active:not([data-dragging="true"]):not([data-drag-over="true"]) {
-        opacity: 1;
-        border: 1px solid rgba(0, 0, 0, 0.3);
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-        transform: scale(0.98);
-        transition: all 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      /* 暗色模式下的悬停样式 - 通过CSS变量自动应用，但排除聚焦状态 */
+      :root[data-theme="dark"] .orca-tabs-plugin .orca-tab:hover:not([data-dragging="true"]):not([data-drag-over="true"]):not([data-focused="true"]),
+      .dark .orca-tabs-plugin .orca-tab:hover:not([data-dragging="true"]):not([data-drag-over="true"]):not([data-focused="true"]) {
+        box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1) !important;
       }
 
-      /* 暗色模式下的点击样式 */
-      .dark .orca-tab:active:not([data-dragging="true"]):not([data-drag-over="true"]) {
-        border: 1px solid rgba(255, 255, 255, 0.4);
-        box-shadow: 0 1px 4px rgba(255, 255, 255, 0.2);
+      /* 点击/激活状态的标签样式 - 使用CSS变量自动响应主题变化，但排除聚焦状态 */
+      .orca-tabs-plugin .orca-tab:active:not([data-dragging="true"]):not([data-drag-over="true"]):not([data-focused="true"]) {
+        opacity: 1 !important;
+        border: 1px solid var(--orca-tab-active-border) !important;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2) !important;
+        transform: scale(0.98) !important;
+        transition: all 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+      }
+
+      /* 暗色模式下的点击样式 - 通过CSS变量自动应用，但排除聚焦状态 */
+      :root[data-theme="dark"] .orca-tabs-plugin .orca-tab:active:not([data-dragging="true"]):not([data-drag-over="true"]):not([data-focused="true"]),
+      .dark .orca-tabs-plugin .orca-tab:active:not([data-dragging="true"]):not([data-drag-over="true"]):not([data-focused="true"]) {
+        box-shadow: 0 1px 4px rgba(255, 255, 255, 0.2) !important;
       }
 
       /* 聚焦状态的标签样式 */
-      .orca-tab[data-focused="true"] {
+      .orca-tabs-plugin .orca-tab[data-focused="true"] {
         opacity: 1 !important;
-        border: 2px solid #3b82f6 !important;
-        box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2), 0 2px 8px rgba(59, 130, 246, 0.3) !important;
-        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05)) !important;
+        border: 2px solid var(--orca-color-primary-5) !important;
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--orca-color-primary-5), transparent 80%), 0 2px 8px color-mix(in srgb, var(--orca-color-primary-5), transparent 70%) !important;
+        background: color-mix(in srgb, var(--orca-color-primary-5), transparent 90%) !important;
         transform: scale(1.02) !important;
         transition: all 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
       }
 
       /* 暗色模式下的聚焦样式 */
-      .dark .orca-tab[data-focused="true"] {
-        border: 2px solid #60a5fa !important;
-        box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.3), 0 2px 8px rgba(96, 165, 250, 0.2) !important;
-        background: linear-gradient(135deg, rgba(96, 165, 250, 0.15), rgba(96, 165, 250, 0.08)) !important;
+      .dark .orca-tabs-plugin .orca-tab[data-focused="true"] {
+        border: 2px solid var(--orca-color-primary-5) !important;
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--orca-color-primary-5), transparent 70%), 0 2px 8px color-mix(in srgb, var(--orca-color-primary-5), transparent 80%) !important;
+        background: color-mix(in srgb, var(--orca-color-primary-5), transparent 85%) !important;
       }
 
       /* 拖拽时的光标样式 */
-      .orca-tab[draggable="true"] {
+      .orca-tabs-plugin .orca-tab[draggable="true"] {
         cursor: pointer;
       }
 
-      .orca-tab[draggable="true"]:active {
+      .orca-tabs-plugin .orca-tab[draggable="true"]:active {
         cursor: pointer;
       }
 
       /* 拖拽时的标签容器动画 */
-      .orca-tabs-container[data-dragging="true"] .orca-tab:not([data-dragging="true"]) {
+      .orca-tabs-plugin .orca-tabs-plugin .orca-tabs-plugin .orca-tabs-container[data-dragging="true"] .orca-tabs-plugin .orca-tab:not([data-dragging="true"]) {
         transition: all 0.2s ease;
       }
 
       /* 拖拽完成后的回弹效果 */
-      .orca-tab[data-dragging="true"] {
+      .orca-tabs-plugin .orca-tab[data-dragging="true"] {
         animation: dragBounce 0.3s ease-out;
       }
 
@@ -2473,13 +2510,54 @@ class OrcaTabsPlugin {
         -webkit-user-select: none;
       }
 
-      /* 全局鼠标样式 */
-      body.resizing {
+      /* 全局鼠标样式 - 只影响插件内的拖拽和调整大小 */
+      .orca-tabs-plugin .orca-tabs-plugin body.resizing {
         cursor: nwse-resize;
       }
 
-      body.dragging {
+      .orca-tabs-plugin .orca-tabs-plugin body.dragging {
         cursor: move;
+      }
+
+      /* 按钮基础样式 - 只影响插件内的按钮 */
+      .orca-tabs-plugin .orca-tabs-plugin .orca-button {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        transition: background-color 0.2s;
+        background-color: transparent;
+        padding: .175rem var(--orca-spacing-md);
+        border-radius: var(--orca-radius-md);
+        border: none;
+        color: var(--orca-color-text-1);
+      }
+
+      /* 按钮悬停效果 */
+      .orca-tabs-plugin .orca-tabs-plugin .orca-button:hover {
+        background-color: var(--orca-color-menu-highlight);
+      }
+
+      /* 主要按钮样式 */
+      .orca-tabs-plugin .orca-tabs-plugin .orca-button-primary {
+        background: var(--orca-color-primary-5);
+        color: white;
+      }
+
+      .orca-tabs-plugin .orca-tabs-plugin .orca-button-primary:hover {
+        background: color-mix(in srgb, var(--orca-color-primary-5), black 10%);
+      }
+
+      /* 次要按钮样式 */
+      .orca-tabs-plugin .orca-tabs-plugin .orca-button-secondary {
+        border: 1px solid var(--orca-color-primary-5);
+        background: var(--orca-color-primary-5);
+        color: white;
+      }
+
+      .orca-tabs-plugin .orca-tabs-plugin .orca-button-secondary:hover {
+        background: color-mix(in srgb, var(--orca-color-primary-5), black 10%);
       }
     `;
     
@@ -2573,14 +2651,13 @@ class OrcaTabsPlugin {
     
     // 如果是固定到顶部模式，重新应用样式
     if (this.isFixedToTop) {
-      // 获取当前主题模式
-      const isDarkMode = orca.state.themeMode === 'dark';
-      const backgroundColor = isDarkMode ? 'color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 40%))' : 'color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 10%))';
-      const borderColor = isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)';
-      const textColor = isDarkMode ? '#ffffff' : '#333';
+      // 使用CSS变量，让浏览器自动响应主题变化，避免JS检测延迟
+      const backgroundColor = 'var(--orca-tab-bg)';
+      const borderColor = 'var(--orca-tab-border)';
+      const textColor = 'var(--orca-color-text-1)';
       
       // 调整标签页样式以适应顶部工具栏
-      const tabs = this.tabContainer.querySelectorAll('.orca-tab');
+      const tabs = this.tabContainer.querySelectorAll('.orca-tabs-plugin .orca-tab');
       tabs.forEach(tabElement => {
         const tabId = tabElement.getAttribute('data-tab-id');
         if (!tabId) return;
@@ -2595,19 +2672,17 @@ class OrcaTabsPlugin {
           let tabTextColor: string;
           let fontWeight = 'normal';
           
-          if (isDarkMode) {
-            tabBackgroundColor = 'color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 40%))';
-            tabTextColor = '#ffffff';
-          } else {
-            tabBackgroundColor = 'color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 10%))';
-            tabTextColor = '#333333';
-          }
+          // 使用 CSS 变量，让浏览器自动响应主题变化
+          tabBackgroundColor = 'var(--orca-tab-bg)';
+          tabTextColor = 'var(--orca-color-text-1)';
           
-          // 如果有颜色，应用颜色样式
+          // 如果有颜色，应用颜色样式（这里仍需要JS计算，但会减少主题切换的延迟）
           if (tabInfo.color) {
             try {
-              tabBackgroundColor = this.applyOklchFormula(tabInfo.color, 'background');
-              tabTextColor = this.applyOklchFormula(tabInfo.color, 'text');
+              // 使用CSS自定义属性存储颜色值，让CSS处理主题变化
+              (tabElement as HTMLElement).style.setProperty('--tab-color', tabInfo.color);
+              tabBackgroundColor = 'var(--orca-tab-colored-bg)';
+              tabTextColor = 'var(--orca-tab-colored-text)';
               fontWeight = '600';
             } catch (error) {
             }
@@ -2619,7 +2694,7 @@ class OrcaTabsPlugin {
             align-items: center;
             padding: 4px 8px;
             background: ${tabBackgroundColor};
-            border-radius: 4px;
+            border-radius: var(--orca-radius-md);
             border: 1px solid ${borderColor};
             font-size: 12px;
             height: 24px;
@@ -2649,7 +2724,7 @@ class OrcaTabsPlugin {
           justify-content: center;
           padding: 4px;
           background: ${backgroundColor};
-          border-radius: 4px;
+          border-radius: var(--orca-radius-md);
           border: 1px solid ${borderColor};
           font-size: 12px;
           height: 24px;
@@ -2700,10 +2775,10 @@ class OrcaTabsPlugin {
       statusElement.className = 'panel-status';
       statusElement.style.cssText = `
         background: rgba(100, 150, 200, 0.6);
-        color: #333;
+        color: var(--orca-color-text-1);
         font-weight: normal;
         padding: 6px 12px;
-        border-radius: 6px;
+        border-radius: var(--orca-radius-md);
         font-size: 12px;
         white-space: nowrap;
         backdrop-filter: blur(2px);
@@ -2761,10 +2836,10 @@ class OrcaTabsPlugin {
       statusElement.className = 'panel-status';
       statusElement.style.cssText = `
         background: rgba(100, 150, 200, 0.6);
-        color: #333;
+        color: var(--orca-color-text-1);
         font-weight: normal;
         padding: 6px 12px;
-        border-radius: 6px;
+        border-radius: var(--orca-radius-md);
         font-size: 12px;
         white-space: nowrap;
         backdrop-filter: blur(2px);
@@ -2818,7 +2893,7 @@ class OrcaTabsPlugin {
       -webkit-app-region: no-drag;
       app-region: no-drag;
       pointer-events: auto;
-      border-radius: 4px;
+      border-radius: var(--orca-radius-md);
       transition: all 0.2s ease;
     ` : `
       width: 24px;
@@ -2836,7 +2911,7 @@ class OrcaTabsPlugin {
       -webkit-app-region: no-drag;
       app-region: no-drag;
       pointer-events: auto;
-      border-radius: 4px;
+      border-radius: var(--orca-radius-md);
       transition: all 0.2s ease;
     `;
     
@@ -2905,7 +2980,7 @@ class OrcaTabsPlugin {
       -webkit-app-region: no-drag;
       app-region: no-drag;
       pointer-events: auto;
-      border-radius: 4px;
+      border-radius: var(--orca-radius-md);
       transition: all 0.2s ease;
     ` : `
       width: 24px;
@@ -2923,7 +2998,7 @@ class OrcaTabsPlugin {
       -webkit-app-region: no-drag;
       app-region: no-drag;
       pointer-events: auto;
-      border-radius: 4px;
+      border-radius: var(--orca-radius-md);
       transition: all 0.2s ease;
     `;
     
@@ -2974,9 +3049,11 @@ class OrcaTabsPlugin {
       existingMenu.remove();
     }
 
-    // 检测暗色模式
-    const isDarkMode = document.documentElement.classList.contains('dark') || 
-                      (window as any).orca?.state?.themeMode === 'dark';
+    // 优化主题检测：优先使用data-theme属性
+    const isDarkMode = document.documentElement.hasAttribute('data-theme') 
+      ? document.documentElement.getAttribute('data-theme') === 'dark'
+      : document.documentElement.classList.contains('dark') || 
+        (window as any).orca?.state?.themeMode === 'dark';
 
     // 创建右键菜单
     const menu = document.createElement('div');
@@ -3006,10 +3083,10 @@ class OrcaTabsPlugin {
       position: fixed;
       left: ${left}px;
       top: ${top}px;
-      background: ${isDarkMode ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)'};
-      border: 1px solid ${isDarkMode ? '#444' : '#ddd'};
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      background: var(--orca-color-bg-1);
+      border: 1px solid var(--sakura-dark-surface0);
+      border-radius: var(--orca-radius-md);
+      box-shadow: var(--orca-shadow-menu);
       z-index: 1000;
       min-width: ${menuWidth}px;
       backdrop-filter: blur(8px);
@@ -3127,7 +3204,7 @@ class OrcaTabsPlugin {
         const separator = document.createElement('div');
         separator.style.cssText = `
           height: 1px;
-          background: ${isDarkMode ? '#444' : '#ddd'};
+          background: var(--orca-color-border);
           margin: 4px 8px;
         `;
         menu.appendChild(separator);
@@ -3136,7 +3213,7 @@ class OrcaTabsPlugin {
 
       const menuItem = document.createElement('div');
       menuItem.style.cssText = `
-        padding: 12px 16px;
+        padding: var(--orca-spacing-sm);
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -3162,7 +3239,7 @@ class OrcaTabsPlugin {
       menuItem.appendChild(text);
       
       menuItem.addEventListener('mouseenter', () => {
-        menuItem.style.backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+        menuItem.style.backgroundColor = 'var(--orca-color-menu-highlight)';
       });
       
       menuItem.addEventListener('mouseleave', () => {
@@ -4115,11 +4192,10 @@ class OrcaTabsPlugin {
       tabElement.setAttribute('data-focused', 'true');
     }
     
-    // 设置样式
-    const isDarkMode = orca.state.themeMode === 'dark';
+    // 设置样式 - 移除JS主题检测，让CSS变量自动处理
     // 固定到顶部模式使用水平布局样式
     const useVerticalStyle = this.isVerticalMode && !this.isFixedToTop;
-    const tabStyle = createTabBaseStyle(tab, useVerticalStyle, isDarkMode, (hex: string, type: 'text' | 'background') => this.applyOklchFormula(hex, type));
+    const tabStyle = createTabBaseStyle(tab, useVerticalStyle, (hex: string, type: 'text' | 'background') => this.applyOklchFormula(hex, type));
     tabElement.style.cssText = tabStyle;
 
     // 创建标签内容容器
@@ -4163,7 +4239,7 @@ class OrcaTabsPlugin {
       this.log(`🖱️ 点击标签: ${tab.title} (ID: ${tab.blockId})`);
       
       // 移除其他标签的聚焦状态
-      const allTabs = this.tabContainer?.querySelectorAll('.orca-tab');
+      const allTabs = this.tabContainer?.querySelectorAll('.orca-tabs-plugin .orca-tab');
       allTabs?.forEach(t => t.removeAttribute('data-focused'));
       
       // 设置当前标签为聚焦状态
@@ -5430,7 +5506,7 @@ class OrcaTabsPlugin {
       }
       
       // 检查是否已经添加过我们的选项
-      if (targetMenu.querySelector('.orca-tabs-ref-menu-item')) {
+      if (targetMenu.querySelector('.orca-tabs-plugin .orca-tabs-ref-menu-item')) {
         this.log("🔗 块引用菜单项已存在");
         return;
       }
@@ -5448,7 +5524,7 @@ class OrcaTabsPlugin {
         
         separator.style.cssText = `
           height: 1px;
-          background: ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
+          background: var(--orca-color-border);
           margin: 4px 8px;
         `;
         targetMenu.appendChild(separator);
@@ -5464,11 +5540,11 @@ class OrcaTabsPlugin {
                           (window as any).orca?.state?.themeMode === 'dark';
         
         addToGroupItem.style.cssText = `
-          padding: 12px 16px;
+          padding: var(--orca-spacing-sm);
           cursor: pointer;
           font-size: 14px;
           color: ${isDarkMode ? '#ffffff' : '#333'};
-          border-bottom: 1px solid ${isDarkMode ? '#444' : '#eee'};
+          border-bottom: 1px solid var(--orca-color-border);
           transition: background-color 0.2s;
           display: flex;
           align-items: center;
@@ -5481,7 +5557,7 @@ class OrcaTabsPlugin {
         `;
         
         addToGroupItem.addEventListener('mouseenter', () => {
-          addToGroupItem.style.backgroundColor = isDarkMode ? '#444' : '#f0f0f0';
+          addToGroupItem.style.backgroundColor = 'var(--orca-color-menu-highlight)';
         });
         addToGroupItem.addEventListener('mouseleave', () => {
           addToGroupItem.style.backgroundColor = 'transparent';
@@ -6061,9 +6137,9 @@ class OrcaTabsPlugin {
     input.className = 'inline-rename-input';
     
     // 设置输入框样式，使其与标签样式一致
-    const isDarkMode = orca.state.themeMode === 'dark';
-    let backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(200, 200, 200, 0.6)';
-    let textColor = isDarkMode ? '#ffffff' : '#333';
+    // 使用CSS变量，让浏览器自动响应主题变化
+    let backgroundColor = 'var(--orca-input-bg)';
+    let textColor = 'var(--orca-color-text-1)';
     
     // 如果有颜色，应用颜色样式
     if (tab.color) {
@@ -6074,8 +6150,8 @@ class OrcaTabsPlugin {
     input.style.cssText = `
       background: ${backgroundColor};
       color: ${textColor};
-      border: 2px solid #3b82f6;
-      border-radius: 8px;
+      border: 2px solid var(--orca-color-primary-5);
+      border-radius: var(--orca-radius-md);
       padding: 4px 12px;
       height: 24px;
       line-height: 24px;
@@ -6285,11 +6361,11 @@ class OrcaTabsPlugin {
     inputContainer.style.cssText = `
       position: fixed;
       z-index: 2000;
-      background: rgba(255, 255, 255, 0.98);
-      border: 2px solid #3b82f6;
-      border-radius: 8px;
+      background-color: var(--orca-color-bg-1);
+      border: 2px solid var(--orca-color-primary-5);
+      border-radius: var(--orca-radius-md);
       box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-      padding: 8px 12px;
+      padding: .175rem var(--orca-spacing-md);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
       min-width: 200px;
@@ -6304,7 +6380,7 @@ class OrcaTabsPlugin {
       outline: none;
       background: transparent;
       font-size: 14px;
-      color: #333;
+      color: var(--orca-color-text-1);
       width: 100%;
       padding: 4px 0;
     `;
@@ -6320,46 +6396,13 @@ class OrcaTabsPlugin {
 
     // 创建确认按钮
     const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'orca-button orca-button-primary';
     confirmBtn.textContent = '确认';
-    confirmBtn.style.cssText = `
-      background: #3b82f6;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      padding: 6px 16px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    `;
 
     // 创建取消按钮
     const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'orca-button';
     cancelBtn.textContent = '取消';
-    cancelBtn.style.cssText = `
-      background: #6b7280;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      padding: 6px 16px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    `;
-
-    // 添加按钮悬停效果
-    confirmBtn.addEventListener('mouseenter', () => {
-      confirmBtn.style.backgroundColor = '#2563eb';
-    });
-    confirmBtn.addEventListener('mouseleave', () => {
-      confirmBtn.style.backgroundColor = '#3b82f6';
-    });
-
-    cancelBtn.addEventListener('mouseenter', () => {
-      cancelBtn.style.backgroundColor = '#4b5563';
-    });
-    cancelBtn.addEventListener('mouseleave', () => {
-      cancelBtn.style.backgroundColor = '#6b7280';
-    });
 
     // 组装元素
     buttonContainer.appendChild(confirmBtn);
@@ -6646,10 +6689,10 @@ class OrcaTabsPlugin {
       position: fixed;
       left: ${e.clientX}px;
       top: ${e.clientY}px;
-      background: ${isDarkMode ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)'};
-      border: 1px solid ${isDarkMode ? '#444' : '#ddd'};
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      background: var(--orca-color-bg-1);
+      border: 1px solid var(--sakura-dark-surface0);
+      border-radius: var(--orca-radius-md);
+      box-shadow: var(--orca-shadow-menu);
       z-index: 1000;
       min-width: 180px;
       backdrop-filter: blur(8px);
@@ -6700,17 +6743,17 @@ class OrcaTabsPlugin {
       const menuItem = document.createElement('div');
       menuItem.textContent = item.text;
       menuItem.style.cssText = `
-        padding: 12px 16px;
+        padding: var(--orca-spacing-sm);
         cursor: pointer;
         font-size: 14px;
         color: ${(item as any).disabled ? (isDarkMode ? '#666' : '#999') : (isDarkMode ? '#ffffff' : '#333')};
-        border-bottom: 1px solid ${isDarkMode ? '#444' : '#eee'};
+        border-bottom: 1px solid var(--orca-color-border);
         transition: background-color 0.2s;
       `;
       
       if (!(item as any).disabled) {
         menuItem.addEventListener('mouseenter', () => {
-          menuItem.style.backgroundColor = isDarkMode ? '#444' : '#f0f0f0';
+          menuItem.style.backgroundColor = 'var(--orca-color-menu-highlight)';
         });
         menuItem.addEventListener('mouseleave', () => {
           menuItem.style.backgroundColor = 'transparent';
@@ -7390,7 +7433,7 @@ class OrcaTabsPlugin {
       this.verboseLog(`📋 当前激活页面已存在: "${existingTab.title}"`);
       
       // 清除所有标签的聚焦状态
-      const allTabs = this.tabContainer?.querySelectorAll('.orca-tab');
+      const allTabs = this.tabContainer?.querySelectorAll('.orca-tabs-plugin .orca-tab');
       allTabs?.forEach(tab => tab.removeAttribute('data-focused'));
       
       // 设置当前标签为聚焦状态
@@ -7420,7 +7463,7 @@ class OrcaTabsPlugin {
     let shouldReplaceFocused = false; // 是否应该替换聚焦的标签
     
     
-    const focusedTabElement = this.tabContainer?.querySelector('.orca-tab[data-focused="true"]');
+    const focusedTabElement = this.tabContainer?.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
     
     if (focusedTabElement) {
       const focusedTabId = focusedTabElement.getAttribute('data-tab-id');
@@ -8347,10 +8390,10 @@ class OrcaTabsPlugin {
       position: fixed;
       left: ${position.x}px;
       top: ${position.y}px;
-      background: ${isDarkMode ? 'rgba(30, 30, 30, 0.95)' : 'white'};
-      border: 1px solid ${isDarkMode ? '#444' : '#e0e0e0'};
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+      background: var(--orca-color-bg-1);
+      border: 1px solid var(--sakura-dark-surface0);
+      border-radius: var(--orca-radius-md);
+      box-shadow: var(--orca-shadow-menu);
       z-index: 10000;
       min-width: 200px;
       max-width: 280px;
@@ -8365,7 +8408,6 @@ class OrcaTabsPlugin {
         const separator = document.createElement('div');
         separator.style.cssText = `
           height: 1px;
-          background: linear-gradient(to right, transparent, ${isDarkMode ? '#444' : '#e0e0e0'}, transparent);
           margin: 4px 8px;
         `;
         menu.appendChild(separator);
@@ -8377,11 +8419,10 @@ class OrcaTabsPlugin {
       menuItem.style.cssText = `
         display: flex;
         align-items: center;
-        padding: 12px 16px;
+        padding: var(--orca-spacing-sm);
         cursor: pointer;
         font-size: 14px;
         color: ${isDarkMode ? '#ffffff' : '#333'};
-        border-bottom: 1px solid ${isDarkMode ? '#444' : '#f0f0f0'};
         transition: background-color 0.2s ease;
         min-height: 24px;
       `;
@@ -8426,7 +8467,7 @@ class OrcaTabsPlugin {
 
       // 悬停效果
       menuItem.addEventListener('mouseenter', () => {
-        menuItem.style.backgroundColor = isDarkMode ? '#444' : '#f5f5f5';
+        menuItem.style.backgroundColor = 'var(--orca-color-menu-highlight)';
       });
       menuItem.addEventListener('mouseleave', () => {
         menuItem.style.backgroundColor = 'transparent';
@@ -8634,10 +8675,10 @@ class OrcaTabsPlugin {
       position: fixed;
       left: ${position.x}px;
       top: ${position.y}px;
-      background: ${isDarkMode ? 'rgba(30, 30, 30, 0.95)' : 'white'};
-      border: 1px solid ${isDarkMode ? '#444' : '#e0e0e0'};
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+      background: var(--orca-color-bg-1);
+      border: 1px solid var(--sakura-dark-surface0);
+      border-radius: var(--orca-radius-md);
+      box-shadow: var(--orca-shadow-menu);
       z-index: 10000;
       min-width: 200px;
       max-width: 300px;
@@ -8652,7 +8693,7 @@ class OrcaTabsPlugin {
         const separator = document.createElement('div');
         separator.style.cssText = `
           height: 1px;
-          background: ${isDarkMode ? '#444' : '#e0e0e0'};
+          background: var(--orca-color-border);
           margin: 4px 0;
         `;
         menu.appendChild(separator);
@@ -8664,11 +8705,10 @@ class OrcaTabsPlugin {
       menuItem.style.cssText = `
         display: flex;
         align-items: center;
-        padding: 12px 16px;
+        padding: var(--orca-spacing-sm);
         cursor: pointer;
         font-size: 14px;
         color: ${isDarkMode ? '#ffffff' : '#333'};
-        border-bottom: 1px solid ${isDarkMode ? '#444' : '#f0f0f0'};
         transition: background-color 0.2s ease;
         min-height: 24px;
       `;
@@ -8713,7 +8753,7 @@ class OrcaTabsPlugin {
 
       // 悬停效果
       menuItem.addEventListener('mouseenter', () => {
-        menuItem.style.backgroundColor = isDarkMode ? '#444' : '#f5f5f5';
+        menuItem.style.backgroundColor = 'var(--orca-color-menu-highlight)';
       });
       menuItem.addEventListener('mouseleave', () => {
         menuItem.style.backgroundColor = 'transparent';
@@ -8788,9 +8828,9 @@ class OrcaTabsPlugin {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(255, 255, 255, 0.95);
-      border: 1px solid #ddd;
-      border-radius: 8px;
+      background-color: var(--orca-color-bg-1);
+      border: 1px solid var(--orca-color-border);
+      border-radius: var(--orca-radius-md);
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
       z-index: ${this.getNextDialogZIndex()};
       width: 450px;
@@ -8809,7 +8849,7 @@ class OrcaTabsPlugin {
       padding: 20px 20px 0 20px;
       font-weight: 600;
       font-size: 16px;
-      color: #333;
+      color: var(--orca-color-text-1);
       margin-bottom: 16px;
     `;
     header.textContent = '保存标签页集合';
@@ -8829,59 +8869,23 @@ class OrcaTabsPlugin {
     `;
 
     const createNewBtn = document.createElement('button');
+    createNewBtn.className = 'orca-button orca-button-secondary';
     createNewBtn.textContent = '创建新标签组';
-    createNewBtn.style.cssText = `
-      flex: 1;
-      padding: 8px 12px;
-      border: 1px solid #3b82f6;
-      background: #3b82f6;
-      color: white;
-      border-radius: 4px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: all 0.2s;
-    `;
+    createNewBtn.style.cssText = `flex: 1;`;
 
     const updateExistingBtn = document.createElement('button');
+    updateExistingBtn.className = 'orca-button';
     updateExistingBtn.textContent = '更新已有标签组';
-    updateExistingBtn.style.cssText = `
-      flex: 1;
-      padding: 8px 12px;
-      border: 1px solid #ddd;
-      background: white;
-      color: #666;
-      border-radius: 4px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: all 0.2s;
-    `;
+    updateExistingBtn.style.cssText = `flex: 1;`;
 
     let isUpdateMode = false;
 
     const switchToCreateMode = () => {
       isUpdateMode = false;
-      createNewBtn.style.cssText = `
-        flex: 1;
-        padding: 8px 12px;
-        border: 1px solid #3b82f6;
-        background: #3b82f6;
-        color: white;
-        border-radius: 4px;
-        font-size: 14px;
-        cursor: pointer;
-        transition: all 0.2s;
-      `;
-      updateExistingBtn.style.cssText = `
-        flex: 1;
-        padding: 8px 12px;
-        border: 1px solid #ddd;
-        background: white;
-        color: #666;
-        border-radius: 4px;
-        font-size: 14px;
-        cursor: pointer;
-        transition: all 0.2s;
-      `;
+      createNewBtn.className = 'orca-button orca-button-secondary';
+      createNewBtn.style.cssText = `flex: 1;`;
+      updateExistingBtn.className = 'orca-button';
+      updateExistingBtn.style.cssText = `flex: 1;`;
       inputContainer.style.display = 'block';
       dropdownContainer.style.display = 'none';
       updateSaveButtonText();
@@ -8889,28 +8893,10 @@ class OrcaTabsPlugin {
 
     const switchToUpdateMode = () => {
       isUpdateMode = true;
-      updateExistingBtn.style.cssText = `
-        flex: 1;
-        padding: 8px 12px;
-        border: 1px solid #3b82f6;
-        background: #3b82f6;
-        color: white;
-        border-radius: 4px;
-        font-size: 14px;
-        cursor: pointer;
-        transition: all 0.2s;
-      `;
-      createNewBtn.style.cssText = `
-        flex: 1;
-        padding: 8px 12px;
-        border: 1px solid #ddd;
-        background: white;
-        color: #666;
-        border-radius: 4px;
-        font-size: 14px;
-        cursor: pointer;
-        transition: all 0.2s;
-      `;
+      updateExistingBtn.className = 'orca-button orca-button-secondary';
+      updateExistingBtn.style.cssText = `flex: 1;`;
+      createNewBtn.className = 'orca-button';
+      createNewBtn.style.cssText = `flex: 1;`;
       inputContainer.style.display = 'none';
       dropdownContainer.style.display = 'block';
       updateSaveButtonText();
@@ -8934,7 +8920,7 @@ class OrcaTabsPlugin {
       display: block;
       margin-bottom: 8px;
       font-size: 14px;
-      color: #333;
+      color: var(--orca-color-text-1);
     `;
     label.textContent = '请输入新标签页集合名称:';
     inputContainer.appendChild(label);
@@ -8944,9 +8930,9 @@ class OrcaTabsPlugin {
     input.value = `标签页集合 ${this.savedTabSets.length + 1}`;
     input.style.cssText = `
       width: 100%;
-      padding: 8px 12px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
+      padding: .175rem var(--orca-spacing-md);
+      border: 1px solid var(--orca-color-border);
+      border-radius: var(--orca-radius-md);
       font-size: 14px;
       box-sizing: border-box;
       outline: none;
@@ -8955,7 +8941,7 @@ class OrcaTabsPlugin {
       user-select: text;
     `;
     input.addEventListener('focus', () => {
-      input.style.borderColor = '#3b82f6';
+      input.style.borderColor = 'var(--orca-color-primary-5)';
     });
     input.addEventListener('blur', () => {
       input.style.borderColor = '#ddd';
@@ -8978,7 +8964,7 @@ class OrcaTabsPlugin {
       display: block;
       margin-bottom: 8px;
       font-size: 14px;
-      color: #333;
+      color: var(--orca-color-text-1);
     `;
     dropdownLabel.textContent = '请选择要更新的标签页集合:';
     dropdownContainer.appendChild(dropdownLabel);
@@ -8986,18 +8972,18 @@ class OrcaTabsPlugin {
     const dropdown = document.createElement('select');
     dropdown.style.cssText = `
       width: 100%;
-      padding: 8px 12px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
+      padding: .175rem var(--orca-spacing-md);
+      border: 1px solid var(--orca-color-border);
+      border-radius: var(--orca-radius-md);
       font-size: 14px;
       box-sizing: border-box;
       outline: none;
       transition: border-color 0.2s;
       pointer-events: auto;
-      background: white;
+      background: var(--orca-color-bg-1);
     `;
     dropdown.addEventListener('focus', () => {
-      dropdown.style.borderColor = '#3b82f6';
+      dropdown.style.borderColor = 'var(--orca-color-primary-5)';
     });
     dropdown.addEventListener('blur', () => {
       dropdown.style.borderColor = '#ddd';
@@ -9032,17 +9018,9 @@ class OrcaTabsPlugin {
     `;
 
     const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'orca-button';
     cancelBtn.textContent = '取消';
-    cancelBtn.style.cssText = `
-      background: #6b7280;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      padding: 8px 16px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    `;
+    cancelBtn.style.cssText = ``;
     cancelBtn.addEventListener('mouseenter', () => {
       cancelBtn.style.backgroundColor = '#4b5563';
     });
@@ -9056,22 +9034,14 @@ class OrcaTabsPlugin {
     };
 
     const saveBtn = document.createElement('button');
+    saveBtn.className = 'orca-button orca-button-primary';
     saveBtn.textContent = '保存';
-    saveBtn.style.cssText = `
-      background: #3b82f6;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      padding: 8px 16px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    `;
+    saveBtn.style.cssText = ``;
     saveBtn.addEventListener('mouseenter', () => {
       saveBtn.style.backgroundColor = '#2563eb';
     });
     saveBtn.addEventListener('mouseleave', () => {
-      saveBtn.style.backgroundColor = '#3b82f6';
+      saveBtn.style.backgroundColor = 'var(--orca-color-primary-5)';
     });
 
     // 更新按钮文本的函数
@@ -9209,9 +9179,9 @@ class OrcaTabsPlugin {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(255, 255, 255, 0.95);
-      border: 1px solid #ddd;
-      border-radius: 8px;
+      background-color: var(--orca-color-bg-1);
+      border: 1px solid var(--orca-color-border);
+      border-radius: var(--orca-radius-md);
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
       z-index: ${this.getNextDialogZIndex()};
       width: 400px;
@@ -9230,7 +9200,7 @@ class OrcaTabsPlugin {
       padding: 20px 20px 0 20px;
       font-weight: 600;
       font-size: 16px;
-      color: #333;
+      color: var(--orca-color-text-1);
       margin-bottom: 16px;
     `;
     header.textContent = '添加到已有标签组';
@@ -9246,7 +9216,7 @@ class OrcaTabsPlugin {
       display: block;
       margin-bottom: 8px;
       font-size: 14px;
-      color: #333;
+      color: var(--orca-color-text-1);
     `;
     label.textContent = `将标签页 "${tab.title}" 添加到:`;
     content.appendChild(label);
@@ -9254,18 +9224,18 @@ class OrcaTabsPlugin {
     const dropdown = document.createElement('select');
     dropdown.style.cssText = `
       width: 100%;
-      padding: 8px 12px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
+      padding: .175rem var(--orca-spacing-md);
+      border: 1px solid var(--orca-color-border);
+      border-radius: var(--orca-radius-md);
       font-size: 14px;
       box-sizing: border-box;
       outline: none;
       transition: border-color 0.2s;
       pointer-events: auto;
-      background: white;
+      background: var(--orca-color-bg-1);
     `;
     dropdown.addEventListener('focus', () => {
-      dropdown.style.borderColor = '#3b82f6';
+      dropdown.style.borderColor = 'var(--orca-color-primary-5)';
     });
     dropdown.addEventListener('blur', () => {
       dropdown.style.borderColor = '#ddd';
@@ -9296,17 +9266,9 @@ class OrcaTabsPlugin {
     `;
 
     const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'orca-button';
     cancelBtn.textContent = '取消';
-    cancelBtn.style.cssText = `
-      background: #6b7280;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      padding: 8px 16px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    `;
+    cancelBtn.style.cssText = ``;
     cancelBtn.addEventListener('mouseenter', () => {
       cancelBtn.style.backgroundColor = '#4b5563';
     });
@@ -9320,22 +9282,14 @@ class OrcaTabsPlugin {
     };
 
     const addBtn = document.createElement('button');
+    addBtn.className = 'orca-button orca-button-primary';
     addBtn.textContent = '添加';
-    addBtn.style.cssText = `
-      background: #3b82f6;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      padding: 8px 16px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    `;
+    addBtn.style.cssText = ``;
     addBtn.addEventListener('mouseenter', () => {
       addBtn.style.backgroundColor = '#2563eb';
     });
     addBtn.addEventListener('mouseleave', () => {
-      addBtn.style.backgroundColor = '#3b82f6';
+      addBtn.style.backgroundColor = 'var(--orca-color-primary-5)';
     });
     addBtn.onclick = async () => {
       const selectedIndex = parseInt(dropdown.value);
@@ -9521,11 +9475,11 @@ class OrcaTabsPlugin {
       tabItem.style.cssText = `
         display: flex;
         align-items: center;
-        padding: 8px 12px;
+        padding: .175rem var(--orca-spacing-md);
         border: 1px solid #e0e0e0;
-        border-radius: 4px;
+        border-radius: var(--orca-radius-md);
         margin-bottom: 4px;
-        background: rgba(255, 255, 255, 0.8);
+        background: var(--orca-color-bg-1);
         cursor: move;
         transition: all 0.2s;
         user-select: none;
@@ -9585,7 +9539,7 @@ class OrcaTabsPlugin {
       
       // 构建标签信息HTML
       let tabInfoHTML = `
-        <div style="font-size: 14px; color: #333; font-weight: 500; line-height: 1.2; margin-bottom: 2px;">${tab.title}</div>
+        <div style="font-size: 14px; color: var(--orca-color-text-1); font-weight: 500; line-height: 1.2; margin-bottom: 2px;">${tab.title}</div>
         <div style="font-size: 12px; color: #666; line-height: 1.2;">ID: ${tab.blockId}</div>
       `;
       
@@ -9639,13 +9593,13 @@ class OrcaTabsPlugin {
       tabItem.addEventListener('dragover', (e) => {
         e.preventDefault();
         e.dataTransfer!.dropEffect = 'move';
-        tabItem.style.borderColor = '#3b82f6';
+        tabItem.style.borderColor = 'var(--orca-color-primary-5)';
         tabItem.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
       });
 
       tabItem.addEventListener('dragleave', (e) => {
         tabItem.style.borderColor = '#e0e0e0';
-        tabItem.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+        tabItem.style.backgroundColor = 'var(--orca-color-bg-1)';
       });
 
       tabItem.addEventListener('drop', (e) => {
@@ -9677,17 +9631,17 @@ class OrcaTabsPlugin {
         }
         
         tabItem.style.borderColor = '#e0e0e0';
-        tabItem.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+        tabItem.style.backgroundColor = 'var(--orca-color-bg-1)';
       });
 
       // 悬停效果
       tabItem.addEventListener('mouseenter', () => {
         tabItem.style.backgroundColor = 'rgba(59, 130, 246, 0.05)';
-        tabItem.style.borderColor = '#3b82f6';
+        tabItem.style.borderColor = 'var(--orca-color-primary-5)';
       });
 
       tabItem.addEventListener('mouseleave', () => {
-        tabItem.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+        tabItem.style.backgroundColor = 'var(--orca-color-bg-1)';
         tabItem.style.borderColor = '#e0e0e0';
       });
 
@@ -9704,7 +9658,7 @@ class OrcaTabsPlugin {
       right: 0;
       height: 40px;
       background: linear-gradient(135deg, #ef4444, #dc2626);
-      border-radius: 8px;
+      border-radius: var(--orca-radius-md);
       display: none;
       align-items: center;
       justify-content: center;
@@ -9882,8 +9836,8 @@ class OrcaTabsPlugin {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: ${isDarkMode ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)'};
-      border: 1px solid ${isDarkMode ? '#444' : '#ddd'};
+      background-color: var(--orca-color-bg-1);
+      border: 1px solid var(--sakura-dark-surface0);
       border-radius: 12px;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
       z-index: ${this.getNextDialogZIndex()};
@@ -9924,14 +9878,14 @@ class OrcaTabsPlugin {
     nameInput.placeholder = '请输入工作区名称...';
     nameInput.style.cssText = `
       width: 100%;
-      padding: 8px 12px;
-      border: 1px solid ${isDarkMode ? '#444' : '#ddd'};
-      border-radius: 6px;
+      padding: .175rem var(--orca-spacing-md);
+      border: 1px solid var(--sakura-dark-surface0);
+      border-radius: var(--orca-radius-md);
       font-size: 14px;
       outline: none;
       box-sizing: border-box;
       margin-bottom: 12px;
-      background: ${isDarkMode ? '#1a1a1a' : '#ffffff'};
+      background: var(--orca-color-bg-1);
       color: ${isDarkMode ? '#ffffff' : '#333'};
     `;
 
@@ -9950,15 +9904,15 @@ class OrcaTabsPlugin {
     descInput.style.cssText = `
       width: 100%;
       height: 60px;
-      padding: 8px 12px;
-      border: 1px solid ${isDarkMode ? '#444' : '#ddd'};
-      border-radius: 6px;
+      padding: .175rem var(--orca-spacing-md);
+      border: 1px solid var(--sakura-dark-surface0);
+      border-radius: var(--orca-radius-md);
       font-size: 14px;
       outline: none;
       box-sizing: border-box;
       resize: vertical;
       margin-bottom: 16px;
-      background: ${isDarkMode ? '#1a1a1a' : '#ffffff'};
+      background: var(--orca-color-bg-1);
       color: ${isDarkMode ? '#ffffff' : '#333'};
     `;
 
@@ -9973,10 +9927,10 @@ class OrcaTabsPlugin {
     // 取消按钮
     const cancelBtn = document.createElement('button');
     cancelBtn.style.cssText = `
-      padding: 8px 16px;
-      border: 1px solid ${isDarkMode ? '#444' : '#ddd'};
-      border-radius: 6px;
-      background: ${isDarkMode ? '#1a1a1a' : '#fff'};
+      padding: .175rem var(--orca-spacing-md);
+      border: 1px solid var(--sakura-dark-surface0);
+      border-radius: var(--orca-radius-md);
+      background: var(--orca-color-bg-1);
       color: ${isDarkMode ? '#999' : '#666'};
       cursor: pointer;
       font-size: 14px;
@@ -9991,10 +9945,10 @@ class OrcaTabsPlugin {
     // 保存按钮
     const saveBtn = document.createElement('button');
     saveBtn.style.cssText = `
-      padding: 8px 16px;
+      padding: .175rem var(--orca-spacing-md);
       border: none;
-      border-radius: 6px;
-      background: #3b82f6;
+      border-radius: var(--orca-radius-md);
+      background: var(--orca-color-primary-5);
       color: white;
       cursor: pointer;
       font-size: 14px;
@@ -10106,10 +10060,10 @@ class OrcaTabsPlugin {
       position: fixed;
       top: ${event ? event.clientY + 10 : 60}px;
       left: ${event ? event.clientX : 20}px;
-      background: ${isDarkMode ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)'};
-      border: 1px solid ${isDarkMode ? '#444' : '#ddd'};
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      background: var(--orca-color-bg-1);
+      border: 1px solid var(--sakura-dark-surface0);
+      border-radius: var(--orca-radius-md);
+      box-shadow: var(--orca-shadow-menu);
       z-index: ${this.getNextDialogZIndex()};
       min-width: 200px;
       backdrop-filter: blur(8px);
@@ -10119,8 +10073,8 @@ class OrcaTabsPlugin {
     // 菜单标题
     const title = document.createElement('div');
     title.style.cssText = `
-      padding: 12px 16px;
-      border-bottom: 1px solid ${isDarkMode ? '#444' : '#eee'};
+      padding: var(--orca-spacing-sm);
+      border-bottom: 1px solid var(--orca-color-border);
       font-size: 14px;
       font-weight: 600;
       color: ${isDarkMode ? '#ffffff' : '#333'};
@@ -10130,17 +10084,17 @@ class OrcaTabsPlugin {
     // 保存当前工作区选项
     const saveCurrentItem = document.createElement('div');
     saveCurrentItem.style.cssText = `
-      padding: 12px 16px;
+      padding: var(--orca-spacing-sm);
       cursor: pointer;
       font-size: 14px;
       display: flex;
       align-items: center;
       gap: 8px;
-      border-bottom: 1px solid ${isDarkMode ? '#444' : '#eee'};
+      border-bottom: 1px solid var(--orca-color-border);
       color: ${isDarkMode ? '#ffffff' : '#333'};
     `;
     saveCurrentItem.innerHTML = `
-      <i class="ti ti-plus" style="font-size: 14px; color: #3b82f6;"></i>
+      <i class="ti ti-plus" style="font-size: 14px; color: var(--orca-color-primary-5);"></i>
       <span>保存当前工作区</span>
     `;
     saveCurrentItem.onclick = () => {
@@ -10158,7 +10112,7 @@ class OrcaTabsPlugin {
     if (this.workspaces.length === 0) {
       const emptyItem = document.createElement('div');
       emptyItem.style.cssText = `
-        padding: 12px 16px;
+        padding: var(--orca-spacing-sm);
         color: ${isDarkMode ? '#999' : '#666'};
         font-size: 14px;
         text-align: center;
@@ -10169,26 +10123,26 @@ class OrcaTabsPlugin {
       this.workspaces.forEach(workspace => {
         const workspaceItem = document.createElement('div');
         workspaceItem.style.cssText = `
-          padding: 12px 16px;
+          padding: var(--orca-spacing-sm);
           cursor: pointer;
           font-size: 14px;
           display: flex;
           align-items: center;
           gap: 8px;
-          border-bottom: 1px solid ${isDarkMode ? '#444' : '#eee'};
+          border-bottom: 1px solid var(--orca-color-border);
           color: ${isDarkMode ? '#ffffff' : '#333'};
           ${this.currentWorkspace === workspace.id ? 'background: rgba(59, 130, 246, 0.1);' : ''}
         `;
         
         const icon = workspace.icon || 'ti ti-folder';
         workspaceItem.innerHTML = `
-          <i class="${icon}" style="font-size: 14px; color: #3b82f6;"></i>
+          <i class="${icon}" style="font-size: 14px; color: var(--orca-color-primary-5);"></i>
           <div style="flex: 1;">
             <div style="font-weight: 500; color: ${isDarkMode ? '#ffffff' : '#333'};"">${workspace.name}</div>
             ${workspace.description ? `<div style="font-size: 12px; color: ${isDarkMode ? '#999' : '#666'}; margin-top: 2px;">${workspace.description}</div>` : ''}
             <div style="font-size: 11px; color: ${isDarkMode ? '#777' : '#999'}; margin-top: 2px;">${workspace.tabs.length}个标签</div>
           </div>
-          ${this.currentWorkspace === workspace.id ? '<i class="ti ti-check" style="font-size: 14px; color: #3b82f6;"></i>' : ''}
+          ${this.currentWorkspace === workspace.id ? '<i class="ti ti-check" style="font-size: 14px; color: var(--orca-color-primary-5);"></i>' : ''}
         `;
         
         workspaceItem.onclick = () => {
@@ -10203,13 +10157,12 @@ class OrcaTabsPlugin {
     // 管理选项
     const manageItem = document.createElement('div');
     manageItem.style.cssText = `
-      padding: 12px 16px;
+      padding: var(--orca-spacing-sm);
       cursor: pointer;
       font-size: 14px;
       display: flex;
       align-items: center;
       gap: 8px;
-      border-top: 1px solid ${isDarkMode ? '#444' : '#eee'};
       color: ${isDarkMode ? '#ffffff' : '#333'};
     `;
     manageItem.innerHTML = `
@@ -10431,8 +10384,8 @@ class OrcaTabsPlugin {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: ${isDarkMode ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)'};
-      border: 1px solid ${isDarkMode ? '#444' : '#ddd'};
+      background-color: var(--orca-color-bg-1);
+      border: 1px solid var(--orca-color-border);
       border-radius: 12px;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
       z-index: ${this.getNextDialogZIndex()};
@@ -10484,27 +10437,27 @@ class OrcaTabsPlugin {
           display: flex;
           align-items: center;
           padding: 12px;
-          border: 1px solid ${isDarkMode ? '#444' : '#eee'};
-          border-radius: 8px;
+          border: 1px solid var(--orca-color-border);
+          border-radius: var(--orca-radius-md);
           margin-bottom: 8px;
-          background: ${this.currentWorkspace === workspace.id ? 'rgba(59, 130, 246, 0.05)' : (isDarkMode ? '#1a1a1a' : '#fff')};
+          background: ${this.currentWorkspace === workspace.id ? 'rgba(59, 130, 246, 0.05)' : 'var(--orca-color-bg-1)'};
         `;
 
         const icon = workspace.icon || 'ti ti-folder';
         workspaceItem.innerHTML = `
-          <i class="${icon}" style="font-size: 20px; color: #3b82f6; margin-right: 12px;"></i>
+          <i class="${icon}" style="font-size: 20px; color: var(--orca-color-primary-5); margin-right: 12px;"></i>
           <div style="flex: 1;">
             <div style="font-weight: 500; font-size: 14px; margin-bottom: 4px; color: ${isDarkMode ? '#ffffff' : '#333'};"">${workspace.name}</div>
             ${workspace.description ? `<div style="font-size: 12px; color: ${isDarkMode ? '#999' : '#666'}; margin-bottom: 4px;">${workspace.description}</div>` : ''}
             <div style="font-size: 11px; color: ${isDarkMode ? '#777' : '#999'};"">${workspace.tabs.length}个标签 • 创建于 ${new Date(workspace.createdAt).toLocaleString()}</div>
           </div>
           <div style="display: flex; gap: 8px;">
-            ${this.currentWorkspace === workspace.id ? '<span style="color: #3b82f6; font-size: 12px;">当前</span>' : ''}
+            ${this.currentWorkspace === workspace.id ? '<span style="color: var(--orca-color-primary-5); font-size: 12px;">当前</span>' : ''}
             <button class="delete-workspace-btn" data-workspace-id="${workspace.id}" style="
               padding: 4px 8px;
-              border: 1px solid #ef4444;
-              border-radius: 4px;
-              background: ${isDarkMode ? '#1a1a1a' : '#fff'};
+              border: 1px solid var(--orca-color-border);
+              border-radius: var(--orca-radius-md);
+              background: var(--orca-color-bg-1);
               color: #ef4444;
               cursor: pointer;
               font-size: 12px;
@@ -10527,10 +10480,10 @@ class OrcaTabsPlugin {
     // 关闭按钮
     const closeBtn = document.createElement('button');
     closeBtn.style.cssText = `
-      padding: 8px 16px;
-      border: 1px solid ${isDarkMode ? '#444' : '#ddd'};
-      border-radius: 6px;
-      background: ${isDarkMode ? '#1a1a1a' : '#fff'};
+      padding: .175rem var(--orca-spacing-md);
+      border: 1px solid var(--sakura-dark-surface0);
+      border-radius: var(--orca-radius-md);
+      background: var(--orca-color-bg-1);
       color: ${isDarkMode ? '#999' : '#666'};
       cursor: pointer;
       font-size: 14px;
@@ -10618,9 +10571,9 @@ class OrcaTabsPlugin {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(255, 255, 255, 0.95);
-      border: 1px solid #ddd;
-      border-radius: 8px;
+      background-color: var(--orca-color-bg-1);
+      border: 1px solid var(--orca-color-border);
+      border-radius: var(--orca-radius-md);
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
       z-index: ${this.getNextDialogZIndex() + 200};
       width: 500px;
@@ -10634,7 +10587,7 @@ class OrcaTabsPlugin {
       padding: 20px 20px 0 20px;
       font-weight: 600;
       font-size: 16px;
-      color: #333;
+      color: var(--orca-color-text-1);
       margin-bottom: 16px;
     `;
     header.textContent = `标签集合详情: ${tabSet.name}`;
@@ -10652,8 +10605,8 @@ class OrcaTabsPlugin {
     info.style.cssText = `
       margin-bottom: 16px;
       padding: 12px;
-      background: rgba(249, 249, 249, 0.8);
-      border-radius: 6px;
+      background-color: var(--orca-color-bg-1);
+      border-radius: var(--orca-radius-md);
     `;
     info.innerHTML = `
       <div style="font-size: 14px; color: #666; margin-bottom: 8px;">
@@ -10689,7 +10642,7 @@ class OrcaTabsPlugin {
       tabsTitle.style.cssText = `
         font-weight: 600;
         font-size: 14px;
-        color: #333;
+        color: var(--orca-color-text-1);
         margin-bottom: 8px;
         display: flex;
         align-items: center;
@@ -10718,7 +10671,7 @@ class OrcaTabsPlugin {
         min-height: 100px;
         position: relative;
         border: 2px dashed transparent;
-        border-radius: 8px;
+        border-radius: var(--orca-radius-md);
         transition: border-color 0.3s ease;
       `;
 
@@ -10733,11 +10686,11 @@ class OrcaTabsPlugin {
         tabItem.style.cssText = `
           display: flex;
           align-items: center;
-          padding: 8px 12px;
+          padding: .175rem var(--orca-spacing-md);
           border: 1px solid #e0e0e0;
-          border-radius: 4px;
+          border-radius: var(--orca-radius-md);
           margin-bottom: 4px;
-          background: rgba(255, 255, 255, 0.8);
+          background: var(--orca-color-bg-1);
           cursor: move;
           transition: all 0.2s;
           user-select: none;
@@ -10797,7 +10750,7 @@ class OrcaTabsPlugin {
         
         // 构建标签信息HTML
         let tabInfoHTML = `
-          <div style="font-size: 14px; color: #333; font-weight: 500; line-height: 1.2; margin-bottom: 2px;">${tab.title}</div>
+          <div style="font-size: 14px; color: var(--orca-color-text-1); font-weight: 500; line-height: 1.2; margin-bottom: 2px;">${tab.title}</div>
           <div style="font-size: 12px; color: #666; line-height: 1.2;">ID: ${tab.blockId}</div>
         `;
         
@@ -10851,13 +10804,13 @@ class OrcaTabsPlugin {
         tabItem.addEventListener('dragover', (e) => {
           e.preventDefault();
           e.dataTransfer!.dropEffect = 'move';
-          tabItem.style.borderColor = '#3b82f6';
+          tabItem.style.borderColor = 'var(--orca-color-primary-5)';
           tabItem.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
         });
 
         tabItem.addEventListener('dragleave', (e) => {
           tabItem.style.borderColor = '#e0e0e0';
-          tabItem.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+          tabItem.style.backgroundColor = 'var(--orca-color-bg-1)';
         });
 
         tabItem.addEventListener('drop', (e) => {
@@ -10886,17 +10839,17 @@ class OrcaTabsPlugin {
           }
           
           tabItem.style.borderColor = '#e0e0e0';
-          tabItem.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+          tabItem.style.backgroundColor = 'var(--orca-color-bg-1)';
         });
 
         // 悬停效果
         tabItem.addEventListener('mouseenter', () => {
           tabItem.style.backgroundColor = 'rgba(59, 130, 246, 0.05)';
-          tabItem.style.borderColor = '#3b82f6';
+          tabItem.style.borderColor = 'var(--orca-color-primary-5)';
         });
 
         tabItem.addEventListener('mouseleave', () => {
-          tabItem.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+          tabItem.style.backgroundColor = 'var(--orca-color-bg-1)';
           tabItem.style.borderColor = '#e0e0e0';
         });
 
@@ -10913,7 +10866,7 @@ class OrcaTabsPlugin {
         right: 0;
         height: 40px;
         background: linear-gradient(135deg, #ef4444, #dc2626);
-        border-radius: 8px;
+        border-radius: var(--orca-radius-md);
         display: none;
         align-items: center;
         justify-content: center;
@@ -11007,17 +10960,9 @@ class OrcaTabsPlugin {
     `;
 
     const closeBtn = document.createElement('button');
+    closeBtn.className = 'orca-button';
     closeBtn.textContent = '关闭';
-    closeBtn.style.cssText = `
-      background: #6b7280;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      padding: 8px 16px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    `;
+    closeBtn.style.cssText = ``;
     closeBtn.addEventListener('mouseenter', () => {
       closeBtn.style.backgroundColor = '#4b5563';
     });
@@ -11071,9 +11016,9 @@ class OrcaTabsPlugin {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(255, 255, 255, 0.95);
-      border: 1px solid #ddd;
-      border-radius: 8px;
+      background-color: var(--orca-color-bg-1);
+      border: 1px solid var(--orca-color-border);
+      border-radius: var(--orca-radius-md);
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
       z-index: 2000;
       width: 400px;
@@ -11086,7 +11031,7 @@ class OrcaTabsPlugin {
       padding: 20px 20px 0 20px;
       font-weight: 600;
       font-size: 16px;
-      color: #333;
+      color: var(--orca-color-text-1);
       margin-bottom: 16px;
     `;
     header.textContent = '重命名标签集合';
@@ -11102,7 +11047,7 @@ class OrcaTabsPlugin {
       display: block;
       margin-bottom: 8px;
       font-size: 14px;
-      color: #333;
+      color: var(--orca-color-text-1);
     `;
     label.textContent = '请输入新的名称:';
     content.appendChild(label);
@@ -11112,9 +11057,9 @@ class OrcaTabsPlugin {
     input.value = tabSet.name;
     input.style.cssText = `
       width: 100%;
-      padding: 8px 12px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
+      padding: .175rem var(--orca-spacing-md);
+      border: 1px solid var(--orca-color-border);
+      border-radius: var(--orca-radius-md);
       font-size: 14px;
       box-sizing: border-box;
       outline: none;
@@ -11123,7 +11068,7 @@ class OrcaTabsPlugin {
       user-select: text;
     `;
     input.addEventListener('focus', () => {
-      input.style.borderColor = '#3b82f6';
+      input.style.borderColor = 'var(--orca-color-primary-5)';
     });
     input.addEventListener('blur', () => {
       input.style.borderColor = '#ddd';
@@ -11141,17 +11086,9 @@ class OrcaTabsPlugin {
     `;
 
     const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'orca-button';
     cancelBtn.textContent = '取消';
-    cancelBtn.style.cssText = `
-      background: #6b7280;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      padding: 8px 16px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    `;
+    cancelBtn.style.cssText = ``;
     cancelBtn.addEventListener('mouseenter', () => {
       cancelBtn.style.backgroundColor = '#4b5563';
     });
@@ -11165,22 +11102,14 @@ class OrcaTabsPlugin {
     };
 
     const saveBtn = document.createElement('button');
+    saveBtn.className = 'orca-button orca-button-primary';
     saveBtn.textContent = '保存';
-    saveBtn.style.cssText = `
-      background: #3b82f6;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      padding: 8px 16px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    `;
+    saveBtn.style.cssText = ``;
     saveBtn.addEventListener('mouseenter', () => {
       saveBtn.style.backgroundColor = '#2563eb';
     });
     saveBtn.addEventListener('mouseleave', () => {
-      saveBtn.style.backgroundColor = '#3b82f6';
+      saveBtn.style.backgroundColor = 'var(--orca-color-primary-5)';
     });
     saveBtn.onclick = async () => {
       const newName = input.value.trim();
@@ -11263,12 +11192,12 @@ class OrcaTabsPlugin {
     input.style.cssText = `
       width: 100%;
       padding: 2px 4px;
-      border: 1px solid #3b82f6;
+      border: 1px solid var(--orca-color-primary-5);
       border-radius: 3px;
       font-size: 14px;
       font-weight: 600;
-      color: #333;
-      background: white;
+      color: var(--orca-color-text-1);
+      background: var(--orca-color-bg-1);
       outline: none;
     `;
 
@@ -11365,9 +11294,9 @@ class OrcaTabsPlugin {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(255, 255, 255, 0.95);
-      border: 1px solid #ddd;
-      border-radius: 8px;
+      background-color: var(--orca-color-bg-1);
+      border: 1px solid var(--orca-color-border);
+      border-radius: var(--orca-radius-md);
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
       z-index: ${this.getNextDialogZIndex()};
       width: 400px;
@@ -11381,7 +11310,7 @@ class OrcaTabsPlugin {
       padding: 20px 20px 0 20px;
       font-weight: 600;
       font-size: 16px;
-      color: #333;
+      color: var(--orca-color-text-1);
       margin-bottom: 16px;
     `;
     header.textContent = '选择图标';
@@ -11428,7 +11357,7 @@ class OrcaTabsPlugin {
         align-items: center;
         padding: 12px 8px;
         border: 1px solid #e0e0e0;
-        border-radius: 6px;
+        border-radius: var(--orca-radius-md);
         cursor: pointer;
         transition: all 0.2s;
         background: ${tabSet.icon === iconData.value ? '#e3f2fd' : 'white'};
@@ -11475,7 +11404,7 @@ class OrcaTabsPlugin {
 
       iconItem.addEventListener('mouseenter', () => {
         iconItem.style.backgroundColor = '#f5f5f5';
-        iconItem.style.borderColor = '#3b82f6';
+        iconItem.style.borderColor = 'var(--orca-color-primary-5)';
       });
 
       iconItem.addEventListener('mouseleave', () => {
@@ -11497,17 +11426,9 @@ class OrcaTabsPlugin {
     `;
 
     const closeBtn = document.createElement('button');
+    closeBtn.className = 'orca-button';
     closeBtn.textContent = '关闭';
-    closeBtn.style.cssText = `
-      background: #6b7280;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      padding: 8px 16px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    `;
+    closeBtn.style.cssText = ``;
     closeBtn.addEventListener('mouseenter', () => {
       closeBtn.style.backgroundColor = '#4b5563';
     });
@@ -11571,9 +11492,9 @@ class OrcaTabsPlugin {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(255, 255, 255, 0.95);
-      border: 1px solid #ddd;
-      border-radius: 8px;
+      background-color: var(--orca-color-bg-1);
+      border: 1px solid var(--orca-color-border);
+      border-radius: var(--orca-radius-md);
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
       z-index: ${this.getNextDialogZIndex()};
       width: 500px;
@@ -11587,7 +11508,7 @@ class OrcaTabsPlugin {
       padding: 20px 20px 0 20px;
       font-weight: 600;
       font-size: 16px;
-      color: #333;
+      color: var(--orca-color-text-1);
       margin-bottom: 16px;
     `;
     header.textContent = '管理保存的标签页集合';
@@ -11607,18 +11528,18 @@ class OrcaTabsPlugin {
         justify-content: space-between;
         align-items: center;
         padding: 12px;
-        border: 1px solid #e0e0e0;
-        border-radius: 6px;
+        border: 1px solid var(--orca-color-border);
+        border-radius: var(--orca-radius-md);
         margin-bottom: 8px;
-        background: rgba(249, 249, 249, 0.8);
+        background-color: var(--orca-color-bg-1);
         transition: background-color 0.2s;
       `;
 
       item.addEventListener('mouseenter', () => {
-        item.style.backgroundColor = 'rgba(240, 240, 240, 0.8)';
+        item.style.backgroundColor = 'var(--orca-color-menu-highlight)';
       });
       item.addEventListener('mouseleave', () => {
-        item.style.backgroundColor = 'rgba(249, 249, 249, 0.8)';
+        item.style.backgroundColor = 'var(--orca-color-bg-1)';
       });
 
       const info = document.createElement('div');
@@ -11640,7 +11561,7 @@ class OrcaTabsPlugin {
         font-size: 16px;
         color: #666;
         cursor: pointer;
-        border-radius: 4px;
+        border-radius: var(--orca-radius-md);
         transition: background-color 0.2s;
       `;
       iconContainer.title = '点击编辑图标';
@@ -11688,7 +11609,7 @@ class OrcaTabsPlugin {
       nameDisplay.style.cssText = `
         font-weight: 600;
         font-size: 14px;
-        color: #333;
+        color: var(--orca-color-text-1);
         cursor: pointer;
         padding: 2px 4px;
         border-radius: 3px;
@@ -11733,68 +11654,26 @@ class OrcaTabsPlugin {
       `;
 
       const loadBtn = document.createElement('button');
+      loadBtn.className = 'orca-button orca-button-primary';
       loadBtn.textContent = '加载';
-      loadBtn.style.cssText = `
-        background: #3b82f6;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        padding: 6px 12px;
-        font-size: 12px;
-        cursor: pointer;
-        transition: background-color 0.2s;
-      `;
-      loadBtn.addEventListener('mouseenter', () => {
-        loadBtn.style.backgroundColor = '#2563eb';
-      });
-      loadBtn.addEventListener('mouseleave', () => {
-        loadBtn.style.backgroundColor = '#3b82f6';
-      });
+      loadBtn.style.cssText = ``;
       loadBtn.onclick = () => {
         this.loadSavedTabSet(tabSet, index);
         dialog.remove();
       };
 
       const viewBtn = document.createElement('button');
+      viewBtn.className = 'orca-button';
       viewBtn.textContent = '查看';
-      viewBtn.style.cssText = `
-        background: #10b981;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        padding: 6px 12px;
-        font-size: 12px;
-        cursor: pointer;
-        transition: background-color 0.2s;
-      `;
-      viewBtn.addEventListener('mouseenter', () => {
-        viewBtn.style.backgroundColor = '#059669';
-      });
-      viewBtn.addEventListener('mouseleave', () => {
-        viewBtn.style.backgroundColor = '#10b981';
-      });
+      viewBtn.style.cssText = ``;
       viewBtn.onclick = () => {
         this.showTabSetDetails(tabSet, dialog);
       };
 
       const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'orca-button';
       deleteBtn.textContent = '删除';
-      deleteBtn.style.cssText = `
-        background: #ef4444;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        padding: 6px 12px;
-        font-size: 12px;
-        cursor: pointer;
-        transition: background-color 0.2s;
-      `;
-      deleteBtn.addEventListener('mouseenter', () => {
-        deleteBtn.style.backgroundColor = '#dc2626';
-      });
-      deleteBtn.addEventListener('mouseleave', () => {
-        deleteBtn.style.backgroundColor = '#ef4444';
-      });
+      deleteBtn.style.cssText = ``;
       deleteBtn.onclick = () => {
         if (confirm(`确定要删除标签页集合 "${tabSet.name}" 吗？`)) {
           this.savedTabSets.splice(index, 1);
@@ -11823,17 +11702,9 @@ class OrcaTabsPlugin {
     `;
 
     const closeBtn = document.createElement('button');
+    closeBtn.className = 'orca-button';
     closeBtn.textContent = '关闭';
-    closeBtn.style.cssText = `
-      background: #6b7280;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      padding: 8px 16px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    `;
+    closeBtn.style.cssText = ``;
     closeBtn.addEventListener('mouseenter', () => {
       closeBtn.style.backgroundColor = '#4b5563';
     });

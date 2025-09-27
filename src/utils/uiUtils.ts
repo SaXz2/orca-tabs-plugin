@@ -6,37 +6,29 @@ import { TabInfo } from '../types';
 import { createStyledElement, addHoverEffect } from './domUtils';
 
 /**
- * 创建标签元素的基础样式
+ * 创建标签元素的基础样式 - 优化为纯CSS变量方式
  */
 export function createTabBaseStyle(
   tab: TabInfo,
   isVerticalMode: boolean,
-  isDarkMode: boolean,
-  applyOklchFormula: (hex: string, type: 'text' | 'background', isDarkMode?: boolean) => string
+  applyOklchFormula: (hex: string, type: 'text' | 'background') => string
 ): string {
-  // 根据主题模式设置默认颜色
-  let backgroundColor: string;
-  let textColor: string;
+  // 使用CSS变量设置默认颜色，让浏览器自动响应主题变化
+  let backgroundColor: string = 'var(--orca-tab-bg)';
+  let textColor: string = 'var(--orca-color-text-1)';
   let fontWeight = 'normal';
+  let customColorProps = '';
   
-  if (isDarkMode) {
-    // 暗色模式
-    backgroundColor = 'color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 40%))';
-    textColor = '#ffffff';
-  } else {
-    // 亮色模式
-    backgroundColor = 'color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 10%))';
-    textColor = '#333333';
-  }
-  
-  // 如果有颜色，应用颜色样式
+  // 如果有颜色，设置自定义属性让CSS处理
   if (tab.color) {
     try {
       // 确保颜色值以#开头
       const colorHex = tab.color.startsWith('#') ? tab.color : `#${tab.color}`;
       
-      backgroundColor = applyOklchFormula(colorHex, 'background', isDarkMode);
-      textColor = applyOklchFormula(colorHex, 'text', isDarkMode);
+      // 使用CSS自定义属性存储颜色，让CSS变量处理主题响应
+      customColorProps = `--tab-color: ${colorHex};`;
+      backgroundColor = 'var(--orca-tab-colored-bg)';
+      textColor = 'var(--orca-tab-colored-text)';
       fontWeight = '600';
     } catch (error) {
       // 如果颜色处理失败，使用默认颜色
@@ -44,11 +36,12 @@ export function createTabBaseStyle(
   }
 
   return isVerticalMode ? `
+    ${customColorProps}
     background: ${backgroundColor};
     color: ${textColor};
     font-weight: ${fontWeight};
     padding: 2px 8px;
-    border-radius: 4px;
+    border-radius: var(--orca-radius-md);
     height: 24px;
     max-height: 24px;
     line-height: 20px;
@@ -63,11 +56,12 @@ export function createTabBaseStyle(
     app-region: no-drag;
     pointer-events: auto;
   ` : `
+    ${customColorProps}
     background: ${backgroundColor};
     color: ${textColor};
     font-weight: ${fontWeight};
     padding: 2px 8px;
-    border-radius: 4px;
+    border-radius: var(--orca-radius-md);
     height: 24px;
     max-height: 24px;
     line-height: 20px;
@@ -208,7 +202,7 @@ export function createNewTabButtonStyle(isVerticalMode: boolean): string {
     -webkit-app-region: no-drag;
     app-region: no-drag;
     pointer-events: auto;
-    border-radius: 4px;
+    border-radius: var(--orca-radius-md);
     transition: all 0.2s ease;
   ` : `
     width: 24px;
@@ -226,7 +220,7 @@ export function createNewTabButtonStyle(isVerticalMode: boolean): string {
     -webkit-app-region: no-drag;
     app-region: no-drag;
     pointer-events: auto;
-    border-radius: 4px;
+    border-radius: var(--orca-radius-md);
     transition: all 0.2s ease;
   `;
 }
@@ -276,11 +270,11 @@ export function createResizeHandleStyle(): string {
  */
 export function createStatusElementStyle(): string {
   return `
-    background: rgba(100, 150, 200, 0.6);
-    color: #333;
+    background: var(--orca-color-bg-1);
+    color: var(--orca-color-text-1);
     font-weight: normal;
     padding: 6px 12px;
-    border-radius: 6px;
+    border-radius: var(--orca-radius-md);
     font-size: 12px;
     white-space: nowrap;
     backdrop-filter: blur(2px);
@@ -288,7 +282,7 @@ export function createStatusElementStyle(): string {
     -webkit-app-region: no-drag;
     app-region: no-drag;
     pointer-events: auto;
-  `;
+`;
 }
 
 /**
@@ -299,9 +293,9 @@ export function createContextMenuStyle(x: number, y: number, width: number = 180
     position: fixed;
     left: ${x}px;
     top: ${y}px;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--orca-color-bg-1);
     border: 1px solid #ddd;
-    border-radius: 6px;
+    border-radius: var(--orca-radius-md);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     z-index: 1000;
     min-width: ${width}px;
@@ -315,13 +309,13 @@ export function createContextMenuStyle(x: number, y: number, width: number = 180
  */
 export function createMenuItemStyle(disabled: boolean = false): string {
   return `
-    padding: 8px 12px;
+    padding: .175rem var(--orca-spacing-md);
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: 8px;
     font-size: 13px;
-    color: ${disabled ? '#999' : '#333'};
+    color: ${disabled ? '#999' : 'var(--orca-color-text-1)'};
     border-bottom: 1px solid #eee;
     transition: background-color 0.2s ease;
   `;
@@ -347,7 +341,7 @@ export function createDialogStyle(): string {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--orca-color-bg-1);
     border: 1px solid #ddd;
     border-radius: 8px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
@@ -363,40 +357,12 @@ export function createDialogStyle(): string {
  * 创建按钮样式
  */
 export function createButtonStyle(type: 'primary' | 'secondary' | 'danger' = 'primary'): string {
-  const styles = {
-    primary: `
-      background: #3b82f6;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      padding: 8px 16px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    `,
-    secondary: `
-      background: #6b7280;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      padding: 8px 16px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    `,
-    danger: `
-      background: #ef4444;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      padding: 8px 16px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    `
+  const classMap = {
+    primary: 'orca-button orca-button-primary',
+    secondary: 'orca-button',
+    danger: 'orca-button'
   };
-  
-  return styles[type];
+  return classMap[type];
 }
 
 /**
@@ -405,8 +371,8 @@ export function createButtonStyle(type: 'primary' | 'secondary' | 'danger' = 'pr
 export function createInputStyle(): string {
   return `
     border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 8px 12px;
+    border-radius: var(--orca-radius-md);
+    padding: .175rem var(--orca-spacing-md);
     font-size: 14px;
     outline: none;
     width: 100%;
@@ -449,7 +415,7 @@ export function createTabContainerStyle(
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
     background: ${backgroundColor};
-    border-radius: 6px;
+    border-radius: var(--orca-radius-md);
     padding: 4px 2px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     user-select: none;
@@ -474,7 +440,7 @@ export function createTabContainerStyle(
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
     background: ${backgroundColor};
-    border-radius: 6px;
+    border-radius: var(--orca-radius-md);
     padding: 2px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     user-select: none;
