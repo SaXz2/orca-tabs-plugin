@@ -67,7 +67,7 @@ export function createTabBaseStyle(
     line-height: 20px;
     cursor: pointer;
     font-size: 12px;
-    max-width: 100px;
+    max-width: 110px;
     transition: all 0.2s ease;
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
