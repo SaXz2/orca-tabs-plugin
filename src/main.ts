@@ -7444,6 +7444,24 @@ class OrcaTabsPlugin {
   }
 
   /**
+   * 立即更新聚焦状态
+   */
+  private updateFocusState(blockId: string, title: string) {
+    // 清除所有标签的聚焦状态
+    const allTabs = this.tabContainer?.querySelectorAll('.orca-tabs-plugin .orca-tab');
+    allTabs?.forEach(tab => tab.removeAttribute('data-focused'));
+    
+    // 设置当前标签为聚焦状态
+    const currentTabElement = this.tabContainer?.querySelector(`[data-tab-id="${blockId}"]`);
+    if (currentTabElement) {
+      currentTabElement.setAttribute('data-focused', 'true');
+      this.log(`🎯 更新聚焦状态到已存在的标签: "${title}"`);
+    } else {
+      this.verboseLog(`⚠️ 未找到标签元素: ${blockId}`);
+    }
+  }
+
+  /**
    * 检查当前面板的当前激活页面（统一处理所有面板）
    */
   async checkCurrentPanelBlocks() {
@@ -7482,10 +7500,21 @@ class OrcaTabsPlugin {
     }
 
     // 检查是否已经存在这个标签页
-    const existingTab = this.getCurrentPanelTabs().find(tab => tab.blockId === blockId);
+    let currentTabs = this.getCurrentPanelTabs();
+    
+    // 如果当前面板没有标签数据，先扫描面板数据
+    if (currentTabs.length === 0) {
+      this.log(`📋 当前面板没有标签数据，先扫描面板数据`);
+      await this.scanCurrentPanelTabs();
+      currentTabs = this.getCurrentPanelTabs();
+    }
+    
+    this.log(`🔍 检查标签页 ${blockId}，当前面板有 ${currentTabs.length} 个标签页:`, currentTabs.map(tab => `${tab.title}(${tab.blockId})`));
+    
+    const existingTab = currentTabs.find(tab => tab.blockId === blockId);
     if (existingTab) {
       // 如果已经存在，更新聚焦状态
-      this.verboseLog(`📋 当前激活页面已存在: "${existingTab.title}"`);
+      this.log(`📋 找到已存在的标签页: "${existingTab.title}" (${blockId})`);
       
       // 如果标签在已关闭列表中，从列表中移除
       if (this.closedTabs.has(blockId)) {
@@ -7494,168 +7523,56 @@ class OrcaTabsPlugin {
         this.log(`🔄 标签 "${existingTab.title}" 重新激活，从已关闭列表中移除`);
       }
       
-      // 清除所有标签的聚焦状态
-      const allTabs = this.tabContainer?.querySelectorAll('.orca-tabs-plugin .orca-tab');
-      allTabs?.forEach(tab => tab.removeAttribute('data-focused'));
+      // 立即更新聚焦状态和UI，不等待防抖
+      this.updateFocusState(blockId, existingTab.title);
       
-      // 设置当前标签为聚焦状态
-      const currentTabElement = this.tabContainer?.querySelector(`[data-tab-id="${blockId}"]`);
-      if (currentTabElement) {
-        currentTabElement.setAttribute('data-focused', 'true');
-        this.log(`🎯 更新聚焦状态到已存在的标签: "${existingTab.title}"`);
-      }
-      
-      // 更新UI显示
-      this.debouncedUpdateTabsUI();
+      // 立即更新UI显示，确保标签页内容同步
+      await this.updateTabsUI();
       return;
     }
 
-    // 如果不存在，说明用户点击了被删除的页面，需要重新添加
-    this.log(`📋 检测到用户点击了被删除的页面，重新添加到标签栏: ${blockId}`);
+    // 如果不存在，更新当前聚焦的标签页内容，而不是创建新标签页
+    this.log(`📋 未找到标签页 ${blockId}，将更新当前聚焦的标签页内容`);
     
-    // 只添加当前激活的页面，而不是重新扫描所有页面
-    const newTabInfo = await this.getTabInfo(blockId, currentPanelId, this.getCurrentPanelTabs().length);
+    // 获取当前聚焦的标签页
+    const focusedTabElement = this.tabContainer?.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
+    if (!focusedTabElement) {
+      this.log(`⚠️ 没有找到当前聚焦的标签页，无法更新`);
+      return;
+    }
+    
+    const focusedTabId = focusedTabElement.getAttribute('data-tab-id');
+    if (!focusedTabId) {
+      this.log(`⚠️ 聚焦的标签页没有 data-tab-id，无法更新`);
+      return;
+    }
+    
+    // 找到聚焦标签页在数组中的位置
+    const focusedIndex = currentTabs.findIndex(tab => tab.blockId === focusedTabId);
+    if (focusedIndex === -1) {
+      this.log(`⚠️ 聚焦的标签页不在数组中，无法更新`);
+      return;
+    }
+    
+    // 获取新的标签页信息
+    const newTabInfo = await this.getTabInfo(blockId, currentPanelId, focusedIndex);
     if (!newTabInfo) {
       this.log(`❌ 无法获取标签信息: ${blockId}`);
       return;
     }
-
-    // 直接从UI中找到当前聚焦的标签
-    let insertIndex = this.getCurrentPanelTabs().length; // 默认插入到末尾
-    let shouldReplaceFocused = false; // 是否应该替换聚焦的标签
     
+    // 更新聚焦标签页的内容
+    const oldTab = currentTabs[focusedIndex];
+    currentTabs[focusedIndex] = newTabInfo;
     
-    const focusedTabElement = this.tabContainer?.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
+    this.log(`🔄 更新聚焦标签页: "${oldTab.title}" -> "${newTabInfo.title}" (${blockId})`);
     
-    if (focusedTabElement) {
-      const focusedTabId = focusedTabElement.getAttribute('data-tab-id');
-      
-      if (focusedTabId) {
-        const focusedIndex = this.getCurrentPanelTabs().findIndex(tab => tab.blockId === focusedTabId);
-        
-        if (focusedIndex !== -1) {
-          const focusedTab = this.getCurrentPanelTabs()[focusedIndex];
-          
-          // 检查聚焦的标签是否是固定标签
-          if (focusedTab.isPinned) {
-            // 如果是固定标签，在其后面插入新标签，而不是替换
-            insertIndex = focusedIndex + 1;
-            shouldReplaceFocused = false;
-            this.log(`📌 聚焦标签是固定的，将在其后面插入新标签`);
-          } else {
-            // 如果不是固定标签，可以替换
-            insertIndex = focusedIndex;
-            shouldReplaceFocused = true;
-            this.log(`🎯 聚焦标签不是固定的，将替换聚焦标签`);
-          }
-        } else {
-          this.log(`🎯 聚焦的标签不在数组中，插入到末尾`);
-        }
-      } else {
-        this.log(`🎯 聚焦的标签没有data-tab-id，插入到末尾`);
-      }
-    } else {
-      this.log(`🎯 没有找到聚焦的标签，将替换最后一个非固定标签`);
-    }
+    // 保存数据
+    this.setCurrentPanelTabs(currentTabs);
     
-    this.log(`🎯 最终计算的insertIndex: ${insertIndex}, 是否替换聚焦标签: ${shouldReplaceFocused}`);
-    
-    // 使用已经获取的标签信息
-    const tabInfo = newTabInfo;
-    this.verboseLog(`📋 检测到新的激活页面: "${tabInfo.title}"`);
-    
-    if (this.getCurrentPanelTabs().length >= this.maxTabs) {
-        // 达到上限，根据是否有聚焦标签决定处理方式
-        
-      if (shouldReplaceFocused && insertIndex < this.getCurrentPanelTabs().length) {
-          // 有聚焦标签，直接替换聚焦标签
-        const replacedTab = this.getCurrentPanelTabs()[insertIndex];
-        this.getCurrentPanelTabs()[insertIndex] = tabInfo;
-          this.log(`🔄 替换聚焦标签: "${replacedTab.title}" -> "${tabInfo.title}"`);
-        this.log(`🎯 替换后数组:`, this.getCurrentPanelTabs().map((tab, idx) => `${idx}:${tab.title}`));
-      } else if (insertIndex < this.getCurrentPanelTabs().length) {
-          // 有聚焦标签但不在替换模式，在聚焦标签后面插入，然后删除最后一个非固定标签
-        this.log(`🎯 插入前数组:`, this.getCurrentPanelTabs().map((tab, idx) => `${idx}:${tab.title}`));
-        this.getCurrentPanelTabs().splice(insertIndex + 1, 0, tabInfo);
-          this.log(`➕ 在位置 ${insertIndex + 1} 插入新标签: ${tabInfo.title}`);
-        this.verboseLog(`🎯 插入后数组:`, this.getCurrentPanelTabs().map((tab, idx) => `${idx}:${tab.title}`));
-          
-          // 删除最后一个非固定标签来保持数量限制
-          const lastNonPinnedIndex = this.findLastNonPinnedTabIndex();
-          if (lastNonPinnedIndex !== -1) {
-          const removedTab = this.getCurrentPanelTabs()[lastNonPinnedIndex];
-          this.getCurrentPanelTabs().splice(lastNonPinnedIndex, 1);
-            this.log(`🗑️ 删除末尾的非固定标签: "${removedTab.title}" 来保持数量限制`);
-          this.log(`🎯 最终数组:`, this.getCurrentPanelTabs().map((tab, idx) => `${idx}:${tab.title}`));
-          } else {
-            // 如果所有标签都是固定的，删除刚插入的新标签
-          const newTabIndex = this.getCurrentPanelTabs().findIndex(tab => tab.blockId === tabInfo.blockId);
-            if (newTabIndex !== -1) {
-            this.getCurrentPanelTabs().splice(newTabIndex, 1);
-              this.log(`⚠️ 所有标签都是固定的，无法添加新标签: "${tabInfo.title}"`);
-              return;
-            }
-          }
-        } else {
-          // 没有聚焦标签，直接替换最后一个非固定标签
-          const lastNonPinnedIndex = this.findLastNonPinnedTabIndex();
-          if (lastNonPinnedIndex !== -1) {
-          const replacedTab = this.getCurrentPanelTabs()[lastNonPinnedIndex];
-          this.getCurrentPanelTabs()[lastNonPinnedIndex] = tabInfo;
-            this.log(`🔄 没有聚焦标签，替换最后一个非固定标签: "${replacedTab.title}" -> "${tabInfo.title}"`);
-          } else {
-            // 如果所有标签都是固定的，无法添加
-            this.log(`⚠️ 所有标签都是固定的，无法添加新标签: "${tabInfo.title}"`);
-            return;
-          }
-        }
-      } else {
-        // 未达到上限，根据是否替换聚焦标签决定处理方式
-      if (shouldReplaceFocused && insertIndex < this.getCurrentPanelTabs().length) {
-          // 替换聚焦标签
-        const replacedTab = this.getCurrentPanelTabs()[insertIndex];
-        this.getCurrentPanelTabs()[insertIndex] = tabInfo;
-          this.log(`🔄 替换聚焦标签: "${replacedTab.title}" -> "${tabInfo.title}"`);
-        this.log(`🎯 替换后数组:`, this.getCurrentPanelTabs().map((tab, idx) => `${idx}:${tab.title}`));
-        } else {
-          // 在计算出的位置插入新标签
-        this.getCurrentPanelTabs().splice(insertIndex, 0, tabInfo);
-          this.verboseLog(`➕ 在位置 ${insertIndex} 插入新标签: ${tabInfo.title}`);
-        this.verboseLog(`🎯 插入后数组:`, this.getCurrentPanelTabs().map((tab, idx) => `${idx}:${tab.title}`));
-        }
-      }
-      
-      // 如果标签页重新显示，从已关闭列表中移除
-      if (this.closedTabs.has(blockId)) {
-        this.closedTabs.delete(blockId);
-        await this.saveClosedTabs();
-        this.log(`🔄 标签 "${tabInfo.title}" 重新显示，从已关闭列表中移除`);
-      }
-      
-      // 确保新添加的标签能正确聚焦
-      setTimeout(() => {
-        const newTabElement = this.tabContainer?.querySelector(`[data-tab-id="${blockId}"]`);
-        if (newTabElement) {
-          // 清除所有标签的聚焦状态
-          const allTabs = this.tabContainer?.querySelectorAll('.orca-tabs-plugin .orca-tab');
-          allTabs?.forEach(tab => tab.removeAttribute('data-focused'));
-          
-          // 设置新标签为聚焦状态
-          newTabElement.setAttribute('data-focused', 'true');
-          this.log(`🎯 新添加的标签 "${tabInfo.title}" 已设置为聚焦状态`);
-        }
-      }, 100);
-      
-      // 保存更新后的数组
-    await this.saveCurrentPanelTabs();
-      
-      // 如果启用了工作区功能且有当前工作区，实时更新工作区
-      if (this.enableWorkspaces && this.currentWorkspace) {
-        await this.saveCurrentTabsToWorkspace();
-        this.log(`🔄 标签页新增，实时更新工作区: ${tabInfo.title}`);
-      }
-      
-      this.debouncedUpdateTabsUI();
+    // 立即更新UI显示，确保标签页内容同步
+    await this.updateTabsUI();
+    return;
   }
 
 
@@ -7762,32 +7679,42 @@ class OrcaTabsPlugin {
       attributeFilter: ['class']
     });
     
-    // 添加多种事件监听，检测 orca-hideable 元素的聚焦
+    // 添加聚焦变化检测，使用防抖避免频繁触发
+    let focusChangeTimeout: number | null = null;
+    
     const handleFocusChange = async (e: Event) => {
       const target = e.target as Element;
       const hideableElement = target.closest('.orca-hideable');
       
       if (hideableElement) {
+        // 清除之前的延迟
+        if (focusChangeTimeout) {
+          clearTimeout(focusChangeTimeout);
+        }
+        
         // 延迟检查，确保类名变化已经完成
-        setTimeout(async () => {
+        focusChangeTimeout = window.setTimeout(async () => {
           // 检查这个元素是否现在是可见的（没有 orca-hideable-hidden 类）
           if (!hideableElement.classList.contains('orca-hideable-hidden')) {
             this.verboseLog('🎯 检测到 orca-hideable 元素聚焦变化');
             await this.checkCurrentPanelBlocks();
           }
-        }, 50);
+          focusChangeTimeout = null;
+        }, 100); // 增加延迟时间，确保类名变化完成
       }
     };
     
-    // 监听多种事件
+    // 监听 click 和 focusin 事件，确保聚焦切换能及时响应
     document.addEventListener('click', handleFocusChange);
     document.addEventListener('focusin', handleFocusChange);
-    document.addEventListener('mousedown', handleFocusChange);
     
     // 添加键盘事件监听（Tab键切换等）
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Tab' || e.key === 'Enter' || e.key === ' ') {
-        setTimeout(handleFocusChange, 100);
+        if (focusChangeTimeout) {
+          clearTimeout(focusChangeTimeout);
+        }
+        focusChangeTimeout = window.setTimeout(handleFocusChange, 150);
       }
     });
   }
