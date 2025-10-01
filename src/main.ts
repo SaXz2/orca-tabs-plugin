@@ -2501,24 +2501,29 @@ class OrcaTabsPlugin {
     this.log("✅ 拖拽样式已添加");
   }
 
-  // 防抖函数实例
-  private normalDebounce = debounce(async () => {
-    await this.updateTabsUI();
-  }, 100);
-
+  // 防抖函数实例（仅用于拖拽等非关键场景）
   private draggingDebounce = debounce(async () => {
     await this.updateTabsUI();
   }, 200);
 
   /**
-   * 防抖更新标签页UI（防止闪烁，优化版）
+   * 立即更新标签页UI（修复同步问题）
+   */
+  async immediateUpdateTabsUI() {
+    // 立即更新，无延迟
+    await this.updateTabsUI();
+  }
+
+  /**
+   * 防抖更新标签页UI（仅用于拖拽等非关键场景）
    */
   debouncedUpdateTabsUI() {
     // 如果正在拖拽，延迟更新UI以避免干扰拖拽体验
     if (this.draggingTab) {
       this.draggingDebounce();
     } else {
-      this.normalDebounce();
+      // 非拖拽场景立即更新，确保同步
+      this.immediateUpdateTabsUI();
     }
   }
 
@@ -4896,8 +4901,8 @@ class OrcaTabsPlugin {
       // 同步更新对应的存储数组
       this.syncCurrentTabsToStorage(currentTabs);
       
-      // 更新UI和保存数据
-      this.debouncedUpdateTabsUI();
+      // 更新UI和保存数据（修复同步问题）
+      await this.immediateUpdateTabsUI();
        await this.saveCurrentPanelTabs();
       
       // 如果启用了工作区功能且有当前工作区，实时更新工作区
@@ -6036,8 +6041,8 @@ class OrcaTabsPlugin {
       // 同步更新对应的存储数组
       this.syncCurrentTabsToStorage(currentTabs);
       
-      // 更新UI和保存数据
-      this.debouncedUpdateTabsUI();
+      // 更新UI和保存数据（修复同步问题）
+      await this.immediateUpdateTabsUI();
        await this.saveCurrentPanelTabs();
       await this.saveClosedTabs();
       
@@ -6081,8 +6086,8 @@ class OrcaTabsPlugin {
     // 同步更新对应的存储数组
     this.syncCurrentTabsToStorage(pinnedTabs);
     
-    // 更新UI和保存数据
-    this.debouncedUpdateTabsUI();
+    // 更新UI和保存数据（修复同步问题）
+    await this.immediateUpdateTabsUI();
        await this.saveCurrentPanelTabs();
     await this.saveClosedTabs();
     
@@ -6120,8 +6125,8 @@ class OrcaTabsPlugin {
     // 同步更新对应的存储数组
     this.syncCurrentTabsToStorage(keepTabs);
     
-    // 更新UI和保存数据
-    this.debouncedUpdateTabsUI();
+    // 更新UI和保存数据（修复同步问题）
+    await this.immediateUpdateTabsUI();
        await this.saveCurrentPanelTabs();
     await this.saveClosedTabs();
     
@@ -7578,10 +7583,10 @@ class OrcaTabsPlugin {
       // 不使用防抖，确保视觉反馈即时
       this.updateFocusState(blockId, existingTab.title);
       
-      // 步骤A3: 立即更新UI显示
-      // 调用 updateTabsUI 方法，立即更新标签页内容
-      // 确保编辑器内容和标签页DOM同步
-      await this.updateTabsUI();
+      // 步骤A3: 立即更新UI显示（修复同步问题）
+      // 调用 immediateUpdateTabsUI 方法，立即更新标签页内容
+      // 确保编辑器内容和标签页DOM完全同步
+      await this.immediateUpdateTabsUI();
       return;
     }
 
@@ -7632,10 +7637,10 @@ class OrcaTabsPlugin {
     // 将更新后的标签页数组保存到内存和存储中
     this.setCurrentPanelTabs(currentTabs);
     
-    // 步骤B7: 立即更新UI显示
-    // 调用 updateTabsUI 方法，立即更新标签页DOM
-    // 确保编辑器内容和标签页内容同步
-    await this.updateTabsUI();
+    // 步骤B7: 立即更新UI显示（修复同步问题）
+    // 调用 immediateUpdateTabsUI 方法，立即更新标签页DOM
+    // 确保编辑器内容和标签页内容完全同步
+    await this.immediateUpdateTabsUI();
     return;
   }
 
@@ -7777,22 +7782,22 @@ class OrcaTabsPlugin {
           clearTimeout(focusChangeTimeout);
         }
         
-        // 步骤3: 延迟检查
-        // 等待DOM类名变化完成，确保聚焦状态已更新
+        // 步骤3: 立即检查（修复同步问题）
+        // 移除延迟，立即响应聚焦变化
         focusChangeTimeout = window.setTimeout(async () => {
           // 步骤4: 验证聚焦状态
           // 检查元素是否现在是可见的（没有 orca-hideable-hidden 类）
           if (!hideableElement.classList.contains('orca-hideable-hidden')) {
             this.verboseLog('🎯 检测到 orca-hideable 元素聚焦变化');
             
-            // 步骤5: 触发标签页更新
-            // 调用 checkCurrentPanelBlocks 方法，更新标签页聚焦状态
+            // 步骤5: 立即触发标签页更新
+            // 调用 checkCurrentPanelBlocks 方法，立即更新标签页聚焦状态
             await this.checkCurrentPanelBlocks();
           }
           
           // 清理防抖状态
           focusChangeTimeout = null;
-        }, 100); // 延迟100ms，确保类名变化完成
+        }, 0); // 立即执行，无延迟
       }
     };
     

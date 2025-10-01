@@ -1,12 +1,12 @@
-var me = Object.defineProperty;
-var fe = (o, e, t) => e in o ? me(o, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : o[e] = t;
-var f = (o, e, t) => fe(o, typeof e != "symbol" ? e + "" : e, t);
-const ce = {
+var be = Object.defineProperty;
+var me = (o, e, t) => e in o ? be(o, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : o[e] = t;
+var f = (o, e, t) => me(o, typeof e != "symbol" ? e + "" : e, t);
+const se = {
   /** 缓存编辑器数量 - 对应Orca设置中的最大标签页数量配置 */
   CachedEditorNum: 13,
   /** 日志日期格式 - 对应Orca设置中的日期格式配置 */
   JournalDateFormat: 12
-}, le = {
+}, ce = {
   /** JSON数据类型 - 用于存储结构化数据 */
   JSON: 0,
   /** 文本数据类型 - 用于存储纯文本数据 */
@@ -37,7 +37,7 @@ const ce = {
   /** 固定到顶部状态 - 存储标签页容器是否固定到顶部的状态 */
   FIXED_TO_TOP: "fixed-to-top"
 };
-class xe {
+class fe {
   // ==================== 日志方法 ====================
   /**
    * 调试日志方法
@@ -277,20 +277,20 @@ class xe {
     }
   }
 }
-const de = 6048e5, ye = 864e5, Q = Symbol.for("constructDateFrom");
+const le = 6048e5, xe = 864e5, Q = Symbol.for("constructDateFrom");
 function S(o, e) {
   return typeof o == "function" ? o(e) : o && typeof o == "object" && Q in o ? o[Q](e) : o instanceof Date ? new o.constructor(e) : new Date(e);
 }
 function E(o, e) {
   return S(e || o, o);
 }
-function ue(o, e, t) {
+function de(o, e, t) {
   const n = E(o, t == null ? void 0 : t.in);
   return isNaN(e) ? S(o, NaN) : (e && n.setDate(n.getDate() + e), n);
 }
-let ve = {};
+let ye = {};
 function Y() {
-  return ve;
+  return ye;
 }
 function z(o, e) {
   var c, s, l, d;
@@ -300,7 +300,7 @@ function z(o, e) {
 function U(o, e) {
   return z(o, { ...e, weekStartsOn: 1 });
 }
-function he(o, e) {
+function ue(o, e) {
   const t = E(o, e == null ? void 0 : e.in), n = t.getFullYear(), a = S(t, 0);
   a.setFullYear(n + 1, 0, 4), a.setHours(0, 0, 0, 0);
   const r = U(a), i = S(t, 0);
@@ -322,7 +322,7 @@ function Z(o) {
   );
   return t.setUTCFullYear(e.getFullYear()), +o - +t;
 }
-function ge(o, ...e) {
+function he(o, ...e) {
   const t = S.bind(
     null,
     e.find((n) => typeof n == "object")
@@ -333,40 +333,40 @@ function V(o, e) {
   const t = E(o, e == null ? void 0 : e.in);
   return t.setHours(0, 0, 0, 0), t;
 }
-function Te(o, e, t) {
-  const [n, a] = ge(
+function ve(o, e, t) {
+  const [n, a] = he(
     t == null ? void 0 : t.in,
     o,
     e
   ), r = V(n), i = V(a), c = +r - Z(r), s = +i - Z(i);
-  return Math.round((c - s) / ye);
+  return Math.round((c - s) / xe);
 }
-function we(o, e) {
-  const t = he(o, e), n = S(o, 0);
+function Te(o, e) {
+  const t = ue(o, e), n = S(o, 0);
   return n.setFullYear(t, 0, 4), n.setHours(0, 0, 0, 0), U(n);
 }
 function J(o) {
   return S(o, Date.now());
 }
 function K(o, e, t) {
-  const [n, a] = ge(
+  const [n, a] = he(
     t == null ? void 0 : t.in,
     o,
     e
   );
   return +V(n) == +V(a);
 }
-function ke(o) {
+function we(o) {
   return o instanceof Date || typeof o == "object" && Object.prototype.toString.call(o) === "[object Date]";
 }
-function Ce(o) {
-  return !(!ke(o) && typeof o != "number" || isNaN(+E(o)));
+function ke(o) {
+  return !(!we(o) && typeof o != "number" || isNaN(+E(o)));
 }
-function Ie(o, e) {
+function Ce(o, e) {
   const t = E(o, e == null ? void 0 : e.in);
   return t.setFullYear(t.getFullYear(), 0, 1), t.setHours(0, 0, 0, 0), t;
 }
-const Pe = {
+const Ie = {
   lessThanXSeconds: {
     one: "less than a second",
     other: "less than {{count}} seconds"
@@ -428,9 +428,9 @@ const Pe = {
     one: "almost 1 year",
     other: "almost {{count}} years"
   }
-}, Se = (o, e, t) => {
+}, Pe = (o, e, t) => {
   let n;
-  const a = Pe[o];
+  const a = Ie[o];
   return typeof a == "string" ? n = a : e === 1 ? n = a.one : n = a.other.replace("{{count}}", e.toString()), t != null && t.addSuffix ? t.comparison && t.comparison > 0 ? "in " + n : n + " ago" : n;
 };
 function G(o) {
@@ -439,42 +439,42 @@ function G(o) {
     return o.formats[t] || o.formats[o.defaultWidth];
   };
 }
-const Ee = {
+const Se = {
   full: "EEEE, MMMM do, y",
   long: "MMMM do, y",
   medium: "MMM d, y",
   short: "MM/dd/yyyy"
-}, $e = {
+}, Ee = {
   full: "h:mm:ss a zzzz",
   long: "h:mm:ss a z",
   medium: "h:mm:ss a",
   short: "h:mm a"
-}, Le = {
+}, $e = {
   full: "{{date}} 'at' {{time}}",
   long: "{{date}} 'at' {{time}}",
   medium: "{{date}}, {{time}}",
   short: "{{date}}, {{time}}"
-}, De = {
+}, Le = {
   date: G({
-    formats: Ee,
+    formats: Se,
     defaultWidth: "full"
   }),
   time: G({
-    formats: $e,
+    formats: Ee,
     defaultWidth: "full"
   }),
   dateTime: G({
-    formats: Le,
+    formats: $e,
     defaultWidth: "full"
   })
-}, Me = {
+}, De = {
   lastWeek: "'last' eeee 'at' p",
   yesterday: "'yesterday at' p",
   today: "'today at' p",
   tomorrow: "'tomorrow at' p",
   nextWeek: "eeee 'at' p",
   other: "P"
-}, Ae = (o, e, t, n) => Me[o];
+}, Me = (o, e, t, n) => De[o];
 function O(o) {
   return (e, t) => {
     const n = t != null && t.context ? String(t.context) : "standalone";
@@ -490,15 +490,15 @@ function O(o) {
     return a[r];
   };
 }
-const We = {
+const Ae = {
   narrow: ["B", "A"],
   abbreviated: ["BC", "AD"],
   wide: ["Before Christ", "Anno Domini"]
-}, Be = {
+}, We = {
   narrow: ["1", "2", "3", "4"],
   abbreviated: ["Q1", "Q2", "Q3", "Q4"],
   wide: ["1st quarter", "2nd quarter", "3rd quarter", "4th quarter"]
-}, Oe = {
+}, Be = {
   narrow: ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"],
   abbreviated: [
     "Jan",
@@ -528,7 +528,7 @@ const We = {
     "November",
     "December"
   ]
-}, Ne = {
+}, Oe = {
   narrow: ["S", "M", "T", "W", "T", "F", "S"],
   short: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
   abbreviated: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
@@ -541,43 +541,43 @@ const We = {
     "Friday",
     "Saturday"
   ]
+}, Ne = {
+  narrow: {
+    am: "a",
+    pm: "p",
+    midnight: "mi",
+    noon: "n",
+    morning: "morning",
+    afternoon: "afternoon",
+    evening: "evening",
+    night: "night"
+  },
+  abbreviated: {
+    am: "AM",
+    pm: "PM",
+    midnight: "midnight",
+    noon: "noon",
+    morning: "morning",
+    afternoon: "afternoon",
+    evening: "evening",
+    night: "night"
+  },
+  wide: {
+    am: "a.m.",
+    pm: "p.m.",
+    midnight: "midnight",
+    noon: "noon",
+    morning: "morning",
+    afternoon: "afternoon",
+    evening: "evening",
+    night: "night"
+  }
 }, ze = {
   narrow: {
     am: "a",
     pm: "p",
     midnight: "mi",
     noon: "n",
-    morning: "morning",
-    afternoon: "afternoon",
-    evening: "evening",
-    night: "night"
-  },
-  abbreviated: {
-    am: "AM",
-    pm: "PM",
-    midnight: "midnight",
-    noon: "noon",
-    morning: "morning",
-    afternoon: "afternoon",
-    evening: "evening",
-    night: "night"
-  },
-  wide: {
-    am: "a.m.",
-    pm: "p.m.",
-    midnight: "midnight",
-    noon: "noon",
-    morning: "morning",
-    afternoon: "afternoon",
-    evening: "evening",
-    night: "night"
-  }
-}, Fe = {
-  narrow: {
-    am: "a",
-    pm: "p",
-    midnight: "mi",
-    noon: "n",
     morning: "in the morning",
     afternoon: "in the afternoon",
     evening: "in the evening",
@@ -603,7 +603,7 @@ const We = {
     evening: "in the evening",
     night: "at night"
   }
-}, Re = (o, e) => {
+}, Fe = (o, e) => {
   const t = Number(o), n = t % 100;
   if (n > 20 || n < 10)
     switch (n % 10) {
@@ -615,29 +615,29 @@ const We = {
         return t + "rd";
     }
   return t + "th";
-}, _e = {
-  ordinalNumber: Re,
+}, Re = {
+  ordinalNumber: Fe,
   era: O({
-    values: We,
+    values: Ae,
     defaultWidth: "wide"
   }),
   quarter: O({
-    values: Be,
+    values: We,
     defaultWidth: "wide",
     argumentCallback: (o) => o - 1
   }),
   month: O({
-    values: Oe,
+    values: Be,
     defaultWidth: "wide"
   }),
   day: O({
-    values: Ne,
+    values: Oe,
     defaultWidth: "wide"
   }),
   dayPeriod: O({
-    values: ze,
+    values: Ne,
     defaultWidth: "wide",
-    formattingValues: Fe,
+    formattingValues: ze,
     defaultFormattingWidth: "wide"
   })
 };
@@ -646,9 +646,9 @@ function N(o) {
     const n = t.width, a = n && o.matchPatterns[n] || o.matchPatterns[o.defaultMatchWidth], r = e.match(a);
     if (!r)
       return null;
-    const i = r[0], c = n && o.parsePatterns[n] || o.parsePatterns[o.defaultParseWidth], s = Array.isArray(c) ? He(c, (h) => h.test(i)) : (
+    const i = r[0], c = n && o.parsePatterns[n] || o.parsePatterns[o.defaultParseWidth], s = Array.isArray(c) ? qe(c, (h) => h.test(i)) : (
       // [TODO] -- I challenge you to fix the type
-      qe(c, (h) => h.test(i))
+      _e(c, (h) => h.test(i))
     );
     let l;
     l = o.valueCallback ? o.valueCallback(s) : s, l = t.valueCallback ? (
@@ -659,17 +659,17 @@ function N(o) {
     return { value: l, rest: d };
   };
 }
-function qe(o, e) {
+function _e(o, e) {
   for (const t in o)
     if (Object.prototype.hasOwnProperty.call(o, t) && e(o[t]))
       return t;
 }
-function He(o, e) {
+function qe(o, e) {
   for (let t = 0; t < o.length; t++)
     if (e(o[t]))
       return t;
 }
-function Ue(o) {
+function He(o) {
   return (e, t = {}) => {
     const n = e.match(o.matchPattern);
     if (!n) return null;
@@ -681,23 +681,23 @@ function Ue(o) {
     return { value: i, rest: c };
   };
 }
-const Ve = /^(\d+)(th|st|nd|rd)?/i, Ye = /\d+/i, je = {
+const Ue = /^(\d+)(th|st|nd|rd)?/i, Ve = /\d+/i, Ye = {
   narrow: /^(b|a)/i,
   abbreviated: /^(b\.?\s?c\.?|b\.?\s?c\.?\s?e\.?|a\.?\s?d\.?|c\.?\s?e\.?)/i,
   wide: /^(before christ|before common era|anno domini|common era)/i
-}, Xe = {
+}, je = {
   any: [/^b/i, /^(a|c)/i]
-}, Ge = {
+}, Xe = {
   narrow: /^[1234]/i,
   abbreviated: /^q[1234]/i,
   wide: /^[1234](th|st|nd|rd)? quarter/i
-}, Je = {
+}, Ge = {
   any: [/1/i, /2/i, /3/i, /4/i]
-}, Ke = {
+}, Je = {
   narrow: /^[jfmasond]/i,
   abbreviated: /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i,
   wide: /^(january|february|march|april|may|june|july|august|september|october|november|december)/i
-}, Qe = {
+}, Ke = {
   narrow: [
     /^j/i,
     /^f/i,
@@ -726,18 +726,18 @@ const Ve = /^(\d+)(th|st|nd|rd)?/i, Ye = /\d+/i, je = {
     /^n/i,
     /^d/i
   ]
-}, Ze = {
+}, Qe = {
   narrow: /^[smtwf]/i,
   short: /^(su|mo|tu|we|th|fr|sa)/i,
   abbreviated: /^(sun|mon|tue|wed|thu|fri|sat)/i,
   wide: /^(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/i
-}, et = {
+}, Ze = {
   narrow: [/^s/i, /^m/i, /^t/i, /^w/i, /^t/i, /^f/i, /^s/i],
   any: [/^su/i, /^m/i, /^tu/i, /^w/i, /^th/i, /^f/i, /^sa/i]
-}, tt = {
+}, et = {
   narrow: /^(a|p|mi|n|(in the|at) (morning|afternoon|evening|night))/i,
   any: /^([ap]\.?\s?m\.?|midnight|noon|(in the|at) (morning|afternoon|evening|night))/i
-}, nt = {
+}, tt = {
   any: {
     am: /^a/i,
     pm: /^p/i,
@@ -748,64 +748,64 @@ const Ve = /^(\d+)(th|st|nd|rd)?/i, Ye = /\d+/i, je = {
     evening: /evening/i,
     night: /night/i
   }
-}, at = {
-  ordinalNumber: Ue({
-    matchPattern: Ve,
-    parsePattern: Ye,
+}, nt = {
+  ordinalNumber: He({
+    matchPattern: Ue,
+    parsePattern: Ve,
     valueCallback: (o) => parseInt(o, 10)
   }),
   era: N({
-    matchPatterns: je,
+    matchPatterns: Ye,
     defaultMatchWidth: "wide",
-    parsePatterns: Xe,
+    parsePatterns: je,
     defaultParseWidth: "any"
   }),
   quarter: N({
-    matchPatterns: Ge,
+    matchPatterns: Xe,
     defaultMatchWidth: "wide",
-    parsePatterns: Je,
+    parsePatterns: Ge,
     defaultParseWidth: "any",
     valueCallback: (o) => o + 1
   }),
   month: N({
-    matchPatterns: Ke,
+    matchPatterns: Je,
     defaultMatchWidth: "wide",
-    parsePatterns: Qe,
+    parsePatterns: Ke,
     defaultParseWidth: "any"
   }),
   day: N({
-    matchPatterns: Ze,
+    matchPatterns: Qe,
     defaultMatchWidth: "wide",
-    parsePatterns: et,
+    parsePatterns: Ze,
     defaultParseWidth: "any"
   }),
   dayPeriod: N({
-    matchPatterns: tt,
+    matchPatterns: et,
     defaultMatchWidth: "any",
-    parsePatterns: nt,
+    parsePatterns: tt,
     defaultParseWidth: "any"
   })
-}, rt = {
+}, at = {
   code: "en-US",
-  formatDistance: Se,
-  formatLong: De,
-  formatRelative: Ae,
-  localize: _e,
-  match: at,
+  formatDistance: Pe,
+  formatLong: Le,
+  formatRelative: Me,
+  localize: Re,
+  match: nt,
   options: {
     weekStartsOn: 0,
     firstWeekContainsDate: 1
   }
 };
-function ot(o, e) {
+function rt(o, e) {
   const t = E(o, e == null ? void 0 : e.in);
-  return Te(t, Ie(t)) + 1;
+  return ve(t, Ce(t)) + 1;
 }
-function it(o, e) {
-  const t = E(o, e == null ? void 0 : e.in), n = +U(t) - +we(t);
-  return Math.round(n / de) + 1;
+function ot(o, e) {
+  const t = E(o, e == null ? void 0 : e.in), n = +U(t) - +Te(t);
+  return Math.round(n / le) + 1;
 }
-function pe(o, e) {
+function ge(o, e) {
   var d, h, u, p;
   const t = E(o, e == null ? void 0 : e.in), n = t.getFullYear(), a = Y(), r = (e == null ? void 0 : e.firstWeekContainsDate) ?? ((h = (d = e == null ? void 0 : e.locale) == null ? void 0 : d.options) == null ? void 0 : h.firstWeekContainsDate) ?? a.firstWeekContainsDate ?? ((p = (u = a.locale) == null ? void 0 : u.options) == null ? void 0 : p.firstWeekContainsDate) ?? 1, i = S((e == null ? void 0 : e.in) || o, 0);
   i.setFullYear(n + 1, 0, r), i.setHours(0, 0, 0, 0);
@@ -814,14 +814,14 @@ function pe(o, e) {
   const l = z(s, e);
   return +t >= +c ? n + 1 : +t >= +l ? n : n - 1;
 }
-function st(o, e) {
+function it(o, e) {
   var c, s, l, d;
-  const t = Y(), n = (e == null ? void 0 : e.firstWeekContainsDate) ?? ((s = (c = e == null ? void 0 : e.locale) == null ? void 0 : c.options) == null ? void 0 : s.firstWeekContainsDate) ?? t.firstWeekContainsDate ?? ((d = (l = t.locale) == null ? void 0 : l.options) == null ? void 0 : d.firstWeekContainsDate) ?? 1, a = pe(o, e), r = S((e == null ? void 0 : e.in) || o, 0);
+  const t = Y(), n = (e == null ? void 0 : e.firstWeekContainsDate) ?? ((s = (c = e == null ? void 0 : e.locale) == null ? void 0 : c.options) == null ? void 0 : s.firstWeekContainsDate) ?? t.firstWeekContainsDate ?? ((d = (l = t.locale) == null ? void 0 : l.options) == null ? void 0 : d.firstWeekContainsDate) ?? 1, a = ge(o, e), r = S((e == null ? void 0 : e.in) || o, 0);
   return r.setFullYear(a, 0, n), r.setHours(0, 0, 0, 0), z(r, e);
 }
-function ct(o, e) {
-  const t = E(o, e == null ? void 0 : e.in), n = +z(t, e) - +st(t, e);
-  return Math.round(n / de) + 1;
+function st(o, e) {
+  const t = E(o, e == null ? void 0 : e.in), n = +z(t, e) - +it(t, e);
+  return Math.round(n / le) + 1;
 }
 function T(o, e) {
   const t = o < 0 ? "-" : "", n = Math.abs(o).toString().padStart(e, "0");
@@ -914,7 +914,7 @@ const L = {
   },
   // Local week-numbering year
   Y: function(o, e, t, n) {
-    const a = pe(o, n), r = a > 0 ? a : 1 - a;
+    const a = ge(o, n), r = a > 0 ? a : 1 - a;
     if (e === "YY") {
       const i = r % 100;
       return T(i, 2);
@@ -923,7 +923,7 @@ const L = {
   },
   // ISO week-numbering year
   R: function(o, e) {
-    const t = he(o);
+    const t = ue(o);
     return T(t, e.length);
   },
   // Extended year. This is a single number designating the year of this calendar system.
@@ -1046,12 +1046,12 @@ const L = {
   },
   // Local week of year
   w: function(o, e, t, n) {
-    const a = ct(o, n);
+    const a = st(o, n);
     return e === "wo" ? t.ordinalNumber(a, { unit: "week" }) : T(a, e.length);
   },
   // ISO week of year
   I: function(o, e, t) {
-    const n = it(o);
+    const n = ot(o);
     return e === "Io" ? t.ordinalNumber(n, { unit: "week" }) : T(n, e.length);
   },
   // Day of the month
@@ -1060,7 +1060,7 @@ const L = {
   },
   // Day of year
   D: function(o, e, t) {
-    const n = ot(o);
+    const n = rt(o);
     return e === "Do" ? t.ordinalNumber(n, { unit: "dayOfYear" }) : T(n, e.length);
   },
   // Day of week
@@ -1398,7 +1398,7 @@ const ae = (o, e) => {
     default:
       return e.date({ width: "full" });
   }
-}, be = (o, e) => {
+}, pe = (o, e) => {
   switch (o) {
     case "p":
       return e.time({ width: "short" });
@@ -1410,7 +1410,7 @@ const ae = (o, e) => {
     default:
       return e.time({ width: "full" });
   }
-}, lt = (o, e) => {
+}, ct = (o, e) => {
   const t = o.match(/(P+)(p+)?/) || [], n = t[1], a = t[2];
   if (!a)
     return ae(o, e);
@@ -1430,47 +1430,47 @@ const ae = (o, e) => {
       r = e.dateTime({ width: "full" });
       break;
   }
-  return r.replace("{{date}}", ae(n, e)).replace("{{time}}", be(a, e));
-}, dt = {
-  p: be,
-  P: lt
-}, ut = /^D+$/, ht = /^Y+$/, gt = ["D", "DD", "YY", "YYYY"];
+  return r.replace("{{date}}", ae(n, e)).replace("{{time}}", pe(a, e));
+}, lt = {
+  p: pe,
+  P: ct
+}, dt = /^D+$/, ut = /^Y+$/, ht = ["D", "DD", "YY", "YYYY"];
+function gt(o) {
+  return dt.test(o);
+}
 function pt(o) {
   return ut.test(o);
 }
-function bt(o) {
-  return ht.test(o);
+function bt(o, e, t) {
+  const n = mt(o, e, t);
+  if (console.warn(n), ht.includes(o)) throw new RangeError(n);
 }
 function mt(o, e, t) {
-  const n = ft(o, e, t);
-  if (console.warn(n), gt.includes(o)) throw new RangeError(n);
-}
-function ft(o, e, t) {
   const n = o[0] === "Y" ? "years" : "days of the month";
   return `Use \`${o.toLowerCase()}\` instead of \`${o}\` (in \`${e}\`) for formatting ${n} to the input \`${t}\`; see: https://github.com/date-fns/date-fns/blob/master/docs/unicodeTokens.md`;
 }
-const xt = /[yYQqMLwIdDecihHKkms]o|(\w)\1*|''|'(''|[^'])+('|$)|./g, yt = /P+p+|P+|p+|''|'(''|[^'])+('|$)|./g, vt = /^'([^]*?)'?$/, Tt = /''/g, wt = /[a-zA-Z]/;
+const ft = /[yYQqMLwIdDecihHKkms]o|(\w)\1*|''|'(''|[^'])+('|$)|./g, xt = /P+p+|P+|p+|''|'(''|[^'])+('|$)|./g, yt = /^'([^]*?)'?$/, vt = /''/g, Tt = /[a-zA-Z]/;
 function D(o, e, t) {
   var d, h, u, p;
-  const n = Y(), a = n.locale ?? rt, r = n.firstWeekContainsDate ?? ((h = (d = n.locale) == null ? void 0 : d.options) == null ? void 0 : h.firstWeekContainsDate) ?? 1, i = n.weekStartsOn ?? ((p = (u = n.locale) == null ? void 0 : u.options) == null ? void 0 : p.weekStartsOn) ?? 0, c = E(o, t == null ? void 0 : t.in);
-  if (!Ce(c))
+  const n = Y(), a = n.locale ?? at, r = n.firstWeekContainsDate ?? ((h = (d = n.locale) == null ? void 0 : d.options) == null ? void 0 : h.firstWeekContainsDate) ?? 1, i = n.weekStartsOn ?? ((p = (u = n.locale) == null ? void 0 : u.options) == null ? void 0 : p.weekStartsOn) ?? 0, c = E(o, t == null ? void 0 : t.in);
+  if (!ke(c))
     throw new RangeError("Invalid time value");
-  let s = e.match(yt).map((g) => {
+  let s = e.match(xt).map((g) => {
     const m = g[0];
     if (m === "p" || m === "P") {
-      const b = dt[m];
+      const b = lt[m];
       return b(g, a.formatLong);
     }
     return g;
-  }).join("").match(xt).map((g) => {
+  }).join("").match(ft).map((g) => {
     if (g === "''")
       return { isToken: !1, value: "'" };
     const m = g[0];
     if (m === "'")
-      return { isToken: !1, value: kt(g) };
+      return { isToken: !1, value: wt(g) };
     if (ee[m])
       return { isToken: !0, value: g };
-    if (m.match(wt))
+    if (m.match(Tt))
       throw new RangeError(
         "Format string contains an unescaped latin alphabet character `" + m + "`"
       );
@@ -1485,45 +1485,45 @@ function D(o, e, t) {
   return s.map((g) => {
     if (!g.isToken) return g.value;
     const m = g.value;
-    (bt(m) || pt(m)) && mt(m, e, String(o));
+    (pt(m) || gt(m)) && bt(m, e, String(o));
     const b = ee[m[0]];
     return b(c, m, a.localize, l);
   }).join("");
 }
-function kt(o) {
-  const e = o.match(vt);
-  return e ? e[1].replace(Tt, "'") : o;
+function wt(o) {
+  const e = o.match(yt);
+  return e ? e[1].replace(vt, "'") : o;
 }
-function Ct(o, e) {
+function kt(o, e) {
   return K(
     S(o, o),
     J(o)
   );
 }
-function It(o, e) {
+function Ct(o, e) {
   return K(
     o,
-    ue(J(o), 1),
+    de(J(o), 1),
     e
   );
 }
-function Pt(o, e, t) {
-  return ue(o, -1, t);
+function It(o, e, t) {
+  return de(o, -1, t);
 }
-function St(o, e) {
+function Pt(o, e) {
   return K(
     S(o, o),
-    Pt(J(o))
+    It(J(o))
   );
 }
-function Et(o) {
+function St(o) {
   try {
-    let e = orca.state.settings[ce.JournalDateFormat];
-    if ((!e || typeof e != "string") && (e = (orca.state.locale || "zh-CN").startsWith("zh") ? "yyyy年MM月dd日" : "yyyy-MM-dd"), Ct(o))
+    let e = orca.state.settings[se.JournalDateFormat];
+    if ((!e || typeof e != "string") && (e = (orca.state.locale || "zh-CN").startsWith("zh") ? "yyyy年MM月dd日" : "yyyy-MM-dd"), kt(o))
       return "今天";
-    if (St(o))
+    if (Pt(o))
       return "昨天";
-    if (It(o))
+    if (Ct(o))
       return "明天";
     try {
       if (e.includes("E"))
@@ -1550,8 +1550,8 @@ function Et(o) {
 }
 function R(o) {
   try {
-    const e = $t(o, "_repr");
-    if (!e || e.type !== le.JSON || !e.value)
+    const e = Et(o, "_repr");
+    if (!e || e.type !== ce.JSON || !e.value)
       return null;
     const t = typeof e.value == "string" ? JSON.parse(e.value) : e.value;
     return t.type === "journal" && t.date ? new Date(t.date) : null;
@@ -1559,10 +1559,10 @@ function R(o) {
     return null;
   }
 }
-function $t(o, e) {
+function Et(o, e) {
   return !o.properties || !Array.isArray(o.properties) ? null : o.properties.find((t) => t.name === e);
 }
-function Lt(o) {
+function $t(o) {
   if (!Array.isArray(o) || o.length === 0)
     return !1;
   let e = 0, t = 0;
@@ -1570,14 +1570,14 @@ function Lt(o) {
     n && typeof n == "object" && (n.t === "text" && n.v ? e++ : n.t === "ref" && n.v && t++);
   return e > 0 && t > 0 && e >= t;
 }
-async function Dt(o) {
+async function Lt(o) {
   if (!o || o.length === 0) return "";
   let e = "";
   for (const t of o)
     t.t === "t" && t.v ? e += t.v : t.t === "r" ? t.u ? t.v ? e += t.v : e += t.u : t.a ? e += `[[${t.a}]]` : t.v && (typeof t.v == "number" || typeof t.v == "string") ? e += `[[块${t.v}]]` : t.v && (e += t.v) : t.t === "br" && t.v ? e += `[[块${t.v}]]` : t.t && t.t.includes("math") && t.v ? e += `[数学: ${t.v}]` : t.t && t.t.includes("code") && t.v ? e += `[代码: ${t.v}]` : t.t && t.t.includes("image") && t.v ? e += `[图片: ${t.v}]` : t.v && (e += t.v);
   return e;
 }
-function Mt(o, e, t, n) {
+function Dt(o, e, t, n) {
   const a = document.createElement("div");
   a.className = "orca-tabs-ref-menu-item", a.setAttribute("role", "menuitem"), a.style.cssText = `
     display: flex;
@@ -1619,7 +1619,7 @@ function Mt(o, e, t, n) {
     s && (s.style.display = "none", s.remove());
   }), a;
 }
-function At(o, e) {
+function Mt(o, e) {
   const t = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(o);
   if (t) {
     const n = parseInt(t[1], 16), a = parseInt(t[2], 16), r = parseInt(t[3], 16);
@@ -1639,14 +1639,14 @@ function q() {
     showInHeadbar: !0
   };
 }
-function Wt(o, e, t = 200) {
+function At(o, e, t = 200) {
   const n = e ? t : 400, a = 40, r = window.innerWidth - n, i = window.innerHeight - a;
   return {
     x: Math.max(0, Math.min(o.x, r)),
     y: Math.max(0, Math.min(o.y, i))
   };
 }
-function Bt(o) {
+function Wt(o) {
   const e = q();
   return {
     isVerticalMode: o.isVerticalMode ?? e.isVerticalMode,
@@ -1662,7 +1662,7 @@ function Bt(o) {
 function _(o, e, t) {
   return o ? { ...e } : { ...t };
 }
-function Ot(o, e, t, n) {
+function Bt(o, e, t, n) {
   return e ? {
     verticalPosition: { ...o },
     horizontalPosition: { ...n }
@@ -1671,13 +1671,13 @@ function Ot(o, e, t, n) {
     horizontalPosition: { ...o }
   };
 }
-function Nt(o) {
+function Ot(o) {
   return `布局模式: ${o.isVerticalMode ? "垂直" : "水平"}, 垂直宽度: ${o.verticalWidth}px, 垂直位置: (${o.verticalPosition.x}, ${o.verticalPosition.y}), 水平位置: (${o.horizontalPosition.x}, ${o.horizontalPosition.y})`;
 }
 function re(o, e) {
   return `位置已${e ? "垂直" : "水平"}模式 (${o.x}, ${o.y})`;
 }
-function zt(o, e, t) {
+function Nt(o, e, t) {
   let n = "var(--orca-tab-bg)", a = "var(--orca-color-text-1)", r = "normal", i = "";
   if (o.color)
     try {
@@ -1725,7 +1725,7 @@ function zt(o, e, t) {
     pointer-events: auto;
   `;
 }
-function Ft() {
+function zt() {
   const o = document.createElement("div");
   return o.style.cssText = `
     display: flex;
@@ -1735,7 +1735,7 @@ function Ft() {
     gap: 6px;
   `, o;
 }
-function Rt(o) {
+function Ft(o) {
   const e = document.createElement("div");
   if (e.style.cssText = `
     display: flex;
@@ -1753,7 +1753,7 @@ function Rt(o) {
     e.textContent = o;
   return e;
 }
-function _t(o) {
+function Rt(o) {
   const e = document.createElement("div");
   e.style.cssText = `
     flex: 1;
@@ -1778,7 +1778,7 @@ function _t(o) {
     z-index: 1;
   `, e.appendChild(t), e.textContent = o, e;
 }
-function qt() {
+function _t() {
   const o = document.createElement("span");
   return o.textContent = "📌", o.style.cssText = `
     flex-shrink: 0;
@@ -1786,11 +1786,11 @@ function qt() {
     opacity: 0.8;
   `, o;
 }
-function Ht(o) {
+function qt(o) {
   let e = o.title;
   return o.isPinned && (e += " (已固定)"), e;
 }
-function Ut() {
+function Ht() {
   return `
     position: fixed;
     top: 50%;
@@ -1814,7 +1814,7 @@ function oe(o = "primary") {
     danger: "orca-button"
   }[o];
 }
-function Vt() {
+function Ut() {
   return `
     width: 100%;
     height: 6px;
@@ -1824,7 +1824,7 @@ function Vt() {
     -webkit-appearance: none;
   `;
 }
-function Yt(o, e, t, n) {
+function Vt(o, e, t, n) {
   return o ? `
     position: fixed;
     top: ${e.y}px;
@@ -1876,7 +1876,7 @@ function Yt(o, e, t, n) {
     overflow-x: visible;
   `;
 }
-function jt(o, e, t = {}) {
+function Yt(o, e, t = {}) {
   try {
     const {
       updateOrder: n = !0,
@@ -1888,7 +1888,7 @@ function jt(o, e, t = {}) {
         success: !1,
         message: `标签不存在: ${o.title}`
       };
-    e[i].isPinned = !e[i].isPinned, n && Kt(e);
+    e[i].isPinned = !e[i].isPinned, n && Jt(e);
     const c = e[i].isPinned ? "固定" : "取消固定";
     return {
       success: !0,
@@ -1902,7 +1902,7 @@ function jt(o, e, t = {}) {
     };
   }
 }
-function Xt(o, e, t, n = {}) {
+function jt(o, e, t, n = {}) {
   try {
     const {
       updateUI: a = !0,
@@ -1915,7 +1915,7 @@ function Xt(o, e, t, n = {}) {
         message: `标签不存在: ${o.title}`
       };
     if (i) {
-      const s = Jt(e);
+      const s = Gt(e);
       if (!s.success)
         return s;
     }
@@ -1931,13 +1931,13 @@ function Xt(o, e, t, n = {}) {
     };
   }
 }
-function Gt(o, e, t, n = {}) {
+function Xt(o, e, t, n = {}) {
   return !e || e.trim() === "" ? {
     success: !1,
     message: "标签标题不能为空"
-  } : Xt(o, { title: e.trim() }, t, n);
+  } : jt(o, { title: e.trim() }, t, n);
 }
-function Jt(o) {
+function Gt(o) {
   return o.blockId !== void 0 && (!o.blockId || o.blockId.trim() === "") ? {
     success: !1,
     message: "标签块ID不能为空"
@@ -1952,19 +1952,19 @@ function Jt(o) {
     message: "标签数据验证通过"
   };
 }
-function Kt(o) {
+function Jt(o) {
   o.sort((e, t) => e.isPinned && !t.isPinned ? -1 : !e.isPinned && t.isPinned ? 1 : e.order - t.order);
 }
-function Qt(o) {
+function Kt(o) {
   for (let e = o.length - 1; e >= 0; e--)
     if (!o[e].isPinned)
       return e;
   return -1;
 }
-function Zt(o) {
+function Qt(o) {
   return [...o].sort((e, t) => e.isPinned && !t.isPinned ? -1 : !e.isPinned && t.isPinned ? 1 : 0);
 }
-function en(o, e, t, n) {
+function Zt(o, e, t, n) {
   return e ? {
     x: o.x,
     y: o.y,
@@ -1977,12 +1977,12 @@ function en(o, e, t, n) {
     height: 28
   };
 }
-function tn(o, e, t, n) {
-  const a = en(o, e, t, n);
+function en(o, e, t, n) {
+  const a = Zt(o, e, t, n);
   let r = o.x, i = o.y;
   return a.x < 0 ? r = 0 : a.x + a.width > window.innerWidth && (r = window.innerWidth - a.width), a.y < 0 ? i = 0 : a.y + a.height > window.innerHeight && (i = window.innerHeight - a.height), { x: r, y: i };
 }
-function ie(o, e, t = !1) {
+function tn(o, e, t = !1) {
   let n = null;
   const a = (...r) => {
     const i = t && !n;
@@ -2161,13 +2161,13 @@ new j();
 function rn(o, e, t, n) {
   const a = document.createElement("div");
   a.className = "orca-tabs-plugin orca-tabs-container";
-  const r = Yt(o, e, n, t);
+  const r = Vt(o, e, n, t);
   return a.style.cssText = r, a;
 }
 function on(o, e, t) {
   const n = document.createElement("div");
   n.className = "width-adjustment-dialog";
-  const a = Ut();
+  const a = Ht();
   n.style.cssText = a;
   const r = document.createElement("div");
   r.className = "dialog-title", r.textContent = "调整面板宽度", n.appendChild(r);
@@ -2177,7 +2177,7 @@ function on(o, e, t) {
     padding: 0 20px;
   `;
   const c = document.createElement("input");
-  c.type = "range", c.min = "120", c.max = "800", c.value = o.toString(), c.style.cssText = Vt();
+  c.type = "range", c.min = "120", c.max = "800", c.value = o.toString(), c.style.cssText = Ut();
   const s = document.createElement("div");
   s.className = "dialog-width-display", s.style.cssText = `
     text-align: center;
@@ -2197,13 +2197,13 @@ function on(o, e, t) {
     border-top: 1px solid #eee;
   `;
   const d = document.createElement("button");
-  d.className = "btn btn-primary", d.textContent = "确定", d.style.cssText = oe(), d.onclick = () => se(n);
+  d.className = "btn btn-primary", d.textContent = "确定", d.style.cssText = oe(), d.onclick = () => ie(n);
   const h = document.createElement("button");
   return h.className = "btn btn-secondary", h.textContent = "取消", h.style.cssText = oe(), h.onclick = () => {
-    t(), se(n);
+    t(), ie(n);
   }, l.appendChild(d), l.appendChild(h), n.appendChild(l), n;
 }
-function se(o) {
+function ie(o) {
   o && o.parentNode && o.parentNode.removeChild(o);
   const e = document.querySelector(".dialog-backdrop");
   e && e.remove();
@@ -2362,7 +2362,7 @@ class ln {
     /** 每个面板的标签页数据 - 索引对应panelOrder数组，完全独立存储 */
     f(this, "panelTabsData", []);
     /** 存储服务实例 - 提供统一的数据存储接口，支持Orca API和localStorage降级 */
-    f(this, "storageService", new xe());
+    f(this, "storageService", new fe());
     /* ———————————————————————————————————————————————————————————————————————————— */
     /* 日志管理 - Log Management */
     /* ———————————————————————————————————————————————————————————————————————————— */
@@ -2517,11 +2517,8 @@ class ln {
     f(this, "hoveredBlockId", null);
     /** 当前右键菜单对应的块引用ID - 用于上下文菜单操作 */
     f(this, "currentContextBlockRefId", null);
-    // 防抖函数实例
-    f(this, "normalDebounce", ie(async () => {
-      await this.updateTabsUI();
-    }, 100));
-    f(this, "draggingDebounce", ie(async () => {
+    // 防抖函数实例（仅用于拖拽等非关键场景）
+    f(this, "draggingDebounce", tn(async () => {
       await this.updateTabsUI();
     }, 200));
   }
@@ -2573,7 +2570,7 @@ class ln {
   async init() {
     sn();
     try {
-      this.maxTabs = orca.state.settings[ce.CachedEditorNum] || 10;
+      this.maxTabs = orca.state.settings[se.CachedEditorNum] || 10;
     } catch {
       this.warn("无法读取最大标签数设置，使用默认值10");
     }
@@ -2923,7 +2920,7 @@ class ln {
    * 按固定状态排序标签（固定标签在前，非固定在后）
    */
   sortTabsByPinStatus() {
-    const e = this.getCurrentPanelTabs(), t = Zt(e);
+    const e = this.getCurrentPanelTabs(), t = Qt(e);
     this.setCurrentPanelTabs(t), this.syncCurrentTabsToStorage(t);
   }
   /**
@@ -2931,13 +2928,13 @@ class ln {
    */
   findLastNonPinnedTabIndex() {
     const e = this.getCurrentPanelTabs();
-    return Qt(e);
+    return Kt(e);
   }
   /**
    * 从ContentFragment数组中提取纯文本
    */
   async extractTextFromContent(e) {
-    return Dt(e);
+    return Lt(e);
   }
   /**
    * 检查content是否需要拼接多段
@@ -2954,7 +2951,7 @@ class ln {
    * 检查content是否主要是文本+块引用的组合
    */
   isTextWithBlockRefs(e) {
-    return Lt(e);
+    return $t(e);
   }
   /* ———————————————————————————————————————————————————————————————————————————— */
   /* 块类型检测和处理 - Block Type Detection and Processing */
@@ -2993,7 +2990,7 @@ class ln {
       }
       this.verboseLog(`🔍 块信息调试: blockId=${e.id}, aliases=${e.aliases ? JSON.stringify(e.aliases) : "undefined"}, content=${e.content ? "exists" : "undefined"}, text=${e.text ? "exists" : "undefined"}`);
       const n = this.findProperty(e, "_repr");
-      if (n && n.type === le.JSON && n.value)
+      if (n && n.type === ce.JSON && n.value)
         try {
           const a = typeof n.value == "string" ? JSON.parse(n.value) : n.value;
           if (a.type)
@@ -3218,7 +3215,7 @@ class ln {
       try {
         const d = R(a);
         if (d)
-          s = !0, r = Et(d);
+          s = !0, r = St(d);
         else if (a.aliases && a.aliases.length > 0)
           r = a.aliases[0];
         else if (a.content && a.content.length > 0)
@@ -3652,10 +3649,16 @@ class ln {
     `, document.head.appendChild(e), this.log("✅ 拖拽样式已添加");
   }
   /**
-   * 防抖更新标签页UI（防止闪烁，优化版）
+   * 立即更新标签页UI（修复同步问题）
+   */
+  async immediateUpdateTabsUI() {
+    await this.updateTabsUI();
+  }
+  /**
+   * 防抖更新标签页UI（仅用于拖拽等非关键场景）
    */
   debouncedUpdateTabsUI() {
-    this.draggingTab ? this.draggingDebounce() : this.normalDebounce();
+    this.draggingTab ? this.draggingDebounce() : this.immediateUpdateTabsUI();
   }
   async updateTabsUI() {
     if (!this.tabContainer || this.isUpdating) return;
@@ -4533,19 +4536,19 @@ class ln {
     this.verboseLog(`🔧 创建标签元素: ${e.title} (ID: ${e.blockId})`);
     const t = document.createElement("div");
     t.className = "orca-tab", t.setAttribute("data-tab-id", e.blockId), this.isTabActive(e) && t.setAttribute("data-focused", "true");
-    const a = this.isVerticalMode && !this.isFixedToTop, r = zt(e, a);
+    const a = this.isVerticalMode && !this.isFixedToTop, r = Nt(e, a);
     t.style.cssText = r;
-    const i = Ft();
+    const i = zt();
     if (e.icon && this.showBlockTypeIcons) {
-      const s = Rt(e.icon);
+      const s = Ft(e.icon);
       i.appendChild(s);
     }
-    const c = _t(e.title);
+    const c = Rt(e.title);
     if (i.appendChild(c), e.isPinned) {
-      const s = qt();
+      const s = _t();
       i.appendChild(s);
     }
-    return t.appendChild(i), this.isVerticalMode && !this.resizeHandle && this.enableDragResize(), t.title = Ht(e), t.addEventListener("click", (s) => {
+    return t.appendChild(i), this.isVerticalMode && !this.resizeHandle && this.enableDragResize(), t.title = qt(e), t.addEventListener("click", (s) => {
       var d;
       s.preventDefault(), this.log(`🖱️ 点击标签: ${e.title} (ID: ${e.blockId})`), this.closedTabs.has(e.blockId) && (this.closedTabs.delete(e.blockId), this.saveClosedTabs(), this.log(`🔄 点击已关闭的标签 "${e.title}"，从已关闭列表中移除`));
       const l = (d = this.tabContainer) == null ? void 0 : d.querySelectorAll(".orca-tabs-plugin .orca-tab");
@@ -4587,7 +4590,7 @@ class ln {
     }), t;
   }
   hexToRgba(e, t) {
-    return At(e, t);
+    return Mt(e, t);
   }
   /**
    * 根据背景颜色计算合适的文字颜色
@@ -4822,12 +4825,12 @@ class ln {
    * 切换标签固定状态
    */
   async toggleTabPinStatus(e) {
-    const t = this.getCurrentPanelTabs(), n = jt(e, t, {
+    const t = this.getCurrentPanelTabs(), n = Yt(e, t, {
       updateOrder: !0,
       saveData: !0,
       updateUI: !0
     });
-    n.success ? (this.syncCurrentTabsToStorage(t), this.debouncedUpdateTabsUI(), await this.saveCurrentPanelTabs(), this.enableWorkspaces && this.currentWorkspace && (await this.saveCurrentTabsToWorkspace(), this.log(`🔄 标签页固定状态变化，实时更新工作区: ${e.title}`)), this.log(n.message)) : this.warn(n.message);
+    n.success ? (this.syncCurrentTabsToStorage(t), await this.immediateUpdateTabsUI(), await this.saveCurrentPanelTabs(), this.enableWorkspaces && this.currentWorkspace && (await this.saveCurrentTabsToWorkspace(), this.log(`🔄 标签页固定状态变化，实时更新工作区: ${e.title}`)), this.log(n.message)) : this.warn(n.message);
   }
   /* ———————————————————————————————————————————————————————————————————————————— */
   /* 设置管理 - Settings Management */
@@ -5211,7 +5214,7 @@ class ln {
    * 创建上下文菜单项
    */
   createContextMenuItem(e, t, n, a) {
-    return Mt(e, t, n, a);
+    return Dt(e, t, n, a);
   }
   /**
    * 记录当前标签的滚动位置
@@ -5393,7 +5396,7 @@ class ln {
         const c = { ...e, closedAt: Date.now() }, s = this.recentlyClosedTabs.findIndex((l) => l.blockId === e.blockId);
         s !== -1 && this.recentlyClosedTabs.splice(s, 1), this.recentlyClosedTabs.unshift(c), this.recentlyClosedTabs.length > 20 && (this.recentlyClosedTabs = this.recentlyClosedTabs.slice(0, 20)), await this.saveRecentlyClosedTabs();
       }
-      t.splice(n, 1), this.syncCurrentTabsToStorage(t), this.debouncedUpdateTabsUI(), await this.saveCurrentPanelTabs(), await this.saveClosedTabs(), this.enableWorkspaces && this.currentWorkspace && (await this.saveCurrentTabsToWorkspace(), this.log(`🔄 标签页删除，实时更新工作区: ${e.title}`)), this.log(`🗑️ 标签 "${e.title}" 已关闭，已添加到关闭列表`), r && i ? (this.log(`🔄 自动切换到相邻标签: "${i.title}"`), await this.switchToTab(i)) : r && !i && this.log("⚠️ 关闭了激活标签但没有相邻标签可切换");
+      t.splice(n, 1), this.syncCurrentTabsToStorage(t), await this.immediateUpdateTabsUI(), await this.saveCurrentPanelTabs(), await this.saveClosedTabs(), this.enableWorkspaces && this.currentWorkspace && (await this.saveCurrentTabsToWorkspace(), this.log(`🔄 标签页删除，实时更新工作区: ${e.title}`)), this.log(`🗑️ 标签 "${e.title}" 已关闭，已添加到关闭列表`), r && i ? (this.log(`🔄 自动切换到相邻标签: "${i.title}"`), await this.switchToTab(i)) : r && !i && this.log("⚠️ 关闭了激活标签但没有相邻标签可切换");
     }
   }
   /**
@@ -5405,7 +5408,7 @@ class ln {
       this.closedTabs.add(r.blockId);
     });
     const n = e.filter((r) => r.isPinned), a = e.length - n.length;
-    this.setCurrentPanelTabs(n), this.syncCurrentTabsToStorage(n), this.debouncedUpdateTabsUI(), await this.saveCurrentPanelTabs(), await this.saveClosedTabs(), this.enableWorkspaces && this.currentWorkspace && (await this.saveCurrentTabsToWorkspace(), this.log("🔄 批量关闭标签页，实时更新工作区")), this.log(`🗑️ 已关闭 ${a} 个标签，保留了 ${n.length} 个固定标签`);
+    this.setCurrentPanelTabs(n), this.syncCurrentTabsToStorage(n), await this.immediateUpdateTabsUI(), await this.saveCurrentPanelTabs(), await this.saveClosedTabs(), this.enableWorkspaces && this.currentWorkspace && (await this.saveCurrentTabsToWorkspace(), this.log("🔄 批量关闭标签页，实时更新工作区")), this.log(`🗑️ 已关闭 ${a} 个标签，保留了 ${n.length} 个固定标签`);
   }
   /**
    * 关闭其他标签页（保留当前标签和固定标签）
@@ -5420,7 +5423,7 @@ class ln {
       this.closedTabs.add(i.blockId);
     });
     const r = t.length - n.length;
-    this.setCurrentPanelTabs(n), this.syncCurrentTabsToStorage(n), this.debouncedUpdateTabsUI(), await this.saveCurrentPanelTabs(), await this.saveClosedTabs(), this.enableWorkspaces && this.currentWorkspace && (await this.saveCurrentTabsToWorkspace(), this.log("🔄 关闭其他标签页，实时更新工作区")), this.log(`🗑️ 已关闭其他 ${r} 个标签，保留了当前标签和固定标签`);
+    this.setCurrentPanelTabs(n), this.syncCurrentTabsToStorage(n), await this.immediateUpdateTabsUI(), await this.saveCurrentPanelTabs(), await this.saveClosedTabs(), this.enableWorkspaces && this.currentWorkspace && (await this.saveCurrentTabsToWorkspace(), this.log("🔄 关闭其他标签页，实时更新工作区")), this.log(`🗑️ 已关闭其他 ${r} 个标签，保留了当前标签和固定标签`);
   }
   /**
    * 重命名标签（内联编辑）
@@ -5601,7 +5604,7 @@ class ln {
    */
   async updateTabTitle(e, t) {
     try {
-      const n = this.getCurrentPanelTabs(), a = Gt(e, t, n, {
+      const n = this.getCurrentPanelTabs(), a = Xt(e, t, n, {
         updateUI: !0,
         saveData: !0,
         validateData: !0
@@ -5957,7 +5960,7 @@ class ln {
   }
   async savePosition() {
     try {
-      const e = Ot(
+      const e = Bt(
         this.position,
         this.isVerticalMode,
         this.verticalPosition,
@@ -6032,7 +6035,7 @@ class ln {
         this.isVerticalMode,
         this.verticalPosition,
         this.horizontalPosition
-      ), this.position = Wt(this.position, this.isVerticalMode, this.verticalWidth), this.log(`📍 位置已恢复: ${re(this.position, this.isVerticalMode)}`);
+      ), this.position = At(this.position, this.isVerticalMode, this.verticalWidth), this.log(`📍 位置已恢复: ${re(this.position, this.isVerticalMode)}`);
     } catch {
       this.warn("无法恢复标签位置");
     }
@@ -6048,12 +6051,12 @@ class ln {
         q()
       );
       if (e) {
-        const t = Bt(e);
+        const t = Wt(e);
         this.isVerticalMode = t.isVerticalMode, this.verticalWidth = t.verticalWidth, this.verticalPosition = t.verticalPosition, this.horizontalPosition = t.horizontalPosition, this.position = _(
           this.isVerticalMode,
           this.verticalPosition,
           this.horizontalPosition
-        ), this.isSidebarAlignmentEnabled = t.isSidebarAlignmentEnabled, this.isFloatingWindowVisible = t.isFloatingWindowVisible, this.showBlockTypeIcons = t.showBlockTypeIcons, this.showInHeadbar = t.showInHeadbar, this.log(`📐 布局模式已恢复: ${Nt(t)}, 当前位置: (${this.position.x}, ${this.position.y})`);
+        ), this.isSidebarAlignmentEnabled = t.isSidebarAlignmentEnabled, this.isFloatingWindowVisible = t.isFloatingWindowVisible, this.showBlockTypeIcons = t.showBlockTypeIcons, this.showInHeadbar = t.showInHeadbar, this.log(`📐 布局模式已恢复: ${Ot(t)}, 当前位置: (${this.position.x}, ${this.position.y})`);
       } else {
         const t = q();
         this.isVerticalMode = t.isVerticalMode, this.verticalWidth = t.verticalWidth, this.verticalPosition = t.verticalPosition, this.horizontalPosition = t.horizontalPosition, this.position = _(
@@ -6092,7 +6095,7 @@ class ln {
    */
   constrainPosition() {
     const e = this.isVerticalMode ? Math.min(this.getCurrentPanelTabs().length * 28 + 8, window.innerHeight * 0.8) : 28;
-    this.position = tn(this.position, this.isVerticalMode, this.verticalWidth, e);
+    this.position = en(this.position, this.isVerticalMode, this.verticalWidth, e);
   }
   /**
    * 检查新添加的块
@@ -6170,7 +6173,7 @@ class ln {
     i.length === 0 && (this.log("📋 当前面板没有标签数据，先扫描面板数据"), await this.scanCurrentPanelTabs(), i = this.getCurrentPanelTabs()), this.log(`🔍 检查标签页 ${r}，当前面板有 ${i.length} 个标签页:`, i.map((g) => `${g.title}(${g.blockId})`));
     const c = i.find((g) => g.blockId === r);
     if (c) {
-      this.log(`📋 找到已存在的标签页: "${c.title}" (${r})`), this.closedTabs.has(r) && (this.closedTabs.delete(r), await this.saveClosedTabs(), this.log(`🔄 标签 "${c.title}" 重新激活，从已关闭列表中移除`)), this.updateFocusState(r, c.title), await this.updateTabsUI();
+      this.log(`📋 找到已存在的标签页: "${c.title}" (${r})`), this.closedTabs.has(r) && (this.closedTabs.delete(r), await this.saveClosedTabs(), this.log(`🔄 标签 "${c.title}" 重新激活，从已关闭列表中移除`)), this.updateFocusState(r, c.title), await this.immediateUpdateTabsUI();
       return;
     }
     this.log(`📋 未找到标签页 ${r}，将更新当前聚焦的标签页内容`);
@@ -6195,7 +6198,7 @@ class ln {
       return;
     }
     const u = i[d];
-    i[d] = h, this.log(`🔄 更新聚焦标签页: "${u.title}" -> "${h.title}" (${r})`), this.setCurrentPanelTabs(i), await this.updateTabsUI();
+    i[d] = h, this.log(`🔄 更新聚焦标签页: "${u.title}" -> "${h.title}" (${r})`), this.setCurrentPanelTabs(i), await this.immediateUpdateTabsUI();
   }
   observeChanges() {
     new MutationObserver(async (a) => {
@@ -6237,7 +6240,7 @@ class ln {
       const i = a.target.closest(".orca-hideable");
       i && (t && clearTimeout(t), t = window.setTimeout(async () => {
         i.classList.contains("orca-hideable-hidden") || (this.verboseLog("🎯 检测到 orca-hideable 元素聚焦变化"), await this.checkCurrentPanelBlocks()), t = null;
-      }, 100));
+      }, 0));
     };
     document.addEventListener("click", n), document.addEventListener("focusin", n), document.addEventListener("keydown", (a) => {
       (a.key === "Tab" || a.key === "Enter" || a.key === " ") && (t && clearTimeout(t), t = window.setTimeout(n, 150));

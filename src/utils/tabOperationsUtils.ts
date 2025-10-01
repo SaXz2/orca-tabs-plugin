@@ -121,35 +121,73 @@ export async function performNavigation(
 ): Promise<TabOperationResult> {
   try {
     if (isJournal) {
-      // 日期块导航
-      if (tab.title.includes('今天') || tab.title.includes('Today')) {
-        await orca.commands.invokeCommand('core.goToday');
-        return {
-          success: true,
-          message: '成功导航到今天'
-        };
-      } else if (tab.title.includes('昨天') || tab.title.includes('Yesterday')) {
-        await orca.commands.invokeCommand('core.goYesterday');
-        return {
-          success: true,
-          message: '成功导航到昨天'
-        };
-      } else if (tab.title.includes('明天') || tab.title.includes('Tomorrow')) {
-        await orca.commands.invokeCommand('core.goTomorrow');
-        return {
-          success: true,
-          message: '成功导航到明天'
-        };
-      } else {
-        // 使用日期格式导航
-        const targetDate = extractDateFromTitle(tab.title);
-        if (targetDate) {
+      // 日期块导航 - 使用统一的逻辑
+      const targetDate = extractDateFromTitle(tab.title);
+      
+      if (targetDate) {
+        // 优先使用相对日期命令（如果适用）
+        if (tab.title.includes('今天') || tab.title.includes('Today')) {
+          try {
+            await orca.commands.invokeCommand('core.goToday');
+            return {
+              success: true,
+              message: '成功导航到今天'
+            };
+          } catch (e) {
+            // 如果命令失败，回退到日期导航
+          }
+        } else if (tab.title.includes('昨天') || tab.title.includes('Yesterday')) {
+          try {
+            await orca.commands.invokeCommand('core.goYesterday');
+            return {
+              success: true,
+              message: '成功导航到昨天'
+            };
+          } catch (e) {
+            // 如果命令失败，回退到日期导航
+          }
+        } else if (tab.title.includes('明天') || tab.title.includes('Tomorrow')) {
+          try {
+            await orca.commands.invokeCommand('core.goTomorrow');
+            return {
+              success: true,
+              message: '成功导航到明天'
+            };
+          } catch (e) {
+            // 如果命令失败，回退到日期导航
+          }
+        }
+
+        // 使用日期导航
+        try {
           await orca.nav.goTo("journal", { date: targetDate }, targetPanelId);
           return {
             success: true,
-            message: `成功导航到日期: ${targetDate.toISOString()}`
+            message: `成功导航到日期: ${targetDate.toISOString().split('T')[0]}`
           };
+        } catch (e) {
+          // 如果简单格式失败，尝试 Orca 格式
+          try {
+            const journalDate = {
+              t: 2, // 2 for full/absolute date
+              v: targetDate.getTime() // 使用时间戳
+            };
+            await orca.nav.goTo("journal", { date: journalDate }, targetPanelId);
+            return {
+              success: true,
+              message: `成功导航到日期: ${targetDate.toISOString().split('T')[0]}`
+            };
+          } catch (e2) {
+            throw e2;
+          }
         }
+      } else {
+        // 如果无法提取日期，回退到块导航
+        await orca.nav.goTo("block", { blockId: parseInt(tab.blockId) }, targetPanelId);
+        return {
+          success: true,
+          message: `成功导航到块: ${tab.blockId}`
+        };
       }
     } else {
       // 普通块导航
@@ -159,11 +197,6 @@ export async function performNavigation(
         message: `成功导航到块: ${tab.blockId}`
       };
     }
-
-    return {
-      success: false,
-      message: '无法确定导航方式'
-    };
   } catch (error) {
     return {
       success: false,
@@ -877,9 +910,70 @@ function getLastActiveTabId(): string | null {
  * 从标题中提取日期
  */
 function extractDateFromTitle(title: string): Date | null {
-  // 这里需要根据实际实现来提取日期
-  // 暂时返回null
-  return null;
+  try {
+    // 处理相对日期
+    if (title.includes('今天') || title.includes('Today')) {
+      return new Date();
+    } else if (title.includes('昨天') || title.includes('Yesterday')) {
+      const date = new Date();
+      date.setDate(date.getDate() - 1);
+      return date;
+    } else if (title.includes('明天') || title.includes('Tomorrow')) {
+      const date = new Date();
+      date.setDate(date.getDate() + 1);
+      return date;
+    }
+
+    // 处理标准日期格式
+    // 匹配 yyyy-MM-dd 格式
+    const isoMatch = title.match(/(\d{4}-\d{2}-\d{2})/);
+    if (isoMatch) {
+      const date = new Date(isoMatch[1] + 'T00:00:00.000Z');
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+
+    // 匹配 yyyy年MM月dd日 格式
+    const chineseMatch = title.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+    if (chineseMatch) {
+      const year = parseInt(chineseMatch[1]);
+      const month = parseInt(chineseMatch[2]) - 1; // 月份从0开始
+      const day = parseInt(chineseMatch[3]);
+      const date = new Date(year, month, day);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+
+    // 匹配 MM/dd/yyyy 格式
+    const usMatch = title.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (usMatch) {
+      const month = parseInt(usMatch[1]) - 1; // 月份从0开始
+      const day = parseInt(usMatch[2]);
+      const year = parseInt(usMatch[3]);
+      const date = new Date(year, month, day);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+
+    // 匹配 dd/MM/yyyy 格式
+    const euMatch = title.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (euMatch) {
+      const day = parseInt(euMatch[1]);
+      const month = parseInt(euMatch[2]) - 1; // 月份从0开始
+      const year = parseInt(euMatch[3]);
+      const date = new Date(year, month, day);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    return null;
+  }
 }
 
 /**
