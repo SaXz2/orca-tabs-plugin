@@ -4673,122 +4673,9 @@ class OrcaTabsPlugin {
       
       // 使用更安全的导航方式
       try {
-        if (tab.isJournal) {
-          // 日期块使用journal导航方式
-          this.log(`🚀 尝试使用 orca.nav.goTo 导航到日期块 ${tab.blockId}`);
-          
-          // 从标签标题中提取日期信息
-          let targetDate: Date | null = null;
-          let useCommand = false;
-          
-          // 检查相对日期，但优先使用标签创建时的具体日期
-          
-          // 首先尝试从块信息中获取原始日期
-          try {
-            const block = await orca.invokeBackend("get-block", parseInt(tab.blockId));
-            if (block) {
-              const journalInfo = extractJournalInfo(block);
-              if (journalInfo && !isNaN(journalInfo.getTime())) {
-                targetDate = journalInfo;
-                useCommand = false; // 使用具体日期而不是相对命令
-              }
-            }
-          } catch (e) {
-          }
-          
-          // 如果没有获取到具体日期，再使用相对日期命令
-          if (!targetDate) {
-            if (tab.title.includes('今天') || tab.title.includes('Today')) {
-              try {
-                await orca.commands.invokeCommand('core.goToday');
-                useCommand = true;
-              } catch (e) {
-                // 如果原生命令失败，回退到日期格式
-                targetDate = new Date();
-              }
-            } else if (tab.title.includes('昨天') || tab.title.includes('Yesterday')) {
-              try {
-                await orca.commands.invokeCommand('core.goYesterday');
-                useCommand = true;
-              } catch (e) {
-                // 如果原生命令失败，回退到日期格式
-                targetDate = new Date();
-                targetDate.setDate(targetDate.getDate() - 1);
-              }
-            } else if (tab.title.includes('明天') || tab.title.includes('Tomorrow')) {
-              try {
-                await orca.commands.invokeCommand('core.goTomorrow');
-                useCommand = true;
-              } catch (e) {
-                // 如果原生命令失败，回退到日期格式
-                targetDate = new Date();
-                targetDate.setDate(targetDate.getDate() + 1);
-              }
-            } else {
-              // 尝试从标题中提取日期
-              const dateMatch = tab.title.match(/(\d{4}-\d{2}-\d{2})/);
-              if (dateMatch) {
-                const dateStr = dateMatch[1];
-                targetDate = new Date(dateStr + 'T00:00:00.000Z'); // 确保是UTC时间
-                if (isNaN(targetDate.getTime())) {
-                  targetDate = null;
-                }
-              } else {
-                // 尝试从块信息中获取原始日期
-                try {
-                  const block = await orca.invokeBackend("get-block", parseInt(tab.blockId));
-                  if (block) {
-                    const journalInfo = extractJournalInfo(block);
-                    if (journalInfo && !isNaN(journalInfo.getTime())) {
-                      targetDate = journalInfo;
-                    }
-                  }
-                } catch (e) {
-                  this.warn("无法获取块信息:", e);
-                }
-              }
-            }
-          }
-          
-          // 如果使用了原生命令，直接继续后续处理
-          if (!useCommand) {
-            if (targetDate) {
-              this.log(`📅 使用日期导航: ${targetDate.toISOString().split('T')[0]}`);
-              try {
-                // 确保日期是有效的
-                if (isNaN(targetDate.getTime())) {
-                  throw new Error("Invalid date");
-                }
-                
-                // 使用简单的 Date 对象格式
-                await orca.nav.goTo("journal", { date: targetDate }, targetPanelId);
-              } catch (e) {
-                // 如果简单格式失败，尝试 Orca 格式
-                try {
-                  const journalDate = {
-                    t: 2, // 2 for full/absolute date
-                    v: targetDate.getTime() // 使用时间戳
-                  };
-                  await orca.nav.goTo("journal", { date: journalDate }, targetPanelId);
-                } catch (e2) {
-                  throw e2;
-                }
-              }
-            } else {
-              // 如果没有找到日期，尝试使用块ID
-              this.log(`⚠️ 未找到日期信息，尝试使用块ID导航`);
-              try {
-                await orca.nav.goTo("block", { blockId: parseInt(tab.blockId) }, targetPanelId);
-              } catch (e) {
-                throw e;
-              }
-            }
-          }
-        } else {
-          // 普通块使用block导航方式
-          this.log(`🚀 尝试使用 orca.nav.goTo 导航到块 ${tab.blockId}`);
-          await orca.nav.goTo("block", { blockId: parseInt(tab.blockId) }, targetPanelId);
-        }
+        // 统一使用块导航方式（修复日期类型标签页切换问题）
+        this.log(`🚀 尝试使用 orca.nav.goTo 导航到块 ${tab.blockId}`);
+        await orca.nav.goTo("block", { blockId: parseInt(tab.blockId) }, targetPanelId);
         this.log(`✅ orca.nav.goTo 导航成功`);
       } catch (navError) {
         this.warn("导航失败，尝试备用方法:", navError);
@@ -7718,10 +7605,10 @@ class OrcaTabsPlugin {
       if (needsCurrentPanelUpdate) {
         await this.updateCurrentPanelIndex();
         
-        // 如果面板索引发生变化，立即更新标签页显示
+        // 如果面板索引发生变化，立即更新标签页显示（修复同步问题）
         if (oldIndex !== this.currentPanelIndex) {
           this.log(`🔄 面板切换: ${oldIndex} -> ${this.currentPanelIndex}`);
-          this.debouncedUpdateTabsUI();
+          await this.immediateUpdateTabsUI();
         }
       }
 
@@ -7734,10 +7621,8 @@ class OrcaTabsPlugin {
 
 
       if (shouldCheckNewBlocks) {
-        // 仅检查第一个面板的新增块
-        setTimeout(async () => {
-          await this.checkForNewBlocks();
-        }, 100);
+        // 立即检查聚焦状态变化（修复同步问题）
+        await this.checkCurrentPanelBlocks();
       }
     });
 
@@ -7815,13 +7700,46 @@ class OrcaTabsPlugin {
     // 处理Tab键、Enter键、空格键等键盘导航
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Tab' || e.key === 'Enter' || e.key === ' ') {
-        // 键盘事件使用更长的延迟，确保导航完成
+        // 立即处理键盘事件（修复同步问题）
         if (focusChangeTimeout) {
           clearTimeout(focusChangeTimeout);
         }
-        focusChangeTimeout = window.setTimeout(handleFocusChange, 150);
+        focusChangeTimeout = window.setTimeout(handleFocusChange, 0);
       }
     });
+
+    // 监听器4: 主动检测机制（修复同步问题）
+    // 定期检查当前激活的块，确保标签页同步
+    setInterval(async () => {
+      try {
+        // 检查是否有可见的块编辑器
+        const currentActivePanel = document.querySelector('.orca-panel.active');
+        if (currentActivePanel) {
+          const activeBlockEditor = currentActivePanel.querySelector('.orca-hideable:not(.orca-hideable-hidden) .orca-block-editor[data-block-id]');
+          if (activeBlockEditor) {
+            const blockId = activeBlockEditor.getAttribute('data-block-id');
+            if (blockId) {
+              // 检查当前聚焦的标签页是否匹配
+              const focusedTab = this.tabContainer?.querySelector('.orca-tab[data-focused="true"]');
+              if (focusedTab) {
+                const focusedTabId = focusedTab.getAttribute('data-tab-id');
+                if (focusedTabId !== blockId) {
+                  // 不匹配，立即更新
+                  this.verboseLog(`🔄 主动检测到块变化: ${focusedTabId} -> ${blockId}`);
+                  await this.checkCurrentPanelBlocks();
+                }
+              } else {
+                // 没有聚焦的标签页，立即更新
+                this.verboseLog(`🔄 主动检测到无聚焦标签页，当前块: ${blockId}`);
+                await this.checkCurrentPanelBlocks();
+              }
+            }
+          }
+        }
+      } catch (error) {
+        // 静默处理错误，避免影响主流程
+      }
+    }, 500); // 每500ms检查一次
   }
 
   /**
