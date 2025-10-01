@@ -991,13 +991,22 @@ class OrcaTabsPlugin {
       
       this.log(`🔍 获取到标签信息: "${newTabInfo.title}" (类型: ${newTabInfo.blockType || 'unknown'})`);
       
-      // 将新标签页添加到数组开头
-      currentTabs.unshift(newTabInfo);
-      
-      // 重新排序所有标签页
-      currentTabs.forEach((tab, index) => {
-        tab.order = index;
-      });
+      // 检查是否达到标签上限
+      if (currentTabs.length >= this.maxTabs) {
+        // 达到标签上限，替换最后一个标签页
+        const lastIndex = currentTabs.length - 1;
+        const oldTab = currentTabs[lastIndex];
+        currentTabs[lastIndex] = newTabInfo;
+        newTabInfo.order = lastIndex;
+        
+        this.log(`🔄 达到标签上限 (${this.maxTabs})，替换最后一个标签页: "${oldTab.title}" -> "${newTabInfo.title}"`);
+      } else {
+        // 未达到标签上限，将新标签页添加到数组末尾
+        newTabInfo.order = currentTabs.length;
+        currentTabs.push(newTabInfo);
+        
+        this.log(`➕ 添加新标签页到末尾: "${newTabInfo.title}" (当前标签数: ${currentTabs.length}/${this.maxTabs})`);
+      }
       
       // 保存标签页数据
       this.setCurrentPanelTabs(currentTabs);
