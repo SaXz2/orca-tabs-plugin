@@ -7445,40 +7445,78 @@ class OrcaTabsPlugin {
 
   /**
    * 立即更新聚焦状态
+   * 
+   * 功能说明：
+   * - 清除所有标签页的聚焦状态（data-focused="true"）
+   * - 设置指定标签页为聚焦状态
+   * - 确保视觉上只有一个标签页显示为激活状态
+   * 
+   * 使用场景：
+   * - 用户点击不同内容时，需要立即更新标签页的聚焦状态
+   * - 避免防抖延迟，提供即时的视觉反馈
+   * 
+   * @param blockId - 要聚焦的块ID
+   * @param title - 标签页标题（用于日志记录）
    */
   private updateFocusState(blockId: string, title: string) {
-    // 清除所有标签的聚焦状态
+    // 步骤1: 清除所有标签页的聚焦状态
+    // 查找所有标签页元素，移除 data-focused 属性
     const allTabs = this.tabContainer?.querySelectorAll('.orca-tabs-plugin .orca-tab');
     allTabs?.forEach(tab => tab.removeAttribute('data-focused'));
     
-    // 设置当前标签为聚焦状态
+    // 步骤2: 设置目标标签页为聚焦状态
+    // 根据 blockId 查找对应的标签页元素
     const currentTabElement = this.tabContainer?.querySelector(`[data-tab-id="${blockId}"]`);
     if (currentTabElement) {
+      // 设置聚焦状态，触发CSS样式变化
       currentTabElement.setAttribute('data-focused', 'true');
       this.log(`🎯 更新聚焦状态到已存在的标签: "${title}"`);
     } else {
+      // 如果找不到标签页元素，记录警告日志
       this.verboseLog(`⚠️ 未找到标签元素: ${blockId}`);
     }
   }
 
   /**
    * 检查当前面板的当前激活页面（统一处理所有面板）
+   * 
+   * 功能说明：
+   * - 检测用户聚焦的内容变化
+   * - 更新标签页的聚焦状态
+   * - 处理标签页内容的更新或创建
+   * 
+   * 核心逻辑：
+   * 1. 获取当前激活的面板
+   * 2. 查找面板中可见的块编辑器（没有 orca-hideable-hidden 类）
+   * 3. 检查该块是否已存在于标签页中
+   * 4. 如果存在：更新聚焦状态
+   * 5. 如果不存在：更新当前聚焦标签页的内容
+   * 
+   * 使用场景：
+   * - 用户点击不同内容时触发
+   * - 键盘导航切换时触发
+   * - 程序化聚焦时触发
    */
   async checkCurrentPanelBlocks() {
-    // 优先检查当前激活的面板
+    // 步骤1: 获取当前激活的面板
+    // 查找带有 .active 类的面板元素
     const currentActivePanel = document.querySelector('.orca-panel.active');
     if (!currentActivePanel) {
       this.log('没有找到当前激活的面板');
       return;
     }
     
+    // 步骤2: 获取面板ID
+    // 从面板元素中提取 data-panel-id 属性
     const currentPanelId = currentActivePanel.getAttribute('data-panel-id');
     if (!currentPanelId) {
       this.log('激活面板没有 data-panel-id');
       return;
     }
     
-    // 更新当前面板索引，确保读取正确的面板数据
+    // 步骤3: 更新当前面板索引
+    // 确保 this.currentPanelIndex 和 this.currentPanelId 与DOM状态同步
+    // 这是关键步骤，避免读取错误面板的数据
     const panelIndex = this.getPanelIds().indexOf(currentPanelId);
     if (panelIndex !== -1) {
       this.currentPanelIndex = panelIndex;
@@ -7486,36 +7524,48 @@ class OrcaTabsPlugin {
       this.verboseLog(`🔄 更新当前面板索引: ${panelIndex} (面板ID: ${currentPanelId})`);
     }
     
-    // 获取当前激活面板中可见的块编辑器（没有 orca-hideable-hidden 类）
+    // 步骤4: 获取当前激活的块编辑器
+    // 查找面板中可见的块编辑器（没有 orca-hideable-hidden 类）
+    // 这个选择器确保只获取用户当前看到的内容
     const activeBlockEditor = currentActivePanel.querySelector('.orca-hideable:not(.orca-hideable-hidden) .orca-block-editor[data-block-id]');
     if (!activeBlockEditor) {
       this.log(`激活面板 ${currentPanelId} 中没有找到可见的块编辑器`);
       return;
     }
 
+    // 步骤5: 获取块ID
+    // 从块编辑器中提取 data-block-id 属性，用于标识具体的内容块
     const blockId = activeBlockEditor.getAttribute('data-block-id');
     if (!blockId) {
       this.log("激活的块编辑器没有blockId");
       return;
     }
 
-    // 检查是否已经存在这个标签页
+    // 步骤6: 获取当前面板的标签页数据
+    // 从内存中读取当前面板的标签页数组
     let currentTabs = this.getCurrentPanelTabs();
     
+    // 步骤7: 数据完整性检查
     // 如果当前面板没有标签数据，先扫描面板数据
+    // 这解决了面板切换后数据为空的问题
     if (currentTabs.length === 0) {
       this.log(`📋 当前面板没有标签数据，先扫描面板数据`);
       await this.scanCurrentPanelTabs();
       currentTabs = this.getCurrentPanelTabs();
     }
     
+    // 步骤8: 调试日志
+    // 记录当前面板的标签页信息，便于调试
     this.log(`🔍 检查标签页 ${blockId}，当前面板有 ${currentTabs.length} 个标签页:`, currentTabs.map(tab => `${tab.title}(${tab.blockId})`));
     
+    // 步骤9: 查找已存在的标签页
+    // 在当前面板的标签页数组中查找对应的块ID
     const existingTab = currentTabs.find(tab => tab.blockId === blockId);
     if (existingTab) {
-      // 如果已经存在，更新聚焦状态
+      // 分支A: 标签页已存在 - 更新聚焦状态
       this.log(`📋 找到已存在的标签页: "${existingTab.title}" (${blockId})`);
       
+      // 步骤A1: 处理已关闭标签页的重新激活
       // 如果标签在已关闭列表中，从列表中移除
       if (this.closedTabs.has(blockId)) {
         this.closedTabs.delete(blockId);
@@ -7523,54 +7573,68 @@ class OrcaTabsPlugin {
         this.log(`🔄 标签 "${existingTab.title}" 重新激活，从已关闭列表中移除`);
       }
       
-      // 立即更新聚焦状态和UI，不等待防抖
+      // 步骤A2: 立即更新聚焦状态
+      // 调用 updateFocusState 方法，立即更新标签页的聚焦状态
+      // 不使用防抖，确保视觉反馈即时
       this.updateFocusState(blockId, existingTab.title);
       
-      // 立即更新UI显示，确保标签页内容同步
+      // 步骤A3: 立即更新UI显示
+      // 调用 updateTabsUI 方法，立即更新标签页内容
+      // 确保编辑器内容和标签页DOM同步
       await this.updateTabsUI();
       return;
     }
 
-    // 如果不存在，更新当前聚焦的标签页内容，而不是创建新标签页
+    // 分支B: 标签页不存在 - 更新当前聚焦标签页的内容
+    // 这是核心逻辑：不创建新标签页，而是更新现有标签页的内容
     this.log(`📋 未找到标签页 ${blockId}，将更新当前聚焦的标签页内容`);
     
-    // 获取当前聚焦的标签页
+    // 步骤B1: 获取当前聚焦的标签页元素
+    // 查找带有 data-focused="true" 属性的标签页元素
     const focusedTabElement = this.tabContainer?.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
     if (!focusedTabElement) {
       this.log(`⚠️ 没有找到当前聚焦的标签页，无法更新`);
       return;
     }
     
+    // 步骤B2: 获取聚焦标签页的ID
+    // 从标签页元素中提取 data-tab-id 属性
     const focusedTabId = focusedTabElement.getAttribute('data-tab-id');
     if (!focusedTabId) {
       this.log(`⚠️ 聚焦的标签页没有 data-tab-id，无法更新`);
       return;
     }
     
-    // 找到聚焦标签页在数组中的位置
+    // 步骤B3: 找到聚焦标签页在数组中的位置
+    // 在标签页数组中查找对应的索引位置
     const focusedIndex = currentTabs.findIndex(tab => tab.blockId === focusedTabId);
     if (focusedIndex === -1) {
       this.log(`⚠️ 聚焦的标签页不在数组中，无法更新`);
       return;
     }
     
-    // 获取新的标签页信息
+    // 步骤B4: 获取新的标签页信息
+    // 调用 getTabInfo 方法，获取新内容的标签页信息
     const newTabInfo = await this.getTabInfo(blockId, currentPanelId, focusedIndex);
     if (!newTabInfo) {
       this.log(`❌ 无法获取标签信息: ${blockId}`);
       return;
     }
     
-    // 更新聚焦标签页的内容
+    // 步骤B5: 更新标签页内容
+    // 将聚焦标签页的内容替换为新内容
     const oldTab = currentTabs[focusedIndex];
     currentTabs[focusedIndex] = newTabInfo;
     
     this.log(`🔄 更新聚焦标签页: "${oldTab.title}" -> "${newTabInfo.title}" (${blockId})`);
     
-    // 保存数据
+    // 步骤B6: 保存数据
+    // 将更新后的标签页数组保存到内存和存储中
     this.setCurrentPanelTabs(currentTabs);
     
-    // 立即更新UI显示，确保标签页内容同步
+    // 步骤B7: 立即更新UI显示
+    // 调用 updateTabsUI 方法，立即更新标签页DOM
+    // 确保编辑器内容和标签页内容同步
     await this.updateTabsUI();
     return;
   }
@@ -7679,38 +7743,74 @@ class OrcaTabsPlugin {
       attributeFilter: ['class']
     });
     
-    // 添加聚焦变化检测，使用防抖避免频繁触发
+    // ==================== 聚焦变化检测系统 ====================
+    // 功能说明：
+    // - 监听用户的聚焦行为（点击、键盘导航等）
+    // - 检测 orca-hideable 元素的聚焦状态变化
+    // - 触发标签页的聚焦状态更新
+    
+    // 防抖机制：避免频繁触发，提高性能
     let focusChangeTimeout: number | null = null;
     
+    /**
+     * 聚焦变化处理函数
+     * 
+     * 核心逻辑：
+     * 1. 检查点击的元素是否在 orca-hideable 容器内
+     * 2. 延迟检查，确保DOM类名变化已完成
+     * 3. 验证元素是否变为可见状态
+     * 4. 触发标签页聚焦状态更新
+     * 
+     * @param e - 事件对象
+     */
     const handleFocusChange = async (e: Event) => {
       const target = e.target as Element;
+      
+      // 步骤1: 查找最近的 orca-hideable 元素
+      // 检查点击的元素是否在可隐藏的容器内
       const hideableElement = target.closest('.orca-hideable');
       
       if (hideableElement) {
-        // 清除之前的延迟
+        // 步骤2: 防抖处理
+        // 清除之前的延迟，避免重复触发
         if (focusChangeTimeout) {
           clearTimeout(focusChangeTimeout);
         }
         
-        // 延迟检查，确保类名变化已经完成
+        // 步骤3: 延迟检查
+        // 等待DOM类名变化完成，确保聚焦状态已更新
         focusChangeTimeout = window.setTimeout(async () => {
-          // 检查这个元素是否现在是可见的（没有 orca-hideable-hidden 类）
+          // 步骤4: 验证聚焦状态
+          // 检查元素是否现在是可见的（没有 orca-hideable-hidden 类）
           if (!hideableElement.classList.contains('orca-hideable-hidden')) {
             this.verboseLog('🎯 检测到 orca-hideable 元素聚焦变化');
+            
+            // 步骤5: 触发标签页更新
+            // 调用 checkCurrentPanelBlocks 方法，更新标签页聚焦状态
             await this.checkCurrentPanelBlocks();
           }
+          
+          // 清理防抖状态
           focusChangeTimeout = null;
-        }, 100); // 增加延迟时间，确保类名变化完成
+        }, 100); // 延迟100ms，确保类名变化完成
       }
     };
     
-    // 监听 click 和 focusin 事件，确保聚焦切换能及时响应
+    // ==================== 事件监听器注册 ====================
+    
+    // 监听器1: 点击事件
+    // 处理用户鼠标点击不同内容的情况
     document.addEventListener('click', handleFocusChange);
+    
+    // 监听器2: 聚焦事件
+    // 处理键盘导航、程序化聚焦等情况
     document.addEventListener('focusin', handleFocusChange);
     
-    // 添加键盘事件监听（Tab键切换等）
+    // 监听器3: 键盘事件
+    // 处理Tab键、Enter键、空格键等键盘导航
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Tab' || e.key === 'Enter' || e.key === ' ') {
+        // 键盘事件使用更长的延迟，确保导航完成
         if (focusChangeTimeout) {
           clearTimeout(focusChangeTimeout);
         }
