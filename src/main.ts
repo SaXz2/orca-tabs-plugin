@@ -7460,6 +7460,14 @@ class OrcaTabsPlugin {
       return;
     }
     
+    // 更新当前面板索引，确保读取正确的面板数据
+    const panelIndex = this.getPanelIds().indexOf(currentPanelId);
+    if (panelIndex !== -1) {
+      this.currentPanelIndex = panelIndex;
+      this.currentPanelId = currentPanelId;
+      this.verboseLog(`🔄 更新当前面板索引: ${panelIndex} (面板ID: ${currentPanelId})`);
+    }
+    
     // 获取当前激活面板中可见的块编辑器（没有 orca-hideable-hidden 类）
     const activeBlockEditor = currentActivePanel.querySelector('.orca-hideable:not(.orca-hideable-hidden) .orca-block-editor[data-block-id]');
     if (!activeBlockEditor) {
@@ -7754,8 +7762,8 @@ class OrcaTabsPlugin {
       attributeFilter: ['class']
     });
     
-    // 添加全局点击事件监听，检测 orca-hideable 元素的聚焦
-    document.addEventListener('click', (e) => {
+    // 添加多种事件监听，检测 orca-hideable 元素的聚焦
+    const handleFocusChange = async (e: Event) => {
       const target = e.target as Element;
       const hideableElement = target.closest('.orca-hideable');
       
@@ -7764,10 +7772,22 @@ class OrcaTabsPlugin {
         setTimeout(async () => {
           // 检查这个元素是否现在是可见的（没有 orca-hideable-hidden 类）
           if (!hideableElement.classList.contains('orca-hideable-hidden')) {
-            this.verboseLog('🎯 检测到 orca-hideable 元素被点击聚焦');
+            this.verboseLog('🎯 检测到 orca-hideable 元素聚焦变化');
             await this.checkCurrentPanelBlocks();
           }
         }, 50);
+      }
+    };
+    
+    // 监听多种事件
+    document.addEventListener('click', handleFocusChange);
+    document.addEventListener('focusin', handleFocusChange);
+    document.addEventListener('mousedown', handleFocusChange);
+    
+    // 添加键盘事件监听（Tab键切换等）
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab' || e.key === 'Enter' || e.key === ' ') {
+        setTimeout(handleFocusChange, 100);
       }
     });
   }
