@@ -8005,26 +8005,28 @@ class OrcaTabsPlugin {
   private async handleClickEvent(e: MouseEvent) {
     const target = e.target as HTMLElement;
     
-    // 如果点击的不是插件相关元素，直接返回，减少干扰
-    if (!target.closest('.orca-tabs-plugin')) {
+    // 检查是否是块引用点击（优先处理，不受插件容器限制）
+    const blockRefId = this.getBlockRefId(target);
+    if (blockRefId) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      
+      if (e.ctrlKey || e.metaKey) {
+        // Ctrl+点击: 在新标签页打开
+        this.log(`🔗 检测到 Ctrl+点击 块引用: ${blockRefId}，将在后台新建标签页`);
+        await this.openInNewTab(blockRefId);
+      } else {
+        // 直接点击: 替换当前标签页内容
+        this.log(`🔗 检测到直接点击 块引用: ${blockRefId}，将替换当前标签页`);
+        await this.createBlockAfterFocused(blockRefId);
+      }
       return;
     }
     
-    // 检查是否是 Ctrl+点击 块引用
-    if ((e.ctrlKey || e.metaKey) && e.target) {
-      const blockRefId = this.getBlockRefId(target);
-      
-      if (blockRefId) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        
-        this.log(`🔗 检测到 Ctrl+点击 块引用: ${blockRefId}，将在后台新建标签页`);
-        
-        // Ctrl+点击: 在新标签页打开
-        await this.openInNewTab(blockRefId);
-        return;
-      }
+    // 如果点击的不是插件相关元素，直接返回，减少干扰
+    if (!target.closest('.orca-tabs-plugin')) {
+      return;
     }
     
     // 检查是否点击了侧边栏相关元素，如果是则不处理

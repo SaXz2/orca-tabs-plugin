@@ -6102,6 +6102,18 @@ class ln {
   }
   /**
    * 立即更新聚焦状态
+   * 
+   * 功能说明：
+   * - 清除所有标签页的聚焦状态（data-focused="true"）
+   * - 设置指定标签页为聚焦状态
+   * - 确保视觉上只有一个标签页显示为激活状态
+   * 
+   * 使用场景：
+   * - 用户点击不同内容时，需要立即更新标签页的聚焦状态
+   * - 避免防抖延迟，提供即时的视觉反馈
+   * 
+   * @param blockId - 要聚焦的块ID
+   * @param title - 标签页标题（用于日志记录）
    */
   updateFocusState(e, t) {
     var r, i;
@@ -6112,6 +6124,23 @@ class ln {
   }
   /**
    * 检查当前面板的当前激活页面（统一处理所有面板）
+   * 
+   * 功能说明：
+   * - 检测用户聚焦的内容变化
+   * - 更新标签页的聚焦状态
+   * - 处理标签页内容的更新或创建
+   * 
+   * 核心逻辑：
+   * 1. 获取当前激活的面板
+   * 2. 查找面板中可见的块编辑器（没有 orca-hideable-hidden 类）
+   * 3. 检查该块是否已存在于标签页中
+   * 4. 如果存在：更新聚焦状态
+   * 5. 如果不存在：更新当前聚焦标签页的内容
+   * 
+   * 使用场景：
+   * - 用户点击不同内容时触发
+   * - 键盘导航切换时触发
+   * - 程序化聚焦时触发
    */
   async checkCurrentPanelBlocks() {
     var p;
@@ -6311,15 +6340,12 @@ class ln {
    * 处理点击事件
    */
   async handleClickEvent(e) {
-    const t = e.target;
+    const t = e.target, n = this.getBlockRefId(t);
+    if (n) {
+      e.preventDefault(), e.stopPropagation(), e.stopImmediatePropagation(), e.ctrlKey || e.metaKey ? (this.log(`🔗 检测到 Ctrl+点击 块引用: ${n}，将在后台新建标签页`), await this.openInNewTab(n)) : (this.log(`🔗 检测到直接点击 块引用: ${n}，将替换当前标签页`), await this.createBlockAfterFocused(n));
+      return;
+    }
     if (t.closest(".orca-tabs-plugin")) {
-      if ((e.ctrlKey || e.metaKey) && e.target) {
-        const n = this.getBlockRefId(t);
-        if (n) {
-          e.preventDefault(), e.stopPropagation(), e.stopImmediatePropagation(), this.log(`🔗 检测到 Ctrl+点击 块引用: ${n}，将在后台新建标签页`), await this.openInNewTab(n);
-          return;
-        }
-      }
       if (t.closest(".sidebar, .side-panel, .panel-resize, .resize-handle, .orca-sidebar, .orca-panel, .orca-menu, .orca-recents-menu, [data-panel-id]")) {
         this.log("🔄 检测到侧边栏/面板点击，跳过面板状态检查");
         return;
