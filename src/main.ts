@@ -122,6 +122,7 @@ import {
   createTabTextContainer,       // 创建标签页文本容器样式
   createPinIcon,                // 创建固定图标样式
   createTabTooltip,             // 创建标签页提示框样式
+  createTabSeparator,           // 创建标签分割线样式
   createNewTabButtonStyle,      // 创建新标签页按钮样式
   createDragHandleStyle,        // 创建拖拽手柄样式
   createResizeHandleStyle,      // 创建调整大小手柄样式
@@ -3132,6 +3133,7 @@ class OrcaTabsPlugin {
     const dragHandle = this.tabContainer.querySelector('.drag-handle');
     const newTabButton = this.tabContainer.querySelector('.new-tab-button');
     const workspaceButton = this.tabContainer.querySelector('.workspace-button');
+    // 清除现有标签和分割线
     this.tabContainer.innerHTML = '';
     if (dragHandle) {
       this.tabContainer.appendChild(dragHandle);
@@ -3167,6 +3169,12 @@ class OrcaTabsPlugin {
       targetTabs.forEach((tab, index) => {
         const tabElement = this.createTabElement(tab);
         this.tabContainer?.appendChild(tabElement);
+        
+        // 如果是水平模式且不是最后一个标签，添加分割线
+        if (!this.isVerticalMode && index < targetTabs.length - 1) {
+          const separator = createTabSeparator();
+          this.tabContainer?.appendChild(separator);
+        }
       });
     } else {
       this.log(`⚠️ 没有可显示的面板，跳过标签页显示`);

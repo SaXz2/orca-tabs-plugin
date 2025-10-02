@@ -2083,6 +2083,16 @@ function Ue(r) {
   return r.isPinned && (t += " (已固定)"), t;
 }
 function He() {
+  const r = document.createElement("div");
+  return r.className = "orca-tab-separator", r.style.cssText = `
+    width: 1px;
+    height: 20px;
+    background: color-mix(in srgb, var(--orca-color-text-1), transparent 70%);
+    flex-shrink: 0;
+    margin: 0px 0px;
+  `, r;
+}
+function Ve() {
   return `
     position: fixed;
     top: 50%;
@@ -2106,7 +2116,7 @@ function it(r = "primary") {
     danger: "orca-button"
   }[r];
 }
-function Ve() {
+function je() {
   return `
     width: 100%;
     height: 6px;
@@ -2116,7 +2126,7 @@ function Ve() {
     -webkit-appearance: none;
   `;
 }
-function je(r, t, e, a) {
+function Ye(r, t, e, a) {
   return r ? `
     position: fixed;
     top: ${t.y}px;
@@ -2168,7 +2178,7 @@ function je(r, t, e, a) {
     overflow-x: visible;
   `;
 }
-function Ye(r, t, e = {}) {
+function Xe(r, t, e = {}) {
   try {
     const {
       updateOrder: a = !0,
@@ -2180,7 +2190,7 @@ function Ye(r, t, e = {}) {
         success: !1,
         message: `标签不存在: ${r.title}`
       };
-    t[o].isPinned = !t[o].isPinned, a && Je(t);
+    t[o].isPinned = !t[o].isPinned, a && Qe(t);
     const s = t[o].isPinned ? "固定" : "取消固定";
     return {
       success: !0,
@@ -2194,7 +2204,7 @@ function Ye(r, t, e = {}) {
     };
   }
 }
-function Xe(r, t, e, a = {}) {
+function Ge(r, t, e, a = {}) {
   try {
     const {
       updateUI: n = !0,
@@ -2207,7 +2217,7 @@ function Xe(r, t, e, a = {}) {
         message: `标签不存在: ${r.title}`
       };
     if (o) {
-      const c = Ke(t);
+      const c = Je(t);
       if (!c.success)
         return c;
     }
@@ -2223,13 +2233,13 @@ function Xe(r, t, e, a = {}) {
     };
   }
 }
-function Ge(r, t, e, a = {}) {
+function Ke(r, t, e, a = {}) {
   return !t || t.trim() === "" ? {
     success: !1,
     message: "标签标题不能为空"
-  } : Xe(r, { title: t.trim() }, e, a);
+  } : Ge(r, { title: t.trim() }, e, a);
 }
-function Ke(r) {
+function Je(r) {
   return r.blockId !== void 0 && (!r.blockId || r.blockId.trim() === "") ? {
     success: !1,
     message: "标签块ID不能为空"
@@ -2244,19 +2254,19 @@ function Ke(r) {
     message: "标签数据验证通过"
   };
 }
-function Je(r) {
+function Qe(r) {
   r.sort((t, e) => t.isPinned && !e.isPinned ? -1 : !t.isPinned && e.isPinned ? 1 : t.order - e.order);
 }
-function Qe(r) {
+function Ze(r) {
   for (let t = r.length - 1; t >= 0; t--)
     if (!r[t].isPinned)
       return t;
   return -1;
 }
-function Ze(r) {
+function ta(r) {
   return [...r].sort((t, e) => t.isPinned && !e.isPinned ? -1 : !t.isPinned && e.isPinned ? 1 : 0);
 }
-function ta(r, t, e, a) {
+function ea(r, t, e, a) {
   return t ? {
     x: r.x,
     y: r.y,
@@ -2269,12 +2279,12 @@ function ta(r, t, e, a) {
     height: 28
   };
 }
-function ea(r, t, e, a) {
-  const n = ta(r, t, e, a);
+function aa(r, t, e, a) {
+  const n = ea(r, t, e, a);
   let i = r.x, o = r.y;
   return n.x < 0 ? i = 0 : n.x + n.width > window.innerWidth && (i = window.innerWidth - n.width), n.y < 0 ? o = 0 : n.y + n.height > window.innerHeight && (o = window.innerHeight - n.height), { x: i, y: o };
 }
-function aa(r, t, e = !1) {
+function na(r, t, e = !1) {
   let a = null;
   const n = (...i) => {
     const o = e && !a;
@@ -2286,7 +2296,7 @@ function aa(r, t, e = !1) {
     a && (clearTimeout(a), a = null);
   }, n;
 }
-function na(r, t, e) {
+function ia(r, t, e) {
   var a, n;
   try {
     const i = r.startsWith("#") ? r : `#${r}`;
@@ -2299,7 +2309,7 @@ function na(r, t, e) {
   }
 }
 var B = /* @__PURE__ */ ((r) => (r[r.ERROR = 0] = "ERROR", r[r.WARN = 1] = "WARN", r[r.INFO = 2] = "INFO", r[r.DEBUG = 3] = "DEBUG", r[r.VERBOSE = 4] = "VERBOSE", r))(B || {});
-const ia = {
+const ra = {
   level: 2,
   enableConsole: !0,
   enableStorage: !1,
@@ -2319,7 +2329,7 @@ class j {
       3: "#00ff88",
       4: "#888888"
     });
-    this.config = { ...ia, ...t };
+    this.config = { ...ra, ...t };
   }
   /**
    * 更新配置
@@ -2462,16 +2472,16 @@ class j {
   }
 }
 new j();
-function ra(r, t, e, a) {
+function oa(r, t, e, a) {
   const n = document.createElement("div");
   n.className = "orca-tabs-plugin orca-tabs-container";
-  const i = je(r, t, a, e);
+  const i = Ye(r, t, a, e);
   return n.style.cssText = i, n;
 }
-function oa(r, t, e) {
+function sa(r, t, e) {
   const a = document.createElement("div");
   a.className = "width-adjustment-dialog";
-  const n = He();
+  const n = Ve();
   a.style.cssText = n;
   const i = document.createElement("div");
   i.className = "dialog-title", i.textContent = "调整面板宽度", a.appendChild(i);
@@ -2481,7 +2491,7 @@ function oa(r, t, e) {
     padding: 0 20px;
   `;
   const s = document.createElement("input");
-  s.type = "range", s.min = "120", s.max = "800", s.value = r.toString(), s.style.cssText = Ve();
+  s.type = "range", s.min = "120", s.max = "800", s.value = r.toString(), s.style.cssText = je();
   const c = document.createElement("div");
   c.className = "dialog-width-display", c.style.cssText = `
     text-align: center;
@@ -2512,7 +2522,7 @@ function rt(r) {
   const t = document.querySelector(".dialog-backdrop");
   t && t.remove();
 }
-function sa() {
+function ca() {
   if (document.getElementById("dialog-styles")) return;
   const r = document.createElement("style");
   r.id = "dialog-styles", r.textContent = `
@@ -2647,11 +2657,11 @@ function sa() {
     }
   `, document.head.appendChild(r);
 }
-function ca(r, t) {
+function la(r, t) {
   return r.length !== t.length ? !0 : !r.every((e, a) => e === t[a]);
 }
 let R;
-class la {
+class da {
   /**
    * 构造函数
    * @param pluginName 插件名称
@@ -2833,7 +2843,7 @@ class la {
     /** 当前右键菜单对应的块引用ID - 用于上下文菜单操作 */
     f(this, "currentContextBlockRefId", null);
     // 防抖函数实例（仅用于拖拽等非关键场景）
-    f(this, "draggingDebounce", aa(async () => {
+    f(this, "draggingDebounce", na(async () => {
       await this.updateTabsUI();
     }, 200));
     this.pluginName = t;
@@ -2884,7 +2894,7 @@ class la {
    * @throws {Error} 当初始化过程中发生错误时抛出
    */
   async init() {
-    sa(), this.tabStorageService = new wt(this.storageService, this.pluginName, {
+    ca(), this.tabStorageService = new wt(this.storageService, this.pluginName, {
       log: this.log.bind(this),
       warn: this.warn.bind(this),
       error: this.error.bind(this),
@@ -3331,7 +3341,7 @@ class la {
    * 按固定状态排序标签（固定标签在前，非固定在后）
    */
   sortTabsByPinStatus() {
-    const t = this.getCurrentPanelTabs(), e = Ze(t);
+    const t = this.getCurrentPanelTabs(), e = ta(t);
     this.setCurrentPanelTabs(e), this.syncCurrentTabsToStorage(e);
   }
   /**
@@ -3339,7 +3349,7 @@ class la {
    */
   findLastNonPinnedTabIndex() {
     const t = this.getCurrentPanelTabs();
-    return Qe(t);
+    return Ze(t);
   }
   /**
    * 从ContentFragment数组中提取纯文本
@@ -4028,7 +4038,7 @@ class la {
     this.tabContainer && this.tabContainer.remove(), this.cycleSwitcher && this.cycleSwitcher.remove(), this.log("📱 使用自动切换模式，不创建面板切换器");
     const t = "color-mix(in srgb, var(--orca-color-bg-2), transparent 50%)";
     let e, a, n;
-    if (this.isFixedToTop ? (e = { x: 0, y: 0 }, a = !1, n = window.innerWidth) : (e = this.isVerticalMode ? this.verticalPosition : this.position, a = this.isVerticalMode, n = this.verticalWidth), this.tabContainer = ra(
+    if (this.isFixedToTop ? (e = { x: 0, y: 0 }, a = !1, n = window.innerWidth) : (e = this.isVerticalMode ? this.verticalPosition : this.position, a = this.isVerticalMode, n = this.verticalWidth), this.tabContainer = oa(
       a,
       e,
       n,
@@ -4458,9 +4468,12 @@ class la {
         this.log(`📋 显示面板 ${i} 的标签页`);
         let s = this.panelTabsData[o] || [];
         s.length === 0 && (this.log(`🔍 面板 ${i} 没有标签数据，重新扫描`), await this.scanPanelTabsByIndex(o, i), s = this.panelTabsData[o] || []), this.sortTabsByPinStatus(), s.forEach((c, l) => {
-          var u;
+          var u, h;
           const d = this.createTabElement(c);
-          (u = this.tabContainer) == null || u.appendChild(d);
+          if ((u = this.tabContainer) == null || u.appendChild(d), !this.isVerticalMode && l < s.length - 1) {
+            const g = He();
+            (h = this.tabContainer) == null || h.appendChild(g);
+          }
         });
       } else
         this.log("⚠️ 没有可显示的面板，跳过标签页显示");
@@ -5278,7 +5291,7 @@ class la {
   async showWidthAdjustmentDialog() {
     const t = document.querySelector(".width-adjustment-dialog");
     t && t.remove();
-    const e = this.verticalWidth, a = oa(
+    const e = this.verticalWidth, a = sa(
       this.verticalWidth,
       async (n) => {
         try {
@@ -5413,7 +5426,7 @@ class la {
    * 优先使用简单的RGB调整，避免OKLCH偏色问题
    */
   applyOklchFormula(t, e) {
-    return na(t, e);
+    return ia(t, e);
   }
   /* ———————————————————————————————————————————————————————————————————————————— */
   /* 标签操作 - Tab Operations */
@@ -5522,7 +5535,7 @@ class la {
    * 切换标签固定状态
    */
   async toggleTabPinStatus(t) {
-    const e = this.getCurrentPanelTabs(), a = Ye(t, e, {
+    const e = this.getCurrentPanelTabs(), a = Xe(t, e, {
       updateOrder: !0,
       saveData: !0,
       updateUI: !0
@@ -6300,7 +6313,7 @@ class la {
    */
   async updateTabTitle(t, e) {
     try {
-      const a = this.getCurrentPanelTabs(), n = Ge(t, e, a, {
+      const a = this.getCurrentPanelTabs(), n = Ke(t, e, a, {
         updateUI: !0,
         saveData: !0,
         validateData: !0
@@ -6739,7 +6752,7 @@ class la {
    */
   constrainPosition() {
     const t = this.isVerticalMode ? Math.min(this.getCurrentPanelTabs().length * 28 + 8, window.innerHeight * 0.8) : 28;
-    this.position = ea(this.position, this.isVerticalMode, this.verticalWidth, t);
+    this.position = aa(this.position, this.isVerticalMode, this.verticalWidth, t);
   }
   /**
    * 检查新添加的块
@@ -7214,7 +7227,7 @@ class la {
     }
     const a = [...this.getPanelIds()], n = this.getPanelIds()[0] || null;
     await this.discoverPanels();
-    const i = this.getPanelIds()[0] || null, o = ca(a, this.getPanelIds());
+    const i = this.getPanelIds()[0] || null, o = la(a, this.getPanelIds());
     o && (this.log(`📋 面板列表发生变化: ${a.length} -> ${this.getPanelIds().length}`), this.log(`📋 旧面板列表: [${a.join(", ")}]`), this.log(`📋 新面板列表: [${this.getPanelIds().join(", ")}]`), this.log(`📋 持久化面板变更: ${n} -> ${i}`), n !== i && (this.log(`🔄 持久化面板已变更: ${n} -> ${i}`), await this.handlePersistentPanelChange(n, i))), this.currentPanelId && !this.getPanelIds().includes(this.currentPanelId) && (this.log(`🔄 当前面板 ${this.currentPanelId || ""} 已关闭，切换到第一个面板`), this.getPanelIds().length > 0 ? (this.currentPanelIndex = 0, this.currentPanelId = this.getPanelIds()[0], this.log(`🔄 已切换到第一个面板: ${this.currentPanelId || ""}`), await this.scanCurrentPanelTabs(), this.debouncedUpdateTabsUI()) : (this.log("⚠️ 没有可用的面板"), this.currentPanelId = "", this.currentPanelIndex = -1, this.debouncedUpdateTabsUI()));
     const s = document.querySelector(".orca-panel.active");
     if (s) {
@@ -9156,8 +9169,8 @@ class la {
   }
 }
 let I = null;
-async function ha(r) {
-  R = r, orca.state.locale, I = new la(R), document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", () => {
+async function ua(r) {
+  R = r, orca.state.locale, I = new da(R), document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => I == null ? void 0 : I.init(), 500);
   }) : setTimeout(() => I == null ? void 0 : I.init(), 500), orca.commands.registerCommand(
     `${R}.resetCache`,
@@ -9173,10 +9186,10 @@ async function ha(r) {
     "切换块类型图标显示"
   );
 }
-async function ua() {
+async function ga() {
   I && (I.unregisterHeadbarButton(), I.cleanupDragResize(), I.destroy(), I = null), orca.commands.unregisterCommand(`${R}.resetCache`);
 }
 export {
-  ha as load,
-  ua as unload
+  ua as load,
+  ga as unload
 };

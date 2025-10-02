@@ -348,6 +348,22 @@ export function createSeparatorStyle(): string {
 }
 
 /**
+ * 创建标签分割线元素（仅在水平模式下使用）
+ */
+export function createTabSeparator(): HTMLElement {
+  const separator = document.createElement('div');
+  separator.className = 'orca-tab-separator';
+  separator.style.cssText = `
+    width: 1px;
+    height: 20px;
+    background: color-mix(in srgb, var(--orca-color-text-1), transparent 70%);
+    flex-shrink: 0;
+    margin: 0px 0px;
+  `;
+  return separator;
+}
+
+/**
  * 创建对话框样式
  */
 export function createDialogStyle(): string {
