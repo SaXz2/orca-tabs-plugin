@@ -7982,8 +7982,36 @@ class OrcaTabsPlugin {
   private async handleNewBlockInPanel(blockId: string, panelId: string) {
     if (!blockId || !panelId) return;
     
-    // 更新当前面板信息
-    const panelIndex = this.getPanelIds().indexOf(panelId);
+    // 【修复】验证是否应该处理这个面板的变化
+    // 关键判断：只有当新块出现在当前用户正在使用的面板中时，才应该更新标签页
+    
+    // 获取当前激活的面板（用户正在查看的面板）
+    const currentActivePanel = document.querySelector('.orca-panel.active');
+    const currentActivePanelId = currentActivePanel?.getAttribute('data-panel-id');
+    
+    // 如果新块不是出现在当前激活的面板中，则不应该影响标签页
+    if (currentActivePanelId && panelId !== currentActivePanelId) {
+      this.log(`🚫 忽略非激活面板 ${panelId} 中的新块 ${blockId}，当前激活面板为 ${currentActivePanelId}`);
+      return;
+    }
+    
+    // 检查面板是否在我们的管理范围内
+    const managedPanelIds = this.getPanelIds();
+    const panelIndex = managedPanelIds.indexOf(panelId);
+    
+    // 如果这是一个新面板，检查是否应该开始管理它
+    if (panelIndex === -1) {
+      // 只管理主面板（第一个面板）的标签页
+      const allPanels = document.querySelectorAll('.orca-panel');
+      const isPrimaryPanel = allPanels.length > 0 && allPanels[0].getAttribute('data-panel-id') === panelId;
+      
+      if (!isPrimaryPanel) {
+        this.log(`🚫 不管理辅助面板 ${panelId} 的标签页`);
+        return;
+      }
+    }
+    
+    // 只有在确认应该处理时，才更新当前面板信息
     if (panelIndex !== -1) {
       this.currentPanelIndex = panelIndex;
       this.currentPanelId = panelId;
