@@ -133,7 +133,7 @@ export function createTabTextContainer(title: string): HTMLElement {
     min-width: 0;
     display: flex;
     align-items: center;
-    line-height: 1;
+    line-height: 2.2;
     height: 16px;
     position: relative;
   `;
@@ -144,6 +144,8 @@ export function createTabTextContainer(title: string): HTMLElement {
     display: block;
     white-space: nowrap;
     width: 100%;
+    line-height: 2.2;
+    vertical-align: middle;
   `;
   textElement.textContent = title;
   
@@ -156,8 +158,14 @@ export function createTabTextContainer(title: string): HTMLElement {
     
     // 如果文字宽度超过容器宽度，应用渐变透明效果
     if (textWidth > containerWidth) {
-      textElement.style.mask = 'linear-gradient(to right, black 0%, black 70%, transparent 100%)';
-      textElement.style.webkitMask = 'linear-gradient(to right, black 0%, black 70%, transparent 100%)';
+      // 使用mask-composite来避免上下裁切问题
+      textElement.style.mask = 'linear-gradient(to right, black 0%, black 90%, transparent 100%)';
+      textElement.style.webkitMask = 'linear-gradient(to right, black 0%, black 90%, transparent 100%)';
+      // 确保mask不会裁切文字的上下部分
+      textElement.style.maskSize = '100% 100%';
+      textElement.style.webkitMaskSize = '100% 100%';
+      textElement.style.maskRepeat = 'no-repeat';
+      textElement.style.webkitMaskRepeat = 'no-repeat';
     }
   });
   

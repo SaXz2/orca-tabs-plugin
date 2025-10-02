@@ -2054,7 +2054,7 @@ function qe(r) {
     min-width: 0;
     display: flex;
     align-items: center;
-    line-height: 1;
+    line-height: 2.2;
     height: 16px;
     position: relative;
   `;
@@ -2063,9 +2063,11 @@ function qe(r) {
     display: block;
     white-space: nowrap;
     width: 100%;
+    line-height: 2.2;
+    vertical-align: middle;
   `, e.textContent = r, t.appendChild(e), requestAnimationFrame(() => {
     const a = t.offsetWidth;
-    e.scrollWidth > a && (e.style.mask = "linear-gradient(to right, black 0%, black 70%, transparent 100%)", e.style.webkitMask = "linear-gradient(to right, black 0%, black 70%, transparent 100%)");
+    e.scrollWidth > a && (e.style.mask = "linear-gradient(to right, black 0%, black 90%, transparent 100%)", e.style.webkitMask = "linear-gradient(to right, black 0%, black 90%, transparent 100%)", e.style.maskSize = "100% 100%", e.style.webkitMaskSize = "100% 100%", e.style.maskRepeat = "no-repeat", e.style.webkitMaskRepeat = "no-repeat");
   }), t;
 }
 function _e() {
