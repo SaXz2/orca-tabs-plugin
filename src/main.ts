@@ -1350,15 +1350,10 @@ class OrcaTabsPlugin {
   /* ———————————————————————————————————————————————————————————————————————————— */
 
   /**
-   * 发现所有面板
-   */
-  /**
-   * 发现所有面板 - 重构为简化的数组管理
-   * 按照用户思路：读取所有data-panel-id，按顺序存储到数组中
+   * 发现并更新面板信息
+   * 排除特殊面板（如全局搜索面板），只处理正常的内容面板
    */
   async discoverPanels() {
-    this.log("🔍 开始发现面板...");
-    
     // 获取所有面板元素
     const panels = document.querySelectorAll('.orca-panel');
     const newPanelIds: string[] = [];
@@ -1368,7 +1363,7 @@ class OrcaTabsPlugin {
     panels.forEach(panel => {
       const panelId = panel.getAttribute('data-panel-id');
       if (panelId) {
-        // 排除特殊的悬浮面板（如 _reference）
+        // 排除特殊的悬浮面板（如 _globalSearch, _reference）
         if (panelId.startsWith('_')) {
           return; // 跳过特殊面板
         }
@@ -1381,9 +1376,6 @@ class OrcaTabsPlugin {
         }
       }
     });
-    
-    this.log(`🎯 发现 ${newPanelIds.length} 个面板:`, newPanelIds);
-    this.log(`🎯 当前激活面板: ${activePanelId || '无'}`);
     
     // 检查面板变化
     const oldPanelIds = this.getPanelIds();
@@ -7894,20 +7886,12 @@ class OrcaTabsPlugin {
    */
   /**
    * 从块ID创建标签页信息
+   * 使用现有的完整 getTabInfo 方法，确保标题、图标、类型等信息的一致性
    */
   private async createTabInfoFromBlock(blockId: string, panelId?: string): Promise<TabInfo | null> {
     try {
-      this.log(`🔄 使用现有的 getTabInfo 方法获取块信息: ${blockId}`);
-      
-      // 使用现有的完整 getTabInfo 方法
       const tabInfo = await this.getTabInfo(blockId, panelId || '', 0);
-      if (tabInfo) {
-        this.log(`✅ 成功获取标签页信息: "${tabInfo.title}" (${blockId}, 类型: ${tabInfo.blockType})`);
-        return tabInfo;
-      } else {
-        this.log(`❌ 无法获取标签页信息: ${blockId}`);
-        return null;
-      }
+      return tabInfo;
     } catch (error) {
       this.error(`创建标签页信息失败: ${blockId}`, error);
       return null;
@@ -7915,127 +7899,153 @@ class OrcaTabsPlugin {
   }
 
   /**
+   * 处理新增的orca-hideable元素
+   * @param element 新增的DOM元素
+   * @returns 是否处理了orca-hideable元素
+   */
+  private handleNewHideableElement(element: Element): boolean {
+    if (!element.classList.contains('orca-hideable')) {
+      return false;
+    }
+
+    const hasBlockEditor = element.querySelector('.orca-block-editor[data-block-id]');
+    if (hasBlockEditor) {
+      const blockId = hasBlockEditor.getAttribute('data-block-id');
+      if (blockId) {
+        const containingPanel = element.closest('.orca-panel');
+        if (containingPanel) {
+          const panelId = containingPanel.getAttribute('data-panel-id');
+          if (panelId) {
+            // 直接调用处理方法，确保立即更新标签页
+            this.handleNewBlockInPanel(blockId, panelId).catch(error => {
+              this.error(`处理新块失败: ${blockId}`, error);
+            });
+          }
+        }
+      }
+    }
+    return true;
+  }
+
+  /**
+   * 处理子元素中的orca-hideable元素
+   * @param element 父元素
+   * @returns 是否处理了子元素中的orca-hideable
+   */
+  private handleChildHideableElements(element: Element): boolean {
+    const hideableChild = element.querySelector('.orca-hideable');
+    if (!hideableChild) {
+      return false;
+    }
+
+    const hasBlockEditor = hideableChild.querySelector('.orca-block-editor[data-block-id]');
+    if (hasBlockEditor) {
+      const blockId = hasBlockEditor.getAttribute('data-block-id');
+      if (blockId) {
+        const containingPanel = element.closest('.orca-panel');
+        if (containingPanel) {
+          const panelId = containingPanel.getAttribute('data-panel-id');
+          if (panelId) {
+            this.handleNewBlockInPanel(blockId, panelId).catch(error => {
+              this.error(`处理新块失败: ${blockId}`, error);
+            });
+          }
+        }
+      }
+    }
+    return true;
+  }
+
+  /**
    * 处理面板中新增的块编辑器
+   * 这是修复搜索打开页面问题的核心方法
+   * 
+   * 功能：
+   * 1. 检查新块是否已存在于标签页中，如果存在则直接聚焦
+   * 2. 如果不存在，则智能替换当前聚焦的标签页内容
+   * 3. 确保标签页标题、图标等信息正确显示
+   * 
+   * @param blockId 新增的块ID
+   * @param panelId 所在面板ID
    */
   private async handleNewBlockInPanel(blockId: string, panelId: string) {
-    if (!blockId || !panelId) {
-      this.log(`❌ 处理新块失败: blockId=${blockId}, panelId=${panelId}`);
-      return;
-    }
-    
-    this.log(`🔄 处理面板 ${panelId} 中的新块: ${blockId}`);
+    if (!blockId || !panelId) return;
     
     // 更新当前面板信息
     const panelIndex = this.getPanelIds().indexOf(panelId);
     if (panelIndex !== -1) {
       this.currentPanelIndex = panelIndex;
       this.currentPanelId = panelId;
-      this.log(`🔄 更新当前面板索引: ${panelIndex} (面板ID: ${panelId})`);
     }
     
-    // 获取当前面板的标签页数据
     let currentTabs = this.getCurrentPanelTabs();
     
     // 检查标签页是否已存在
     const existingTab = currentTabs.find(tab => tab.blockId === blockId);
     if (existingTab) {
-      this.log(`📋 找到已存在的标签页: "${existingTab.title}" (${blockId})`);
-      
-      // 移除已关闭标签页记录
+      // 标签页已存在，直接聚焦
       if (this.closedTabs.has(blockId)) {
         this.closedTabs.delete(blockId);
         this.saveClosedTabs();
-        this.log(`🔄 标签 "${existingTab.title}" 重新激活，从已关闭列表中移除`);
       }
       
-      // 更新聚焦状态
       this.updateFocusState(blockId, existingTab.title);
-      this.log(`🎯 更新聚焦状态到已存在的标签: "${existingTab.title}"`);
-      
-      // 立即更新UI
       this.immediateUpdateTabsUI();
-    } else {
-      this.log(`📋 未找到标签页 ${blockId}，将更新当前聚焦的标签页内容`);
+      return;
+    }
+    
+    // 标签页不存在，需要创建新的标签页信息
+    const newTabInfo = await this.createTabInfoFromBlock(blockId, panelId);
+    if (!newTabInfo) return;
+    
+    // 尝试找到当前聚焦的标签页进行替换
+    const focusedTabElement = this.tabContainer?.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
+    if (focusedTabElement) {
+      const focusedTabId = focusedTabElement.getAttribute('data-tab-id');
+      const focusedIndex = currentTabs.findIndex(tab => tab.blockId === focusedTabId);
       
-      // 创建新的标签页信息
-      const newTabInfo = await this.createTabInfoFromBlock(blockId, panelId);
-      if (!newTabInfo) {
-        this.log(`❌ 无法创建标签页信息: ${blockId}`);
+      if (focusedIndex !== -1) {
+        // 替换聚焦的标签页内容
+        currentTabs[focusedIndex] = newTabInfo;
+        this.setCurrentPanelTabs(currentTabs);
+        this.immediateUpdateTabsUI();
         return;
       }
-      
-      // 获取聚焦的标签页并更新其内容
-      const focusedTabElement = this.tabContainer?.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
-      if (focusedTabElement) {
-        const focusedTabId = focusedTabElement.getAttribute('data-tab-id');
-        const focusedIndex = currentTabs.findIndex(tab => tab.blockId === focusedTabId);
-        
-        if (focusedIndex !== -1) {
-          // 更新聚焦标签页的内容
-          const oldTab = currentTabs[focusedIndex];
-          currentTabs[focusedIndex] = newTabInfo;
-          
-          this.log(`🔄 更新聚焦标签页: "${oldTab.title}" -> "${newTabInfo.title}" (${blockId})`);
-          
-          // 保存数据并更新UI
-          this.setCurrentPanelTabs(currentTabs);
-          this.immediateUpdateTabsUI();
-          return;
+    }
+    
+    // 如果没有找到聚焦的标签页，智能选择替换目标
+    let targetIndex = -1;
+    const allTabElements = this.tabContainer?.querySelectorAll('.orca-tabs-plugin .orca-tab');
+    if (allTabElements && allTabElements.length > 0) {
+      // 查找有聚焦样式的标签页
+      for (let i = 0; i < allTabElements.length; i++) {
+        const tabElement = allTabElements[i];
+        if (tabElement.classList.contains('focused') || 
+            tabElement.getAttribute('data-focused') === 'true' ||
+            tabElement.classList.contains('active')) {
+          targetIndex = i;
+          break;
         }
       }
-      
-      // 如果没有找到聚焦的标签页，尝试找到当前应该聚焦的标签页
-      this.log(`⚠️ 没有找到有效的聚焦标签页，尝试找到当前聚焦的标签页`);
-      
-      // 尝试从UI中找到当前聚焦的标签页
-      let targetIndex = -1;
-      const allTabElements = this.tabContainer?.querySelectorAll('.orca-tabs-plugin .orca-tab');
-      if (allTabElements && allTabElements.length > 0) {
-        // 查找有聚焦样式的标签页
-        for (let i = 0; i < allTabElements.length; i++) {
-          const tabElement = allTabElements[i];
-          if (tabElement.classList.contains('focused') || 
-              tabElement.getAttribute('data-focused') === 'true' ||
-              tabElement.classList.contains('active')) {
-            targetIndex = i;
-            this.log(`🎯 找到聚焦的标签页索引: ${i}`);
-            break;
-          }
-        }
-      }
-      
-      // 如果还是没找到，使用最后一个标签页（通常是最新的）
-      if (targetIndex === -1 && currentTabs.length > 0) {
-        targetIndex = currentTabs.length - 1;
-        this.log(`🎯 使用最后一个标签页作为目标: ${targetIndex}`);
-      }
-      
-      if (targetIndex >= 0 && targetIndex < currentTabs.length) {
-        // 更新目标标签页的内容
-        const oldTab = currentTabs[targetIndex];
-        currentTabs[targetIndex] = newTabInfo;
-        
-        this.log(`🔄 更新标签页 ${targetIndex + 1}: "${oldTab.title}" -> "${newTabInfo.title}" (${blockId})`);
-        
-        // 设置为聚焦状态
-        this.updateFocusState(blockId, newTabInfo.title);
-        
-        // 保存数据并更新UI
-        this.setCurrentPanelTabs(currentTabs);
-        this.immediateUpdateTabsUI();
-      } else {
-        // 如果没有任何标签页，创建第一个标签页
-        this.log(`📋 没有任何标签页，创建第一个标签页: "${newTabInfo.title}" (${blockId})`);
-        
-        currentTabs = [newTabInfo];
-        
-        // 设置为聚焦状态
-        this.updateFocusState(blockId, newTabInfo.title);
-        
-        // 保存数据并更新UI
-        this.setCurrentPanelTabs(currentTabs);
-        this.immediateUpdateTabsUI();
-      }
+    }
+    
+    // 如果还是没找到，使用最后一个标签页
+    if (targetIndex === -1 && currentTabs.length > 0) {
+      targetIndex = currentTabs.length - 1;
+    }
+    
+    if (targetIndex >= 0 && targetIndex < currentTabs.length) {
+      // 替换目标标签页的内容
+      currentTabs[targetIndex] = newTabInfo;
+      this.updateFocusState(blockId, newTabInfo.title);
+      this.setCurrentPanelTabs(currentTabs);
+      this.immediateUpdateTabsUI();
+    } else {
+      // 如果没有任何标签页，创建第一个标签页
+      currentTabs = [newTabInfo];
+      this.updateFocusState(blockId, newTabInfo.title);
+      this.setCurrentPanelTabs(currentTabs);
+      this.immediateUpdateTabsUI();
     }
   }
 
@@ -8047,21 +8057,13 @@ class OrcaTabsPlugin {
     const currentActivePanel = document.querySelector('.orca-panel.active');
     if (!currentActivePanel) {
       this.log('❌ 没有找到当前激活的面板');
-      // 调试：列出所有面板的状态（排除特殊面板）
+      // 调试：列出所有面板的状态
       const allPanels = document.querySelectorAll('.orca-panel');
       this.log(`📊 当前所有面板状态:`);
-      let normalPanelIndex = 1;
-      allPanels.forEach((panel) => {
+      allPanels.forEach((panel, index) => {
         const panelId = panel.getAttribute('data-panel-id');
         const isActive = panel.classList.contains('active');
-        
-        // 排除特殊面板，但仍然显示以便调试
-        if (panelId && panelId.startsWith('_')) {
-          this.log(`  特殊面板: ID=${panelId}, active=${isActive}, class=${panel.className} (已排除)`);
-        } else {
-          this.log(`  面板${normalPanelIndex}: ID=${panelId}, active=${isActive}, class=${panel.className}`);
-          normalPanelIndex++;
-        }
+        this.log(`  面板${index + 1}: ID=${panelId}, active=${isActive}`);
       });
       return;
     }
@@ -8090,36 +8092,15 @@ class OrcaTabsPlugin {
     // 查找面板中可见的块编辑器（没有 orca-hideable-hidden 类）
     // 这个选择器确保只获取用户当前看到的内容
     
-    // 调试：先检查面板内的所有hideable元素
+    // 检查面板内的hideable元素
     const allHideableElements = currentActivePanel.querySelectorAll('.orca-hideable');
-    const visibleHideableElements = currentActivePanel.querySelectorAll('.orca-hideable:not(.orca-hideable-hidden)');
-    this.log(`🔍 面板内hideable元素分析:`);
-    this.log(`  总数: ${allHideableElements.length}`);
-    this.log(`  可见: ${visibleHideableElements.length}`);
-    
-    allHideableElements.forEach((element, index) => {
-      const isHidden = element.classList.contains('orca-hideable-hidden');
-      const hasBlockEditor = element.querySelector('.orca-block-editor[data-block-id]');
-      const blockId = hasBlockEditor?.getAttribute('data-block-id');
-      this.log(`  元素${index + 1}: hidden=${isHidden}, hasBlockEditor=${!!hasBlockEditor}, blockId=${blockId}`);
-    });
     
     const activeBlockEditor = currentActivePanel.querySelector('.orca-hideable:not(.orca-hideable-hidden) .orca-block-editor[data-block-id]');
     if (!activeBlockEditor) {
       this.log(`❌ 激活面板 ${currentPanelId} 中没有找到可见的块编辑器`);
-      this.log(`🔍 尝试查找所有块编辑器（包括隐藏的）...`);
-      const allBlockEditors = currentActivePanel.querySelectorAll('.orca-block-editor[data-block-id]');
-      this.log(`📊 面板内所有块编辑器数量: ${allBlockEditors.length}`);
-      allBlockEditors.forEach((editor, index) => {
-        const blockId = editor.getAttribute('data-block-id');
-        const parentHideable = editor.closest('.orca-hideable');
-        const isParentHidden = parentHideable?.classList.contains('orca-hideable-hidden');
-        this.log(`  编辑器${index + 1}: blockId=${blockId}, parentHidden=${isParentHidden}`);
-      });
       return;
     }
     
-    this.log(`✅ 找到可见的块编辑器`);
 
     // 步骤5: 获取块ID
     // 从块编辑器中提取 data-block-id 属性，用于标识具体的内容块
@@ -8142,94 +8123,65 @@ class OrcaTabsPlugin {
       currentTabs = this.getCurrentPanelTabs();
     }
     
-    // 步骤8: 调试日志
-    // 记录当前面板的标签页信息，便于调试
-    this.log(`🔍 检查标签页 ${blockId}，当前面板有 ${currentTabs.length} 个标签页:`, currentTabs.map(tab => `${tab.title}(${tab.blockId})`));
     
     // 步骤9: 查找已存在的标签页
     // 在当前面板的标签页数组中查找对应的块ID
     const existingTab = currentTabs.find(tab => tab.blockId === blockId);
     if (existingTab) {
       // 分支A: 标签页已存在 - 更新聚焦状态
-      this.log(`📋 找到已存在的标签页: "${existingTab.title}" (${blockId})`);
-      
-      // 步骤A1: 处理已关闭标签页的重新激活
-      // 如果标签在已关闭列表中，从列表中移除
+      // 处理已关闭标签页的重新激活
       if (this.closedTabs.has(blockId)) {
         this.closedTabs.delete(blockId);
         await this.saveClosedTabs();
-        this.log(`🔄 标签 "${existingTab.title}" 重新激活，从已关闭列表中移除`);
       }
       
-      // 步骤A2: 立即更新聚焦状态
-      // 调用 updateFocusState 方法，立即更新标签页的聚焦状态
-      // 不使用防抖，确保视觉反馈即时
+      // 更新聚焦状态并刷新UI
       this.updateFocusState(blockId, existingTab.title);
-      
-      // 步骤A3: 立即更新UI显示（修复同步问题）
-      // 调用 immediateUpdateTabsUI 方法，立即更新标签页内容
-      // 确保编辑器内容和标签页DOM完全同步
       await this.immediateUpdateTabsUI();
       return;
     }
 
-    // 分支B: 标签页不存在 - 更新当前聚焦标签页的内容
-    // 这是核心逻辑：不创建新标签页，而是更新现有标签页的内容
-    this.log(`📋 未找到标签页 ${blockId}，将更新当前聚焦的标签页内容`);
-    
-    // 步骤B1: 获取当前聚焦的标签页元素
-    // 查找带有 data-focused="true" 属性的标签页元素
+    // 标签页不存在 - 更新当前聚焦标签页的内容
     const focusedTabElement = this.tabContainer?.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
     if (!focusedTabElement) {
-      this.log(`⚠️ 没有找到当前聚焦的标签页，无法更新`);
       return;
     }
     
-    // 步骤B2: 获取聚焦标签页的ID
-    // 从标签页元素中提取 data-tab-id 属性
     const focusedTabId = focusedTabElement.getAttribute('data-tab-id');
     if (!focusedTabId) {
-      this.log(`⚠️ 聚焦的标签页没有 data-tab-id，无法更新`);
       return;
     }
     
-    // 步骤B3: 找到聚焦标签页在数组中的位置
-    // 在标签页数组中查找对应的索引位置
     const focusedIndex = currentTabs.findIndex(tab => tab.blockId === focusedTabId);
     if (focusedIndex === -1) {
-      this.log(`⚠️ 聚焦的标签页不在数组中，无法更新`);
       return;
     }
     
-    // 步骤B4: 获取新的标签页信息
-    // 调用 getTabInfo 方法，获取新内容的标签页信息
+    // 创建新的标签页信息并替换
     const newTabInfo = await this.getTabInfo(blockId, currentPanelId, focusedIndex);
     if (!newTabInfo) {
-      this.log(`❌ 无法获取标签信息: ${blockId}`);
       return;
     }
     
-    // 步骤B5: 更新标签页内容
-    // 将聚焦标签页的内容替换为新内容
-    const oldTab = currentTabs[focusedIndex];
     currentTabs[focusedIndex] = newTabInfo;
-    
-    this.log(`🔄 更新聚焦标签页: "${oldTab.title}" -> "${newTabInfo.title}" (${blockId})`);
-    
-    // 步骤B6: 保存数据
-    // 将更新后的标签页数组保存到内存和存储中
     this.setCurrentPanelTabs(currentTabs);
-    
-    // 步骤B7: 立即更新UI显示（修复同步问题）
-    // 调用 immediateUpdateTabsUI 方法，立即更新标签页DOM
-    // 确保编辑器内容和标签页内容完全同步
     await this.immediateUpdateTabsUI();
     return;
   }
 
 
+  /**
+   * 监听DOM变化的核心方法
+   * 
+   * 主要监听以下变化：
+   * 1. 新面板的添加/删除
+   * 2. 面板激活状态的变化
+   * 3. orca-hideable元素的添加（搜索打开页面的关键修复）
+   * 4. 块编辑器的添加
+   * 
+   * 这是修复搜索打开页面问题的关键部分
+   */
   observeChanges() {
-    // 监听DOM变化以更新标签和面板
     const observer = new MutationObserver(async (mutations) => {
       let shouldCheckNewBlocks = false;
       let shouldCheckNewPanels = false;
@@ -8246,32 +8198,15 @@ class OrcaTabsPlugin {
         if (mutation.type === 'childList') {
           const target = mutation.target as Element;
           
-          // 调试：记录所有DOM变化
-          if (mutation.addedNodes.length > 0) {
-            this.verboseLog(`🔍 DOM变化检测: 在 ${target.className || target.tagName} 中添加了 ${mutation.addedNodes.length} 个节点`);
-            mutation.addedNodes.forEach((node, index) => {
-              if (node.nodeType === Node.ELEMENT_NODE) {
-                const element = node as Element;
-                this.verboseLog(`  新增节点${index + 1}: ${element.tagName}.${element.className}`);
-                
-                // 特别关注 orca-hideable 元素
-                if (element.classList?.contains('orca-hideable')) {
-                  this.log(`🎯 [DOM变化] 检测到新增orca-hideable元素: ${element.className}`);
-                }
-              }
-            });
-          }
           
           // 检查是否有新的面板添加
           if (target.classList.contains('orca-panels-row') || 
               target.closest('.orca-panels-row')) {
-            this.verboseLog("🔍 检测到面板行变化，检查新面板...");
             shouldCheckNewPanels = true;
           }
           
-          // 检查是否有新的块编辑器或orca-hideable元素添加到任何面板
+          // 检查新增的节点，寻找orca-hideable元素和块编辑器
           if (mutation.addedNodes.length > 0) {
-            // 检查是否在任何面板内
             const isInAnyPanel = target.closest('.orca-panel');
             
             if (isInAnyPanel) {
@@ -8279,36 +8214,8 @@ class OrcaTabsPlugin {
                 if (node.nodeType === Node.ELEMENT_NODE) {
                   const element = node as Element;
                   
-                  // 检查是否添加了新的orca-hideable元素（搜索打开页面的关键）
-                  if (element.classList.contains('orca-hideable')) {
-                    this.log(`🎯 检测到新增orca-hideable元素，立即检查标签页更新`);
-                    this.log(`🔍 新元素状态: hidden=${element.classList.contains('orca-hideable-hidden')}`);
-                    
-                    // 检查是否包含块编辑器
-                    const hasBlockEditor = element.querySelector('.orca-block-editor[data-block-id]');
-                    if (hasBlockEditor) {
-                      const blockId = hasBlockEditor.getAttribute('data-block-id');
-                      if (blockId) {
-                        this.log(`📝 新orca-hideable元素包含块编辑器: ${blockId}`);
-                        
-                        // 直接处理新增的块，不依赖异步调用
-                        this.log(`⚡ 立即处理新增的块编辑器: ${blockId}`);
-                        
-                        // 找到包含这个元素的面板
-                        const containingPanel = element.closest('.orca-panel');
-                        if (containingPanel) {
-                          const panelId = containingPanel.getAttribute('data-panel-id');
-                          this.log(`📍 新块所在面板: ${panelId}`);
-                          
-                        // 直接调用标签页处理逻辑
-                        if (panelId) {
-                          this.handleNewBlockInPanel(blockId, panelId).catch(error => {
-                            this.error(`处理新块失败: ${blockId}`, error);
-                          });
-                        }
-                        }
-                      }
-                    }
+                  // 【核心修复】处理新增的orca-hideable元素
+                  if (this.handleNewHideableElement(element)) {
                     shouldCheckNewBlocks = true;
                     break;
                   }
@@ -8320,32 +8227,8 @@ class OrcaTabsPlugin {
                     break;
                   }
                   
-                  // 检查子元素中是否有orca-hideable
-                  const hideableChild = element.querySelector('.orca-hideable');
-                  if (hideableChild) {
-                    this.log(`🎯 检测到包含orca-hideable的新元素，立即检查标签页更新`);
-                    const hasBlockEditor = hideableChild.querySelector('.orca-block-editor[data-block-id]');
-                    if (hasBlockEditor) {
-                      const blockId = hasBlockEditor.getAttribute('data-block-id');
-                      if (blockId) {
-                        this.log(`📝 新元素内的orca-hideable包含块编辑器: ${blockId}`);
-                        
-                        // 找到包含这个元素的面板
-                        const containingPanel = element.closest('.orca-panel');
-                        if (containingPanel) {
-                          const panelId = containingPanel.getAttribute('data-panel-id');
-                          this.log(`📍 新元素所在面板: ${panelId}`);
-                          
-                          // 直接调用标签页处理逻辑
-                          if (panelId) {
-                            this.log(`⚡ 立即处理新增包含orca-hideable元素的标签页...`);
-                            this.handleNewBlockInPanel(blockId, panelId).catch(error => {
-                              this.error(`处理新块失败: ${blockId}`, error);
-                            });
-                          }
-                        }
-                      }
-                    }
+                  // 检查子元素中的orca-hideable
+                  if (this.handleChildHideableElements(element)) {
                     shouldCheckNewBlocks = true;
                     break;
                   }
@@ -8362,54 +8245,40 @@ class OrcaTabsPlugin {
           if (target.classList.contains('orca-panel')) {
             needsCurrentPanelUpdate = true;
             
-            // 检测面板重新激活，立即更新标签页聚焦状态
+            // 【核心修复】检测面板重新激活时的处理
+            // 这是修复搜索打开页面问题的另一个关键逻辑
+            // 当面板重新获得active状态时，检查是否有新的可见内容需要更新标签页
             if (target.classList.contains('active')) {
               const panelId = target.getAttribute('data-panel-id');
-              this.log(`🎯 检测到面板重新激活: ${panelId}，立即更新标签页聚焦状态`);
-              this.log(`🔍 面板状态详情: classList=${target.className}, data-panel-id=${panelId}`);
               
-              // 检查面板内是否有可见的orca-hideable元素
+              // 查找面板内最新的可见块编辑器
               const hideableElements = target.querySelectorAll('.orca-hideable');
-              const visibleHideableElements = target.querySelectorAll('.orca-hideable:not(.orca-hideable-hidden)');
-              this.log(`📊 面板内hideable元素: 总数=${hideableElements.length}, 可见=${visibleHideableElements.length}`);
-              
-              // 详细分析每个hideable元素，寻找最新的可见块编辑器
               let latestVisibleBlockId: string | null = null;
-              let latestVisibleBlockTitle: string | null = null;
               
-              hideableElements.forEach((element, index) => {
+              hideableElements.forEach((element) => {
                 const isHidden = element.classList.contains('orca-hideable-hidden');
                 const hasBlockEditor = element.querySelector('.orca-block-editor[data-block-id]');
                 const blockId = hasBlockEditor?.getAttribute('data-block-id');
-                this.log(`  hideable${index + 1}: hidden=${isHidden}, hasBlockEditor=${!!hasBlockEditor}, blockId=${blockId}`);
                 
-                // 如果是可见的块编辑器，记录为最新的候选
+                // 记录最新的可见块编辑器（通常是用户刚刚打开的内容）
                 if (!isHidden && hasBlockEditor && blockId) {
                   latestVisibleBlockId = blockId;
-                  // 尝试获取块标题
-                  const titleElement = hasBlockEditor.querySelector('.orca-block-title, .orca-block-content');
-                  latestVisibleBlockTitle = titleElement?.textContent?.trim() || `块${blockId}`;
-                  this.log(`  🎯 发现可见块编辑器: ${blockId} (${latestVisibleBlockTitle})`);
                 }
               });
               
-              // 如果找到了新的可见块编辑器，立即更新聚焦
+              // 如果找到了新的可见块编辑器，立即处理
               if (latestVisibleBlockId && panelId) {
-                this.log(`🎯 面板激活时发现可见块编辑器: ${latestVisibleBlockId}，立即处理`);
                 this.handleNewBlockInPanel(latestVisibleBlockId, panelId).catch(error => {
                   this.error(`处理面板激活时的新块失败: ${latestVisibleBlockId}`, error);
                 });
               }
               
-              // 立即检查当前面板块，确保搜索打开页面后能正确更新标签页
+              // 延迟检查，确保DOM完全更新（处理异步加载的内容）
               setTimeout(async () => {
-                this.log(`⏰ 面板激活50ms后开始检查面板块...`);
                 await this.checkCurrentPanelBlocks();
               }, 50);
               
-              // 同时设置一个更长的延迟检查，以防orca-hideable元素稍后才添加
               setTimeout(async () => {
-                this.log(`⏰ 面板激活200ms后再次检查面板块（防止元素延迟添加）...`);
                 await this.checkCurrentPanelBlocks();
               }, 200);
             }
