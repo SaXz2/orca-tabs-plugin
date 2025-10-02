@@ -3995,7 +3995,7 @@ class la {
       }
       try {
         const d = this.findProperty(n, "_color"), h = this.findProperty(n, "_icon");
-        d && d.type === 1 && (o = d.value), h && h.type === 1 ? (s = h.value, this.log(`🎨 使用用户自定义图标: ${s} (块ID: ${t})`)) : (this.showBlockTypeIcons || l === "journal") && (s = this.getBlockTypeIcon(l), this.log(`🎨 使用块类型图标: ${s} (块类型: ${l}, 块ID: ${t})`));
+        d && d.type === 1 && (o = d.value), h && h.type === 1 && h.value && h.value.trim() ? (s = h.value, this.log(`🎨 使用用户自定义图标: ${s} (块ID: ${t})`)) : (this.showBlockTypeIcons || l === "journal") && (s = this.getBlockTypeIcon(l), this.log(`🎨 使用块类型图标: ${s} (块类型: ${l}, 块ID: ${t})`));
       } catch (d) {
         this.warn("获取属性失败:", d), s = this.getBlockTypeIcon(l);
       }
@@ -5164,7 +5164,7 @@ class la {
         if (i) {
           const o = await this.detectBlockType(i), s = this.findProperty(i, "_color"), c = this.findProperty(i, "_icon");
           let l = n.color, d = n.icon;
-          s && s.type === 1 && (l = s.value), c && c.type === 1 ? d = c.value : d || (d = this.getBlockTypeIcon(o)), n.blockType !== o || n.icon !== d || n.color !== l ? (t[a] = {
+          s && s.type === 1 && (l = s.value), c && c.type === 1 && c.value && c.value.trim() ? d = c.value : d || (d = this.getBlockTypeIcon(o)), n.blockType !== o || n.icon !== d || n.color !== l ? (t[a] = {
             ...n,
             blockType: o,
             icon: d,

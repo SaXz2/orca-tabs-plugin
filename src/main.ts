@@ -2530,7 +2530,7 @@ class OrcaTabsPlugin {
         }
         
         // 优先使用用户自定义图标，否则根据设置决定是否使用块类型图标
-        if (iconProp && iconProp.type === 1) {
+        if (iconProp && iconProp.type === 1 && iconProp.value && iconProp.value.trim()) {
           icon = iconProp.value;
           this.log(`🎨 使用用户自定义图标: ${icon} (块ID: ${blockId})`);
         } else if (this.showBlockTypeIcons || blockType === 'journal') {
@@ -4428,7 +4428,7 @@ class OrcaTabsPlugin {
           }
           
           // 更新图标
-          if (iconProp && iconProp.type === 1) {
+          if (iconProp && iconProp.type === 1 && iconProp.value && iconProp.value.trim()) {
             icon = iconProp.value;
           } else if (!icon) {
             icon = this.getBlockTypeIcon(blockType);
