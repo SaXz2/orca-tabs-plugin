@@ -6873,25 +6873,39 @@ class la {
     }
     const o = await this.createTabInfoFromBlock(t, e);
     if (!o) return;
-    const s = (d = this.tabContainer) == null ? void 0 : d.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
+    const s = this.getCurrentActiveTab();
     if (s) {
-      const h = s.getAttribute("data-tab-id"), g = n.findIndex((p) => p.blockId === h);
-      if (g !== -1) {
-        n[g] = o, this.setCurrentPanelTabs(n), this.immediateUpdateTabsUI();
+      const h = n.findIndex((g) => g.blockId === s.blockId);
+      if (h !== -1) {
+        this.log(`🔄 替换当前激活标签页: "${s.title}" -> "${o.title}"`), n[h] = o, this.updateFocusState(t, o.title), this.setCurrentPanelTabs(n), this.immediateUpdateTabsUI();
+        return;
+      }
+    }
+    if (this.lastActiveBlockId) {
+      const h = n.findIndex((g) => g.blockId === this.lastActiveBlockId);
+      if (h !== -1) {
+        this.log(`🔄 使用上一个激活标签页作为替换目标: "${n[h].title}" -> "${o.title}"`), n[h] = o, this.updateFocusState(t, o.title), this.setCurrentPanelTabs(n), this.immediateUpdateTabsUI();
         return;
       }
     }
     let c = -1;
-    const l = (u = this.tabContainer) == null ? void 0 : u.querySelectorAll(".orca-tabs-plugin .orca-tab");
-    if (l && l.length > 0)
-      for (let h = 0; h < l.length; h++) {
-        const g = l[h];
-        if (g.classList.contains("focused") || g.getAttribute("data-focused") === "true" || g.classList.contains("active")) {
-          c = h;
-          break;
+    const l = (d = this.tabContainer) == null ? void 0 : d.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
+    if (l) {
+      const h = l.getAttribute("data-tab-id");
+      c = n.findIndex((g) => g.blockId === h);
+    }
+    if (c === -1) {
+      const h = (u = this.tabContainer) == null ? void 0 : u.querySelectorAll(".orca-tabs-plugin .orca-tab");
+      if (h && h.length > 0)
+        for (let g = 0; g < h.length; g++) {
+          const p = h[g];
+          if (p.classList.contains("focused") || p.getAttribute("data-focused") === "true" || p.classList.contains("active")) {
+            c = g;
+            break;
+          }
         }
-      }
-    c === -1 && n.length > 0 && (c = n.length - 1), c >= 0 && c < n.length ? (n[c] = o, this.updateFocusState(t, o.title), this.setCurrentPanelTabs(n), this.immediateUpdateTabsUI()) : (n = [o], this.updateFocusState(t, o.title), this.setCurrentPanelTabs(n), this.immediateUpdateTabsUI());
+    }
+    c === -1 && n.length > 0 && (c = 0, this.log("⚠️ 无法确定当前聚焦的标签页，使用第一个标签页作为替换目标")), c >= 0 && c < n.length ? (n[c] = o, this.updateFocusState(t, o.title), this.setCurrentPanelTabs(n), this.immediateUpdateTabsUI()) : (n = [o], this.updateFocusState(t, o.title), this.setCurrentPanelTabs(n), this.immediateUpdateTabsUI());
   }
   async checkCurrentPanelBlocks() {
     var h;

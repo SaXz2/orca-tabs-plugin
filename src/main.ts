@@ -8009,40 +8009,64 @@ class OrcaTabsPlugin {
     const newTabInfo = await this.createTabInfoFromBlock(blockId, panelId);
     if (!newTabInfo) return;
     
-    // 尝试找到当前聚焦的标签页进行替换
-    const focusedTabElement = this.tabContainer?.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
-    if (focusedTabElement) {
-      const focusedTabId = focusedTabElement.getAttribute('data-tab-id');
-      const focusedIndex = currentTabs.findIndex(tab => tab.blockId === focusedTabId);
-      
-      if (focusedIndex !== -1) {
-        // 替换聚焦的标签页内容
-        currentTabs[focusedIndex] = newTabInfo;
+    // 使用更可靠的方法获取当前激活的标签页
+    const currentActiveTab = this.getCurrentActiveTab();
+    if (currentActiveTab) {
+      // 找到当前激活标签页的索引
+      const activeIndex = currentTabs.findIndex(tab => tab.blockId === currentActiveTab.blockId);
+      if (activeIndex !== -1) {
+        // 替换当前激活的标签页内容
+        this.log(`🔄 替换当前激活标签页: "${currentActiveTab.title}" -> "${newTabInfo.title}"`);
+        currentTabs[activeIndex] = newTabInfo;
+        this.updateFocusState(blockId, newTabInfo.title);
         this.setCurrentPanelTabs(currentTabs);
         this.immediateUpdateTabsUI();
         return;
       }
     }
     
-    // 如果没有找到聚焦的标签页，智能选择替换目标
+    // 备用方案：如果getCurrentActiveTab()无法获取（可能是时序问题），
+    // 尝试通过lastActiveBlockId来确定上一个激活的标签页
+    if (this.lastActiveBlockId) {
+      const lastActiveIndex = currentTabs.findIndex(tab => tab.blockId === this.lastActiveBlockId);
+      if (lastActiveIndex !== -1) {
+        this.log(`🔄 使用上一个激活标签页作为替换目标: "${currentTabs[lastActiveIndex].title}" -> "${newTabInfo.title}"`);
+        currentTabs[lastActiveIndex] = newTabInfo;
+        this.updateFocusState(blockId, newTabInfo.title);
+        this.setCurrentPanelTabs(currentTabs);
+        this.immediateUpdateTabsUI();
+        return;
+      }
+    }
+    
+    // 如果无法获取当前激活标签页，尝试通过DOM元素查找
     let targetIndex = -1;
-    const allTabElements = this.tabContainer?.querySelectorAll('.orca-tabs-plugin .orca-tab');
-    if (allTabElements && allTabElements.length > 0) {
-      // 查找有聚焦样式的标签页
-      for (let i = 0; i < allTabElements.length; i++) {
-        const tabElement = allTabElements[i];
-        if (tabElement.classList.contains('focused') || 
-            tabElement.getAttribute('data-focused') === 'true' ||
-            tabElement.classList.contains('active')) {
-          targetIndex = i;
-          break;
+    const focusedTabElement = this.tabContainer?.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
+    if (focusedTabElement) {
+      const focusedTabId = focusedTabElement.getAttribute('data-tab-id');
+      targetIndex = currentTabs.findIndex(tab => tab.blockId === focusedTabId);
+    }
+    
+    // 如果还是没找到，查找有聚焦样式的标签页
+    if (targetIndex === -1) {
+      const allTabElements = this.tabContainer?.querySelectorAll('.orca-tabs-plugin .orca-tab');
+      if (allTabElements && allTabElements.length > 0) {
+        for (let i = 0; i < allTabElements.length; i++) {
+          const tabElement = allTabElements[i];
+          if (tabElement.classList.contains('focused') || 
+              tabElement.getAttribute('data-focused') === 'true' ||
+              tabElement.classList.contains('active')) {
+            targetIndex = i;
+            break;
+          }
         }
       }
     }
     
-    // 如果还是没找到，使用最后一个标签页
+    // 如果还是没找到，使用第一个标签页而不是最后一个（更符合用户预期）
     if (targetIndex === -1 && currentTabs.length > 0) {
-      targetIndex = currentTabs.length - 1;
+      targetIndex = 0;
+      this.log(`⚠️ 无法确定当前聚焦的标签页，使用第一个标签页作为替换目标`);
     }
     
     if (targetIndex >= 0 && targetIndex < currentTabs.length) {
