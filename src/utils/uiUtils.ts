@@ -138,21 +138,28 @@ export function createTabTextContainer(title: string): HTMLElement {
     position: relative;
   `;
   
-  // 添加渐变遮罩效果
-  const gradientMask = document.createElement('div');
-  gradientMask.style.cssText = `
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 20px;
-    height: 100%;
-    background: linear-gradient(to right, transparent, var(--orca-bg-color, #ffffff));
-    pointer-events: none;
-    z-index: 1;
+  // 创建文本元素
+  const textElement = document.createElement('span');
+  textElement.style.cssText = `
+    display: block;
+    white-space: nowrap;
+    width: 100%;
   `;
+  textElement.textContent = title;
   
-  textContainer.appendChild(gradientMask);
-  textContainer.textContent = title;
+  textContainer.appendChild(textElement);
+  
+  // 使用requestAnimationFrame确保DOM已渲染，然后检查是否需要渐变效果
+  requestAnimationFrame(() => {
+    const containerWidth = textContainer.offsetWidth;
+    const textWidth = textElement.scrollWidth;
+    
+    // 如果文字宽度超过容器宽度，应用渐变透明效果
+    if (textWidth > containerWidth) {
+      textElement.style.mask = 'linear-gradient(to right, black 0%, black 70%, transparent 100%)';
+      textElement.style.webkitMask = 'linear-gradient(to right, black 0%, black 70%, transparent 100%)';
+    }
+  });
   
   return textContainer;
 }

@@ -2058,17 +2058,15 @@ function qe(r) {
     height: 16px;
     position: relative;
   `;
-  const e = document.createElement("div");
+  const e = document.createElement("span");
   return e.style.cssText = `
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 20px;
-    height: 100%;
-    background: linear-gradient(to right, transparent, var(--orca-bg-color, #ffffff));
-    pointer-events: none;
-    z-index: 1;
-  `, t.appendChild(e), t.textContent = r, t;
+    display: block;
+    white-space: nowrap;
+    width: 100%;
+  `, e.textContent = r, t.appendChild(e), requestAnimationFrame(() => {
+    const a = t.offsetWidth;
+    e.scrollWidth > a && (e.style.mask = "linear-gradient(to right, black 0%, black 70%, transparent 100%)", e.style.webkitMask = "linear-gradient(to right, black 0%, black 70%, transparent 100%)");
+  }), t;
 }
 function _e() {
   const r = document.createElement("span");
