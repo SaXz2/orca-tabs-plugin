@@ -247,6 +247,22 @@ import {
   createTaskQueue, 
   createResourcePreloader 
 } from './utils/performanceUtils';
+
+// ==================== 性能优化工具导入 ====================
+// 性能优化管理器 - 提供统一的性能优化管理
+import { PerformanceOptimizerManager } from './utils/performanceOptimizerManager';
+// MutationObserver优化器 - 优化DOM变化监听
+import { OptimizedMutationObserver } from './utils/mutationObserverOptimizer';
+// 高级防抖优化器 - 高级防抖和任务调度
+import { AdvancedDebounceOptimizer } from './utils/advancedDebounceOptimizer';
+// 内存泄漏防护器 - 防止内存泄漏
+import { MemoryLeakProtector } from './utils/memoryLeakProtector';
+// 懒加载优化器 - 按需加载非关键功能
+import { LazyLoadingOptimizer } from './utils/lazyLoadingOptimizer';
+// 批量处理器优化器 - DOM操作批量处理
+import { BatchProcessorOptimizer } from './utils/batchProcessorOptimizer';
+// 性能监控优化器 - 性能监控和分析
+import { PerformanceMonitorOptimizer } from './utils/performanceMonitorOptimizer';
 import { 
   isDarkMode, 
   getCurrentThemeMode, 
@@ -454,6 +470,25 @@ class OrcaTabsPlugin {
    */
   constructor(pluginName: string) {
     this.pluginName = pluginName;
+    
+    // 初始化性能优化器
+    this.initializePerformanceOptimizers();
+  }
+  
+  /**
+   * 初始化性能优化器
+   */
+  private initializePerformanceOptimizers(): void {
+    try {
+      this.log('🚀 初始化性能优化器...');
+      
+      // 初始化性能优化管理器
+      this.performanceOptimizer = PerformanceOptimizerManager.getInstance();
+      
+      this.log('✅ 性能优化器初始化完成');
+    } catch (error) {
+      this.error('❌ 性能优化器初始化失败:', error);
+    }
   }
 
   // ==================== 日志方法 ====================
@@ -585,6 +620,29 @@ class OrcaTabsPlugin {
   public enableMultiTabSaving: boolean = true;
   
   /* ———————————————————————————————————————————————————————————————————————————— */
+  /* 性能优化 - Performance Optimization */
+  /* ———————————————————————————————————————————————————————————————————————————— */
+  
+  // ==================== 性能优化管理器 ====================
+  /** 性能优化管理器 - 统一管理所有性能优化工具 */
+  private performanceOptimizer: PerformanceOptimizerManager | null = null;
+  
+  /** MutationObserver优化器实例 - 用于优化DOM变化监听 */
+  private optimizedObserver: OptimizedMutationObserver | null = null;
+  
+  /** 高级防抖优化器实例 - 用于任务防抖和调度 */
+  private debounceOptimizer: AdvancedDebounceOptimizer | null = null;
+  
+  /** 内存泄漏防护器实例 - 用于跟踪和清理资源 */
+  private memoryLeakProtector: MemoryLeakProtector | null = null;
+  
+  /** 批量处理器实例 - 用于批量DOM操作 */
+  private batchProcessor: BatchProcessorOptimizer | null = null;
+  
+  /** 性能监控器实例 - 用于监控性能指标 */
+  private performanceMonitor: PerformanceMonitorOptimizer | null = null;
+  
+  /* ———————————————————————————————————————————————————————————————————————————— */
   /* 拖拽和事件管理 - Drag and Event Management */
   /* ———————————————————————————————————————————————————————————————————————————— */
   
@@ -714,6 +772,50 @@ class OrcaTabsPlugin {
    * @throws {Error} 当初始化过程中发生错误时抛出
    */
   async init() {
+    // ==================== 性能优化器初始化 ====================
+    // 初始化性能优化管理器
+    if (this.performanceOptimizer) {
+      try {
+        await this.performanceOptimizer.initialize({
+          mutationObserver: {
+            enableBatch: true,
+            batchDelay: 16,
+            maxBatchSize: 50,
+            enableSmartFilter: true,
+            coolingPeriod: 100
+          },
+          debounce: [
+            { name: 'immediate', delay: 0, priority: 10, cancelable: false },
+            { name: 'high', delay: 8, priority: 8, cancelable: true, maxWait: 100 },
+            { name: 'normal', delay: 16, priority: 5, cancelable: true, maxWait: 200 },
+            { name: 'low', delay: 32, priority: 3, cancelable: true, maxWait: 500 }
+          ],
+          memoryLeak: {
+            autoCleanupInterval: 30000,
+            enableAutoCleanup: true
+          },
+          lazyLoading: {
+            enableCache: true,
+            maxConcurrency: 3,
+            preloadStrategy: 'idle'
+          },
+          batchProcessing: {
+            maxBatchSize: 50,
+            maxWaitTime: 16,
+            enableVirtualization: true
+          },
+          performanceMonitoring: {
+            enableMonitoring: true,
+            enableAutoOptimization: true,
+            reportInterval: 30000
+          }
+        });
+        this.log('✅ 性能优化管理器初始化完成');
+      } catch (error) {
+        this.error('❌ 性能优化管理器初始化失败:', error);
+      }
+    }
+    
     // ==================== 样式初始化 ====================
     // 添加对话框样式 - 为所有对话框组件添加基础样式
     addDialogStyles();
@@ -878,6 +980,10 @@ class OrcaTabsPlugin {
     
     // 监听窗口大小变化
     this.observeWindowResize();
+    
+    // ==================== 优化的DOM监听初始化 ====================
+    // 启动优化的DOM变化监听
+    this.initializeOptimizedDOMObserver();
     
     // 启动主动的面板状态检测
     this.startActiveMonitoring();
@@ -9293,70 +9399,7 @@ class OrcaTabsPlugin {
     this.log("✅ 插件缓存重置完成");
   }
 
-  destroy() {
-    // 清理UI元素
-    if (this.tabContainer) {
-      this.tabContainer.remove();
-      this.tabContainer = null;
-    }
-    if (this.cycleSwitcher) {
-      this.cycleSwitcher.remove();
-      this.cycleSwitcher = null;
-    }
-    
-    // 清理拖拽样式
-    const dragStyles = document.getElementById('orca-tabs-drag-styles');
-    if (dragStyles) {
-      dragStyles.remove();
-    }
-    
-    // 清理计时器
-    if (this.monitoringInterval) {
-      clearInterval(this.monitoringInterval);
-      this.monitoringInterval = null;
-    }
-    if (this.updateDebounceTimer) {
-      clearTimeout(this.updateDebounceTimer);
-      this.updateDebounceTimer = null;
-    }
-    if (this.swapDebounceTimer) {
-      clearTimeout(this.swapDebounceTimer);
-      this.swapDebounceTimer = null;
-    }
-    if (this.settingsCheckInterval) {
-      clearInterval(this.settingsCheckInterval);
-      this.settingsCheckInterval = null;
-    }
-    
-    // 清理监听器
-    if (this.globalEventListener) {
-      document.removeEventListener('click', this.globalEventListener);
-      document.removeEventListener('contextmenu', this.globalEventListener);
-      // keydown监听器已移除
-      this.globalEventListener = null;
-    }
-    if (this.dragEndListener) {
-      document.removeEventListener('dragend', this.dragEndListener);
-      this.dragEndListener = null;
-    }
-    
-    // 清理优化的拖拽监听器
-    if (this.dragOverListener) {
-      document.removeEventListener('dragover', this.dragOverListener);
-      this.dragOverListener = null;
-    }
-    if (this.themeChangeListener) {
-      this.themeChangeListener();
-      this.themeChangeListener = null;
-    }
-    if (this.scrollListener) {
-      this.scrollListener();
-      this.scrollListener = null;
-    }
-    
-    // 清理拖拽状态
-    this.draggingTab = null;
-  }
+  // destroy方法在类的末尾重新实现了更完整的版本
 
   /**
    * 显示最近关闭的标签页菜单
@@ -12425,6 +12468,202 @@ class OrcaTabsPlugin {
       document.addEventListener('click', closeDialog);
       document.addEventListener('contextmenu', closeDialog);
     }, 0);
+  }
+
+  /**
+   * 初始化优化的DOM监听器
+   */
+  private initializeOptimizedDOMObserver(): void {
+    if (!this.performanceOptimizer) {
+      this.log('⚠️ 性能优化管理器未初始化，跳过DOM监听器优化');
+      return;
+    }
+
+    try {
+      // 启动优化的DOM观察器
+      this.performanceOptimizer.startDOMObservation(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class']
+      });
+
+      this.log('🔍 优化的DOM监听器已启动');
+
+      // 注意：性能报告变化监听在实际应用中可以通过轮询或其他方式实现
+
+    } catch (error) {
+      this.error('❌ 优化DOM监听器初始化失败:', error);
+    }
+  }
+
+  /**
+   * 处理性能报告
+   */
+  private handlePerformanceReport(report: any): void {
+    const healthScore = report.healthScore || 0;
+    const issuesCount = report.issues?.length || 0;
+    
+    this.log(`📊 性能报告: 健康分数 ${healthScore}/100, 问题数: ${issuesCount}`);
+    
+    // 如果健康分数过低，自动优化
+    if (healthScore < 50 && issuesCount > 0) {
+      this.log('⚠️ 性能分数过低，触发自动优化');
+      this.triggerPerformanceOptimization();
+    }
+  }
+
+  /**
+   * 触发性能优化
+   */
+  private triggerPerformanceOptimization(): void {
+    if (!this.performanceOptimizer) {
+      return;
+    }
+
+    try {
+      // 触发优化策略
+      this.performanceOptimizer.triggerOptimization();
+      
+      // 清理可能的内存泄漏
+      const memoryStats = this.performanceOptimizer.getMemoryStats();
+      if (memoryStats && memoryStats.totalResources > 1000) {
+        this.log('🧹 检测到资源过多，执行清理');
+        this.performanceOptimizer.cleanupAllResources();
+      }
+
+    } catch (error) {
+      this.error('❌ 性能优化触发失败:', error);
+    }
+  }
+
+  /**
+   * 优化的防抖更新方法
+   */
+  async optimizedDebouncedUpdateTabsUI(): Promise<void> {
+    if (!this.performanceOptimizer) {
+      // 降级到原来的方法
+      this.debouncedUpdateTabsUI();
+      return;
+    }
+
+    try {
+      await this.performanceOptimizer.executeTask(
+        () => this.immediateUpdateTabsUI(),
+        [],
+        'normal' // 使用普通优先级
+      );
+      this.log('⚡ 使用优化防抖更新标签页UI');
+    } catch (error) {
+      this.error('❌ 优化防抖更新失败，降级到原始方法:', error);
+      this.debouncedUpdateTabsUI();
+    }
+  }
+
+  /**
+   * 优化的资源跟踪
+   */
+  private trackOptimizedResource(
+    target: EventTarget,
+    event: string,
+    listener: EventListener,
+    options?: boolean | AddEventListenerOptions
+  ): string | null {
+    if (!this.performanceOptimizer) {
+      // 降级到原始添加事件监听器
+      target.addEventListener(event, listener, options);
+      return null;
+    }
+
+    // 使用优化管理器跟踪事件监听器
+    const resourceId = this.performanceOptimizer.trackEventListener(target, event, listener, options);
+    
+    if (resourceId) {
+      this.verboseLog(`👂 跟踪事件监听器: ${event} -> ${resourceId}`);
+    }
+
+    return resourceId;
+  }
+
+  /**
+   * 销毁插件，清理所有资源
+   */
+  destroy(): void {
+    try {
+      this.log('🗑️ 开始销毁插件...');
+      
+      // 清理性能优化器
+      if (this.performanceOptimizer) {
+        this.log('🧹 清理性能优化器...');
+        this.performanceOptimizer.destroy();
+        this.performanceOptimizer = null;
+      }
+      
+      // 清理UI元素
+      if (this.tabContainer) {
+        this.tabContainer.remove();
+        this.tabContainer = null;
+      }
+      if (this.cycleSwitcher) {
+        this.cycleSwitcher.remove();
+        this.cycleSwitcher = null;
+      }
+      
+      // 清理拖拽样式
+      const dragStyles = document.getElementById('orca-tabs-drag-styles');
+      if (dragStyles) {
+        dragStyles.remove();
+      }
+      
+      // 清理计时器
+      if (this.monitoringInterval) {
+        clearInterval(this.monitoringInterval);
+        this.monitoringInterval = null;
+      }
+      if (this.updateDebounceTimer) {
+        clearTimeout(this.updateDebounceTimer);
+        this.updateDebounceTimer = null;
+      }
+      if (this.swapDebounceTimer) {
+        clearTimeout(this.swapDebounceTimer);
+        this.swapDebounceTimer = null;
+      }
+      if (this.settingsCheckInterval) {
+        clearInterval(this.settingsCheckInterval);
+        this.settingsCheckInterval = null;
+      }
+      
+      // 清理事件监听器
+      if (this.globalEventListener) {
+        document.removeEventListener('click', this.globalEventListener);
+        document.removeEventListener('contextmenu', this.globalEventListener);
+        this.globalEventListener = null;
+      }
+      if (this.dragEndListener) {
+        document.removeEventListener('dragend', this.dragEndListener);
+        this.dragEndListener = null;
+      }
+      if (this.dragOverListener) {
+        document.removeEventListener('dragover', this.dragOverListener);
+        this.dragOverListener = null;
+      }
+      if (this.themeChangeListener) {
+        this.themeChangeListener();
+        this.themeChangeListener = null;
+      }
+      if (this.scrollListener) {
+        this.scrollListener();
+        this.scrollListener = null;
+      }
+      
+      // 清理拖拽状态
+      this.draggingTab = null;
+      
+      this.log('✅ 插件销毁完成');
+      
+    } catch (error) {
+      this.error('❌ 插件销毁过程中发生错误:', error);
+    }
   }
 
 }
