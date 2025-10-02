@@ -3182,7 +3182,10 @@ class OrcaTabsPlugin {
     
     // 始终添加新建按钮和工作区按钮（无论是否有当前面板）
     this.addNewTabButton();
-    this.addWorkspaceButton();
+    // 只有在启用工作区功能时才添加工作区按钮
+    if (this.enableWorkspaces) {
+      this.addWorkspaceButton();
+    }
     
     // 如果是固定到顶部模式，重新应用样式
     if (this.isFixedToTop) {
@@ -3498,6 +3501,19 @@ class OrcaTabsPlugin {
     // 添加工作区按钮（如果启用）
     if (this.enableWorkspaces) {
       this.addWorkspaceButton();
+    }
+  }
+
+  /**
+   * 移除工作区按钮
+   */
+  removeWorkspaceButton() {
+    if (!this.tabContainer) return;
+    
+    const existingButton = this.tabContainer.querySelector('.workspace-button');
+    if (existingButton) {
+      existingButton.remove();
+      this.log('📁 工作区按钮已移除');
     }
   }
 
@@ -5536,6 +5552,11 @@ class OrcaTabsPlugin {
         const oldValue = this.enableWorkspaces;
         this.enableWorkspaces = currentSettings.enableWorkspaces;
         this.log(`📁 设置变化：工作区功能 ${oldValue ? '开启' : '关闭'} -> ${this.enableWorkspaces ? '开启' : '关闭'}`);
+
+        // 如果没有启用工作区功能，先移除工作区按钮
+        if (!this.enableWorkspaces) {
+          this.removeWorkspaceButton();
+        }
         
         // 重新更新UI以显示或隐藏工作区按钮
         this.debouncedUpdateTabsUI();

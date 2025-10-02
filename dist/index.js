@@ -4477,7 +4477,7 @@ class da {
         });
       } else
         this.log("⚠️ 没有可显示的面板，跳过标签页显示");
-      if (this.addNewTabButton(), this.addWorkspaceButton(), this.isFixedToTop) {
+      if (this.addNewTabButton(), this.enableWorkspaces && this.addWorkspaceButton(), this.isFixedToTop) {
         const s = "var(--orca-tab-bg)", c = "var(--orca-tab-border)", l = "var(--orca-color-text-1)", d = this.tabContainer.querySelectorAll(".orca-tabs-plugin .orca-tab");
         d.forEach((u) => {
           const g = u.getAttribute("data-tab-id");
@@ -4664,6 +4664,14 @@ class da {
     }), e.addEventListener("click", async (n) => {
       n.preventDefault(), n.stopPropagation(), this.log("🆕 点击新建标签页按钮"), await this.createNewTab();
     }), this.tabContainer.appendChild(e), this.addNewTabButtonContextMenu(e), this.enableWorkspaces && this.addWorkspaceButton();
+  }
+  /**
+   * 移除工作区按钮
+   */
+  removeWorkspaceButton() {
+    if (!this.tabContainer) return;
+    const t = this.tabContainer.querySelector(".workspace-button");
+    t && (t.remove(), this.log("📁 工作区按钮已移除"));
   }
   /**
    * 添加工作区按钮
@@ -5616,7 +5624,7 @@ class da {
       }
       if (e.homePageBlockId !== this.lastSettings.homePageBlockId && (this.homePageBlockId = e.homePageBlockId, this.log(`🏠 设置变化：主页块ID已更新为 ${this.homePageBlockId}`), this.lastSettings.homePageBlockId = this.homePageBlockId), e.enableWorkspaces !== this.lastSettings.enableWorkspaces) {
         const a = this.enableWorkspaces;
-        this.enableWorkspaces = e.enableWorkspaces, this.log(`📁 设置变化：工作区功能 ${a ? "开启" : "关闭"} -> ${this.enableWorkspaces ? "开启" : "关闭"}`), this.debouncedUpdateTabsUI(), this.lastSettings.enableWorkspaces = this.enableWorkspaces;
+        this.enableWorkspaces = e.enableWorkspaces, this.log(`📁 设置变化：工作区功能 ${a ? "开启" : "关闭"} -> ${this.enableWorkspaces ? "开启" : "关闭"}`), this.enableWorkspaces || this.removeWorkspaceButton(), this.debouncedUpdateTabsUI(), this.lastSettings.enableWorkspaces = this.enableWorkspaces;
       }
     } catch (e) {
       this.error("检查设置变化失败:", e);
