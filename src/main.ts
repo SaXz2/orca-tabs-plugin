@@ -406,6 +406,9 @@ class OrcaTabsPlugin {
   /* 核心数据属性 - Core Data Properties */
   /* ———————————————————————————————————————————————————————————————————————————— */
   
+  /** 插件名称 - 动态获取的插件名称，用于API调用和存储 */
+  private pluginName: string;
+  
   // ==================== 重构的面板数据管理 ====================
   /** 面板顺序映射 - 存储面板ID和序号的映射关系，支持面板关闭后重新排序 */
   private panelOrder: { id: string, order: number }[] = [];
@@ -444,6 +447,14 @@ class OrcaTabsPlugin {
     prefix: '[OrcaTabsPlugin]'  // 日志前缀，便于识别插件日志
   });
   
+  /**
+   * 构造函数
+   * @param pluginName 插件名称
+   */
+  constructor(pluginName: string) {
+    this.pluginName = pluginName;
+  }
+
   // ==================== 日志方法 ====================
   /** 调试日志 - 用于开发调试，记录一般信息 */
   private log(...args: any[]) {
@@ -708,7 +719,7 @@ class OrcaTabsPlugin {
     
     // ==================== 服务初始化 ====================
     // 初始化标签页存储服务
-    this.tabStorageService = new TabStorageService(this.storageService, {
+    this.tabStorageService = new TabStorageService(this.storageService, this.pluginName, {
       log: this.log.bind(this),
       warn: this.warn.bind(this),
       error: this.error.bind(this),
@@ -811,7 +822,7 @@ class OrcaTabsPlugin {
       for (let i = 1; i < this.panelOrder.length; i++) {
         const storageKey = `panel_${i + 1}_tabs`;
         try {
-          const savedTabs = await this.storageService.getConfig<TabInfo[]>(storageKey, 'orca-tabs-plugin', []);
+          const savedTabs = await this.storageService.getConfig<TabInfo[]>(storageKey, this.pluginName, []);
           this.log(`📂 从存储获取到第 ${i + 1} 个面板的数据: ${savedTabs ? savedTabs.length : 0} 个标签页`);
           
           if (savedTabs && savedTabs.length > 0) {
@@ -4231,7 +4242,7 @@ class OrcaTabsPlugin {
       this.unregisterHeadbarButton();
       
       // 注册切换按钮（总是显示）
-      orca.headbar.registerHeadbarButton('orca-tabs-plugin.toggleButton', () => {
+      orca.headbar.registerHeadbarButton(`${this.pluginName}.toggleButton`, () => {
         const React = (window as any).React;
         const Button = orca.components.Button;
         
@@ -4250,7 +4261,7 @@ class OrcaTabsPlugin {
 
       // 注册调试按钮（根据设置决定是否显示）
       if (this.showInHeadbar && typeof window !== 'undefined') {
-        orca.headbar.registerHeadbarButton('orca-tabs-plugin.debugButton', () => {
+        orca.headbar.registerHeadbarButton(`${this.pluginName}.debugButton`, () => {
           const React = (window as any).React;
           const Button = orca.components.Button;
           
@@ -4270,7 +4281,7 @@ class OrcaTabsPlugin {
 
       // 注册最近关闭标签页按钮（根据设置决定是否显示）
       if (this.enableRecentlyClosedTabs && typeof window !== 'undefined') {
-        orca.headbar.registerHeadbarButton('orca-tabs-plugin.recentlyClosedButton', () => {
+        orca.headbar.registerHeadbarButton(`${this.pluginName}.recentlyClosedButton`, () => {
           const React = (window as any).React;
           const Button = orca.components.Button;
           
@@ -4290,7 +4301,7 @@ class OrcaTabsPlugin {
 
       // 注册保存标签页按钮（根据设置决定是否显示）
       if (this.enableMultiTabSaving && typeof window !== 'undefined') {
-        orca.headbar.registerHeadbarButton('orca-tabs-plugin.savedTabsButton', () => {
+        orca.headbar.registerHeadbarButton(`${this.pluginName}.savedTabsButton`, () => {
           const React = (window as any).React;
           const Button = orca.components.Button;
           
@@ -4322,16 +4333,16 @@ class OrcaTabsPlugin {
   unregisterHeadbarButton() {
     try {
       // 注销切换按钮
-      orca.headbar.unregisterHeadbarButton('orca-tabs-plugin.toggleButton');
+      orca.headbar.unregisterHeadbarButton(`${this.pluginName}.toggleButton`);
       
       // 注销调试按钮（无论是否在调试模式都尝试注销）
-      orca.headbar.unregisterHeadbarButton('orca-tabs-plugin.debugButton');
+      orca.headbar.unregisterHeadbarButton(`${this.pluginName}.debugButton`);
       
       // 注销最近关闭标签页按钮
-      orca.headbar.unregisterHeadbarButton('orca-tabs-plugin.recentlyClosedButton');
+      orca.headbar.unregisterHeadbarButton(`${this.pluginName}.recentlyClosedButton`);
       
       // 注销保存标签页按钮
-      orca.headbar.unregisterHeadbarButton('orca-tabs-plugin.savedTabsButton');
+      orca.headbar.unregisterHeadbarButton(`${this.pluginName}.savedTabsButton`);
       
       this.log("🔘 顶部工具栏按钮已注销");
     } catch (error) {
@@ -4373,7 +4384,7 @@ class OrcaTabsPlugin {
     try {
       await this.saveLayoutMode();
       // 同步更新插件设置
-      await this.storageService.saveConfig('showBlockTypeIcons', this.showBlockTypeIcons, 'orca-tabs-plugin');
+      await this.storageService.saveConfig('showBlockTypeIcons', this.showBlockTypeIcons, this.pluginName);
       this.log(`✅ 块类型图标显示设置已保存: ${this.showBlockTypeIcons ? '开启' : '关闭'}`);
     } catch (error) {
       this.error("保存设置失败:", error);
@@ -5435,10 +5446,10 @@ class OrcaTabsPlugin {
         },
       };
 
-      await orca.plugins.setSettingsSchema("orca-tabs-plugin", settingsSchema);
+      await orca.plugins.setSettingsSchema(this.pluginName, settingsSchema);
       
       // 读取设置值
-      const settings = orca.state.plugins["orca-tabs-plugin"]?.settings;
+      const settings = orca.state.plugins[this.pluginName]?.settings;
       
       if (settings?.homePageBlockId) {
         this.homePageBlockId = settings.homePageBlockId;
@@ -5493,7 +5504,7 @@ class OrcaTabsPlugin {
    */
   private checkSettingsChange() {
     try {
-      const currentSettings = orca.state.plugins["orca-tabs-plugin"]?.settings;
+      const currentSettings = orca.state.plugins[this.pluginName]?.settings;
       if (!currentSettings) return;
       
       // 检查各个设置是否发生变化
@@ -7731,7 +7742,7 @@ class OrcaTabsPlugin {
     try {
       const saved = await this.storageService.getConfig<Partial<LayoutConfig>>(
         PLUGIN_STORAGE_KEYS.LAYOUT_MODE, 
-        'orca-tabs-plugin', 
+        this.pluginName, 
         createDefaultLayoutConfig()
       );
       
@@ -7795,7 +7806,7 @@ class OrcaTabsPlugin {
     try {
       const saved = await this.storageService.getConfig<{ isFixedToTop: boolean }>(
         PLUGIN_STORAGE_KEYS.FIXED_TO_TOP, 
-        'orca-tabs-plugin', 
+        this.pluginName, 
         { isFixedToTop: false }
       );
       
@@ -12347,7 +12358,7 @@ export async function load(_name: string) {
   setupL10N(orca.state.locale, { "zh-CN": zhCN });
 
   // 初始化标签页插件
-  tabsPlugin = new OrcaTabsPlugin();
+  tabsPlugin = new OrcaTabsPlugin(pluginName);
   
   // 等待DOM加载完成后初始化
   if (document.readyState === 'loading') {

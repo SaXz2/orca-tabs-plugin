@@ -31,6 +31,7 @@ import {
  */
 export class TabStorageService {
   private storageService: OrcaStorageService;
+  private pluginName: string;
   private log: (message: string) => void;
   private warn: (message: string, error?: any) => void;
   private error: (message: string, error?: any) => void;
@@ -38,6 +39,7 @@ export class TabStorageService {
 
   constructor(
     storageService: OrcaStorageService,
+    pluginName: string,
     loggers: {
       log: (message: string) => void;
       warn: (message: string, error?: any) => void;
@@ -46,6 +48,7 @@ export class TabStorageService {
     }
   ) {
     this.storageService = storageService;
+    this.pluginName = pluginName;
     this.log = loggers.log;
     this.warn = loggers.warn;
     this.error = loggers.error;
@@ -59,7 +62,7 @@ export class TabStorageService {
    */
   async saveFirstPanelTabs(tabs: TabInfo[]): Promise<void> {
     try {
-      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.FIRST_PANEL_TABS, tabs, 'orca-tabs-plugin');
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.FIRST_PANEL_TABS, tabs, this.pluginName);
       this.log(`💾 保存第一个面板的 ${tabs.length} 个标签页数据到API配置`);
     } catch (e) {
       this.warn("无法保存第一个面板标签数据:", e);
@@ -71,7 +74,7 @@ export class TabStorageService {
    */
   async restoreFirstPanelTabs(): Promise<TabInfo[]> {
     try {
-      const saved = await this.storageService.getConfig<TabInfo[]>(PLUGIN_STORAGE_KEYS.FIRST_PANEL_TABS, 'orca-tabs-plugin', []);
+      const saved = await this.storageService.getConfig<TabInfo[]>(PLUGIN_STORAGE_KEYS.FIRST_PANEL_TABS, this.pluginName, []);
       if (saved && Array.isArray(saved)) {
         this.log(`📂 从API配置恢复了第一个面板的 ${saved.length} 个标签页`);
         return saved;
@@ -90,7 +93,7 @@ export class TabStorageService {
    */
   async savePanelTabs(panelId: string, tabs: TabInfo[]): Promise<void> {
     try {
-      await this.storageService.saveConfig(`panel_${panelId}_tabs`, tabs, 'orca-tabs-plugin');
+      await this.storageService.saveConfig(`panel_${panelId}_tabs`, tabs, this.pluginName);
       this.verboseLog(`💾 已保存面板 ${panelId} 的标签页数据: ${tabs.length} 个`);
     } catch (error) {
       this.warn(`❌ 保存面板 ${panelId} 标签页数据失败:`, error);
@@ -102,7 +105,7 @@ export class TabStorageService {
    */
   async savePanelTabsByKey(storageKey: string, tabs: TabInfo[]): Promise<void> {
     try {
-      await this.storageService.saveConfig(storageKey, tabs, 'orca-tabs-plugin');
+      await this.storageService.saveConfig(storageKey, tabs, this.pluginName);
       this.verboseLog(`💾 已保存 ${storageKey} 的标签页数据: ${tabs.length} 个`);
     } catch (error) {
       this.warn(`❌ 保存 ${storageKey} 标签页数据失败:`, error);
@@ -114,7 +117,7 @@ export class TabStorageService {
    */
   async restorePanelTabsByKey(storageKey: string): Promise<TabInfo[]> {
     try {
-      const saved = await this.storageService.getConfig<TabInfo[]>(storageKey, 'orca-tabs-plugin', []);
+      const saved = await this.storageService.getConfig<TabInfo[]>(storageKey, this.pluginName, []);
       if (saved && Array.isArray(saved)) {
         this.verboseLog(`📂 从 ${storageKey} 恢复了 ${saved.length} 个标签页`);
         return saved;
@@ -133,7 +136,7 @@ export class TabStorageService {
    */
   async saveClosedTabs(closedTabs: Set<string>): Promise<void> {
     try {
-      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.CLOSED_TABS, Array.from(closedTabs), 'orca-tabs-plugin');
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.CLOSED_TABS, Array.from(closedTabs), this.pluginName);
       this.log(`💾 保存已关闭标签列表到API配置`);
     } catch (e) {
       this.warn("无法保存已关闭标签列表:", e);
@@ -145,7 +148,7 @@ export class TabStorageService {
    */
   async restoreClosedTabs(): Promise<Set<string>> {
     try {
-      const saved = await this.storageService.getConfig<string[]>(PLUGIN_STORAGE_KEYS.CLOSED_TABS, 'orca-tabs-plugin', []);
+      const saved = await this.storageService.getConfig<string[]>(PLUGIN_STORAGE_KEYS.CLOSED_TABS, this.pluginName, []);
       if (saved && Array.isArray(saved)) {
         const closedTabs = new Set(saved);
         this.log(`📂 从API配置恢复了 ${closedTabs.size} 个已关闭标签`);
@@ -167,7 +170,7 @@ export class TabStorageService {
    */
   async saveRecentlyClosedTabs(recentlyClosedTabs: TabInfo[]): Promise<void> {
     try {
-      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.RECENTLY_CLOSED_TABS, recentlyClosedTabs, 'orca-tabs-plugin');
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.RECENTLY_CLOSED_TABS, recentlyClosedTabs, this.pluginName);
       this.log(`💾 保存最近关闭标签页列表到API配置`);
     } catch (e) {
       this.warn("无法保存最近关闭标签页列表:", e);
@@ -179,7 +182,7 @@ export class TabStorageService {
    */
   async restoreRecentlyClosedTabs(): Promise<TabInfo[]> {
     try {
-      const saved = await this.storageService.getConfig<TabInfo[]>(PLUGIN_STORAGE_KEYS.RECENTLY_CLOSED_TABS, 'orca-tabs-plugin', []);
+      const saved = await this.storageService.getConfig<TabInfo[]>(PLUGIN_STORAGE_KEYS.RECENTLY_CLOSED_TABS, this.pluginName, []);
       if (saved && Array.isArray(saved)) {
         this.log(`📂 从API配置恢复了 ${saved.length} 个最近关闭的标签页`);
         return saved;
@@ -200,7 +203,7 @@ export class TabStorageService {
    */
   async saveSavedTabSets(savedTabSets: SavedTabSet[]): Promise<void> {
     try {
-      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.SAVED_TAB_SETS, savedTabSets, 'orca-tabs-plugin');
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.SAVED_TAB_SETS, savedTabSets, this.pluginName);
       this.log(`💾 保存多标签页集合到API配置`);
     } catch (e) {
       this.warn("无法保存多标签页集合:", e);
@@ -212,7 +215,7 @@ export class TabStorageService {
    */
   async restoreSavedTabSets(): Promise<SavedTabSet[]> {
     try {
-      const saved = await this.storageService.getConfig<SavedTabSet[]>(PLUGIN_STORAGE_KEYS.SAVED_TAB_SETS, 'orca-tabs-plugin', []);
+      const saved = await this.storageService.getConfig<SavedTabSet[]>(PLUGIN_STORAGE_KEYS.SAVED_TAB_SETS, this.pluginName, []);
       if (saved && Array.isArray(saved)) {
         this.log(`📂 从API配置恢复了 ${saved.length} 个多标签页集合`);
         return saved;
@@ -252,9 +255,9 @@ export class TabStorageService {
    */
   async saveWorkspaces(workspaces: Workspace[], currentWorkspace: string | null, enableWorkspaces: boolean): Promise<void> {
     try {
-      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.WORKSPACES, workspaces, 'orca-tabs-plugin');
-      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.CURRENT_WORKSPACE, currentWorkspace, 'orca-tabs-plugin');
-      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.ENABLE_WORKSPACES, enableWorkspaces, 'orca-tabs-plugin');
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.WORKSPACES, workspaces, this.pluginName);
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.CURRENT_WORKSPACE, currentWorkspace, this.pluginName);
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.ENABLE_WORKSPACES, enableWorkspaces, this.pluginName);
       this.log(`💾 工作区数据已保存`);
     } catch (error) {
       this.error("保存工作区数据失败:", error);
@@ -266,7 +269,7 @@ export class TabStorageService {
    */
   async clearCurrentWorkspace(): Promise<void> {
     try {
-      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.CURRENT_WORKSPACE, null, 'orca-tabs-plugin');
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.CURRENT_WORKSPACE, null, this.pluginName);
       this.log(`📁 已清除当前工作区状态`);
     } catch (error) {
       this.error("清除当前工作区状态失败:", error);
@@ -326,7 +329,7 @@ export class TabStorageService {
     showInHeadbar: boolean;
   }): Promise<void> {
     try {
-      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.LAYOUT_MODE, layoutData, 'orca-tabs-plugin');
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.LAYOUT_MODE, layoutData, this.pluginName);
       this.log(`💾 布局模式已保存: ${layoutData.isVerticalMode ? '垂直' : '水平'}, 垂直宽度: ${layoutData.verticalWidth}px, 垂直位置: (${layoutData.verticalPosition.x}, ${layoutData.verticalPosition.y}), 水平位置: (${layoutData.horizontalPosition.x}, ${layoutData.horizontalPosition.y})`);
     } catch (e) {
       this.error("保存布局模式失败:", e);
@@ -340,7 +343,7 @@ export class TabStorageService {
     try {
       const saved = await this.storageService.getConfig<Partial<LayoutConfig>>(
         PLUGIN_STORAGE_KEYS.LAYOUT_MODE, 
-        'orca-tabs-plugin', 
+        this.pluginName, 
         createDefaultLayoutConfig()
       );
       
@@ -363,7 +366,7 @@ export class TabStorageService {
   async saveFixedToTopMode(isFixedToTop: boolean): Promise<void> {
     try {
       const fixedToTopData = { isFixedToTop };
-      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.FIXED_TO_TOP, fixedToTopData, 'orca-tabs-plugin');
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.FIXED_TO_TOP, fixedToTopData, this.pluginName);
       this.log(`💾 固定到顶部状态已保存: ${isFixedToTop ? '启用' : '禁用'}`);
     } catch (e) {
       this.error("保存固定到顶部状态失败:", e);
@@ -377,7 +380,7 @@ export class TabStorageService {
     try {
       const saved = await this.storageService.getConfig<{ isFixedToTop: boolean }>(
         PLUGIN_STORAGE_KEYS.FIXED_TO_TOP, 
-        'orca-tabs-plugin', 
+        this.pluginName, 
         { isFixedToTop: false }
       );
       
@@ -395,7 +398,7 @@ export class TabStorageService {
    */
   async saveFloatingWindowVisible(isVisible: boolean): Promise<void> {
     try {
-      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.FLOATING_WINDOW_VISIBLE, isVisible, 'orca-tabs-plugin');
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.FLOATING_WINDOW_VISIBLE, isVisible, this.pluginName);
       this.log(`💾 浮窗可见状态已保存: ${isVisible ? '显示' : '隐藏'}`);
     } catch (error) {
       this.error("保存浮窗可见状态失败:", error);
@@ -407,7 +410,7 @@ export class TabStorageService {
    */
   async restoreFloatingWindowVisible(): Promise<boolean> {
     try {
-      const saved = await this.storageService.getConfig<boolean>(PLUGIN_STORAGE_KEYS.FLOATING_WINDOW_VISIBLE, 'orca-tabs-plugin', false);
+      const saved = await this.storageService.getConfig<boolean>(PLUGIN_STORAGE_KEYS.FLOATING_WINDOW_VISIBLE, this.pluginName, false);
       const isVisible = saved || false;
       this.log(`📱 恢复浮窗可见状态: ${isVisible ? '显示' : '隐藏'}`);
       return isVisible;
