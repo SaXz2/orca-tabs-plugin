@@ -6686,19 +6686,16 @@ class OrcaTabsPlugin {
     input.value = tab.title;
     input.className = 'inline-rename-input';
     
-    // 设置输入框样式，使其与标签样式一致
-    // 使用CSS变量，让浏览器自动响应主题变化
-    let backgroundColor = 'var(--orca-input-bg)';
+    // 设置输入框样式，保持透明背景
     let textColor = 'var(--orca-color-text-1)';
     
     // 如果有颜色，应用颜色样式
     if (tab.color) {
-      backgroundColor = this.applyOklchFormula(tab.color, 'background');
       textColor = this.applyOklchFormula(tab.color, 'text');
     }
 
     input.style.cssText = `
-      background: ${backgroundColor};
+      background: transparent;
       color: ${textColor};
       border: none;
       border-radius: var(--orca-radius-md);
