@@ -8429,8 +8429,9 @@ class OrcaTabsPlugin {
     };
     
     // 为不同类型的事件注册同一个监听器，使用较低优先级
-    document.addEventListener('click', this.globalEventListener, { passive: true });
-    document.addEventListener('contextmenu', this.globalEventListener, { passive: true });
+    // 注意：不能使用 passive: true，因为需要在某些情况下调用 preventDefault()
+    document.addEventListener('click', this.globalEventListener, { passive: false });
+    document.addEventListener('contextmenu', this.globalEventListener, { passive: false });
     // 移除keydown监听以避免干扰Orca核心功能
   }
 

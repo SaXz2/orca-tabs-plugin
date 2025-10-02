@@ -6937,7 +6937,7 @@ class la {
       await this.checkPanelStatusChange();
     }, 2e3), this.globalEventListener = async (t) => {
       await this.handleGlobalEvent(t);
-    }, document.addEventListener("click", this.globalEventListener, { passive: !0 }), document.addEventListener("contextmenu", this.globalEventListener, { passive: !0 });
+    }, document.addEventListener("click", this.globalEventListener, { passive: !1 }), document.addEventListener("contextmenu", this.globalEventListener, { passive: !1 });
   }
   /**
    * 聚焦到上一个面板
