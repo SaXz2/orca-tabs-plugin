@@ -114,11 +114,11 @@ export class LogManager {
     const sourceStr = source ? ` [${source}]` : '';
     const fullMessage = `${prefix}${sourceStr} ${message}`;
 
-    // 日志输出已禁用
-    if (this.config.enableColors && typeof window !== 'undefined') {
-      // 彩色日志输出已禁用
+    const consoleMethod = this.getConsoleMethod(level);
+    if (data !== undefined) {
+      consoleMethod(fullMessage, data);
     } else {
-      // 控制台日志输出已禁用
+      consoleMethod(fullMessage);
     }
   }
 
@@ -126,8 +126,20 @@ export class LogManager {
    * 获取控制台方法
    */
   private getConsoleMethod(level: LogLevel): (...args: any[]) => void {
-    // 控制台方法已禁用
-    return () => {};
+    switch (level) {
+      case LogLevel.ERROR:
+        return console.error.bind(console);
+      case LogLevel.WARN:
+        return console.warn.bind(console);
+      case LogLevel.INFO:
+        return console.info.bind(console);
+      case LogLevel.DEBUG:
+        return console.debug.bind(console);
+      case LogLevel.VERBOSE:
+        return console.log.bind(console);
+      default:
+        return console.log.bind(console);
+    }
   }
 
   /**
