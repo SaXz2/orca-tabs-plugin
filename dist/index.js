@@ -6146,11 +6146,8 @@ class la {
     t.color && (s = this.applyOklchFormula(t.color, "background"), c = this.applyOklchFormula(t.color, "text")), o.style.cssText = `
       background: ${s};
       color: ${c};
-      border: 2px solid var(--orca-color-primary-5);
+      border: none;
       border-radius: var(--orca-radius-md);
-      padding: 4px 12px;
-      height: 24px;
-      line-height: 24px;
       font-size: 14px;
       font-weight: 600;
       outline: none;
