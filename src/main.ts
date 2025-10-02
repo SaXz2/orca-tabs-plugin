@@ -6664,9 +6664,13 @@ class OrcaTabsPlugin {
       existingInput.remove();
     }
 
-    // 保存原始内容
+    // 保存原始内容和拖拽状态
     const originalContent = tabElement.textContent;
     const originalStyle = tabElement.style.cssText;
+    const originalDraggable = tabElement.draggable;
+    
+    // 禁用拖拽功能，防止重命名时触发拖拽移动
+    tabElement.draggable = false;
 
     // 创建输入框
     const input = document.createElement('input');
@@ -6714,19 +6718,23 @@ class OrcaTabsPlugin {
       const newTitle = input.value.trim();
       if (newTitle && newTitle !== tab.title) {
         await this.updateTabTitle(tab, newTitle);
+        // 恢复拖拽功能
+        tabElement.draggable = originalDraggable;
         // 重命名后，让UI更新来显示新标题
         return; // 不恢复原始内容，让UI更新显示新标题
       }
-      // 如果没有更改，恢复标签显示
+      // 如果没有更改，恢复标签显示和拖拽功能
       tabElement.textContent = originalContent;
       tabElement.style.cssText = originalStyle;
+      tabElement.draggable = originalDraggable;
     };
 
     // 取消重命名
     const cancelRename = () => {
-      // 恢复标签显示
+      // 恢复标签显示和拖拽功能
       tabElement.textContent = originalContent;
       tabElement.style.cssText = originalStyle;
+      tabElement.draggable = originalDraggable;
     };
 
     // 添加事件监听器
