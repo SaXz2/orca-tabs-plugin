@@ -49,7 +49,6 @@ export function createTabBaseStyle(
     font-size: 12px;
     width: calc(100% - 6px);
     margin: 0 3px;
-    transition: all 0.2s ease;
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
     -webkit-app-region: no-drag;
@@ -68,7 +67,6 @@ export function createTabBaseStyle(
     cursor: pointer;
     font-size: 12px;
     max-width: 130px;
-    transition: all 0.2s ease;
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
     -webkit-app-region: no-drag;
@@ -218,7 +216,6 @@ export function createNewTabButtonStyle(isVerticalMode: boolean): string {
     app-region: no-drag;
     pointer-events: auto;
     border-radius: var(--orca-radius-md);
-    transition: all 0.2s ease;
   ` : `
     width: 24px;
     height: 24px;
@@ -236,7 +233,6 @@ export function createNewTabButtonStyle(isVerticalMode: boolean): string {
     app-region: no-drag;
     pointer-events: auto;
     border-radius: var(--orca-radius-md);
-    transition: all 0.2s ease;
   `;
 }
 

@@ -1753,7 +1753,7 @@ class Ie {
 
       /* 拖拽悬停目标样式 */
       .orca-tab[data-drag-over="true"] {
-        border: 2px solid #3b82f6 !important;
+        border: 1px solid #3b82f6 !important;
         transform: scale(1.02) !important;
         box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
         background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05)) !important;
@@ -1796,7 +1796,6 @@ class Ie {
 
       /* 拖拽时的过渡动画 */
       .orca-tab {
-        transition: all 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
         will-change: transform, box-shadow, background, opacity, border;
       }
 
@@ -1809,46 +1808,42 @@ class Ie {
       /* 选中/悬停的标签样式 */
       .orca-tab:hover:not([data-dragging="true"]):not([data-drag-over="true"]) {
         opacity: 1 !important;
-        border: 1px solid rgba(0, 0, 0, 0.2) !important;
+        border: 1px solid var(--orca-color-primary-3) !important;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
-        transform: scale(1.02) !important;
-        transition: all 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
       }
 
       /* 暗色模式下的选中样式 */
       .dark .orca-tab:hover:not([data-dragging="true"]):not([data-drag-over="true"]) {
-        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        border: 1px solid var(--orca-color-primary-3) !important;
         box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1) !important;
       }
 
       /* 点击/激活状态的标签样式 */
       .orca-tab:active:not([data-dragging="true"]):not([data-drag-over="true"]) {
         opacity: 1 !important;
-        border: 1px solid rgba(0, 0, 0, 0.3) !important;
+        border: 1px solid var(--orca-color-primary-3) !important;
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2) !important;
         transform: scale(0.98) !important;
-        transition: all 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
       }
 
       /* 暗色模式下的点击样式 */
       .dark .orca-tab:active:not([data-dragging="true"]):not([data-drag-over="true"]) {
-        border: 1px solid rgba(255, 255, 255, 0.4) !important;
+        border: 1px solid var(--orca-color-primary-3) !important;
         box-shadow: 0 1px 4px rgba(255, 255, 255, 0.2) !important;
       }
 
       /* 聚焦状态的标签样式 */
       .orca-tab[data-focused="true"] {
         opacity: 1 !important;
-        border: 2px solid #3b82f6 !important;
+        border: 1px solid #3b82f6 !important;
         box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2), 0 2px 8px rgba(59, 130, 246, 0.3) !important;
         background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05)) !important;
         transform: scale(1.02) !important;
-        transition: all 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
       }
 
       /* 暗色模式下的聚焦样式 */
       .dark .orca-tab[data-focused="true"] {
-        border: 2px solid #60a5fa !important;
+        border: 1px solid #60a5fa !important;
         box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.3), 0 2px 8px rgba(96, 165, 250, 0.2) !important;
         background: linear-gradient(135deg, rgba(96, 165, 250, 0.15), rgba(96, 165, 250, 0.08)) !important;
       }

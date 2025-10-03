@@ -2865,7 +2865,7 @@ class OrcaTabsPlugin {
       :root {
         --orca-tab-bg: color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 10%));
         --orca-tab-border: rgba(0, 0, 0, 0.1);
-        --orca-tab-hover-border: rgba(0, 0, 0, 0.2);
+        --orca-tab-hover-border: var(--orca-color-primary-3);
         --orca-tab-active-border: rgba(0, 0, 0, 0.3);
         --orca-tab-container-bg: rgba(255, 255, 255, 0.1);
         --orca-input-bg: rgba(200, 200, 200, 0.6);
@@ -2876,7 +2876,7 @@ class OrcaTabsPlugin {
       .dark {
         --orca-tab-bg: color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 40%));
         --orca-tab-border: rgba(255, 255, 255, 0.2);
-        --orca-tab-hover-border: rgba(255, 255, 255, 0.3);
+        --orca-tab-hover-border: var(--orca-color-primary-3);
         --orca-tab-active-border: rgba(255, 255, 255, 0.4);
         --orca-input-bg: rgba(255, 255, 255, 0.1);
       }
@@ -2908,7 +2908,7 @@ class OrcaTabsPlugin {
 
       /* 拖拽悬停目标样式 */
       .orca-tabs-plugin .orca-tab[data-drag-over="true"] {
-        border: 2px solid var(--orca-color-primary-5);
+        border: 1px solid var(--orca-color-primary-5);
         transform: scale(1.02);
         box-shadow: 0 4px 12px color-mix(in srgb, var(--orca-color-primary-5), transparent 70%);
         background: color-mix(in srgb, var(--orca-color-primary-5), transparent 95%);
@@ -2951,7 +2951,6 @@ class OrcaTabsPlugin {
 
       /* 拖拽时的过渡动画 */
       .orca-tabs-plugin .orca-tab {
-        transition: all 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         will-change: transform, box-shadow, background, opacity, border;
       }
 
@@ -2972,8 +2971,6 @@ class OrcaTabsPlugin {
         opacity: 1 !important;
         border: 1px solid var(--orca-tab-hover-border) !important;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
-        transform: scale(1.02) !important;
-        transition: all 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
       }
 
       /* 暗色模式下的悬停样式 - 通过CSS变量自动应用，但排除聚焦状态 */
@@ -2985,10 +2982,9 @@ class OrcaTabsPlugin {
       /* 点击/激活状态的标签样式 - 使用CSS变量自动响应主题变化，但排除聚焦状态 */
       .orca-tabs-plugin .orca-tab:active:not([data-dragging="true"]):not([data-drag-over="true"]):not([data-focused="true"]) {
         opacity: 1 !important;
-        border: 1px solid var(--orca-tab-active-border) !important;
+        border: 1px solid var(--orca-color-primary-3) !important;
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2) !important;
         transform: scale(0.98) !important;
-        transition: all 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
       }
 
       /* 暗色模式下的点击样式 - 通过CSS变量自动应用，但排除聚焦状态 */
@@ -3000,16 +2996,15 @@ class OrcaTabsPlugin {
       /* 聚焦状态的标签样式 */
       .orca-tabs-plugin .orca-tab[data-focused="true"] {
         opacity: 1 !important;
-        border: 2px solid var(--orca-color-primary-5) !important;
+        border: 1px solid var(--orca-color-primary-5) !important;
         box-shadow: 0 0 0 1px color-mix(in srgb, var(--orca-color-primary-5), transparent 80%), 0 2px 8px color-mix(in srgb, var(--orca-color-primary-5), transparent 70%) !important;
         background: color-mix(in srgb, var(--orca-color-primary-5), transparent 90%) !important;
         transform: scale(1.02) !important;
-        transition: all 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
       }
 
       /* 暗色模式下的聚焦样式 */
       .dark .orca-tabs-plugin .orca-tab[data-focused="true"] {
-        border: 2px solid var(--orca-color-primary-5) !important;
+        border: 1px solid var(--orca-color-primary-5) !important;
         box-shadow: 0 0 0 1px color-mix(in srgb, var(--orca-color-primary-5), transparent 70%), 0 2px 8px color-mix(in srgb, var(--orca-color-primary-5), transparent 80%) !important;
         background: color-mix(in srgb, var(--orca-color-primary-5), transparent 85%) !important;
       }
@@ -7020,7 +7015,7 @@ class OrcaTabsPlugin {
       position: fixed;
       z-index: 2000;
       background-color: var(--orca-color-bg-1);
-      border: 2px solid var(--orca-color-primary-5);
+      border: 1px solid var(--orca-color-primary-5);
       border-radius: var(--orca-radius-md);
       box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
       padding: .175rem var(--orca-spacing-md);
