@@ -60,7 +60,7 @@ export function createThrottle<T extends (...args: any[]) => any>(
       timeoutId = setTimeout(() => {
         lastCall = Date.now();
         func(...args);
-      }, delay - (now - lastCall));
+      }, delay - (now - lastCall)) as any as number;
     }
   }) as T & { cancel: () => void };
   
@@ -246,7 +246,7 @@ export function createResizeHandler(callback: () => void, delay: number = 100) {
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
-    timeoutId = setTimeout(callback, delay);
+    timeoutId = setTimeout(callback, delay) as any as number;
   };
 
   return {

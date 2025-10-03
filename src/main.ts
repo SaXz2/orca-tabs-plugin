@@ -1476,7 +1476,7 @@ class OrcaTabsPlugin {
         if (currentActiveTab) {
           this.recordScrollPosition(currentActiveTab);
         }
-      }, 300); // 300ms防抖
+      }, 300) as any as number; // 300ms防抖
     };
 
     // 监听所有可能的滚动容器
@@ -5463,7 +5463,7 @@ class OrcaTabsPlugin {
     // 每2秒检查一次设置变化
     this.settingsCheckInterval = setInterval(() => {
       this.checkSettingsChange();
-    }, 2000);
+    }, 2000) as any as number;
   }
 
   /**
@@ -8801,7 +8801,7 @@ class OrcaTabsPlugin {
     // 1. 定期检查面板状态（每2秒，大幅减少频率）
     this.monitoringInterval = setInterval(async () => {
       await this.checkPanelStatusChange();
-    }, 2000);
+    }, 2000) as any as number;
     
     // 统一的全局事件监听器
     this.globalEventListener = async (e: Event) => {
@@ -8974,7 +8974,7 @@ class OrcaTabsPlugin {
     // 设置新的计时器
     this.updateDebounceTimer = setTimeout(async () => {
       await this.checkPanelStatusChange();
-    }, 50); // 50ms防抖
+    }, 50) as any as number; // 50ms防抖
   }
 
   /**

@@ -232,7 +232,7 @@ export class BatchProcessorOptimizer<T = any> {
       } else {
         this.processingTimer = null;
       }
-    }, this.config.processingInterval);
+    }, this.config.processingInterval) as any as number;
   }
   
   private async processBatch(): Promise<void> {

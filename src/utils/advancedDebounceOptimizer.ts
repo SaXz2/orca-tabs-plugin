@@ -299,7 +299,7 @@ export class AdvancedDebounceOptimizer {
     
     const timer = setTimeout(() => {
       this.executeTask(task);
-    }, task.layer.delay);
+    }, task.layer.delay) as any as number;
     
     this.activeTimers.set(task.id, timer);
     

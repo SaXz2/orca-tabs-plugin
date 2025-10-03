@@ -161,7 +161,7 @@ export class OptimizationIntegrationExample {
     const timeoutId = setTimeout(() => {
       // 定期清理
       this.manualCleanup();
-    }, 5000);
+    }, 5000) as any as number;
     
     const trackedTimeoutId = this.optimizerManager.trackTimer(timeoutId, 'timeout');
     this.log(`⏰ 跟踪定时器: ${trackedTimeoutId}`);
