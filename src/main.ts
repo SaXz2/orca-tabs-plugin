@@ -2099,178 +2099,8 @@ class OrcaTabsPlugin {
   /* ———————————————————————————————————————————————————————————————————————————— */
   /* 块类型检测和处理 - Block Type Detection and Processing */
   /* ———————————————————————————————————————————————————————————————————————————— */
-
-  /**
-   * 检测块类型
-   */
-  async detectBlockType(block: any): Promise<string> {
-    try {
-      // 1. 检查是否是日期块
-      const journalInfo = extractJournalInfo(block);
-      if (journalInfo) {
-        return 'journal';
-      }
-
-      // 2. 检查 data-type 属性（最高优先级）
-      if (block['data-type']) {
-        const dataType = block['data-type'];
-        this.log(`🔍 检测到 data-type: ${dataType}`);
-        
-        switch (dataType) {
-          case 'table2':
-            return 'table';
-          case 'ul':
-            return 'list';
-          case 'ol':
-            return 'list';
-          default:
-            this.log(`⚠️ 未知的 data-type: ${dataType}`);
-        }
-      }
-
-      // 3. 检查是否是别名块，使用 Orca API 准确判断页面和标签类型
-      if (block.aliases && block.aliases.length > 0) {
-        this.log(`🏷️ 检测到别名块: aliases=${JSON.stringify(block.aliases)}`);
-        
-        const alias = block.aliases[0];
-        if (alias) {
-          try {
-            // 使用 _hide 属性判断：有 _hide 且为 truthy 的是页面，否则是标签
-            const hideProp = this.findProperty(block, '_hide');
-            const isPage = hideProp && hideProp.value;
-            
-            if (isPage) {
-              this.log(`📄 通过 _hide 属性确认为页面: ${alias} (hide=${hideProp.value})`);
-              return 'page';
-            } else {
-              this.log(`🏷️ 通过 _hide 属性确认为标签: ${alias} (hide=${hideProp ? hideProp.value : 'undefined'})`);
-              return 'tag';
-            }
-          } catch (error) {
-            this.warn("使用 API 检测标签失败，回退到文本分析:", error);
-            // 回退到原来的文本分析逻辑
-            if (alias.includes('#') || 
-                alias.includes('@') || 
-                alias.length < 20 && alias.match(/^[a-zA-Z0-9_-]+$/) ||
-                alias.match(/^[a-z]+$/i)) {
-              return 'tag';
-            } else {
-              return 'page';
-            }
-          }
-        }
-        
-        return 'alias'; // 默认返回别名
-      }
-      
-      // 调试：输出块的基本信息
-      this.verboseLog(`🔍 块信息调试: blockId=${block.id}, aliases=${block.aliases ? JSON.stringify(block.aliases) : 'undefined'}, content=${block.content ? 'exists' : 'undefined'}, text=${block.text ? 'exists' : 'undefined'}`);
-
-      // 4. 检查_repr属性中的类型
-      const reprProp = this.findProperty(block, '_repr');
-      if (reprProp && reprProp.type === PropType.JSON && reprProp.value) {
-        try {
-          const reprData = typeof reprProp.value === 'string' 
-            ? JSON.parse(reprProp.value) 
-            : reprProp.value;
-          
-          if (reprData.type) {
-            return reprData.type;
-          }
-        } catch (e) {
-          // JSON解析失败，继续其他检测
-        }
-      }
-
-      // 5. 检查块内容特征
-      if (block.content && Array.isArray(block.content)) {
-        // 检查是否包含代码块
-        const hasCodeBlock = block.content.some((item: any) => 
-          item && typeof item === 'object' && item.type === 'code'
-        );
-        if (hasCodeBlock) {
-          return 'code';
-        }
-
-        // 检查是否包含表格
-        const hasTable = block.content.some((item: any) => 
-          item && typeof item === 'object' && item.type === 'table'
-        );
-        if (hasTable) {
-          return 'table';
-        }
-
-        // 检查是否包含图片
-        const hasImage = block.content.some((item: any) => 
-          item && typeof item === 'object' && item.type === 'image'
-        );
-        if (hasImage) {
-          return 'image';
-        }
-
-        // 检查是否包含链接
-        const hasLink = block.content.some((item: any) => 
-          item && typeof item === 'object' && item.type === 'link'
-        );
-        if (hasLink) {
-          return 'link';
-        }
-      }
-
-      // 6. 检查块文本特征
-      if (block.text) {
-        const text = block.text.trim();
-        
-        // 检查是否是标题（以#开头）
-        if (text.startsWith('#')) {
-          return 'heading';
-        }
-
-        // 检查是否是引用（以>开头）
-        if (text.startsWith('> ')) {
-          return 'quote';
-        }
-
-        // 检查是否是代码行
-        if (text.startsWith('```') || text.startsWith('`')) {
-          return 'code';
-        }
-
-        // 检查是否是任务项
-        if (text.startsWith('- [ ]') || text.startsWith('- [x]') || text.startsWith('* [ ]') || text.startsWith('* [x]')) {
-          return 'task';
-        }
-
-        // 检查是否是表格（包含|分隔符且有多行）
-        if (text.includes('|') && text.split('\n').length > 1) {
-          return 'table';
-        }
-
-        // 检查是否是列表（无序列表：- * + 开头，有序列表：数字. 开头）
-        if (text.startsWith('- ') || text.startsWith('* ') || text.startsWith('+ ') || 
-            /^\d+\.\s/.test(text)) {
-          return 'list';
-        }
-
-        // 检查是否包含URL链接
-        const urlPattern = /https?:\/\/[^\s]+/;
-        if (urlPattern.test(text)) {
-          return 'link';
-        }
-
-        // 检查是否是数学公式
-        if (text.includes('$$') || text.includes('$') && text.includes('=')) {
-          return 'math';
-        }
-      }
-
-      // 7. 默认类型
-      return 'text';
-    } catch (e) {
-      this.warn("检测块类型失败:", e);
-      return 'text';
-    }
-  }
+  
+  // ✅ 重构：移除重复的detectBlockType实现，直接使用 utils/blockUtils.ts 中的函数
 
   /**
    * 根据块类型获取图标（增强版）
@@ -2788,8 +2618,8 @@ class OrcaTabsPlugin {
       let isJournal = false;
       let blockType = "";
 
-      // 检测块类型
-      blockType = await this.detectBlockType(block);
+      // 检测块类型（使用工具函数）
+      blockType = await detectBlockType(block);
       this.log(`🔍 检测到块类型: ${blockType} (块ID: ${blockId})`);
       
       // 特别调试别名块
@@ -4766,8 +4596,8 @@ class OrcaTabsPlugin {
         // 重新获取块信息
         const block = await orca.invokeBackend("get-block", parseInt(tab.blockId));
         if (block) {
-          // 检测块类型
-          const blockType = await this.detectBlockType(block);
+          // 检测块类型（使用工具函数）
+          const blockType = await detectBlockType(block);
           
           // 获取颜色和图标（优先使用用户自定义，否则使用块类型图标）
           const colorProp = this.findProperty(block, '_color');
@@ -7895,8 +7725,8 @@ class OrcaTabsPlugin {
           // 重新获取块信息
           const block = await orca.invokeBackend("get-block", parseInt(tab.blockId));
           if (block) {
-            // 检测块类型
-            const blockType = await this.detectBlockType(block);
+            // 检测块类型（使用工具函数）
+            const blockType = await detectBlockType(block);
             
             // 获取图标（优先使用用户自定义，否则使用块类型图标）
             let icon = tab.icon; // 保持用户自定义图标
