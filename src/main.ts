@@ -6619,12 +6619,32 @@ class OrcaTabsPlugin {
    */
   private isTabActive(tab: TabInfo): boolean {
     try {
-      // 只检查当前激活的面板
-      const currentActivePanel = document.querySelector('.orca-panel.active');
-      if (!currentActivePanel) return false;
+      // 【修复BUG2】检查标签所属的面板，而不是全局活动面板
+      // 这样可以确保每个面板独立维护自己的聚焦状态
+      let targetPanel: Element | null = null;
+      
+      // 首先尝试使用当前面板ID
+      if (this.currentPanelId) {
+        targetPanel = document.querySelector(`.orca-panel[data-panel-id="${this.currentPanelId}"]`);
+      }
+      
+      // 如果标签有明确的面板ID，使用标签的面板ID
+      if (tab.panelId) {
+        const tabPanel = document.querySelector(`.orca-panel[data-panel-id="${tab.panelId}"]`);
+        if (tabPanel) {
+          targetPanel = tabPanel;
+        }
+      }
+      
+      // 如果都找不到，才回退到全局活动面板
+      if (!targetPanel) {
+        targetPanel = document.querySelector('.orca-panel.active');
+      }
+      
+      if (!targetPanel) return false;
 
-      // 获取当前激活面板中可见的块编辑器（没有 orca-hideable-hidden 类）
-      const activeBlock = currentActivePanel.querySelector('.orca-hideable:not(.orca-hideable-hidden) .orca-block-editor[data-block-id]');
+      // 获取目标面板中可见的块编辑器（没有 orca-hideable-hidden 类）
+      const activeBlock = targetPanel.querySelector('.orca-hideable:not(.orca-hideable-hidden) .orca-block-editor[data-block-id]');
       if (!activeBlock) return false;
 
       const activeBlockId = activeBlock.getAttribute('data-block-id');
@@ -6652,20 +6672,65 @@ class OrcaTabsPlugin {
     
     if (currentTabs.length === 0) return null;
     
-    // 只检查当前激活的面板
-    const currentActivePanel = document.querySelector('.orca-panel.active');
-    if (!currentActivePanel) return null;
+    // 【修复BUG1】优先检查UI中明确标记为聚焦的标签（用户点击选择的）
+    // 这是最可靠的方式，因为它反映了用户的明确意图
+    const focusedTabElement = this.tabContainer?.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
+    if (focusedTabElement) {
+      const focusedBlockId = focusedTabElement.getAttribute('data-tab-id');
+      if (focusedBlockId) {
+        const focusedTab = currentTabs.find(tab => tab.blockId === focusedBlockId);
+        if (focusedTab) {
+          this.verboseLog(`🎯 找到UI聚焦标签: ${focusedTab.title} (ID: ${focusedBlockId})`);
+          
+          // 如果启用了工作区功能且有当前工作区，实时更新最后激活标签页
+          if (this.enableWorkspaces && this.currentWorkspace) {
+            this.updateCurrentWorkspaceActiveIndex(focusedTab);
+          }
+          
+          return focusedTab;
+        }
+      }
+    }
     
-    // 获取当前激活面板中可见的块编辑器（没有 orca-hideable-hidden 类）
-    const activeBlockEditor = currentActivePanel.querySelector('.orca-hideable:not(.orca-hideable-hidden) .orca-block-editor[data-block-id]');
+    // 【修复BUG2】确保只检查当前面板，避免多面板切换时的混淆
+    // 获取当前面板ID对应的面板元素
+    let targetPanel: Element | null = null;
+    if (this.currentPanelId) {
+      targetPanel = document.querySelector(`.orca-panel[data-panel-id="${this.currentPanelId}"]`);
+    }
     
-    if (!activeBlockEditor) return null;
+    // 如果找不到指定面板，回退到当前激活的面板
+    if (!targetPanel) {
+      targetPanel = document.querySelector('.orca-panel.active');
+    }
+    
+    if (!targetPanel) {
+      this.verboseLog('⚠️ 无法找到目标面板');
+      return null;
+    }
+    
+    // 获取目标面板中可见的块编辑器（没有 orca-hideable-hidden 类）
+    const activeBlockEditor = targetPanel.querySelector('.orca-hideable:not(.orca-hideable-hidden) .orca-block-editor[data-block-id]');
+    
+    if (!activeBlockEditor) {
+      this.verboseLog('⚠️ 目标面板中没有找到可见的块编辑器');
+      return null;
+    }
     
     const blockId = activeBlockEditor.getAttribute('data-block-id');
-    if (!blockId) return null;
+    if (!blockId) {
+      this.verboseLog('⚠️ 块编辑器没有 data-block-id 属性');
+      return null;
+    }
     
     // 在当前面板标签中查找对应的标签
     const activeTab = currentTabs.find(tab => tab.blockId === blockId) || null;
+    
+    if (activeTab) {
+      this.verboseLog(`🎯 根据DOM块编辑器找到激活标签: ${activeTab.title} (ID: ${blockId})`);
+    } else {
+      this.verboseLog(`⚠️ 在标签列表中找不到块ID ${blockId} 对应的标签`);
+    }
     
     // 如果启用了工作区功能且有当前工作区，实时更新最后激活标签页
     if (this.enableWorkspaces && this.currentWorkspace && activeTab) {

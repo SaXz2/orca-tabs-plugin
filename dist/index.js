@@ -321,13 +321,13 @@ function Pe(s, e, t, r) {
     horizontalPosition: { ...s }
   };
 }
-function Se(s) {
+function Ie(s) {
   return `布局模式: ${s.isVerticalMode ? "垂直" : "水平"}, 垂直宽度: ${s.verticalWidth}px, 垂直位置: (${s.verticalPosition.x}, ${s.verticalPosition.y}), 水平位置: (${s.horizontalPosition.x}, ${s.horizontalPosition.y})`;
 }
 function pe(s, e) {
   return `位置已${e ? "垂直" : "水平"}模式 (${s.x}, ${s.y})`;
 }
-class Ie {
+class Se {
   constructor(e, t, r) {
     g(this, "storageService");
     g(this, "pluginName");
@@ -620,15 +620,15 @@ class Ie {
   }
 }
 const ge = 6048e5, Ee = 864e5, re = Symbol.for("constructDateFrom");
-function I(s, e) {
+function S(s, e) {
   return typeof s == "function" ? s(e) : s && typeof s == "object" && re in s ? s[re](e) : s instanceof Date ? new s.constructor(e) : new Date(e);
 }
 function E(s, e) {
-  return I(e || s, s);
+  return S(e || s, s);
 }
 function me(s, e, t) {
   const r = E(s, t == null ? void 0 : t.in);
-  return isNaN(e) ? I(s, NaN) : (e && r.setDate(r.getDate() + e), r);
+  return isNaN(e) ? S(s, NaN) : (e && r.setDate(r.getDate() + e), r);
 }
 let $e = {};
 function G() {
@@ -643,9 +643,9 @@ function Y(s, e) {
   return H(s, { ...e, weekStartsOn: 1 });
 }
 function fe(s, e) {
-  const t = E(s, e == null ? void 0 : e.in), r = t.getFullYear(), a = I(t, 0);
+  const t = E(s, e == null ? void 0 : e.in), r = t.getFullYear(), a = S(t, 0);
   a.setFullYear(r + 1, 0, 4), a.setHours(0, 0, 0, 0);
-  const i = Y(a), n = I(t, 0);
+  const i = Y(a), n = S(t, 0);
   n.setFullYear(r, 0, 4), n.setHours(0, 0, 0, 0);
   const o = Y(n);
   return t.getTime() >= i.getTime() ? r + 1 : t.getTime() >= o.getTime() ? r : r - 1;
@@ -665,7 +665,7 @@ function ae(s) {
   return t.setUTCFullYear(e.getFullYear()), +s - +t;
 }
 function be(s, ...e) {
-  const t = I.bind(
+  const t = S.bind(
     null,
     e.find((r) => typeof r == "object")
   );
@@ -684,11 +684,11 @@ function Me(s, e, t) {
   return Math.round((o - c) / Ee);
 }
 function Le(s, e) {
-  const t = fe(s, e), r = I(s, 0);
+  const t = fe(s, e), r = S(s, 0);
   return r.setFullYear(t, 0, 4), r.setHours(0, 0, 0, 0), Y(r);
 }
 function ee(s) {
-  return I(s, Date.now());
+  return S(s, Date.now());
 }
 function te(s, e, t) {
   const [r, a] = be(
@@ -1149,16 +1149,16 @@ function mt(s, e) {
 }
 function ye(s, e) {
   var d, u, h, p;
-  const t = E(s, e == null ? void 0 : e.in), r = t.getFullYear(), a = G(), i = (e == null ? void 0 : e.firstWeekContainsDate) ?? ((u = (d = e == null ? void 0 : e.locale) == null ? void 0 : d.options) == null ? void 0 : u.firstWeekContainsDate) ?? a.firstWeekContainsDate ?? ((p = (h = a.locale) == null ? void 0 : h.options) == null ? void 0 : p.firstWeekContainsDate) ?? 1, n = I((e == null ? void 0 : e.in) || s, 0);
+  const t = E(s, e == null ? void 0 : e.in), r = t.getFullYear(), a = G(), i = (e == null ? void 0 : e.firstWeekContainsDate) ?? ((u = (d = e == null ? void 0 : e.locale) == null ? void 0 : d.options) == null ? void 0 : u.firstWeekContainsDate) ?? a.firstWeekContainsDate ?? ((p = (h = a.locale) == null ? void 0 : h.options) == null ? void 0 : p.firstWeekContainsDate) ?? 1, n = S((e == null ? void 0 : e.in) || s, 0);
   n.setFullYear(r + 1, 0, i), n.setHours(0, 0, 0, 0);
-  const o = H(n, e), c = I((e == null ? void 0 : e.in) || s, 0);
+  const o = H(n, e), c = S((e == null ? void 0 : e.in) || s, 0);
   c.setFullYear(r, 0, i), c.setHours(0, 0, 0, 0);
   const l = H(c, e);
   return +t >= +o ? r + 1 : +t >= +l ? r : r - 1;
 }
 function ft(s, e) {
   var o, c, l, d;
-  const t = G(), r = (e == null ? void 0 : e.firstWeekContainsDate) ?? ((c = (o = e == null ? void 0 : e.locale) == null ? void 0 : o.options) == null ? void 0 : c.firstWeekContainsDate) ?? t.firstWeekContainsDate ?? ((d = (l = t.locale) == null ? void 0 : l.options) == null ? void 0 : d.firstWeekContainsDate) ?? 1, a = ye(s, e), i = I((e == null ? void 0 : e.in) || s, 0);
+  const t = G(), r = (e == null ? void 0 : e.firstWeekContainsDate) ?? ((c = (o = e == null ? void 0 : e.locale) == null ? void 0 : o.options) == null ? void 0 : c.firstWeekContainsDate) ?? t.firstWeekContainsDate ?? ((d = (l = t.locale) == null ? void 0 : l.options) == null ? void 0 : d.firstWeekContainsDate) ?? 1, a = ye(s, e), i = S((e == null ? void 0 : e.in) || s, 0);
   return i.setFullYear(a, 0, r), i.setHours(0, 0, 0, 0), H(i, e);
 }
 function bt(s, e) {
@@ -1784,14 +1784,14 @@ function Ct(s) {
   return Tt.test(s);
 }
 function Pt(s, e, t) {
-  const r = St(s, e, t);
+  const r = It(s, e, t);
   if (console.warn(r), wt.includes(s)) throw new RangeError(r);
 }
-function St(s, e, t) {
+function It(s, e, t) {
   const r = s[0] === "Y" ? "years" : "days of the month";
   return `Use \`${s.toLowerCase()}\` instead of \`${s}\` (in \`${e}\`) for formatting ${r} to the input \`${t}\`; see: https://github.com/date-fns/date-fns/blob/master/docs/unicodeTokens.md`;
 }
-const It = /[yYQqMLwIdDecihHKkms]o|(\w)\1*|''|'(''|[^'])+('|$)|./g, Et = /P+p+|P+|p+|''|'(''|[^'])+('|$)|./g, $t = /^'([^]*?)'?$/, Mt = /''/g, Lt = /[a-zA-Z]/;
+const St = /[yYQqMLwIdDecihHKkms]o|(\w)\1*|''|'(''|[^'])+('|$)|./g, Et = /P+p+|P+|p+|''|'(''|[^'])+('|$)|./g, $t = /^'([^]*?)'?$/, Mt = /''/g, Lt = /[a-zA-Z]/;
 function A(s, e, t) {
   var d, u, h, p;
   const r = G(), a = r.locale ?? pt, i = r.firstWeekContainsDate ?? ((u = (d = r.locale) == null ? void 0 : d.options) == null ? void 0 : u.firstWeekContainsDate) ?? 1, n = r.weekStartsOn ?? ((p = (h = r.locale) == null ? void 0 : h.options) == null ? void 0 : p.weekStartsOn) ?? 0, o = E(s, t == null ? void 0 : t.in);
@@ -1804,7 +1804,7 @@ function A(s, e, t) {
       return m(b, a.formatLong);
     }
     return b;
-  }).join("").match(It).map((b) => {
+  }).join("").match(St).map((b) => {
     if (b === "''")
       return { isToken: !1, value: "'" };
     const f = b[0];
@@ -1838,7 +1838,7 @@ function Dt(s) {
 }
 function At(s, e) {
   return te(
-    I(s, s),
+    S(s, s),
     ee(s)
   );
 }
@@ -1854,7 +1854,7 @@ function zt(s, e, t) {
 }
 function Bt(s, e) {
   return te(
-    I(s, s),
+    S(s, s),
     zt(ee(s))
   );
 }
@@ -4960,7 +4960,7 @@ class Tr {
       } catch (c) {
         this.error("❌ 性能优化管理器初始化失败:", c);
       }
-    vr(), this.tabStorageService = new Ie(this.storageService, this.pluginName, {
+    vr(), this.tabStorageService = new Se(this.storageService, this.pluginName, {
       log: this.log.bind(this),
       warn: this.warn.bind(this),
       error: this.error.bind(this),
@@ -8100,8 +8100,12 @@ class Tr {
    */
   isTabActive(e) {
     try {
-      const t = document.querySelector(".orca-panel.active");
-      if (!t) return !1;
+      let t = null;
+      if (this.currentPanelId && (t = document.querySelector(`.orca-panel[data-panel-id="${this.currentPanelId}"]`)), e.panelId) {
+        const n = document.querySelector(`.orca-panel[data-panel-id="${e.panelId}"]`);
+        n && (t = n);
+      }
+      if (t || (t = document.querySelector(".orca-panel.active")), !t) return !1;
       const r = t.querySelector(".orca-hideable:not(.orca-hideable-hidden) .orca-block-editor[data-block-id]");
       if (!r) return !1;
       const i = r.getAttribute("data-block-id") === e.blockId;
@@ -8114,16 +8118,29 @@ class Tr {
    * 获取当前激活的标签
    */
   getCurrentActiveTab() {
+    var o;
     const e = this.enableWorkspaces ? this.getCurrentPanelTabs() : this.getCurrentPanelTabs();
     if (e.length === 0) return null;
-    const t = document.querySelector(".orca-panel.active");
-    if (!t) return null;
-    const r = t.querySelector(".orca-hideable:not(.orca-hideable-hidden) .orca-block-editor[data-block-id]");
-    if (!r) return null;
-    const a = r.getAttribute("data-block-id");
-    if (!a) return null;
-    const i = e.find((n) => n.blockId === a) || null;
-    return this.enableWorkspaces && this.currentWorkspace && i && this.updateCurrentWorkspaceActiveIndex(i), i;
+    const t = (o = this.tabContainer) == null ? void 0 : o.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
+    if (t) {
+      const c = t.getAttribute("data-tab-id");
+      if (c) {
+        const l = e.find((d) => d.blockId === c);
+        if (l)
+          return this.verboseLog(`🎯 找到UI聚焦标签: ${l.title} (ID: ${c})`), this.enableWorkspaces && this.currentWorkspace && this.updateCurrentWorkspaceActiveIndex(l), l;
+      }
+    }
+    let r = null;
+    if (this.currentPanelId && (r = document.querySelector(`.orca-panel[data-panel-id="${this.currentPanelId}"]`)), r || (r = document.querySelector(".orca-panel.active")), !r)
+      return this.verboseLog("⚠️ 无法找到目标面板"), null;
+    const a = r.querySelector(".orca-hideable:not(.orca-hideable-hidden) .orca-block-editor[data-block-id]");
+    if (!a)
+      return this.verboseLog("⚠️ 目标面板中没有找到可见的块编辑器"), null;
+    const i = a.getAttribute("data-block-id");
+    if (!i)
+      return this.verboseLog("⚠️ 块编辑器没有 data-block-id 属性"), null;
+    const n = e.find((c) => c.blockId === i) || null;
+    return n ? this.verboseLog(`🎯 根据DOM块编辑器找到激活标签: ${n.title} (ID: ${i})`) : this.verboseLog(`⚠️ 在标签列表中找不到块ID ${i} 对应的标签`), this.enableWorkspaces && this.currentWorkspace && n && this.updateCurrentWorkspaceActiveIndex(n), n;
   }
   /**
    * 获取智能插入位置（在当前激活标签后面）
@@ -8795,7 +8812,7 @@ class Tr {
           this.isVerticalMode,
           this.verticalPosition,
           this.horizontalPosition
-        ), this.isSidebarAlignmentEnabled = t.isSidebarAlignmentEnabled, this.isFloatingWindowVisible = t.isFloatingWindowVisible, this.showBlockTypeIcons = t.showBlockTypeIcons, this.showInHeadbar = t.showInHeadbar, this.log(`📐 布局模式已恢复: ${Se(t)}, 当前位置: (${this.position.x}, ${this.position.y})`);
+        ), this.isSidebarAlignmentEnabled = t.isSidebarAlignmentEnabled, this.isFloatingWindowVisible = t.isFloatingWindowVisible, this.showBlockTypeIcons = t.showBlockTypeIcons, this.showInHeadbar = t.showInHeadbar, this.log(`📐 布局模式已恢复: ${Ie(t)}, 当前位置: (${this.position.x}, ${this.position.y})`);
       } else {
         const t = B();
         this.isVerticalMode = t.isVerticalMode, this.verticalWidth = t.verticalWidth, this.verticalPosition = t.verticalPosition, this.horizontalPosition = t.horizontalPosition, this.position = j(
@@ -11354,26 +11371,26 @@ class Tr {
     }
   }
 }
-let S = null;
+let I = null;
 async function kr(s) {
-  U = s, orca.state.locale, S = new Tr(U), document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", () => {
-    setTimeout(() => S == null ? void 0 : S.init(), 500);
-  }) : setTimeout(() => S == null ? void 0 : S.init(), 500), orca.commands.registerCommand(
+  U = s, orca.state.locale, I = new Tr(U), document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(() => I == null ? void 0 : I.init(), 500);
+  }) : setTimeout(() => I == null ? void 0 : I.init(), 500), orca.commands.registerCommand(
     `${U}.resetCache`,
     async () => {
-      S && await S.resetCache();
+      I && await I.resetCache();
     },
     "重置插件缓存"
   ), orca.commands.registerCommand(
     `${U}.toggleBlockIcons`,
     async () => {
-      S && await S.toggleBlockTypeIcons();
+      I && await I.toggleBlockTypeIcons();
     },
     "切换块类型图标显示"
   );
 }
 async function Cr() {
-  S && (S.unregisterHeadbarButton(), S.cleanupDragResize(), S.destroy(), S = null), orca.commands.unregisterCommand(`${U}.resetCache`);
+  I && (I.unregisterHeadbarButton(), I.cleanupDragResize(), I.destroy(), I = null), orca.commands.unregisterCommand(`${U}.resetCache`);
 }
 export {
   kr as load,
