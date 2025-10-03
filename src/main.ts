@@ -1,4 +1,4 @@
-/* ———————————————————————————————————————————————————————————————————————————— */
+﻿/* ———————————————————————————————————————————————————————————————————————————— */
 /* 导入模块 - Module Imports */
 /* ———————————————————————————————————————————————————————————————————————————— */
 
@@ -263,7 +263,7 @@ import { LazyLoadingOptimizer } from './utils/lazyLoadingOptimizer';
 // 批量处理器优化器 - DOM操作批量处理
 import { BatchProcessorOptimizer } from './utils/batchProcessorOptimizer';
 // 性能监控优化器 - 性能监控和分析
-import { PerformanceMonitorOptimizer } from './utils/performanceMonitorOptimizer';
+import { PerformanceMonitorOptimizer, type PerformanceMetric, type PerformanceReport } from './utils/performanceMonitorOptimizer';
 import { 
   isDarkMode, 
   getCurrentThemeMode, 
@@ -483,11 +483,153 @@ class OrcaTabsPlugin {
       
       // 初始化性能优化管理器
       this.performanceOptimizer = PerformanceOptimizerManager.getInstance();
+      this.performanceMonitor = PerformanceMonitorOptimizer.getInstance();
       
       this.log('✅ 性能优化器初始化完成');
     } catch (error) {
       this.error('❌ 性能优化器初始化失败:', error);
     }
+  }
+
+
+  /**
+   * ??????????
+   */
+  private ensurePerformanceMonitorInstance(): PerformanceMonitorOptimizer | null {
+    if (this.performanceMonitor) {
+      return this.performanceMonitor;
+    }
+    try {
+      this.performanceMonitor = PerformanceMonitorOptimizer.getInstance();
+      return this.performanceMonitor;
+    } catch (error) {
+      this.verboseLog('[Performance] monitor unavailable', error);
+      return null;
+    }
+  }
+
+  /**
+   * ??????
+   */
+  private startPerformanceMeasurement(name: string): (() => number) | null {
+    const monitor = this.ensurePerformanceMonitorInstance();
+    if (!monitor) {
+      return null;
+    }
+    try {
+      return monitor.startMeasurement(name);
+    } catch (error) {
+      this.verboseLog(`[Performance] unable to start measurement: ${name}`, error);
+      return null;
+    }
+  }
+
+  /**
+   * ???????
+   */
+  private recordPerformanceCountMetric(name: string): void {
+    const monitor = this.ensurePerformanceMonitorInstance();
+    if (!monitor) {
+      return;
+    }
+    const nextCount = (this.performanceCounters[name] ?? 0) + 1;
+    this.performanceCounters[name] = nextCount;
+    monitor.recordMetric(name, nextCount, 'count', 'count');
+  }
+
+  /**
+   * ??????????
+   */
+  private schedulePerformanceBaselineReport(scenario: string, delayMs: number = 12000): void {
+    const monitor = this.ensurePerformanceMonitorInstance();
+    if (!monitor) {
+      return;
+    }
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (this.performanceBaselineTimer !== null) {
+      window.clearTimeout(this.performanceBaselineTimer);
+    }
+    this.performanceBaselineTimer = window.setTimeout(() => {
+      this.emitPerformanceBaselineReport(scenario);
+    }, delayMs);
+  }
+
+  /**
+   * ????????
+   */
+  private emitPerformanceBaselineReport(scenario: string): void {
+    if (typeof window !== 'undefined' && this.performanceBaselineTimer !== null) {
+      window.clearTimeout(this.performanceBaselineTimer);
+    }
+    this.performanceBaselineTimer = null;
+    const report = this.performanceOptimizer?.getPerformanceReport()
+      ?? this.ensurePerformanceMonitorInstance()?.generateReport();
+    if (!report) {
+      this.verboseLog(`[Performance] baseline unavailable for scenario: ${scenario}`);
+      return;
+    }
+    this.lastBaselineReport = report;
+    this.lastBaselineScenario = scenario;
+    const summary = this.formatPerformanceBaselineReport(report, scenario);
+    this.log(summary);
+  }
+
+  /**
+   * ????????
+   */
+  private formatPerformanceBaselineReport(report: PerformanceReport, scenario: string): string {
+    const metricMap = this.getLatestMetricMap(report.metrics);
+    const initMetric = metricMap.get(this.performanceMetricKeys.initTotal);
+    const tabMetric = metricMap.get(this.performanceMetricKeys.tabInteraction);
+    const domMetric = metricMap.get(this.performanceMetricKeys.domMutations);
+    const fpsMetric = metricMap.get('fps');
+    const heapMetric = metricMap.get('memory_heap');
+
+    const initText = initMetric
+      ? `${initMetric.value.toFixed(1)}${initMetric.unit}`
+      : (this.lastInitDurationMs !== null ? `${this.lastInitDurationMs.toFixed(1)}ms` : 'n/a');
+    const tabText = tabMetric ? `${tabMetric.value.toFixed(0)}` : `${this.performanceCounters[this.performanceMetricKeys.tabInteraction] ?? 0}`;
+    const domText = domMetric ? `${domMetric.value.toFixed(0)}` : '0';
+    const fpsText = fpsMetric ? `${fpsMetric.value.toFixed(0)}fps` : 'n/a';
+    const heapText = heapMetric ? this.formatBytes(heapMetric.value) : 'n/a';
+
+    return [
+      `[Performance][${scenario}] Baseline`,
+      `  healthScore: ${report.healthScore}`,
+      `  init_total: ${initText}`,
+      `  tab_interactions: ${tabText}`,
+      `  dom_mutations: ${domText}`,
+      `  fps: ${fpsText}`,
+      `  heap_used: ${heapText}`,
+      `  issues: ${report.issues.length}`
+    ].join('\n');
+
+  }
+
+  private getLatestMetricMap(metrics: PerformanceMetric[]): Map<string, PerformanceMetric> {
+    const metricMap = new Map<string, PerformanceMetric>();
+    for (const metric of metrics) {
+      const previous = metricMap.get(metric.name);
+      if (!previous || previous.timestamp <= metric.timestamp) {
+        metricMap.set(metric.name, metric);
+      }
+    }
+    return metricMap;
+  }
+
+  private formatBytes(value: number): string {
+    if (value < 1024) {
+      return `${value.toFixed(0)}B`;
+    }
+    if (value < 1024 * 1024) {
+      return `${(value / 1024).toFixed(1)}KB`;
+    }
+    if (value < 1024 * 1024 * 1024) {
+      return `${(value / 1024 / 1024).toFixed(1)}MB`;
+    }
+    return `${(value / 1024 / 1024 / 1024).toFixed(1)}GB`;
   }
 
   // ==================== 日志方法 ====================
@@ -640,7 +782,23 @@ class OrcaTabsPlugin {
   
   /** 性能监控器实例 - 用于监控性能指标 */
   private performanceMonitor: PerformanceMonitorOptimizer | null = null;
-  
+  /** ???????? - ??????????? */
+  private performanceCounters: Record<string, number> = {};
+  /** ???????ID - ???????? */
+  private performanceBaselineTimer: number | null = null;
+  /** ?????????? */
+  private lastBaselineScenario: string | null = null;
+  /** ?????????? */
+  private lastBaselineReport: PerformanceReport | null = null;
+  /** ?????????????? */
+  private lastInitDurationMs: number | null = null;
+  /** ???????? */
+  private readonly performanceMetricKeys = {
+    initTotal: 'plugin_init_total',
+    tabInteraction: 'tab_interaction_total',
+    domMutations: 'dom_mutations'
+  } as const;
+
   /* ———————————————————————————————————————————————————————————————————————————— */
   /* 拖拽和事件管理 - Drag and Event Management */
   /* ———————————————————————————————————————————————————————————————————————————— */
@@ -771,6 +929,7 @@ class OrcaTabsPlugin {
    * @throws {Error} 当初始化过程中发生错误时抛出
    */
   async init() {
+    const stopInitMeasurement = this.startPerformanceMeasurement(this.performanceMetricKeys.initTotal);
     // ==================== 性能优化器初始化 ====================
     // 初始化性能优化管理器
     if (this.performanceOptimizer) {
@@ -999,9 +1158,22 @@ class OrcaTabsPlugin {
     // 设置设置检查监听器
     this.setupSettingsChecker();
     
+    if (stopInitMeasurement) {
+      this.lastInitDurationMs = stopInitMeasurement();
+    }
+    this.schedulePerformanceBaselineReport('startup');
+    
     // 标记初始化完成
     this.isInitialized = true;
     this.log("✅ 插件初始化完成");
+  }
+
+
+  /**
+   * ??????????
+   */
+  requestPerformanceBaseline(scenario: string, delayMs: number = 12000): void {
+    this.schedulePerformanceBaselineReport(scenario, delayMs);
   }
 
   /**
@@ -1692,21 +1864,27 @@ class OrcaTabsPlugin {
    */
   private updatePanelOrder(newPanelIds: string[]): void {
     const oldPanelIds = this.getPanelIds();
-    
-    // 添加新面板
+
+    const isSameOrder = oldPanelIds.length === newPanelIds.length &&
+      oldPanelIds.every((id, index) => id === newPanelIds[index]);
+    if (isSameOrder) {
+      return;
+    }
+
+    // ?????
     newPanelIds.forEach(panelId => {
       if (!this.panelOrder.find(p => p.id === panelId)) {
         this.addPanel(panelId);
       }
     });
-    
-    // 删除不存在的面板
+
+    // ????????
     const panelsToRemove = this.panelOrder.filter(p => !newPanelIds.includes(p.id));
     panelsToRemove.forEach(panel => {
       this.removePanel(panel.id);
     });
-    
-    this.log(`🔄 面板顺序更新完成:`, this.panelOrder.map(p => `${p.id}(${p.order})`));
+
+    this.log(`?? ????????:`, this.panelOrder.map(p => `${p.id}(${p.order})`));
   }
 
   /**
@@ -5310,6 +5488,7 @@ class OrcaTabsPlugin {
 
   async switchToTab(tab: TabInfo) {
     try {
+      this.recordPerformanceCountMetric(this.performanceMetricKeys.tabInteraction);
       this.log(`🔄 开始切换标签: ${tab.title} (ID: ${tab.blockId})`);
       
       // 记录当前激活标签的滚动位置
@@ -12589,6 +12768,12 @@ class OrcaTabsPlugin {
    */
   destroy(): void {
     try {
+      if (typeof window !== 'undefined' && this.performanceBaselineTimer !== null) {
+        window.clearTimeout(this.performanceBaselineTimer);
+      }
+      this.performanceBaselineTimer = null;
+      this.lastBaselineScenario = null;
+      this.lastBaselineReport = null;
       this.log('🗑️ 开始销毁插件...');
       
       // 清理性能优化器
