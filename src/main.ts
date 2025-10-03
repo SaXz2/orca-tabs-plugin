@@ -128,6 +128,7 @@ import {
   createResizeHandleStyle,      // 创建调整大小手柄样式
   createStatusElementStyle,     // 创建状态元素样式
   createContextMenuStyle,       // 创建上下文菜单样式
+  calculateContextMenuPosition, // 计算智能菜单位置
   createMenuItemStyle,          // 创建菜单项样式
   createSeparatorStyle,         // 创建分隔符样式
   createDialogStyle,            // 创建对话框样式
@@ -3730,24 +3731,10 @@ class OrcaTabsPlugin {
     menu.className = 'new-tab-context-menu';
     
     // 计算菜单位置，避免在屏幕边缘显示一半
+    // 使用智能菜单定位算法
     const menuWidth = 200;
     const menuHeight = 140; // 预估菜单高度
-    let left = e.clientX;
-    let top = e.clientY;
-    
-    // 如果菜单会超出右边界，向左调整
-    if (left + menuWidth > window.innerWidth) {
-      left = window.innerWidth - menuWidth - 10;
-    }
-    
-    // 如果菜单会超出下边界，向上调整
-    if (top + menuHeight > window.innerHeight) {
-      top = window.innerHeight - menuHeight - 10;
-    }
-    
-    // 确保不超出左边界和上边界
-    left = Math.max(10, left);
-    top = Math.max(10, top);
+    const { x: left, y: top } = calculateContextMenuPosition(e.clientX, e.clientY, menuWidth, menuHeight);
     
     menu.style.cssText = `
       position: fixed;
@@ -7355,10 +7342,15 @@ class OrcaTabsPlugin {
     // 创建右键菜单
     const menu = document.createElement('div');
     menu.className = 'tab-context-menu';
+    // 使用智能菜单定位算法
+    const menuWidth = 220;
+    const menuHeight = 240; // 预估菜单高度
+    const { x: menuLeft, y: menuTop } = calculateContextMenuPosition(e.clientX, e.clientY, menuWidth, menuHeight);
+    
     menu.style.cssText = `
       position: fixed;
-      left: ${e.clientX}px;
-      top: ${e.clientY}px;
+      left: ${menuLeft}px;
+      top: ${menuTop}px;
       background: var(--orca-color-bg-1);
       border: 1px solid var(--sakura-dark-surface0);
       border-radius: var(--orca-radius-md);
@@ -9444,18 +9436,23 @@ class OrcaTabsPlugin {
 
     const menu = document.createElement('div');
     menu.className = 'recently-closed-tabs-menu';
+    // 使用智能菜单定位算法
+    const menuWidth = 280;
+    const menuHeight = 350;
+    const { x: left, y: top } = calculateContextMenuPosition(position.x, position.y, menuWidth, menuHeight);
+    
     menu.style.cssText = `
       position: fixed;
-      left: ${position.x}px;
-      top: ${position.y}px;
+      left: ${left}px;
+      top: ${top}px;
       background: var(--orca-color-bg-1);
       border: 1px solid var(--sakura-dark-surface0);
       border-radius: var(--orca-radius-md);
       box-shadow: var(--orca-shadow-menu);
       z-index: 10000;
       min-width: 200px;
-      max-width: 280px;
-      max-height: 350px;
+      max-width: ${menuWidth}px;
+      max-height: ${menuHeight}px;
       overflow-y: auto;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     `;
@@ -9729,18 +9726,23 @@ class OrcaTabsPlugin {
 
     const menu = document.createElement('div');
     menu.className = 'multi-tab-saving-menu';
+    // 使用智能菜单定位算法
+    const menuWidth = 300;
+    const menuHeight = 400;
+    const { x: left, y: top } = calculateContextMenuPosition(position.x, position.y, menuWidth, menuHeight);
+    
     menu.style.cssText = `
       position: fixed;
-      left: ${position.x}px;
-      top: ${position.y}px;
+      left: ${left}px;
+      top: ${top}px;
       background: var(--orca-color-bg-1);
       border: 1px solid var(--sakura-dark-surface0);
       border-radius: var(--orca-radius-md);
       box-shadow: var(--orca-shadow-menu);
       z-index: 10000;
       min-width: 200px;
-      max-width: 300px;
-      max-height: 400px;
+      max-width: ${menuWidth}px;
+      max-height: ${menuHeight}px;
       overflow-y: auto;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     `;
@@ -11057,10 +11059,16 @@ class OrcaTabsPlugin {
 
     const menu = document.createElement('div');
     menu.className = 'workspace-menu';
+    // 使用智能菜单定位算法
+    const menuWidth = 280;
+    const menuHeight = 400;
+    const position = event ? { x: event.clientX, y: event.clientY } : { x: 20, y: 60 };
+    const { x: left, y: top } = calculateContextMenuPosition(position.x, position.y, menuWidth, menuHeight);
+    
     menu.style.cssText = `
       position: fixed;
-      top: ${event ? event.clientY + 10 : 60}px;
-      left: ${event ? event.clientX : 20}px;
+      left: ${left}px;
+      top: ${top}px;
       background: var(--orca-color-bg-1);
       border: 1px solid var(--sakura-dark-surface0);
       border-radius: var(--orca-radius-md);

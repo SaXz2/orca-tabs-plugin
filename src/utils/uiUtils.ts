@@ -301,19 +301,70 @@ export function createStatusElementStyle(): string {
 }
 
 /**
- * 创建右键菜单样式
+ * 计算智能菜单位置，防止菜单超出窗口边界
  */
-export function createContextMenuStyle(x: number, y: number, width: number = 180): string {
+export function calculateContextMenuPosition(
+  clientX: number, 
+  clientY: number, 
+  width: number = 180, 
+  height: number = 200
+): { x: number; y: number } {
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const margin = 10; // 边距
+  
+  let x = clientX;
+  let y = clientY;
+  
+  // 右边界检测 - 如果菜单会超出右边缘，向左调整
+  if (x + width > viewportWidth - margin) {
+    x = viewportWidth - width - margin;
+  }
+  
+  // 下边界检测 - 如果菜单会超出下边缘，向上调整
+  if (y + height > viewportHeight - margin) {
+    y = viewportHeight - height - margin;
+    
+    // 如果上移后菜单仍然超出顶部，则显示在点击位置上方
+    if (y < clientY - height) {
+      y = clientY - height - 5;
+    }
+  }
+  
+  // 左边界检测 - 确保不会超出左边缘
+  if (x < margin) {
+    x = margin;
+  }
+  
+  // 上边界检测 - 确保不会超出顶边缘
+  if (y < margin) {
+    y = clientY + 5; // 如果上方空间不够，显示在点击位置下方
+  }
+  
+  // 最终安全检查，确保菜单完全在视口内
+  x = Math.max(margin, Math.min(x, viewportWidth - width - margin));
+  y = Math.max(margin, Math.min(y, viewportHeight - height - margin));
+  
+  return { x, y };
+}
+
+/**
+ * 创建右键菜单样式（使用智能定位）
+ */
+export function createContextMenuStyle(x: number, y: number, width: number = 180, height: number = 200): string {
+  const position = calculateContextMenuPosition(x, y, width, height);
+  
   return `
     position: fixed;
-    left: ${x}px;
-    top: ${y}px;
+    left: ${position.x}px;
+    top: ${position.y}px;
     background: var(--orca-color-bg-1);
     border: 1px solid #ddd;
     border-radius: var(--orca-radius-md);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     z-index: 1000;
     min-width: ${width}px;
+    max-height: ${height}px;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   `;

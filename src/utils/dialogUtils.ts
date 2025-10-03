@@ -666,7 +666,7 @@ export function createContextMenu(config: ContextMenuConfig): HTMLElement {
   
   const currentTheme = themeStyles[theme];
   
-  const menuStyle = createContextMenuStyle(position.x, position.y);
+  const menuStyle = createContextMenuStyle(position.x, position.y, 180, maxHeight);
   menu.style.cssText = menuStyle + `
     background-color: ${currentTheme.backgroundColor};
     color: ${currentTheme.color};
