@@ -493,7 +493,7 @@ class OrcaTabsPlugin {
 
 
   /**
-   * ??????????
+   * 确保性能监控实例可用
    */
   private ensurePerformanceMonitorInstance(): PerformanceMonitorOptimizer | null {
     if (this.performanceMonitor) {
@@ -509,7 +509,7 @@ class OrcaTabsPlugin {
   }
 
   /**
-   * ??????
+   * 启动性能计时
    */
   private startPerformanceMeasurement(name: string): (() => number) | null {
     const monitor = this.ensurePerformanceMonitorInstance();
@@ -525,7 +525,7 @@ class OrcaTabsPlugin {
   }
 
   /**
-   * ???????
+   * 记录计数型指标
    */
   private recordPerformanceCountMetric(name: string): void {
     const monitor = this.ensurePerformanceMonitorInstance();
@@ -538,7 +538,7 @@ class OrcaTabsPlugin {
   }
 
   /**
-   * ??????????
+   * 延迟输出性能基线报告
    */
   private schedulePerformanceBaselineReport(scenario: string, delayMs: number = 12000): void {
     const monitor = this.ensurePerformanceMonitorInstance();
@@ -557,7 +557,7 @@ class OrcaTabsPlugin {
   }
 
   /**
-   * ????????
+   * 输出性能基线报告
    */
   private emitPerformanceBaselineReport(scenario: string): void {
     if (typeof window !== 'undefined' && this.performanceBaselineTimer !== null) {
@@ -577,7 +577,7 @@ class OrcaTabsPlugin {
   }
 
   /**
-   * ????????
+   * 构建性能基线日志
    */
   private formatPerformanceBaselineReport(report: PerformanceReport, scenario: string): string {
     const metricMap = this.getLatestMetricMap(report.metrics);
@@ -782,17 +782,17 @@ class OrcaTabsPlugin {
   
   /** 性能监控器实例 - 用于监控性能指标 */
   private performanceMonitor: PerformanceMonitorOptimizer | null = null;
-  /** ???????? - ??????????? */
+  /** 性能指标计数缓存 - 记录自定义指标的累计值 */
   private performanceCounters: Record<string, number> = {};
-  /** ???????ID - ???????? */
+  /** 性能基线定时器ID - 控制基线采集任务 */
   private performanceBaselineTimer: number | null = null;
-  /** ?????????? */
+  /** 最近一次性能基线场景 */
   private lastBaselineScenario: string | null = null;
-  /** ?????????? */
+  /** 最近一次性能基线报告 */
   private lastBaselineReport: PerformanceReport | null = null;
-  /** ?????????????? */
+  /** 上一次插件初始化耗时（毫秒） */
   private lastInitDurationMs: number | null = null;
-  /** ???????? */
+  /** 性能指标名称常量 */
   private readonly performanceMetricKeys = {
     initTotal: 'plugin_init_total',
     tabInteraction: 'tab_interaction_total',
@@ -1170,7 +1170,7 @@ class OrcaTabsPlugin {
 
 
   /**
-   * ??????????
+   * 手动触发性能基线采集
    */
   requestPerformanceBaseline(scenario: string, delayMs: number = 12000): void {
     this.schedulePerformanceBaselineReport(scenario, delayMs);
@@ -1684,15 +1684,21 @@ class OrcaTabsPlugin {
     if (activePanelId) {
       const index = this.panelOrder.findIndex(p => p.id === activePanelId);
       if (index !== -1) {
-      this.currentPanelId = activePanelId;
+        if (this.currentPanelId === activePanelId && this.currentPanelIndex === index) {
+          return;
+        }
+        this.currentPanelId = activePanelId;
         this.currentPanelIndex = index;
         this.log(`🔄 当前面板更新: ${activePanelId} (索引: ${index}, 序号: ${this.panelOrder[index].order})`);
       }
-    } else {
-      this.currentPanelId = null;
-      this.currentPanelIndex = -1;
-      this.log(`🔄 没有激活的面板`);
+      return;
     }
+    if (this.currentPanelId === null && this.currentPanelIndex === -1) {
+      return;
+    }
+    this.currentPanelId = null;
+    this.currentPanelIndex = -1;
+    this.log('🔄 没有激活的面板');
   }
   
   /**
@@ -1871,20 +1877,20 @@ class OrcaTabsPlugin {
       return;
     }
 
-    // ?????
+    // 添加新面板
     newPanelIds.forEach(panelId => {
       if (!this.panelOrder.find(p => p.id === panelId)) {
         this.addPanel(panelId);
       }
     });
 
-    // ????????
+    // 删除不存在的面板
     const panelsToRemove = this.panelOrder.filter(p => !newPanelIds.includes(p.id));
     panelsToRemove.forEach(panel => {
       this.removePanel(panel.id);
     });
 
-    this.log(`?? ????????:`, this.panelOrder.map(p => `${p.id}(${p.order})`));
+    this.log(`🔄 面板顺序更新完成:`, this.panelOrder.map(p => `${p.id}(${p.order})`));
   }
 
   /**
