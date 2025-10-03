@@ -294,27 +294,281 @@ export async function detectBlockType(block: any): Promise<string> {
 }
 
 /**
- * 根据块类型获取图标
+ * 根据块类型获取图标（增强版）
+ * 
+ * 功能说明：
+ * - 支持更多块类型的图标映射
+ * - 提供智能图标选择
+ * - 支持自定义图标
+ * - 提供降级处理
  */
 export function getBlockTypeIcon(blockType: string): string {
   const iconMap: { [key: string]: string } = {
-    'journal': '📅',      // 日期块 - 保持emoji
-    'alias': 'ti ti-tag',       // 别名块
-    'page': 'ti ti-file-text',  // 页面
-    'heading': 'ti ti-hash',    // 标题
-    'code': 'ti ti-code',       // 代码
-    'table': 'ti ti-table',     // 表格
-    'image': 'ti ti-photo',     // 图片
-    'link': 'ti ti-link',       // 链接
-    'quote': 'ti ti-quote',     // 引用
-    'task': 'ti ti-checkbox',   // 任务
-    'list': 'ti ti-list',       // 列表
-    'math': 'ti ti-math',       // 数学公式
-    'default': 'ti ti-file'     // 默认
+    // 基础块类型
+    'journal': '📅',              // 日期块 - 保持emoji
+    'alias': 'ti ti-tag',         // 别名块
+    'page': 'ti ti-file-text',    // 页面
+    'tag': 'ti ti-hash',          // 标签
+    'heading': 'ti ti-heading',   // 标题
+    'code': 'ti ti-code',         // 代码
+    'table': 'ti ti-table',       // 表格
+    'image': 'ti ti-photo',       // 图片
+    'link': 'ti ti-link',         // 链接
+    'list': 'ti ti-list',         // 列表
+    'quote': 'ti ti-quote',       // 引用
+    'text': 'ti ti-file-text',    // 普通文本
+    'block': 'ti ti-square',      // 块
+    'task': 'ti ti-checkbox',     // 任务
+    'math': 'ti ti-math',         // 数学公式
+    
+    // 扩展块类型
+    'idea': 'ti ti-bulb',         // 想法
+    'question': 'ti ti-help-circle',     // 问题
+    'answer': 'ti ti-message-circle',    // 答案
+    'summary': 'ti ti-file-text',        // 总结
+    'reference': 'ti ti-book',           // 参考
+    'example': 'ti ti-code',             // 示例
+    'warning': 'ti ti-alert-triangle',   // 警告
+    'info': 'ti ti-info-circle',         // 信息
+    'tip': 'ti ti-lightbulb',            // 提示
+    'note': 'ti ti-note',                // 笔记
+    'todo': 'ti ti-checkbox',            // 待办
+    'done': 'ti ti-check',               // 完成
+    'important': 'ti ti-star',           // 重要
+    'urgent': 'ti ti-alert-circle',      // 紧急
+    'meeting': 'ti ti-calendar',         // 会议
+    'event': 'ti ti-calendar-event',     // 事件
+    'project': 'ti ti-folder',           // 项目
+    'goal': 'ti ti-target',              // 目标
+    'habit': 'ti ti-repeat',             // 习惯
+    'bookmark': 'ti ti-bookmark',        // 书签
+    'attachment': 'ti ti-paperclip',     // 附件
+    'video': 'ti ti-video',              // 视频
+    'audio': 'ti ti-headphones',         // 音频
+    'document': 'ti ti-file',            // 文档
+    'spreadsheet': 'ti ti-table',        // 电子表格
+    'presentation': 'ti ti-presentation', // 演示文稿
+    'database': 'ti ti-database',        // 数据库
+    'api': 'ti ti-plug',                 // API
+    'config': 'ti ti-settings',          // 配置
+    'log': 'ti ti-file-text',            // 日志
+    'error': 'ti ti-alert-triangle',     // 错误
+    'success': 'ti ti-check-circle',     // 成功
+    'progress': 'ti ti-progress',        // 进度
+    'status': 'ti ti-info-circle',       // 状态
+    'version': 'ti ti-git-branch',       // 版本
+    'commit': 'ti ti-git-commit',        // 提交
+    'branch': 'ti ti-git-branch',        // 分支
+    'merge': 'ti ti-git-merge',          // 合并
+    'pull': 'ti ti-git-pull',            // 拉取
+    'push': 'ti ti-git-push',            // 推送
+    'deploy': 'ti ti-rocket',            // 部署
+    'build': 'ti ti-hammer',             // 构建
+    'test': 'ti ti-flask',               // 测试
+    'debug': 'ti ti-bug',                // 调试
+    'performance': 'ti ti-gauge',        // 性能
+    'security': 'ti ti-shield',          // 安全
+    'backup': 'ti ti-archive',           // 备份
+    'restore': 'ti ti-refresh',          // 恢复
+    'sync': 'ti ti-refresh',             // 同步
+    'export': 'ti ti-download',          // 导出
+    'import': 'ti ti-upload',            // 导入
+    'share': 'ti ti-share',              // 分享
+    'collaborate': 'ti ti-users',        // 协作
+    'review': 'ti ti-eye',               // 审查
+    'approve': 'ti ti-check',            // 批准
+    'reject': 'ti ti-x',                 // 拒绝
+    'comment': 'ti ti-message',          // 评论
+    'feedback': 'ti ti-message-circle',  // 反馈
+    'suggestion': 'ti ti-lightbulb',     // 建议
+    'improvement': 'ti ti-trending-up',  // 改进
+    'optimization': 'ti ti-zap',         // 优化
+    'refactor': 'ti ti-refresh',         // 重构
+    'migration': 'ti ti-arrow-right',    // 迁移
+    'upgrade': 'ti ti-arrow-up',         // 升级
+    'downgrade': 'ti ti-arrow-down',     // 降级
+    'rollback': 'ti ti-undo',            // 回滚
+    'default': 'ti ti-file'              // 默认
   };
 
-  const icon = iconMap[blockType] || iconMap['default'];
+  // 智能图标选择
+  let icon = iconMap[blockType];
+  
+  // 如果没有找到精确匹配，尝试模糊匹配
+  if (!icon) {
+    const smartIcon = getSmartIcon(blockType);
+    if (smartIcon) {
+      icon = smartIcon;
+    }
+  }
+  
+  // 如果还是没有找到，使用默认图标
+  if (!icon) {
+    icon = iconMap['default'];
+  }
+
   return icon;
+}
+
+/**
+ * 智能图标选择（通过关键词匹配）
+ */
+function getSmartIcon(blockType: string): string | null {
+  const lowerType = blockType.toLowerCase();
+  
+  // 关键词匹配
+  const keywordMap: { [key: string]: string } = {
+    'date': 'ti ti-calendar',
+    'time': 'ti ti-clock',
+    'calendar': 'ti ti-calendar',
+    'schedule': 'ti ti-calendar',
+    'plan': 'ti ti-calendar',
+    'todo': 'ti ti-checkbox',
+    'task': 'ti ti-checkbox',
+    'check': 'ti ti-check',
+    'done': 'ti ti-check',
+    'complete': 'ti ti-check',
+    'finish': 'ti ti-check',
+    'code': 'ti ti-code',
+    'program': 'ti ti-code',
+    'script': 'ti ti-code',
+    'function': 'ti ti-code',
+    'method': 'ti ti-code',
+    'class': 'ti ti-code',
+    'object': 'ti ti-code',
+    'variable': 'ti ti-code',
+    'constant': 'ti ti-code',
+    'string': 'ti ti-code',
+    'number': 'ti ti-code',
+    'boolean': 'ti ti-code',
+    'array': 'ti ti-code',
+    'list': 'ti ti-list',
+    'item': 'ti ti-list',
+    'element': 'ti ti-list',
+    'entry': 'ti ti-list',
+    'record': 'ti ti-list',
+    'row': 'ti ti-list',
+    'column': 'ti ti-list',
+    'table': 'ti ti-table',
+    'data': 'ti ti-database',
+    'info': 'ti ti-info-circle',
+    'information': 'ti ti-info-circle',
+    'detail': 'ti ti-info-circle',
+    'description': 'ti ti-info-circle',
+    'explanation': 'ti ti-info-circle',
+    'help': 'ti ti-help-circle',
+    'question': 'ti ti-help-circle',
+    'ask': 'ti ti-help-circle',
+    'answer': 'ti ti-message-circle',
+    'reply': 'ti ti-message-circle',
+    'response': 'ti ti-message-circle',
+    'comment': 'ti ti-message',
+    'note': 'ti ti-note',
+    'remark': 'ti ti-note',
+    'memo': 'ti ti-note',
+    'tip': 'ti ti-lightbulb',
+    'hint': 'ti ti-lightbulb',
+    'suggestion': 'ti ti-lightbulb',
+    'idea': 'ti ti-bulb',
+    'concept': 'ti ti-bulb',
+    'thought': 'ti ti-bulb',
+    'warning': 'ti ti-alert-triangle',
+    'alert': 'ti ti-alert-triangle',
+    'caution': 'ti ti-alert-triangle',
+    'danger': 'ti ti-alert-triangle',
+    'error': 'ti ti-alert-triangle',
+    'mistake': 'ti ti-alert-triangle',
+    'bug': 'ti ti-bug',
+    'issue': 'ti ti-bug',
+    'problem': 'ti ti-bug',
+    'success': 'ti ti-check-circle',
+    'win': 'ti ti-check-circle',
+    'victory': 'ti ti-check-circle',
+    'achievement': 'ti ti-check-circle',
+    'goal': 'ti ti-target',
+    'target': 'ti ti-target',
+    'objective': 'ti ti-target',
+    'aim': 'ti ti-target',
+    'purpose': 'ti ti-target',
+    'file': 'ti ti-file',
+    'document': 'ti ti-file',
+    'paper': 'ti ti-file',
+    'report': 'ti ti-file',
+    'article': 'ti ti-file',
+    'post': 'ti ti-file',
+    'page': 'ti ti-file-text',
+    'web': 'ti ti-file-text',
+    'site': 'ti ti-file-text',
+    'url': 'ti ti-link',
+    'link': 'ti ti-link',
+    'href': 'ti ti-link',
+    'reference': 'ti ti-book',
+    'book': 'ti ti-book',
+    'manual': 'ti ti-book',
+    'guide': 'ti ti-book',
+    'tutorial': 'ti ti-book',
+    'example': 'ti ti-code',
+    'sample': 'ti ti-code',
+    'demo': 'ti ti-code',
+    'test': 'ti ti-flask',
+    'testing': 'ti ti-flask',
+    'experiment': 'ti ti-flask',
+    'trial': 'ti ti-flask',
+    'image': 'ti ti-photo',
+    'picture': 'ti ti-photo',
+    'photo': 'ti ti-photo',
+    'screenshot': 'ti ti-photo',
+    'video': 'ti ti-video',
+    'movie': 'ti ti-video',
+    'clip': 'ti ti-video',
+    'audio': 'ti ti-headphones',
+    'sound': 'ti ti-headphones',
+    'music': 'ti ti-headphones',
+    'podcast': 'ti ti-headphones',
+    'attachment': 'ti ti-paperclip',
+    'attach': 'ti ti-paperclip',
+    'download': 'ti ti-download',
+    'upload': 'ti ti-upload',
+    'import': 'ti ti-upload',
+    'export': 'ti ti-download',
+    'backup': 'ti ti-archive',
+    'archive': 'ti ti-archive',
+    'compress': 'ti ti-archive',
+    'zip': 'ti ti-archive',
+    'folder': 'ti ti-folder',
+    'directory': 'ti ti-folder',
+    'path': 'ti ti-folder',
+    'project': 'ti ti-folder',
+    'workspace': 'ti ti-folder',
+    'team': 'ti ti-users',
+    'group': 'ti ti-users',
+    'user': 'ti ti-user',
+    'person': 'ti ti-user',
+    'people': 'ti ti-users',
+    'collaborate': 'ti ti-users',
+    'share': 'ti ti-share',
+    'public': 'ti ti-share',
+    'private': 'ti ti-lock',
+    'secure': 'ti ti-shield',
+    'security': 'ti ti-shield',
+    'protect': 'ti ti-shield',
+    'safe': 'ti ti-shield',
+    'settings': 'ti ti-settings',
+    'config': 'ti ti-settings',
+    'configuration': 'ti ti-settings',
+    'preference': 'ti ti-settings',
+    'option': 'ti ti-settings',
+    'parameter': 'ti ti-settings'
+  };
+
+  // 查找匹配的关键词
+  for (const [keyword, icon] of Object.entries(keywordMap)) {
+    if (lowerType.includes(keyword)) {
+      return icon;
+    }
+  }
+
+  return null;
 }
 
 /**
