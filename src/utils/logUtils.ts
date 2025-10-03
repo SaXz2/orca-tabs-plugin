@@ -14,6 +14,12 @@ export enum LogLevel {
 }
 
 /**
+ * 默认日志级别
+ * 生产环境使用INFO级别，开发环境可以通过DEBUG_MODE设置提升到VERBOSE
+ */
+export const DEFAULT_LOG_LEVEL = LogLevel.INFO;
+
+/**
  * 简单的日志实现
  */
 export function simpleLog(message: string, ...args: any[]): void {

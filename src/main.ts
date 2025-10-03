@@ -298,6 +298,7 @@ import {
 } from './utils/themeUtils';
 import { 
   LogLevel,
+  DEFAULT_LOG_LEVEL,
   simpleLog,
   simpleError,
   simpleWarn
@@ -445,22 +446,37 @@ class OrcaTabsPlugin {
   /** 上次面板检查时间 - 用于防抖面板发现调用 */
   private lastPanelCheckTime: number = 0;
   
+  /** 数据保存防抖定时器 - 用于合并频繁的保存操作 */
+  private saveDataDebounceTimer: number | null = null;
+  
+  /** 数据保存防抖延迟（毫秒） - 默认300ms内的多次保存操作会被合并 */
+  private readonly SAVE_DEBOUNCE_DELAY = 300;
+  
   /* ———————————————————————————————————————————————————————————————————————————— */
   /* 日志管理 - Log Management */
   /* ———————————————————————————————————————————————————————————————————————————— */
   
   // ==================== 日志系统 ====================
+  /** 当前日志级别 */
+  private currentLogLevel: LogLevel = DEFAULT_LOG_LEVEL;
+  
   /** 简单的日志方法 */
   private log(message: string, ...args: any[]): void {
-    simpleLog(message, ...args);
+    if (this.currentLogLevel >= LogLevel.INFO) {
+      simpleLog(message, ...args);
+    }
   }
   
   private logError(message: string, ...args: any[]): void {
-    simpleError(message, ...args);
+    if (this.currentLogLevel >= LogLevel.ERROR) {
+      simpleError(message, ...args);
+    }
   }
   
   private logWarn(message: string, ...args: any[]): void {
-    simpleWarn(message, ...args);
+    if (this.currentLogLevel >= LogLevel.WARN) {
+      simpleWarn(message, ...args);
+    }
   }
   
   /**
@@ -635,12 +651,16 @@ class OrcaTabsPlugin {
   // ==================== 日志方法 ====================
   /** 调试日志 - 用于开发调试，记录一般信息 */
   private debugLog(...args: any[]) {
-    this.log(args.join(' '));
+    if (this.currentLogLevel >= LogLevel.DEBUG) {
+      simpleLog(args.join(' '), ...args);
+    }
   }
 
   /** 详细日志 - 仅在详细模式下启用，记录详细的调试信息 */
   private verboseLog(...args: any[]) {
-    this.log(args.join(' '));
+    if (this.currentLogLevel >= LogLevel.VERBOSE) {
+      simpleLog(args.join(' '), ...args);
+    }
   }
   
   /** 警告日志 - 记录警告信息，提醒潜在问题 */
@@ -651,6 +671,28 @@ class OrcaTabsPlugin {
   /** 错误日志 - 记录错误信息，用于问题诊断 */
   private error(...args: any[]) {
     this.logError(args.join(' '));
+  }
+  
+  /**
+   * 设置日志级别
+   */
+  private setLogLevel(level: LogLevel): void {
+    this.currentLogLevel = level;
+    this.log(`📊 日志级别已设置为: ${LogLevel[level]}`);
+  }
+  
+  /**
+   * 从存储中恢复调试模式设置
+   */
+  private async restoreDebugMode(): Promise<void> {
+    try {
+      const debugMode = await this.storageService.getConfig<boolean>(PLUGIN_STORAGE_KEYS.DEBUG_MODE, this.pluginName);
+      if (debugMode) {
+        this.setLogLevel(LogLevel.VERBOSE);
+      }
+    } catch (error) {
+      // 静默失败，使用默认日志级别
+    }
   }
   
   /* ———————————————————————————————————————————————————————————————————————————— */
@@ -938,6 +980,10 @@ class OrcaTabsPlugin {
    * @throws {Error} 当初始化过程中发生错误时抛出
    */
   async init() {
+    // ==================== 日志级别恢复 ====================
+    // 先恢复调试模式设置，这样后续的日志输出会根据级别控制
+    await this.restoreDebugMode();
+    
     const stopInitMeasurement = this.startPerformanceMeasurement(this.performanceMetricKeys.initTotal);
     // ==================== 性能优化器初始化 ====================
     // 初始化性能优化管理器
@@ -3415,6 +3461,7 @@ class OrcaTabsPlugin {
     try {
       // 限制更新频率（最小间隔50ms）
       if (now - this.lastUpdateTime < 50) {
+        this.verboseLog('⏭️ 跳过UI更新：距离上次更新仅 ' + (now - this.lastUpdateTime) + 'ms');
         return;
       }
       
@@ -3424,6 +3471,12 @@ class OrcaTabsPlugin {
     const dragHandle = this.tabContainer.querySelector('.drag-handle');
     const newTabButton = this.tabContainer.querySelector('.new-tab-button');
     const workspaceButton = this.tabContainer.querySelector('.workspace-button');
+    
+    // 获取当前显示的标签ID列表，用于后续比较
+    const currentDisplayedTabIds = Array.from(this.tabContainer.querySelectorAll('.orca-tab'))
+      .map(el => el.getAttribute('data-tab-id'))
+      .filter(id => id !== null) as string[];
+    
     // 清除现有标签和分割线
     this.tabContainer.innerHTML = '';
     if (dragHandle) {
@@ -5478,9 +5531,54 @@ class OrcaTabsPlugin {
   }
   
   /**
-   * 保存当前面板的标签页数据到存储
+   * 保存当前面板的标签页数据到存储（带防抖）
+   * 
+   * 使用防抖机制避免频繁保存：
+   * - 在短时间内的多次保存操作会被合并为一次
+   * - 减少I/O操作，提高性能
+   * - 确保最终数据的一致性
    */
-  private async saveCurrentPanelTabs() {
+  private saveCurrentPanelTabs() {
+    // 清除之前的定时器
+    if (this.saveDataDebounceTimer !== null) {
+      clearTimeout(this.saveDataDebounceTimer);
+    }
+    
+    // 设置新的防抖定时器
+    this.saveDataDebounceTimer = window.setTimeout(async () => {
+      try {
+        if (this.currentPanelIndex < 0 || this.currentPanelIndex >= this.getPanelIds().length) {
+          return;
+        }
+        
+        const tabs = this.panelTabsData[this.currentPanelIndex] || [];
+        
+        // 基于位置顺序保存数据
+        const storageKey = this.currentPanelIndex === 0 ? PLUGIN_STORAGE_KEYS.FIRST_PANEL_TABS : `panel_${this.currentPanelIndex + 1}_tabs`;
+        await this.tabStorageService.savePanelTabsByKey(storageKey, tabs);
+      } catch (error) {
+        this.error('保存面板标签页数据失败:', error);
+      } finally {
+        this.saveDataDebounceTimer = null;
+      }
+    }, this.SAVE_DEBOUNCE_DELAY);
+  }
+  
+  /**
+   * 立即保存当前面板的标签页数据（不使用防抖）
+   * 
+   * 在某些关键场景下需要立即保存数据，不能等待防抖：
+   * - 插件卸载时
+   * - 用户手动触发保存时
+   * - 面板关闭时
+   */
+  private async saveCurrentPanelTabsImmediately() {
+    // 取消防抖定时器
+    if (this.saveDataDebounceTimer !== null) {
+      clearTimeout(this.saveDataDebounceTimer);
+      this.saveDataDebounceTimer = null;
+    }
+    
     if (this.currentPanelIndex < 0 || this.currentPanelIndex >= this.getPanelIds().length) {
       return;
     }
@@ -5746,6 +5844,12 @@ class OrcaTabsPlugin {
           defaultValue: true,
           description: "控制是否启用工作区功能，可以保存当前标签页为工作区并快速切换"
         },
+        debugMode: {
+          label: "调试模式",
+          type: "boolean" as const,
+          defaultValue: false,
+          description: "开启后将显示详细的调试日志（仅用于开发调试，可能影响性能）"
+        },
       };
 
       await orca.plugins.setSettingsSchema(this.pluginName, settingsSchema);
@@ -5778,6 +5882,16 @@ class OrcaTabsPlugin {
         this.log(`📁 工作区功能: ${this.enableWorkspaces ? '开启' : '关闭'}`);
       }
       
+      if (settings?.debugMode !== undefined) {
+        if (settings.debugMode) {
+          this.setLogLevel(LogLevel.VERBOSE);
+        } else {
+          this.setLogLevel(LogLevel.INFO);
+        }
+        // 保存调试模式设置
+        await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.DEBUG_MODE, settings.debugMode, this.pluginName);
+      }
+      
       this.log("✅ 插件设置已注册");
     } catch (error) {
       this.error("注册插件设置失败:", error);
@@ -5792,7 +5906,8 @@ class OrcaTabsPlugin {
     this.lastSettings = {
       showInHeadbar: this.showInHeadbar,
       homePageBlockId: this.homePageBlockId,
-      enableWorkspaces: this.enableWorkspaces
+      enableWorkspaces: this.enableWorkspaces,
+      debugMode: this.currentLogLevel === LogLevel.VERBOSE
     };
     
     // 每2秒检查一次设置变化
@@ -5839,6 +5954,19 @@ class OrcaTabsPlugin {
         // 重新更新UI以显示或隐藏工作区按钮
         this.debouncedUpdateTabsUI();
         this.lastSettings.enableWorkspaces = this.enableWorkspaces;
+      }
+      
+      if (currentSettings.debugMode !== this.lastSettings.debugMode) {
+        if (currentSettings.debugMode) {
+          this.setLogLevel(LogLevel.VERBOSE);
+        } else {
+          this.setLogLevel(LogLevel.INFO);
+        }
+        // 异步保存调试模式设置
+        this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.DEBUG_MODE, currentSettings.debugMode, this.pluginName).catch(err => {
+          this.error("保存调试模式设置失败:", err);
+        });
+        this.lastSettings.debugMode = currentSettings.debugMode;
       }
     } catch (error) {
       this.error("检查设置变化失败:", error);
@@ -8853,14 +8981,36 @@ class OrcaTabsPlugin {
      * 
      * @param e - 事件对象
      */
+    // 记录上次检查的块ID，避免重复检查同一个块
+    let lastCheckedBlockId: string | null = null;
+    
     const handleFocusChange = async (e: Event) => {
       const target = e.target as Element;
+      
+      // 步骤0: 提前过滤 - 只处理可能相关的点击
+      // 如果点击的是标签页容器、侧边栏等，直接跳过
+      if (target.closest('.orca-tabs-plugin') || 
+          target.closest('.orca-sidebar') ||
+          target.closest('.orca-headbar')) {
+        return;
+      }
       
       // 步骤1: 查找最近的 orca-hideable 元素
       // 检查点击的元素是否在可隐藏的容器内
       const hideableElement = target.closest('.orca-hideable');
       
       if (hideableElement) {
+        // 步骤1.5: 提前检查是否真的需要更新
+        // 获取当前点击的块ID
+        const blockEditor = hideableElement.querySelector('.orca-block-editor[data-block-id]');
+        const currentBlockId = blockEditor?.getAttribute('data-block-id');
+        
+        // 如果是同一个块，跳过检查（避免重复）
+        if (currentBlockId && currentBlockId === lastCheckedBlockId) {
+          this.verboseLog(`⏭️ 跳过重复检查：同一个块 ${currentBlockId}`);
+          return;
+        }
+        
         // 步骤2: 防抖处理
         // 清除之前的延迟，避免重复触发
         if (focusChangeTimeout) {
@@ -8880,17 +9030,28 @@ class OrcaTabsPlugin {
          * - 确保标签页与编辑器同步更新
          * - 提供即时的视觉反馈
          * 
+         * 优化改进：
+         * - 添加重复检查过滤，避免相同块的多次触发
+         * - 提前过滤无关点击，减少不必要的DOM查询
+         * - 记录上次检查的块ID，智能跳过
+         * 
          * 避坑点：
          * 1. 不要在聚焦变化时使用延迟
          * 2. 确保事件处理立即响应
          * 3. 避免用户看到不一致的状态
          * 4. 保持编辑器与标签页的同步
+         * 5. 避免重复检查同一个块
          */
         focusChangeTimeout = window.setTimeout(async () => {
           // 步骤4: 验证聚焦状态
           // 检查元素是否现在是可见的（没有 orca-hideable-hidden 类）
           if (!hideableElement.classList.contains('orca-hideable-hidden')) {
             this.verboseLog('🎯 检测到 orca-hideable 元素聚焦变化');
+            
+            // 更新上次检查的块ID
+            if (currentBlockId) {
+              lastCheckedBlockId = currentBlockId;
+            }
             
             // 步骤5: 立即触发标签页更新
             // 调用 checkCurrentPanelBlocks 方法，立即更新标签页聚焦状态
@@ -12888,6 +13049,18 @@ class OrcaTabsPlugin {
       this.lastBaselineScenario = null;
       this.lastBaselineReport = null;
       this.log('🗑️ 开始销毁插件...');
+      
+      // 立即保存数据（不等待防抖）
+      this.log('💾 保存插件数据...');
+      this.saveCurrentPanelTabsImmediately().catch(err => {
+        this.error('销毁时保存数据失败:', err);
+      });
+      
+      // 清理数据保存定时器
+      if (this.saveDataDebounceTimer !== null) {
+        clearTimeout(this.saveDataDebounceTimer);
+        this.saveDataDebounceTimer = null;
+      }
       
       // 清理性能优化器
       if (this.performanceOptimizer) {

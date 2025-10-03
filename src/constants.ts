@@ -89,4 +89,7 @@ export const PLUGIN_STORAGE_KEYS = {
   
   /** 固定到顶部状态 - 存储标签页容器是否固定到顶部的状态 */
   FIXED_TO_TOP: 'fixed-to-top',
+  
+  /** 调试模式 - 存储是否启用详细日志输出 */
+  DEBUG_MODE: 'debug-mode',
 } as const;
