@@ -56,8 +56,8 @@ export function createTabBaseStyle(
     -webkit-app-region: no-drag;
     app-region: no-drag;
     pointer-events: auto;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: transform, margin, opacity;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, margin, opacity, max-width, min-width;
   ` : `
     ${customColorProps}
     background: ${backgroundColor};
@@ -77,8 +77,8 @@ export function createTabBaseStyle(
     -webkit-app-region: no-drag;
     app-region: no-drag;
     pointer-events: auto;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: transform, margin, opacity;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, margin, opacity, max-width, min-width;
   `;
 }
 

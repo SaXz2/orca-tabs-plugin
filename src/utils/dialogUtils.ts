@@ -859,6 +859,21 @@ function createHorizontalWidthDialog(
   `;
   minWidthDisplay.textContent = `最小宽度: ${minWidth}px`;
   
+  // 防抖定时器
+  let debounceTimer: number | null = null;
+  
+  // 防抖更新函数
+  const debouncedUpdate = (maxWidth: number, minWidth: number) => {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+    
+    debounceTimer = window.setTimeout(() => {
+      onInput(maxWidth, minWidth);
+      debounceTimer = null;
+    }, 150); // 150ms防抖延迟
+  };
+  
   // 滑块事件
   maxWidthSlider.oninput = () => {
     const newMaxWidth = parseInt(maxWidthSlider.value);
@@ -872,10 +887,10 @@ function createHorizontalWidthDialog(
     
     maxWidthDisplay.textContent = `最大宽度: ${newMaxWidth}px`;
     
-    // 实时调用回调函数
+    // 使用防抖更新
     const finalMaxWidth = parseInt(maxWidthSlider.value);
     const finalMinWidth = parseInt(minWidthSlider.value);
-    onInput(finalMaxWidth, finalMinWidth);
+    debouncedUpdate(finalMaxWidth, finalMinWidth);
   };
   
   minWidthSlider.oninput = () => {
@@ -890,10 +905,10 @@ function createHorizontalWidthDialog(
     
     minWidthDisplay.textContent = `最小宽度: ${newMinWidth}px`;
     
-    // 实时调用回调函数
+    // 使用防抖更新
     const finalMaxWidth = parseInt(maxWidthSlider.value);
     const finalMinWidth = parseInt(minWidthSlider.value);
-    onInput(finalMaxWidth, finalMinWidth);
+    debouncedUpdate(finalMaxWidth, finalMinWidth);
   };
   
   // 组装最大宽度容器

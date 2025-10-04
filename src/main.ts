@@ -3763,6 +3763,58 @@ class OrcaTabsPlugin {
 
 
   /**
+   * 优化后的标签宽度更新方法 - 避免完全重建UI
+   */
+  async updateTabWidths(maxWidth: number, minWidth: number) {
+    try {
+      // 更新宽度设置
+      this.horizontalTabMaxWidth = maxWidth;
+      this.horizontalTabMinWidth = minWidth;
+      
+      // 如果标签容器存在，直接更新现有标签的样式
+      if (this.tabContainer && !this.isVerticalMode) {
+        const tabs = this.tabContainer.querySelectorAll('.orca-tab');
+        tabs.forEach(tab => {
+          const tabElement = tab as HTMLElement;
+          // 重新应用标签样式，只更新宽度相关部分
+          const tabInfo = this.getTabInfoFromElement(tabElement);
+          if (tabInfo) {
+            const useVerticalStyle = this.isVerticalMode && !this.isFixedToTop;
+            const tabStyle = createTabBaseStyle(tabInfo, useVerticalStyle, () => '', maxWidth, minWidth);
+            tabElement.style.cssText = tabStyle;
+          }
+        });
+        
+        this.log(`📏 标签宽度已优化更新: 最大${maxWidth}px, 最小${minWidth}px`);
+      } else {
+        // 如果容器不存在或垂直模式，使用原有方法
+        await this.createTabsUI();
+      }
+      
+      // 保存设置到存储
+      try {
+        await this.saveLayoutMode();
+      } catch (error) {
+        this.error("保存宽度设置失败:", error);
+      }
+    } catch (error) {
+      this.error("更新标签宽度失败:", error);
+    }
+  }
+
+  /**
+   * 从标签元素获取标签信息
+   */
+  private getTabInfoFromElement(tabElement: HTMLElement): TabInfo | null {
+    const tabId = tabElement.getAttribute('data-tab-id');
+    if (!tabId) return null;
+    
+    // 从当前面板的标签列表中查找对应的标签信息
+    const currentTabs = this.panelTabsData[this.currentPanelIndex] || [];
+    return currentTabs.find(tab => tab.blockId === tabId) || null;
+  }
+
+  /**
    * 显示宽度调整对话框
    */
   async showWidthAdjustmentDialog() {
@@ -3809,21 +3861,8 @@ class OrcaTabsPlugin {
           this.horizontalTabMaxWidth,
           this.horizontalTabMinWidth,
           async (maxWidth: number, minWidth: number) => {
-            // 实时更新宽度设置
-            this.horizontalTabMaxWidth = maxWidth;
-            this.horizontalTabMinWidth = minWidth;
-            
-            // 实时重新创建标签UI以应用新宽度
-            await this.createTabsUI();
-            
-            // 保存设置到存储
-            try {
-              await this.saveLayoutMode();
-            } catch (error) {
-              this.error("保存宽度设置失败:", error);
-            }
-            
-            this.log(`📏 标签宽度已实时调整: 最大${maxWidth}px, 最小${minWidth}px`);
+            // 使用优化的更新方法，避免完全重建UI
+            await this.updateTabWidths(maxWidth, minWidth);
           },
           async () => {
             // 取消时恢复原始设置
@@ -7181,9 +7220,9 @@ class OrcaTabsPlugin {
         // 添加到列表开头（最新的在前面）
         this.recentlyClosedTabs.unshift(tabWithTimestamp);
         
-        // 限制最近关闭列表的最大长度（例如最多保存20个）
-        if (this.recentlyClosedTabs.length > 20) {
-          this.recentlyClosedTabs = this.recentlyClosedTabs.slice(0, 20);
+        // 限制最近关闭列表的最大长度（最多保存10个）
+        if (this.recentlyClosedTabs.length > 10) {
+          this.recentlyClosedTabs = this.recentlyClosedTabs.slice(0, 10);
         }
         await this.saveRecentlyClosedTabs();
       }
