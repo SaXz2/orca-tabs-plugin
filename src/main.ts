@@ -5610,20 +5610,22 @@ class OrcaTabsPlugin {
    * 按照用户思路：直接用索引访问panelTabsData数组
    */
   private getCurrentPanelTabs(): TabInfo[] {
+    this.verboseLog(`📋 [DEBUG] getCurrentPanelTabs 调用`);
+    
     // 检查当前面板索引是否有效
     if (this.currentPanelIndex < 0 || this.currentPanelIndex >= this.getPanelIds().length) {
-      this.log(`⚠️ 当前面板索引无效: ${this.currentPanelIndex}, 面板总数: ${this.getPanelIds().length}`);
+      this.log(`⚠️ [DEBUG] 当前面板索引无效: ${this.currentPanelIndex}, 面板总数: ${this.getPanelIds().length}`);
       return [];
     }
     
     // 确保panelTabsData数组有足够的大小
     if (this.currentPanelIndex >= this.panelTabsData.length) {
-      this.log(`🔧 调整panelTabsData数组大小，当前: ${this.panelTabsData.length}, 需要: ${this.currentPanelIndex + 1}`);
+      this.log(`🔧 [DEBUG] 调整panelTabsData数组大小，当前: ${this.panelTabsData.length}, 需要: ${this.currentPanelIndex + 1}`);
       this.adjustPanelTabsDataSize();
     }
     
     const tabs = this.panelTabsData[this.currentPanelIndex] || [];
-    this.verboseLog(`📋 获取面板 ${this.getPanelIds()[this.currentPanelIndex]} (索引: ${this.currentPanelIndex}) 的标签页数据: ${tabs.length} 个`);
+    this.verboseLog(`📋 [DEBUG] 获取面板 ${this.getPanelIds()[this.currentPanelIndex]} (索引: ${this.currentPanelIndex}) 的标签页数据: ${tabs.length} 个`);
     
     return tabs;
   }
@@ -6386,54 +6388,74 @@ class OrcaTabsPlugin {
    */
   private async addTabToPanel(blockId: string, insertMode: 'replace' | 'after' | 'end', navigate: boolean = false): Promise<boolean> {
     // 支持所有面板添加标签
-    this.verboseLog(`📋 [addTabToPanel] 开始处理 - blockId: ${blockId}, mode: ${insertMode}, navigate: ${navigate}`);
+    this.log(`📋 [DEBUG] ========== addTabToPanel 开始 ==========`);
+    this.log(`📋 [DEBUG] 参数: blockId=${blockId}, insertMode=${insertMode}, navigate=${navigate}`);
+    this.log(`📋 [DEBUG] 当前面板ID: ${this.currentPanelId}, 索引: ${this.currentPanelIndex}`);
 
     try {
       const currentTabs = this.getCurrentPanelTabs();
-      this.verboseLog(`📋 [addTabToPanel] 当前标签页数量: ${currentTabs.length}`);
-      this.verboseLog(`📋 [addTabToPanel] 当前标签页列表: ${currentTabs.map(t => `${t.title}(${t.blockId})`).join(', ')}`);
-      this.verboseLog(`📋 [addTabToPanel] closedTabs包含 ${blockId}: ${this.closedTabs.has(blockId)}`);
+      this.log(`📋 [DEBUG] 当前标签页数量: ${currentTabs.length}`);
+      this.log(`📋 [DEBUG] 当前标签页列表:`);
+      currentTabs.forEach((tab, idx) => {
+        this.log(`📋 [DEBUG]   [${idx}] ${tab.title} (ID: ${tab.blockId}, 固定: ${tab.isPinned})`);
+      });
+      this.log(`📋 [DEBUG] closedTabs包含 ${blockId}: ${this.closedTabs.has(blockId)}`);
 
       // 检查块是否已经存在于标签页中
       const existingTab = currentTabs.find(tab => tab.blockId === blockId);
       if (existingTab) {
-        this.verboseLog(`📋 [addTabToPanel] 块 ${blockId} 已存在于标签页中: "${existingTab.title}"`);
+        this.log(`📋 [DEBUG] ❌ 块 ${blockId} 已存在于标签页中: "${existingTab.title}"`);
 
         if (this.closedTabs.has(blockId)) {
-          this.verboseLog(`📋 [addTabToPanel] 从closedTabs中移除 ${blockId}`);
+          this.log(`📋 [DEBUG] 从closedTabs中移除 ${blockId}`);
           this.closedTabs.delete(blockId);
           await this.saveClosedTabs();
         }
 
-        this.verboseLog(`📋 [addTabToPanel] 切换到已存在标签: "${existingTab.title}"`);
+        this.log(`📋 [DEBUG] 切换到已存在标签: "${existingTab.title}"`);
         await this.switchToTab(existingTab);
         await this.focusTabElementById(existingTab.blockId);
 
-        this.verboseLog(`📋 [addTabToPanel] 完成 - 已切换到已存在标签`);
+        this.log(`📋 [DEBUG] ========== addTabToPanel 完成（已存在）==========`);
         return true;
       }
       
-      this.verboseLog(`📋 [addTabToPanel] 块 ${blockId} 不存在，准备创建新标签`);
+      this.log(`📋 [DEBUG] ✅ 块 ${blockId} 不存在，准备创建新标签`);
 
-
-      // 获取块信息
-      const block = orca.state.blocks[parseInt(blockId)];
-      if (!block) {
-        this.verboseLog(`📋 [addTabToPanel] 错误 - 无法找到块 ${blockId}`);
-        this.warn(`无法找到块 ${blockId}`);
-        return false;
+      // 【修复BUG】如果还没有标记，则标记为正在创建
+      // 注意：如果是从 Ctrl+点击进来的，可能已经在 handleClickEvent 中标记了
+      if (!this.creatingTabs.has(blockId)) {
+        this.log(`📋 [DEBUG] 🔒 将块 ${blockId} 添加到 creatingTabs 集合，防止重复处理`);
+        this.creatingTabs.add(blockId);
+      } else {
+        this.log(`📋 [DEBUG] ℹ️ 块 ${blockId} 已在 creatingTabs 中（可能来自 Ctrl+点击）`);
       }
-      this.verboseLog(`📋 [addTabToPanel] 找到块信息`);
+      
+      let tabInfo: TabInfo | null = null;
+      try {
+        // 获取块信息
+        const block = orca.state.blocks[parseInt(blockId)];
+        if (!block) {
+          this.verboseLog(`📋 [addTabToPanel] 错误 - 无法找到块 ${blockId}`);
+          this.warn(`无法找到块 ${blockId}`);
+          return false;
+        }
+        this.verboseLog(`📋 [addTabToPanel] 找到块信息`);
 
-      // 使用getTabInfo方法获取完整的标签信息（包括块类型和图标）
-      this.verboseLog(`📋 [addTabToPanel] 获取标签信息...`);
-      const tabInfo = await this.getTabInfo(blockId, this.currentPanelId || '', currentTabs.length);
-      if (!tabInfo) {
-        this.verboseLog(`📋 [addTabToPanel] 错误 - 无法获取块 ${blockId} 的标签信息`);
-        this.warn(`无法获取块 ${blockId} 的标签信息`);
-        return false;
+        // 使用getTabInfo方法获取完整的标签信息（包括块类型和图标）
+        this.verboseLog(`📋 [addTabToPanel] 获取标签信息...`);
+        tabInfo = await this.getTabInfo(blockId, this.currentPanelId || '', currentTabs.length);
+        if (!tabInfo) {
+          this.verboseLog(`📋 [addTabToPanel] 错误 - 无法获取块 ${blockId} 的标签信息`);
+          this.warn(`无法获取块 ${blockId} 的标签信息`);
+          return false;
+        }
+        this.verboseLog(`📋 [addTabToPanel] 标签信息: "${tabInfo.title}" (类型: ${tabInfo.blockType})`);
+      } finally {
+        // 【修复BUG】确保清除标记，无论成功还是失败
+        this.log(`📋 [DEBUG] 🔓 从 creatingTabs 集合中移除块 ${blockId}`);
+        this.creatingTabs.delete(blockId);
       }
-      this.verboseLog(`📋 [addTabToPanel] 标签信息: "${tabInfo.title}" (类型: ${tabInfo.blockType})`);
 
 
       // 确定插入位置
@@ -6532,38 +6554,38 @@ class OrcaTabsPlugin {
       this.verboseLog(`📋 [addTabToPanel] 插入后标签列表: ${currentTabs.map(t => `${t.title}(${t.blockId})`).join(', ')}`);
 
       // 同步更新存储数组
+      this.log(`📋 [DEBUG] 同步更新存储数组...`);
       this.syncCurrentTabsToStorage(currentTabs);
       
       // 保存标签数据
-      this.verboseLog(`📋 [addTabToPanel] 保存标签数据...`);
+      this.log(`📋 [DEBUG] 保存标签数据...`);
       await this.saveCurrentPanelTabs();
 
       // 如果启用了工作区功能且有当前工作区，实时更新工作区
       if (this.enableWorkspaces && this.currentWorkspace) {
-        this.verboseLog(`📋 [addTabToPanel] 更新工作区...`);
+        this.log(`📋 [DEBUG] 更新工作区: ${this.currentWorkspace}`);
         await this.saveCurrentTabsToWorkspace();
         this.log(`🔄 标签页添加，实时更新工作区: ${tabInfo.title}`);
       }
 
       // 更新UI
-      this.verboseLog(`📋 [addTabToPanel] 更新UI...`);
+      this.log(`📋 [DEBUG] 更新UI...`);
       await this.updateTabsUI();
 
       // 导航（如果需要）
       if (navigate) {
-        this.verboseLog(`📋 [addTabToPanel] 开始导航到块 ${blockId}`);
+        this.log(`📋 [DEBUG] 开始导航到块 ${blockId}`);
         // 使用统一的安全导航方法
         await this.safeNavigate(blockId, this.currentPanelId || '');
       } else {
-        this.verboseLog(`📋 [addTabToPanel] 跳过导航`);
+        this.log(`📋 [DEBUG] 跳过导航（后台打开模式）`);
       }
 
-      // 成功提示已移除
-
+      this.log(`📋 [DEBUG] ========== addTabToPanel 完成（成功）==========`);
       return true;
     } catch (error) {
-      this.error(`添加标签页时出错:`, error);
-      // 错误提示已移除
+      this.error(`[DEBUG] ❌ addTabToPanel 出错:`, error);
+      this.log(`📋 [DEBUG] ========== addTabToPanel 完成（失败）==========`);
       return false;
     }
   }
@@ -6604,38 +6626,50 @@ class OrcaTabsPlugin {
    * @param blockId 要打开的块ID
    */
   async openInNewTab(blockId: string) {
-    this.verboseLog(`🔗 [openInNewTab] 开始处理块 ${blockId}（后台打开模式）`);
+    this.log(`🔗 [DEBUG] ========== openInNewTab 开始 ==========`);
+    this.log(`🔗 [DEBUG] 目标块ID: ${blockId}`);
+    this.log(`🔗 [DEBUG] 当前面板ID: ${this.currentPanelId}, 索引: ${this.currentPanelIndex}`);
+    this.log(`🔗 [DEBUG] creatingTabs 当前包含: ${Array.from(this.creatingTabs).join(', ') || '(空)'}`);
     
     try {
       // 步骤1: 获取当前标签页列表
       const currentTabs = this.getCurrentPanelTabs();
-      this.verboseLog(`🔗 [openInNewTab] 当前标签页数量: ${currentTabs.length}`);
-      this.verboseLog(`🔗 [openInNewTab] 当前标签页列表: ${currentTabs.map(t => `${t.title}(${t.blockId})`).join(', ')}`);
+      this.log(`🔗 [DEBUG] 当前标签页数量: ${currentTabs.length}`);
+      this.log(`🔗 [DEBUG] 当前标签页列表:`);
+      currentTabs.forEach((tab, idx) => {
+        this.log(`🔗 [DEBUG]   [${idx}] ${tab.title} (ID: ${tab.blockId}, 固定: ${tab.isPinned})`);
+      });
       
       // 步骤2: 检查块是否已存在
       const existingTab = currentTabs.find(tab => tab.blockId === blockId);
       
       if (existingTab) {
         // 分支A: 块已存在，不做任何操作
-        this.verboseLog(`🔗 [openInNewTab] 块 ${blockId} 已存在，标签: "${existingTab.title}"，无需操作`);
+        this.log(`🔗 [DEBUG] ❌ 块 ${blockId} 已存在，标签: "${existingTab.title}"，无需操作`);
         
         // 从已关闭列表中移除（如果存在）
         if (this.closedTabs.has(blockId)) {
-          this.verboseLog(`🔗 [openInNewTab] 从已关闭列表中移除块 ${blockId}`);
+          this.log(`🔗 [DEBUG] 从已关闭列表中移除块 ${blockId}`);
           this.closedTabs.delete(blockId);
           await this.saveClosedTabs();
         }
         
-        this.verboseLog(`🔗 [openInNewTab] 完成 - 标签页已存在`);
+        // 清除创建标记
+        if (this.creatingTabs.has(blockId)) {
+          this.log(`🔓 [DEBUG] 从 creatingTabs 中移除 ${blockId}（已存在）`);
+          this.creatingTabs.delete(blockId);
+        }
+        
+        this.log(`🔗 [DEBUG] ========== openInNewTab 完成（已存在）==========`);
         return;
       }
       
       // 分支B: 块不存在，在后台创建新标签页
-      this.verboseLog(`🔗 [openInNewTab] 块 ${blockId} 不存在，准备在后台创建新标签页`);
+      this.log(`🔗 [DEBUG] ✅ 块 ${blockId} 不存在，准备在后台创建新标签页`);
       
       // 从已关闭列表中移除（如果存在）
       if (this.closedTabs.has(blockId)) {
-        this.verboseLog(`🔗 [openInNewTab] 从已关闭列表中移除块 ${blockId}`);
+        this.log(`🔗 [DEBUG] 从已关闭列表中移除块 ${blockId}`);
         this.closedTabs.delete(blockId);
         await this.saveClosedTabs();
       }
@@ -6645,17 +6679,105 @@ class OrcaTabsPlugin {
       // - blockId: 要打开的块ID
       // - 'after': 在当前聚焦标签后面插入
       // - false: 不导航到新标签页（后台打开）
-      this.verboseLog(`🔗 [openInNewTab] 调用 addTabToPanel 在后台创建新标签页`);
+      this.log(`🔗 [DEBUG] 调用 addTabToPanel(blockId: ${blockId}, mode: 'after', navigate: false)`);
       const success = await this.addTabToPanel(blockId, 'after', false);
       
       if (success) {
-        this.verboseLog(`🔗 [openInNewTab] 完成 - 成功在后台创建新标签页`);
+        this.log(`🔗 [DEBUG] ✅ 成功在后台创建新标签页`);
+        const updatedTabs = this.getCurrentPanelTabs();
+        this.log(`🔗 [DEBUG] 更新后标签页数量: ${updatedTabs.length}`);
       } else {
-        this.verboseLog(`🔗 [openInNewTab] 失败 - 创建新标签页失败`);
+        this.log(`🔗 [DEBUG] ❌ 创建新标签页失败`);
       }
       
+      this.log(`🔗 [DEBUG] ========== openInNewTab 完成 ==========`);
     } catch (error) {
-      this.error(`[openInNewTab] 处理失败:`, error);
+      this.error(`[DEBUG] ❌ openInNewTab 处理失败:`, error);
+      // 失败时也要清除标记
+      if (this.creatingTabs.has(blockId)) {
+        this.log(`🔓 [DEBUG] 异常时从 creatingTabs 中移除 ${blockId}`);
+        this.creatingTabs.delete(blockId);
+      }
+    }
+  }
+
+  /**
+   * 从DOM元素中获取块引用的ID
+   * 
+   * 功能说明：
+   * 1. 向上遍历DOM树查找块引用元素
+   * 2. 支持多种块引用的class和属性
+   * 3. 支持从data属性中提取块ID
+   * 4. 支持从文本内容中解析块ID（如 [[块123]] 或 block:123）
+   * 
+   * @param element 起始DOM元素
+   * @returns 块引用ID，如果未找到则返回null
+   */
+  private getBlockRefId(element: HTMLElement): string | null {
+    try {
+      let current: HTMLElement | null = element;
+      
+      // 向上遍历DOM树
+      while (current && current !== document.body) {
+        const classList = current.classList;
+        
+        // 检查是否是块引用元素（支持多种class名称）
+        if (
+          classList.contains('orca-inline-r-content') ||
+          classList.contains('orca-ref') ||
+          classList.contains('block-ref') ||
+          classList.contains('block-reference') ||
+          classList.contains('orca-fragment-r') ||
+          classList.contains('fragment-r') ||
+          classList.contains('orca-block-reference') ||
+          (current.tagName.toLowerCase() === 'a' && current.getAttribute('href')?.startsWith('#'))
+        ) {
+          // 尝试从各种可能的属性中获取块ID
+          const blockId = 
+            current.getAttribute('data-block-id') ||
+            current.getAttribute('data-ref-id') ||
+            current.getAttribute('data-blockid') ||
+            current.getAttribute('data-target-block-id') ||
+            current.getAttribute('data-fragment-v') ||
+            current.getAttribute('data-v') ||
+            current.getAttribute('href')?.replace('#', '') ||
+            current.getAttribute('data-id');
+          
+          // 验证块ID是否有效（应该是数字）
+          if (blockId && !isNaN(parseInt(blockId))) {
+            this.log(`🔗 从元素中提取到块引用ID: ${blockId}`);
+            return blockId;
+          }
+        }
+        
+        // 检查data属性中是否包含块ID
+        const dataset = current.dataset;
+        for (const [key, value] of Object.entries(dataset)) {
+          if ((key.toLowerCase().includes('block') || key.toLowerCase().includes('ref')) && 
+              value && !isNaN(parseInt(value))) {
+            this.log(`🔗 从data属性 ${key} 中提取到块引用ID: ${value}`);
+            return value;
+          }
+        }
+        
+        current = current.parentElement;
+      }
+      
+      // 尝试从文本内容中解析块ID（作为后备方案）
+      if (element.textContent) {
+        const text = element.textContent.trim();
+        const match = text.match(/\[\[(?:块)?(\d+)\]\]/) || text.match(/block[:\s]*(\d+)/i);
+        if (match && match[1]) {
+          this.log(`🔗 从文本内容中解析到块引用ID: ${match[1]}`);
+          return match[1];
+        }
+      }
+      
+      this.log("🔗 未能从元素中提取块引用ID");
+      return null;
+    } catch (error) {
+      this.error("获取块引用ID时出错:", error);
+      return null;
     }
   }
 
@@ -8673,15 +8795,24 @@ class OrcaTabsPlugin {
   private async handleNewBlockInPanel(blockId: string, panelId: string) {
     if (!blockId || !panelId) return;
     
+    this.log(`🔍 [DEBUG] ========== handleNewBlockInPanel 开始 ==========`);
+    this.log(`🔍 [DEBUG] 参数: blockId=${blockId}, panelId=${panelId}`);
+    
     // 【修复BUG】如果正在导航中，跳过处理，避免导航时替换标签页内容
     if (this.isNavigating) {
-      this.log(`⏭️ 正在导航中，跳过 handleNewBlockInPanel: ${blockId}`);
+      this.log(`⏭️ [DEBUG] 正在导航中，跳过 handleNewBlockInPanel: ${blockId}`);
       return;
     }
     
     // 如果正在切换标签，不要替换现有标签
     if (this.isSwitchingTab) {
-      this.log(`🔄 正在切换标签，跳过 handleNewBlockInPanel: ${blockId}`);
+      this.log(`🔄 [DEBUG] 正在切换标签，跳过 handleNewBlockInPanel: ${blockId}`);
+      return;
+    }
+    
+    // 【关键修复】最优先检查是否正在创建中，在所有其他检查之前
+    if (this.creatingTabs.has(blockId)) {
+      this.log(`⏳ [DEBUG] 标签 ${blockId} 正在被其他地方创建（creatingTabs检查），立即跳过`);
       return;
     }
     
@@ -8721,11 +8852,13 @@ class OrcaTabsPlugin {
     }
     
     let currentTabs = this.getCurrentPanelTabs();
+    this.log(`🔍 [DEBUG] 当前标签页数量: ${currentTabs.length}`);
     
     // 检查标签页是否已存在
     const existingTab = currentTabs.find(tab => tab.blockId === blockId);
     if (existingTab) {
       // 标签页已存在，直接聚焦
+      this.log(`🔍 [DEBUG] ✅ 标签 ${blockId} 已存在，只更新聚焦状态`);
       if (this.closedTabs.has(blockId)) {
         this.closedTabs.delete(blockId);
         this.saveClosedTabs();
@@ -8733,14 +8866,11 @@ class OrcaTabsPlugin {
       
       this.updateFocusState(blockId, existingTab.title);
       this.immediateUpdateTabsUI();
+      this.log(`🔍 [DEBUG] ========== handleNewBlockInPanel 完成（已存在）==========`);
       return;
     }
     
-    // 检查是否正在创建中
-    if (this.creatingTabs.has(blockId)) {
-      this.log(`⏳ 标签 ${blockId} 正在被其他地方创建，跳过`);
-      return;
-    }
+    this.log(`🔍 [DEBUG] ❌ 标签 ${blockId} 不存在，准备创建新标签`)
     
     // 标记为正在创建
     this.creatingTabs.add(blockId);
@@ -9602,9 +9732,13 @@ class OrcaTabsPlugin {
       await this.handleGlobalEvent(e);
     };
     
-    // 为不同类型的事件注册同一个监听器，使用较低优先级
-    // 注意：不能使用 passive: true，因为需要在某些情况下调用 preventDefault()
-    document.addEventListener('click', this.globalEventListener, { passive: false });
+    // 为不同类型的事件注册同一个监听器
+    // 【重要修复】使用 capture: true 在捕获阶段处理，确保在 Orca 原生处理之前拦截
+    // 这对于 Ctrl+点击块引用功能至关重要，避免触发 Orca 的原生导航
+    document.addEventListener('click', this.globalEventListener, { 
+      passive: false,  // 不能使用 passive，需要调用 preventDefault()
+      capture: true    // 【关键】在捕获阶段处理，先于 Orca 原生处理
+    });
     document.addEventListener('contextmenu', this.globalEventListener, { passive: false });
     // 移除keydown监听以避免干扰Orca核心功能
   }
@@ -9687,6 +9821,43 @@ class OrcaTabsPlugin {
    */
   private async handleClickEvent(e: MouseEvent) {
     const target = e.target as HTMLElement;
+    
+    // 检查是否按住 Ctrl 键（Windows/Linux）或 Cmd 键（Mac）点击
+    if ((e.ctrlKey || e.metaKey) && target) {
+      this.log(`🖱️ [DEBUG] Ctrl+点击检测: ctrlKey=${e.ctrlKey}, metaKey=${e.metaKey}`);
+      this.log(`🖱️ [DEBUG] 点击目标: ${target.tagName}, classes: ${target.className}`);
+      
+      const blockRefId = this.getBlockRefId(target);
+      if (blockRefId) {
+        this.log(`🔗 [DEBUG] 检测到 Ctrl+点击 块引用: ${blockRefId}`);
+        
+        // 【关键修复】立即标记为正在创建，防止任何后续处理
+        // 这必须在阻止事件之前执行，确保即使事件处理有任何延迟，
+        // handleNewBlockInPanel 也能检测到并跳过
+        this.log(`🔒 [DEBUG] 立即将块 ${blockRefId} 添加到 creatingTabs（防止Orca原生导航触发重复创建）`);
+        this.creatingTabs.add(blockRefId);
+        
+        // 阻止默认行为和事件传播
+        // 在捕获阶段就彻底阻止，避免Orca的原生处理
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        
+        this.log(`🔗 [DEBUG] 当前面板ID: ${this.currentPanelId}, 索引: ${this.currentPanelIndex}`);
+        this.log(`🔗 [DEBUG] 当前标签页数量: ${this.getCurrentPanelTabs().length}`);
+        
+        // 异步执行标签页创建
+        this.openInNewTab(blockRefId).catch(error => {
+          this.error(`[DEBUG] Ctrl+点击创建标签失败:`, error);
+          // 如果失败，清除标记
+          this.creatingTabs.delete(blockRefId);
+        });
+        
+        return;
+      } else {
+        this.log(`🔗 [DEBUG] 未能从点击目标获取块引用ID`);
+      }
+    }
     
     // 如果点击的不是插件相关元素，直接返回，减少干扰
     if (!target.closest('.orca-tabs-plugin')) {
@@ -13697,7 +13868,8 @@ class OrcaTabsPlugin {
       
       // 清理事件监听器
       if (this.globalEventListener) {
-        document.removeEventListener('click', this.globalEventListener);
+        // 【重要】移除时必须使用相同的 capture 参数
+        document.removeEventListener('click', this.globalEventListener, { capture: true });
         document.removeEventListener('contextmenu', this.globalEventListener);
         this.globalEventListener = null;
       }
