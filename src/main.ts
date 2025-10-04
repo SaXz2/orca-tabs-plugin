@@ -4920,14 +4920,24 @@ class OrcaTabsPlugin {
     this.resizeHandle.style.cssText = `
       position: absolute;
       top: 0;
-      right: -4px;
-      width: 8px;
+      right: 0;
+      width: 6px;
       height: 100%;
       cursor: col-resize;
-      background: rgba(0, 0, 0, 0.1);
+      background: transparent;
       z-index: 1000;
       pointer-events: auto;
+      transition: background 0.2s ease;
     `;
+
+    // 添加悬停效果
+    this.resizeHandle.addEventListener('mouseenter', () => {
+      this.resizeHandle!.style.background = 'rgba(0, 122, 204, 0.3)';
+    });
+    
+    this.resizeHandle.addEventListener('mouseleave', () => {
+      this.resizeHandle!.style.background = 'transparent';
+    });
 
     // 添加拖拽事件
     this.resizeHandle.addEventListener('mousedown', this.handleResizeStart.bind(this));
@@ -4947,19 +4957,14 @@ class OrcaTabsPlugin {
     const startX = e.clientX;
     const startWidth = this.verticalWidth;
 
-    const handleMouseMove = async (e: MouseEvent) => {
+    const handleMouseMove = (e: MouseEvent) => {
       const deltaX = e.clientX - startX;
       const newWidth = Math.max(120, Math.min(400, startWidth + deltaX));
       
       this.verticalWidth = newWidth;
       
-      // 调整面板宽度
-      try {
-        orca.nav.changeSizes(orca.state.activePanel, [newWidth]);
-        this.tabContainer!.style.width = `${newWidth}px`;
-      } catch (error) {
-        this.error("调整面板宽度失败:", error);
-      }
+      // 直接调整标签容器宽度
+      this.tabContainer!.style.width = `${newWidth}px`;
     };
 
     const handleMouseUp = async () => {

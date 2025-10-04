@@ -517,7 +517,7 @@ export function createTabContainerStyle(
     max-width: 400px;
     align-items: stretch;
     overflow-y: auto;
-    overflow-x: visible;
+    overflow-x: hidden;
   ` : `
     position: fixed;
     top: ${position.y}px;

@@ -2567,7 +2567,7 @@ function ra(s, e, t, a) {
     max-width: 400px;
     align-items: stretch;
     overflow-y: auto;
-    overflow-x: visible;
+    overflow-x: hidden;
   ` : `
     position: fixed;
     top: ${e.y}px;
@@ -7850,28 +7850,28 @@ class Sa {
     this.tabContainer && (this.resizeHandle = document.createElement("div"), this.resizeHandle.className = "resize-handle", this.resizeHandle.style.cssText = `
       position: absolute;
       top: 0;
-      right: -4px;
-      width: 8px;
+      right: 0;
+      width: 6px;
       height: 100%;
       cursor: col-resize;
-      background: rgba(0, 0, 0, 0.1);
+      background: transparent;
       z-index: 1000;
       pointer-events: auto;
-    `, this.resizeHandle.addEventListener("mousedown", this.handleResizeStart.bind(this)), this.tabContainer.appendChild(this.resizeHandle));
+      transition: background 0.2s ease;
+    `, this.resizeHandle.addEventListener("mouseenter", () => {
+      this.resizeHandle.style.background = "rgba(0, 122, 204, 0.3)";
+    }), this.resizeHandle.addEventListener("mouseleave", () => {
+      this.resizeHandle.style.background = "transparent";
+    }), this.resizeHandle.addEventListener("mousedown", this.handleResizeStart.bind(this)), this.tabContainer.appendChild(this.resizeHandle));
   }
   /**
    * 处理拖拽开始
    */
   handleResizeStart(e) {
     if (e.preventDefault(), e.stopPropagation(), !this.tabContainer) return;
-    const t = e.clientX, a = this.verticalWidth, r = async (n) => {
+    const t = e.clientX, a = this.verticalWidth, r = (n) => {
       const o = n.clientX - t, c = Math.max(120, Math.min(400, a + o));
-      this.verticalWidth = c;
-      try {
-        orca.nav.changeSizes(orca.state.activePanel, [c]), this.tabContainer.style.width = `${c}px`;
-      } catch (l) {
-        this.error("调整面板宽度失败:", l);
-      }
+      this.verticalWidth = c, this.tabContainer.style.width = `${c}px`;
     }, i = async () => {
       document.removeEventListener("mousemove", r), document.removeEventListener("mouseup", i);
       try {
