@@ -4307,6 +4307,9 @@ class OrcaTabsPlugin {
       // 开始监听侧边栏状态变化
       this.startSidebarAlignmentObserver();
       
+      // 保存状态到存储
+      await this.saveLayoutMode();
+      
       this.log(`✅ 侧边栏对齐功能已启用，标签栏保持在当前位置`);
     } catch (error) {
       this.error("启用侧边栏对齐失败:", error);
@@ -4328,6 +4331,10 @@ class OrcaTabsPlugin {
       
       // 禁用状态
       this.isSidebarAlignmentEnabled = false;
+      
+      // 保存状态到存储
+      await this.saveLayoutMode();
+      
       this.log("🔴 侧边栏对齐功能已禁用");
     } catch (error) {
       this.error("禁用侧边栏对齐失败:", error);
@@ -8536,6 +8543,12 @@ class OrcaTabsPlugin {
         this.horizontalTabMinWidth = config.horizontalTabMinWidth;
         
         this.log(`📐 布局模式已恢复: ${generateLayoutLogMessage(config)}, 当前位置: (${this.position.x}, ${this.position.y})`);
+        
+        // 如果侧边栏对齐功能已启用，启动监听器
+        if (this.isSidebarAlignmentEnabled) {
+          this.startSidebarAlignmentObserver();
+          this.log("🔄 侧边栏对齐监听器已启动");
+        }
       } else {
         // 使用默认配置
         const defaultConfig = createDefaultLayoutConfig();

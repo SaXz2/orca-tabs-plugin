@@ -315,7 +315,7 @@ function Be(s) {
     verticalWidth: s.verticalWidth ?? e.verticalWidth,
     verticalPosition: s.verticalPosition ?? e.verticalPosition,
     horizontalPosition: s.horizontalPosition ?? e.horizontalPosition,
-    isSidebarAlignmentEnabled: s.isSidebarAlignmentEnabled ?? e.isSidebarAlignmentEnabled,
+    isSidebarAlignmentEnabled: s.isSidebarAlignmentEnabled !== void 0 ? s.isSidebarAlignmentEnabled : e.isSidebarAlignmentEnabled,
     isFloatingWindowVisible: s.isFloatingWindowVisible ?? e.isFloatingWindowVisible,
     showBlockTypeIcons: s.showBlockTypeIcons ?? e.showBlockTypeIcons,
     showInHeadbar: s.showInHeadbar ?? e.showInHeadbar,
@@ -7576,7 +7576,7 @@ class Sa {
         this.log("⚠️ 无法读取侧边栏宽度，操作终止");
         return;
       }
-      this.isSidebarAlignmentEnabled = !0, this.startSidebarAlignmentObserver(), this.log("✅ 侧边栏对齐功能已启用，标签栏保持在当前位置");
+      this.isSidebarAlignmentEnabled = !0, this.startSidebarAlignmentObserver(), await this.saveLayoutMode(), this.log("✅ 侧边栏对齐功能已启用，标签栏保持在当前位置");
     } catch (e) {
       this.error("启用侧边栏对齐失败:", e);
     }
@@ -7586,7 +7586,7 @@ class Sa {
    */
   async disableSidebarAlignment() {
     try {
-      this.log("🔴 禁用侧边栏对齐功能"), this.stopSidebarAlignmentObserver(), await this.performSidebarAlignment(), this.isSidebarAlignmentEnabled = !1, this.log("🔴 侧边栏对齐功能已禁用");
+      this.log("🔴 禁用侧边栏对齐功能"), this.stopSidebarAlignmentObserver(), await this.performSidebarAlignment(), this.isSidebarAlignmentEnabled = !1, await this.saveLayoutMode(), this.log("🔴 侧边栏对齐功能已禁用");
     } catch (e) {
       this.error("禁用侧边栏对齐失败:", e);
     }
@@ -9495,7 +9495,7 @@ class Sa {
           this.isVerticalMode,
           this.verticalPosition,
           this.horizontalPosition
-        ), this.isSidebarAlignmentEnabled = t.isSidebarAlignmentEnabled, this.isFloatingWindowVisible = t.isFloatingWindowVisible, this.showBlockTypeIcons = t.showBlockTypeIcons, this.showInHeadbar = t.showInHeadbar, this.horizontalTabMaxWidth = t.horizontalTabMaxWidth, this.horizontalTabMinWidth = t.horizontalTabMinWidth, this.log(`📐 布局模式已恢复: ${ze(t)}, 当前位置: (${this.position.x}, ${this.position.y})`);
+        ), this.isSidebarAlignmentEnabled = t.isSidebarAlignmentEnabled, this.isFloatingWindowVisible = t.isFloatingWindowVisible, this.showBlockTypeIcons = t.showBlockTypeIcons, this.showInHeadbar = t.showInHeadbar, this.horizontalTabMaxWidth = t.horizontalTabMaxWidth, this.horizontalTabMinWidth = t.horizontalTabMinWidth, this.log(`📐 布局模式已恢复: ${ze(t)}, 当前位置: (${this.position.x}, ${this.position.y})`), this.isSidebarAlignmentEnabled && (this.startSidebarAlignmentObserver(), this.log("🔄 侧边栏对齐监听器已启动"));
       } else {
         const t = W();
         this.isVerticalMode = t.isVerticalMode, this.verticalWidth = t.verticalWidth, this.verticalPosition = t.verticalPosition, this.horizontalPosition = t.horizontalPosition, this.horizontalTabMaxWidth = t.horizontalTabMaxWidth, this.horizontalTabMinWidth = t.horizontalTabMinWidth, this.position = Y(

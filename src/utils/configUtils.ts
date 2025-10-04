@@ -75,7 +75,7 @@ export function mergeLayoutConfig(saved: Partial<LayoutConfig>): LayoutConfig {
     verticalWidth: saved.verticalWidth ?? defaultConfig.verticalWidth,
     verticalPosition: saved.verticalPosition ?? defaultConfig.verticalPosition,
     horizontalPosition: saved.horizontalPosition ?? defaultConfig.horizontalPosition,
-    isSidebarAlignmentEnabled: saved.isSidebarAlignmentEnabled ?? defaultConfig.isSidebarAlignmentEnabled,
+    isSidebarAlignmentEnabled: saved.isSidebarAlignmentEnabled !== undefined ? saved.isSidebarAlignmentEnabled : defaultConfig.isSidebarAlignmentEnabled,
     isFloatingWindowVisible: saved.isFloatingWindowVisible ?? defaultConfig.isFloatingWindowVisible,
     showBlockTypeIcons: saved.showBlockTypeIcons ?? defaultConfig.showBlockTypeIcons,
     showInHeadbar: saved.showInHeadbar ?? defaultConfig.showInHeadbar,
