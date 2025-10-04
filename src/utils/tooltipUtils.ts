@@ -52,8 +52,8 @@ export function addTooltip(element: HTMLElement, config: TooltipConfig): void {
   // 添加到 body
   document.body.appendChild(tooltip);
 
-  let showTimeout: NodeJS.Timeout | null = null;
-  let hideTimeout: NodeJS.Timeout | null = null;
+  let showTimeout: number | null = null;
+  let hideTimeout: number | null = null;
 
   // 显示 tooltip
   const showTooltip = (e: MouseEvent) => {
@@ -170,7 +170,7 @@ export function addTooltip(element: HTMLElement, config: TooltipConfig): void {
       tooltip.style.left = `${left}px`;
       tooltip.style.top = `${top}px`;
       tooltip.style.visibility = 'visible'; // 显示
-    }, config.delay || 300);
+    }, config.delay || 300) as unknown as number;
   };
 
   // 隐藏 tooltip
@@ -183,7 +183,7 @@ export function addTooltip(element: HTMLElement, config: TooltipConfig): void {
     hideTimeout = setTimeout(() => {
       tooltip.style.opacity = '0';
       // 不要移除元素，只是隐藏它
-    }, 100);
+    }, 100) as unknown as number;
   };
 
   // 绑定事件

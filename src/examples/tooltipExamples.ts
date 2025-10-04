@@ -104,8 +104,8 @@ export function removeTooltipExample() {
     addTooltip(button, createButtonTooltip('这个提示将被移除'));
     
     // 5秒后移除 tooltip
-    setTimeout(() => {
-      const { removeTooltip } = require('../utils/tooltipUtils');
+    setTimeout(async () => {
+      const { removeTooltip } = await import('../utils/tooltipUtils');
       removeTooltip(button);
     }, 5000);
   }
