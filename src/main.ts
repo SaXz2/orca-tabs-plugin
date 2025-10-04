@@ -2993,10 +2993,23 @@ class OrcaTabsPlugin {
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
       }
 
+      /* 有颜色的悬停标签样式 - 使用标签颜色 */
+      .orca-tabs-plugin .orca-tab:hover:not([data-dragging="true"]):not([data-drag-over="true"]):not([data-focused="true"])[style*="--tab-color"] {
+        border: 1px solid var(--tab-color) !important;
+        box-shadow: 0 2px 8px color-mix(in srgb, var(--tab-color), transparent 70%) !important;
+      }
+
       /* 暗色模式下的悬停样式 - 通过CSS变量自动应用，但排除聚焦状态 */
       :root[data-theme="dark"] .orca-tabs-plugin .orca-tab:hover:not([data-dragging="true"]):not([data-drag-over="true"]):not([data-focused="true"]),
       .dark .orca-tabs-plugin .orca-tab:hover:not([data-dragging="true"]):not([data-drag-over="true"]):not([data-focused="true"]) {
         box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1) !important;
+      }
+
+      /* 暗色模式下有颜色的悬停标签样式 - 使用标签颜色 */
+      :root[data-theme="dark"] .orca-tabs-plugin .orca-tab:hover:not([data-dragging="true"]):not([data-drag-over="true"]):not([data-focused="true"])[style*="--tab-color"],
+      .dark .orca-tabs-plugin .orca-tab:hover:not([data-dragging="true"]):not([data-drag-over="true"]):not([data-focused="true"])[style*="--tab-color"] {
+        border: 1px solid var(--tab-color) !important;
+        box-shadow: 0 2px 8px color-mix(in srgb, var(--tab-color), transparent 80%) !important;
       }
 
       /* 点击/激活状态的标签样式 - 使用CSS变量自动响应主题变化，但排除聚焦状态 */
@@ -3022,11 +3035,25 @@ class OrcaTabsPlugin {
         transform: scale(1.02) !important;
       }
 
+      /* 有颜色的聚焦标签样式 - 使用标签颜色 */
+      .orca-tabs-plugin .orca-tab[data-focused="true"][style*="--tab-color"] {
+        border: 1px solid var(--tab-color) !important;
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--tab-color), transparent 80%), 0 2px 8px color-mix(in srgb, var(--tab-color), transparent 70%) !important;
+        background: color-mix(in srgb, var(--tab-color), transparent 90%) !important;
+      }
+
       /* 暗色模式下的聚焦样式 */
       .dark .orca-tabs-plugin .orca-tab[data-focused="true"] {
         border: 1px solid var(--orca-color-primary-5) !important;
         box-shadow: 0 0 0 1px color-mix(in srgb, var(--orca-color-primary-5), transparent 70%), 0 2px 8px color-mix(in srgb, var(--orca-color-primary-5), transparent 80%) !important;
         background: color-mix(in srgb, var(--orca-color-primary-5), transparent 85%) !important;
+      }
+
+      /* 暗色模式下有颜色的聚焦标签样式 - 使用标签颜色 */
+      .dark .orca-tabs-plugin .orca-tab[data-focused="true"][style*="--tab-color"] {
+        border: 1px solid var(--tab-color) !important;
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--tab-color), transparent 70%), 0 2px 8px color-mix(in srgb, var(--tab-color), transparent 80%) !important;
+        background: color-mix(in srgb, var(--tab-color), transparent 85%) !important;
       }
 
       /* 拖拽时的光标样式 */
