@@ -247,10 +247,6 @@ export function createTabTooltip(tab: any): TooltipConfig {
     details.push(`ID: ${tab.blockId}`);
   }
   
-  if (tab.panelId) {
-    details.push(`面板: ${tab.panelId}`);
-  }
-  
   if (tab.blockType) {
     details.push(`类型: ${tab.blockType}`);
   }

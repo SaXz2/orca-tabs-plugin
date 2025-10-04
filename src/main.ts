@@ -5190,6 +5190,12 @@ class OrcaTabsPlugin {
 
     // 添加点击事件
     tabElement.addEventListener('click', (e) => {
+      // 检查是否点击了 drag-handle 元素，如果是则忽略
+      const target = e.target as HTMLElement;
+      if (target.classList.contains('drag-handle') || target.closest('.drag-handle')) {
+        return;
+      }
+      
       // 只阻止默认行为，但允许事件继续传播让Orca能正常响应
       e.preventDefault();
       // 移除过度的事件阻止，让Orca能正常处理点击
@@ -5222,6 +5228,12 @@ class OrcaTabsPlugin {
 
     // 添加双击事件切换固定状态
     tabElement.addEventListener('dblclick', (e) => {
+      // 检查是否点击了 drag-handle 元素，如果是则忽略
+      const target = e.target as HTMLElement;
+      if (target.classList.contains('drag-handle') || target.closest('.drag-handle')) {
+        return;
+      }
+      
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
@@ -5264,6 +5276,12 @@ class OrcaTabsPlugin {
       // 检查是否在侧边栏拖拽区域，如果是则不处理标签拖拽
       const target = e.target as HTMLElement;
       if (target.closest('.sidebar, .side-panel, .panel-resize, .resize-handle, .orca-sidebar, .orca-panel, .orca-menu, .orca-recents-menu, [data-panel-id]')) {
+        e.preventDefault();
+        return;
+      }
+      
+      // 检查是否点击了 drag-handle 元素，如果是则忽略拖拽
+      if (target.classList.contains('drag-handle') || target.closest('.drag-handle')) {
         e.preventDefault();
         return;
       }
