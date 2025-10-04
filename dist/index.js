@@ -285,6 +285,7 @@ function W() {
   return {
     isVerticalMode: !1,
     verticalWidth: 200,
+    horizontalWidth: 800,
     verticalPosition: { x: 20, y: 20 },
     horizontalPosition: { x: 20, y: 20 },
     isSidebarAlignmentEnabled: !1,
@@ -305,6 +306,7 @@ function $e(o) {
   return {
     isVerticalMode: o.isVerticalMode ?? e.isVerticalMode,
     verticalWidth: o.verticalWidth ?? e.verticalWidth,
+    horizontalWidth: o.horizontalWidth ?? e.horizontalWidth,
     verticalPosition: o.verticalPosition ?? e.verticalPosition,
     horizontalPosition: o.horizontalPosition ?? e.horizontalPosition,
     isSidebarAlignmentEnabled: o.isSidebarAlignmentEnabled ?? e.isSidebarAlignmentEnabled,
@@ -512,6 +514,8 @@ class De {
         isVerticalMode: t,
         verticalWidth: 0,
         // 这个值需要从外部传入
+        horizontalWidth: 800,
+        // 添加默认水平宽度
         verticalPosition: i.verticalPosition,
         horizontalPosition: i.horizontalPosition,
         isSidebarAlignmentEnabled: !1,
@@ -529,7 +533,7 @@ class De {
    */
   async saveLayoutMode(e) {
     try {
-      await this.storageService.saveConfig(T.LAYOUT_MODE, e, this.pluginName), this.log(`💾 布局模式已保存: ${e.isVerticalMode ? "垂直" : "水平"}, 垂直宽度: ${e.verticalWidth}px, 垂直位置: (${e.verticalPosition.x}, ${e.verticalPosition.y}), 水平位置: (${e.horizontalPosition.x}, ${e.horizontalPosition.y})`);
+      await this.storageService.saveConfig(T.LAYOUT_MODE, e, this.pluginName), this.log(`💾 布局模式已保存: ${e.isVerticalMode ? "垂直" : "水平"}, 垂直宽度: ${e.verticalWidth}px, 水平宽度: ${e.horizontalWidth}px, 垂直位置: (${e.verticalPosition.x}, ${e.verticalPosition.y}), 水平位置: (${e.horizontalPosition.x}, ${e.horizontalPosition.y})`);
     } catch (t) {
       this.error("保存布局模式失败:", t);
     }
@@ -679,7 +683,7 @@ function X(o, e) {
   const t = $(o, e == null ? void 0 : e.in);
   return t.setHours(0, 0, 0, 0), t;
 }
-function Be(o, e, t) {
+function ze(o, e, t) {
   const [a, r] = Te(
     t == null ? void 0 : t.in,
     o,
@@ -687,7 +691,7 @@ function Be(o, e, t) {
   ), i = X(a), n = X(r), s = +i - ce(i), c = +n - ce(n);
   return Math.round((s - c) / Ae);
 }
-function ze(o, e) {
+function Be(o, e) {
   const t = xe(o, e), a = P(o, 0);
   return a.setFullYear(t, 0, 4), a.setHours(0, 0, 0, 0), G(a);
 }
@@ -1145,10 +1149,10 @@ const nt = /^(\d+)(th|st|nd|rd)?/i, ot = /\d+/i, st = {
 };
 function yt(o, e) {
   const t = $(o, e == null ? void 0 : e.in);
-  return Be(t, Re(t)) + 1;
+  return ze(t, Re(t)) + 1;
 }
 function xt(o, e) {
-  const t = $(o, e == null ? void 0 : e.in), a = +G(t) - +ze(t);
+  const t = $(o, e == null ? void 0 : e.in), a = +G(t) - +Be(t);
   return Math.round(a / ve) + 1;
 }
 function ke(o, e) {
@@ -1663,11 +1667,11 @@ const L = {
         return ue(a);
       case "XXXX":
       case "XX":
-        return B(a);
+        return z(a);
       case "XXXXX":
       case "XXX":
       default:
-        return B(a, ":");
+        return z(a, ":");
     }
   },
   // Timezone (ISO-8601. If offset is 0, output is `'+00:00'` or equivalent)
@@ -1678,11 +1682,11 @@ const L = {
         return ue(a);
       case "xxxx":
       case "xx":
-        return B(a);
+        return z(a);
       case "xxxxx":
       case "xxx":
       default:
-        return B(a, ":");
+        return z(a, ":");
     }
   },
   // Timezone (GMT)
@@ -1695,7 +1699,7 @@ const L = {
         return "GMT" + de(a, ":");
       case "OOOO":
       default:
-        return "GMT" + B(a, ":");
+        return "GMT" + z(a, ":");
     }
   },
   // Timezone (specific non-location)
@@ -1708,7 +1712,7 @@ const L = {
         return "GMT" + de(a, ":");
       case "zzzz":
       default:
-        return "GMT" + B(a, ":");
+        return "GMT" + z(a, ":");
     }
   },
   // Seconds timestamp
@@ -1726,9 +1730,9 @@ function de(o, e = "") {
   return i === 0 ? t + String(r) : t + String(r) + e + C(i, 2);
 }
 function ue(o, e) {
-  return o % 60 === 0 ? (o > 0 ? "-" : "+") + C(Math.abs(o) / 60, 2) : B(o, e);
+  return o % 60 === 0 ? (o > 0 ? "-" : "+") + C(Math.abs(o) / 60, 2) : z(o, e);
 }
-function B(o, e = "") {
+function z(o, e = "") {
   const t = o > 0 ? "-" : "+", a = Math.abs(o), r = C(Math.trunc(a / 60), 2), i = C(a % 60, 2);
   return t + r + e + i;
 }
@@ -1795,7 +1799,7 @@ function Lt(o, e, t) {
   const a = o[0] === "Y" ? "years" : "days of the month";
   return `Use \`${o.toLowerCase()}\` instead of \`${o}\` (in \`${e}\`) for formatting ${a} to the input \`${t}\`; see: https://github.com/date-fns/date-fns/blob/master/docs/unicodeTokens.md`;
 }
-const Dt = /[yYQqMLwIdDecihHKkms]o|(\w)\1*|''|'(''|[^'])+('|$)|./g, At = /P+p+|P+|p+|''|'(''|[^'])+('|$)|./g, Ot = /^'([^]*?)'?$/, Bt = /''/g, zt = /[a-zA-Z]/;
+const Dt = /[yYQqMLwIdDecihHKkms]o|(\w)\1*|''|'(''|[^'])+('|$)|./g, At = /P+p+|P+|p+|''|'(''|[^'])+('|$)|./g, Ot = /^'([^]*?)'?$/, zt = /''/g, Bt = /[a-zA-Z]/;
 function O(o, e, t) {
   var d, u, h, p;
   const a = K(), r = a.locale ?? vt, i = a.firstWeekContainsDate ?? ((u = (d = a.locale) == null ? void 0 : d.options) == null ? void 0 : u.firstWeekContainsDate) ?? 1, n = a.weekStartsOn ?? ((p = (h = a.locale) == null ? void 0 : h.options) == null ? void 0 : p.weekStartsOn) ?? 0, s = $(o, t == null ? void 0 : t.in);
@@ -1816,7 +1820,7 @@ function O(o, e, t) {
       return { isToken: !1, value: Wt(g) };
     if (le[f])
       return { isToken: !0, value: g };
-    if (f.match(zt))
+    if (f.match(Bt))
       throw new RangeError(
         "Format string contains an unescaped latin alphabet character `" + f + "`"
       );
@@ -1838,7 +1842,7 @@ function O(o, e, t) {
 }
 function Wt(o) {
   const e = o.match(Ot);
-  return e ? e[1].replace(Bt, "'") : o;
+  return e ? e[1].replace(zt, "'") : o;
 }
 function Nt(o, e) {
   return oe(
@@ -4448,7 +4452,7 @@ const A = class A {
 };
 b(A, "instance");
 let Y = A;
-const z = class z {
+const B = class B {
   constructor() {
     b(this, "mutationObserver", null);
     b(this, "debounceOptimizer", null);
@@ -4465,7 +4469,7 @@ const z = class z {
    * 获取单例实例
    */
   static getInstance() {
-    return z.instance || (z.instance = new z()), z.instance;
+    return B.instance || (B.instance = new B()), B.instance;
   }
   /**
    * 初始化性能优化器
@@ -4743,8 +4747,8 @@ ${e.suggestions.map((i) => `  - ${i}`).join(`
     typeof window < "u" && window.DEBUG_ORCA_TABS && console.log(`[PerformanceOptimizerManager] ${e}`, ...t);
   }
 };
-b(z, "instance");
-let ie = z;
+b(B, "instance");
+let ie = B;
 function fa(o, e, t) {
   var a, r;
   try {
@@ -5050,6 +5054,8 @@ class Ia {
     b(this, "isVerticalMode", !1);
     /** 垂直模式窗口宽度 - 垂直布局模式下的标签页容器宽度 */
     b(this, "verticalWidth", 120);
+    /** 水平模式窗口宽度 - 水平布局模式下的标签页容器宽度 */
+    b(this, "horizontalWidth", 800);
     /** 垂直模式位置 - 垂直布局模式下的标签页容器位置 */
     b(this, "verticalPosition", { x: 20, y: 20 });
     /** 水平模式位置 - 水平布局模式下的标签页容器位置 */
@@ -6218,7 +6224,7 @@ class Ia {
     this.tabContainer && this.tabContainer.remove(), this.cycleSwitcher && this.cycleSwitcher.remove(), this.log("📱 使用自动切换模式，不创建面板切换器");
     const e = "color-mix(in srgb, var(--orca-color-bg-2), transparent 50%)";
     let t, a, r;
-    if (this.isFixedToTop ? (t = { x: 0, y: 0 }, a = !1, r = window.innerWidth) : (t = this.isVerticalMode ? this.verticalPosition : this.position, a = this.isVerticalMode, r = this.verticalWidth), this.tabContainer = Ta(
+    if (this.isFixedToTop ? (t = { x: 0, y: 0 }, a = !1, r = window.innerWidth) : (t = this.isVerticalMode ? this.verticalPosition : this.position, a = this.isVerticalMode, r = this.isVerticalMode ? this.verticalWidth : this.horizontalWidth || 800), this.tabContainer = Ta(
       a,
       t,
       r,
@@ -7451,7 +7457,7 @@ class Ia {
       i = Math.max(10, e.x - t), this.log(`📐 侧边栏关闭，向左移动 ${t}px: ${e.x}px → ${i}px`);
     else if (r) {
       i = e.x + t;
-      const s = ((n = this.tabContainer) == null ? void 0 : n.getBoundingClientRect().width) || (this.isVerticalMode ? this.verticalWidth : 200);
+      const s = ((n = this.tabContainer) == null ? void 0 : n.getBoundingClientRect().width) || (this.isVerticalMode ? this.verticalWidth : this.horizontalWidth);
       i = Math.min(i, window.innerWidth - s - 10), this.log(`📐 侧边栏打开，向右移动 ${t}px: ${e.x}px → ${i}px`);
     } else
       return null;
@@ -7698,6 +7704,10 @@ class Ia {
    * 显示宽度调整对话框
    */
   async showWidthAdjustmentDialog() {
+    if (!this.isVerticalMode) {
+      this.log("⚠️ 宽度调整功能仅在垂直模式下可用");
+      return;
+    }
     const e = document.querySelector(".width-adjustment-dialog");
     e && e.remove();
     const t = this.verticalWidth, a = ka(
@@ -7723,6 +7733,10 @@ class Ia {
    * 更新垂直模式宽度
    */
   async updateVerticalWidth(e) {
+    if (!this.isVerticalMode) {
+      this.log("⚠️ 宽度更新功能仅在垂直模式下可用");
+      return;
+    }
     try {
       this.verticalWidth = e, await this.saveLayoutMode(), await this.createTabsUI(), this.log(`📏 垂直模式宽度已更新为: ${e}px`);
     } catch (t) {
@@ -9214,6 +9228,7 @@ class Ia {
     await this.tabStorageService.saveLayoutMode({
       isVerticalMode: this.isVerticalMode,
       verticalWidth: this.verticalWidth,
+      horizontalWidth: this.horizontalWidth,
       verticalPosition: this.verticalPosition,
       horizontalPosition: this.horizontalPosition,
       isSidebarAlignmentEnabled: this.isSidebarAlignmentEnabled,
@@ -9275,7 +9290,7 @@ class Ia {
       );
       if (e) {
         const t = $e(e);
-        this.isVerticalMode = t.isVerticalMode, this.verticalWidth = t.verticalWidth, this.verticalPosition = t.verticalPosition, this.horizontalPosition = t.horizontalPosition, this.position = Q(
+        this.isVerticalMode = t.isVerticalMode, this.verticalWidth = t.verticalWidth, this.horizontalWidth = t.horizontalWidth, this.verticalPosition = t.verticalPosition, this.horizontalPosition = t.horizontalPosition, this.position = Q(
           this.isVerticalMode,
           this.verticalPosition,
           this.horizontalPosition
