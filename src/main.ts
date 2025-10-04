@@ -5151,10 +5151,6 @@ class OrcaTabsPlugin {
     tabElement.className = 'orca-tab';
     tabElement.setAttribute('data-tab-id', tab.blockId); // 添加data属性用于重命名定位
     
-    // 为每个标签页元素分配唯一的切换历史ID
-    const tabHistoryId = `tab_${tab.blockId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    tabElement.setAttribute('data-tab-history-id', tabHistoryId);
-    
     // 检查是否为当前激活的标签
     const isActive = this.isTabActive(tab);
     if (isActive) {
@@ -5207,6 +5203,19 @@ class OrcaTabsPlugin {
         return;
       }
       
+      // 检查是否刚刚触发了长按事件，如果是则不执行点击切换
+      if (tabElement.getAttribute('data-long-pressed') === 'true') {
+        tabElement.removeAttribute('data-long-pressed');
+        return;
+      }
+      
+      // 检查是否已经有悬浮列表显示，如果有则隐藏
+      const existingContainer = document.querySelector('.hover-tab-list-container');
+      if (existingContainer) {
+        hideHoverTabList();
+        return;
+      }
+      
       // 只阻止默认行为，但允许事件继续传播让Orca能正常响应
       e.preventDefault();
       // 移除过度的事件阻止，让Orca能正常处理点击
@@ -5228,9 +5237,6 @@ class OrcaTabsPlugin {
       
       // 设置当前标签为聚焦状态
       tabElement.setAttribute('data-focused', 'true');
-      
-      // 显示悬浮标签列表
-      this.showHoverTabListOnClick(tabElement, tab);
       
       // 普通点击切换标签
       this.switchToTab(tab);
@@ -5282,8 +5288,8 @@ class OrcaTabsPlugin {
     // 添加右键菜单事件（使用Orca原生ContextMenu）
     this.addOrcaContextMenu(tabElement, tab);
 
-    // 移除旧的鼠标悬停事件，改为点击显示
-    // this.addHoverTabListEvents(tabElement, tab);
+    // 添加左键长按事件显示最近切换标签
+    this.addLongPressTabListEvents(tabElement, tab);
 
     // 添加标签拖拽排序功能（所有标签都可以拖动）
     tabElement.draggable = true;
@@ -6936,12 +6942,60 @@ class OrcaTabsPlugin {
   }
 
   /**
+   * 替换当前标签页内容
+   */
+  private async replaceCurrentTabWith(currentBlockId: string, newTab: TabInfo) {
+    try {
+      this.log(`🔄 开始替换标签页: ${currentBlockId} -> ${newTab.blockId}`);
+      
+      // 获取当前面板的标签列表
+      const currentTabs = this.getCurrentPanelTabs();
+      
+      // 找到要替换的标签索引
+      const replaceIndex = currentTabs.findIndex(tab => tab.blockId === currentBlockId);
+      if (replaceIndex === -1) {
+        this.log(`⚠️ 未找到要替换的标签: ${currentBlockId}`);
+        return;
+      }
+      
+      // 检查当前标签是否是激活的标签
+      const currentActiveTab = this.getCurrentActiveTab();
+      const isReplacingActiveTab = currentActiveTab && currentActiveTab.blockId === currentBlockId;
+      
+      // 替换标签内容
+      const oldTab = currentTabs[replaceIndex];
+      currentTabs[replaceIndex] = newTab;
+      
+      this.log(`🔄 替换标签页: "${oldTab.title}" -> "${newTab.title}"`);
+      
+      // 更新存储
+      await this.setCurrentPanelTabs(currentTabs);
+      
+      // 更新UI
+      await this.immediateUpdateTabsUI();
+      
+      // 如果替换的是激活标签，需要重新聚焦
+      if (isReplacingActiveTab) {
+        this.log(`🎯 重新聚焦到替换后的标签: ${newTab.title}`);
+        await this.switchToTab(newTab);
+      }
+      
+      // 记录切换历史
+      this.recordTabSwitchHistory(currentBlockId, newTab);
+      
+      this.log(`✅ 标签页替换完成`);
+    } catch (error) {
+      this.warn('替换标签页失败:', error);
+    }
+  }
+
+  /**
    * 记录标签切换历史
    */
-  private async recordTabSwitchHistory(fromTabId: string, toTab: TabInfo) {
+  private async recordTabSwitchHistory(fromTabBlockId: string, toTab: TabInfo) {
     try {
-      await this.tabStorageService.updateTabSwitchHistory(fromTabId, toTab);
-      this.verboseLog(`📝 记录标签切换历史: ${fromTabId} -> ${toTab.blockId}`);
+      await this.tabStorageService.updateTabSwitchHistory(fromTabBlockId, toTab);
+      this.verboseLog(`📝 记录标签切换历史: ${fromTabBlockId} -> ${toTab.blockId}`);
     } catch (error) {
       this.warn('记录标签切换历史失败:', error);
     }
@@ -6974,73 +7028,197 @@ class OrcaTabsPlugin {
   }
 
   /**
-   * 点击显示悬浮标签列表
+   * 添加左键长按事件显示最近切换标签
    */
-  private async showHoverTabListOnClick(tabElement: HTMLElement, tab: TabInfo) {
-    try {
-      // 获取所有切换历史记录
-      const allHistory = await this.tabStorageService.restoreRecentTabSwitchHistory();
-      const allRecentTabs: TabInfo[] = [];
+  private addLongPressTabListEvents(tabElement: HTMLElement, tab: TabInfo) {
+    let longPressTimeout: number | null = null;
+    let hoverTabListContainer: HTMLElement | null = null;
+    let scrollOffset = 0;
+    let isLongPressing = false;
+    
+    // 悬浮配置
+    const hoverConfig: HoverTabListConfig = {
+      maxDisplayCount: 5,
+      scrollStep: 1,
+      animationDuration: 200,
+      minOpacity: 0.3,
+      minScale: 0.8,
+      enableScroll: true,
+      maxWidth: 150
+    };
+
+    // 鼠标按下事件
+    tabElement.addEventListener('mousedown', (e) => {
+      // 只处理左键
+      if (e.button !== 0) return;
       
-      // 收集所有历史记录中的标签
-      Object.values(allHistory).forEach(history => {
-        if (history.recentTabs) {
-          allRecentTabs.push(...history.recentTabs);
-        }
-      });
-      
-      this.log(`📋 所有切换历史记录: ${allRecentTabs.length} 个记录`);
-      
-      if (allRecentTabs.length === 0) {
-        this.log(`⚠️ 没有切换历史记录，不显示悬浮列表`);
+      // 检查是否在拖拽手柄上，如果是则不处理长按
+      const target = e.target as HTMLElement;
+      if (target.classList.contains('drag-handle') || (target.closest && target.closest('.drag-handle'))) {
         return;
       }
-
-      // 计算悬浮位置
-      const rect = tabElement.getBoundingClientRect();
-      const position = {
-        x: rect.left,
-        y: rect.bottom + 4 // 在标签下方显示
-      };
-
-      this.log(`📍 计算悬浮位置: x=${position.x}, y=${position.y}`);
-      this.log(`📊 标签尺寸: width=${rect.width}, height=${rect.height}`);
-
-      // 悬浮配置
-      const hoverConfig: HoverTabListConfig = {
-        maxDisplayCount: 5,
-        scrollStep: 1,
-        animationDuration: 200,
-        minOpacity: 0.3,
-        minScale: 0.8,
-        enableScroll: true
-      };
-
-      // 显示悬浮标签列表
-      this.log(`🎨 开始创建悬浮标签列表`);
-      const hoverTabListContainer = showHoverTabList(
-        allRecentTabs,
-        position,
-        hoverConfig,
-        (clickedTab) => {
-          this.log(`🖱️ 点击悬浮标签切换到: ${clickedTab.title}`);
-          this.switchToTab(clickedTab);
-          hideHoverTabList();
-        },
-        this.isVerticalMode
-      );
       
-      this.log(`✅ 悬浮标签列表创建完成`);
+      isLongPressing = true;
+      this.log(`🖱️ 开始长按标签: ${tab.title}`);
+      
+      // 设置长按延迟（500ms）
+      longPressTimeout = window.setTimeout(async () => {
+        if (!isLongPressing) return;
+        
+        // 设置标记，防止触发点击事件
+        tabElement.setAttribute('data-long-pressed', 'true');
+        
+        let recentTabs: TabInfo[] = [];
+        
+        try {
+          this.log(`⏰ 长按触发，开始检查切换历史`);
+          
+          // 获取所有切换历史记录（全局）
+          const allHistory = await this.tabStorageService.restoreRecentTabSwitchHistory();
+          const allRecentTabs: TabInfo[] = [];
+          
+          // 收集所有历史记录中的标签
+          Object.values(allHistory).forEach(history => {
+            if (history.recentTabs) {
+              allRecentTabs.push(...history.recentTabs);
+            }
+          });
+          
+          this.log(`📋 收集到的历史记录: ${allRecentTabs.length} 个记录`);
+          
+          if (allRecentTabs.length === 0) {
+            this.log(`⚠️ 没有切换历史记录，不显示悬浮列表`);
+            return;
+          }
+          
+          // 去重：基于blockId去重，保留最新的记录
+          const uniqueTabs = new Map<string, TabInfo>();
+          allRecentTabs.forEach(tab => {
+            uniqueTabs.set(tab.blockId, tab);
+          });
+          
+          // 转换为数组并按正序排列（最新的在后面）
+          const deduplicatedTabs = Array.from(uniqueTabs.values());
+          
+          this.log(`📋 去重后的历史记录: ${deduplicatedTabs.length} 个记录`);
+          
+          if (deduplicatedTabs.length === 0) {
+            this.log(`⚠️ 去重后没有历史记录，不显示悬浮列表`);
+            return;
+          }
 
-      // 添加滚动事件监听
-      if (hoverConfig.enableScroll && allRecentTabs.length > hoverConfig.maxDisplayCount) {
-        this.addScrollEvents(hoverTabListContainer, allRecentTabs, hoverConfig, 0);
+          // 计算悬浮位置
+          const rect = tabElement.getBoundingClientRect();
+          const position = {
+            x: rect.left,
+            y: rect.bottom + 4 // 在标签下方显示
+          };
+
+          this.log(`📍 计算悬浮位置: x=${position.x}, y=${position.y}`);
+          this.log(`📊 标签尺寸: width=${rect.width}, height=${rect.height}`);
+
+          // 显示悬浮标签列表
+          this.log(`🎨 开始创建悬浮标签列表`);
+          hoverTabListContainer = showHoverTabList(
+            deduplicatedTabs,
+            position,
+            hoverConfig,
+            (clickedTab) => {
+              this.log(`🖱️ 点击悬浮标签: ${clickedTab.title}`);
+              
+              // 检查点击的标签是否已经存在于当前标签栏中
+              const currentTabs = this.getCurrentPanelTabs();
+              const existingTab = currentTabs.find(tabItem => tabItem.blockId === clickedTab.blockId);
+              
+              if (existingTab) {
+                // 如果标签已存在，直接跳转到该标签
+                this.log(`🔄 标签已存在，跳转到: ${clickedTab.title}`);
+                this.switchToTab(clickedTab);
+              } else {
+                // 如果标签不存在，替换当前标签页
+                this.log(`🔄 标签不存在，替换当前标签: ${tab.title} -> ${clickedTab.title}`);
+                this.replaceCurrentTabWith(tab.blockId, clickedTab);
+              }
+              hideHoverTabList();
+            },
+            this.isVerticalMode
+          );
+          
+          this.log(`✅ 悬浮标签列表创建完成`);
+
+          // 添加滚动事件监听
+          if (hoverConfig.enableScroll && deduplicatedTabs.length > hoverConfig.maxDisplayCount) {
+            this.addScrollEvents(hoverTabListContainer, deduplicatedTabs, hoverConfig, scrollOffset);
+          }
+          
+          // 添加全局点击监听，点击空白区域隐藏悬浮列表
+          const handleGlobalClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            // 如果点击的不是悬浮列表容器内的元素，则隐藏悬浮列表
+            if (!this.safeClosest(target, '.hover-tab-list-container')) {
+              hideHoverTabList();
+              hoverTabListContainer = null;
+              scrollOffset = 0;
+              document.removeEventListener('click', handleGlobalClick);
+            }
+          };
+          
+          // 延迟添加点击监听，避免立即触发
+          setTimeout(() => {
+            document.addEventListener('click', handleGlobalClick);
+          }, 100);
+
+          this.verboseLog(`显示标签 ${tab.title} 的悬浮列表: ${deduplicatedTabs.length} 个历史标签`);
+        } catch (error) {
+          this.warn('显示悬浮标签列表失败:', error);
+        }
+      }, 500); // 500ms长按延迟
+    });
+
+    // 鼠标释放事件
+    tabElement.addEventListener('mouseup', () => {
+      if (longPressTimeout) {
+        clearTimeout(longPressTimeout);
+        longPressTimeout = null;
       }
+      isLongPressing = false;
+    });
 
-      this.verboseLog(`显示标签 ${tab.title} 的悬浮列表: ${allRecentTabs.length} 个历史标签`);
-    } catch (error) {
-      this.warn('显示悬浮标签列表失败:', error);
-    }
+    // 鼠标离开事件
+    tabElement.addEventListener('mouseleave', () => {
+      if (longPressTimeout) {
+        clearTimeout(longPressTimeout);
+        longPressTimeout = null;
+      }
+      isLongPressing = false;
+    });
+
+    // 悬浮列表的鼠标事件
+    const handleHoverListMouseEnter = () => {
+      // 保持悬浮列表显示
+    };
+
+    const handleHoverListMouseLeave = () => {
+      // 延迟隐藏悬浮列表
+      setTimeout(() => {
+        hideHoverTabList();
+        hoverTabListContainer = null;
+        scrollOffset = 0;
+      }, 200);
+    };
+
+    // 监听悬浮列表的鼠标事件
+    document.addEventListener('mouseenter', (e) => {
+      if (this.safeClosest(e.target, '.hover-tab-list-container')) {
+        handleHoverListMouseEnter();
+      }
+    });
+
+    document.addEventListener('mouseleave', (e) => {
+      if (this.safeClosest(e.target, '.hover-tab-list-container')) {
+        handleHoverListMouseLeave();
+      }
+    });
   }
 
   /**
@@ -7058,7 +7236,8 @@ class OrcaTabsPlugin {
       animationDuration: 200,
       minOpacity: 0.3,
       minScale: 0.8,
-      enableScroll: true
+      enableScroll: true,
+      maxWidth: 150
     };
 
     // 鼠标进入事件
@@ -7094,6 +7273,22 @@ class OrcaTabsPlugin {
             this.log(`⚠️ 没有切换历史记录，不显示悬浮列表`);
             return;
           }
+          
+          // 去重：基于blockId去重，保留最新的记录
+          const uniqueTabs = new Map<string, TabInfo>();
+          allRecentTabs.forEach(tab => {
+            uniqueTabs.set(tab.blockId, tab);
+          });
+          
+          // 转换为数组并按正序排列（最新的在后面）
+          const deduplicatedTabs = Array.from(uniqueTabs.values());
+          
+          this.log(`📋 去重后的历史记录: ${deduplicatedTabs.length} 个记录`);
+          
+          if (deduplicatedTabs.length === 0) {
+            this.log(`⚠️ 去重后没有历史记录，不显示悬浮列表`);
+            return;
+          }
 
           // 计算悬浮位置
           const rect = tabElement.getBoundingClientRect();
@@ -7108,12 +7303,25 @@ class OrcaTabsPlugin {
           // 显示悬浮标签列表
           this.log(`🎨 开始创建悬浮标签列表`);
           hoverTabListContainer = showHoverTabList(
-            allRecentTabs,
+            deduplicatedTabs,
             position,
             hoverConfig,
             (clickedTab) => {
-              this.log(`🖱️ 点击悬浮标签切换到: ${clickedTab.title}`);
-              this.switchToTab(clickedTab);
+              this.log(`🖱️ 点击悬浮标签: ${clickedTab.title}`);
+              
+              // 检查点击的标签是否已经存在于当前标签栏中
+              const currentTabs = this.getCurrentPanelTabs();
+              const existingTab = currentTabs.find(tabItem => tabItem.blockId === clickedTab.blockId);
+              
+              if (existingTab) {
+                // 如果标签已存在，直接跳转到该标签
+                this.log(`🔄 标签已存在，跳转到: ${clickedTab.title}`);
+                this.switchToTab(clickedTab);
+              } else {
+                // 如果标签不存在，替换当前标签页
+                this.log(`🔄 标签不存在，替换当前标签: ${tab.title} -> ${clickedTab.title}`);
+                this.replaceCurrentTabWith(tab.blockId, clickedTab);
+              }
               hideHoverTabList();
             },
             this.isVerticalMode
@@ -7122,11 +7330,28 @@ class OrcaTabsPlugin {
           this.log(`✅ 悬浮标签列表创建完成`);
 
           // 添加滚动事件监听
-          if (hoverConfig.enableScroll && allRecentTabs.length > hoverConfig.maxDisplayCount) {
-            this.addScrollEvents(hoverTabListContainer, allRecentTabs, hoverConfig, scrollOffset);
+          if (hoverConfig.enableScroll && deduplicatedTabs.length > hoverConfig.maxDisplayCount) {
+            this.addScrollEvents(hoverTabListContainer, deduplicatedTabs, hoverConfig, scrollOffset);
           }
+          
+          // 添加全局点击监听，点击空白区域隐藏悬浮列表
+          const handleGlobalClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            // 如果点击的不是悬浮列表容器内的元素，则隐藏悬浮列表
+            if (!this.safeClosest(target, '.hover-tab-list-container')) {
+              hideHoverTabList();
+              hoverTabListContainer = null;
+              scrollOffset = 0;
+              document.removeEventListener('click', handleGlobalClick);
+            }
+          };
+          
+          // 延迟添加点击监听，避免立即触发
+          setTimeout(() => {
+            document.addEventListener('click', handleGlobalClick);
+          }, 100);
 
-          this.verboseLog(`显示标签 ${tab.title} 的悬浮列表: ${allRecentTabs.length} 个历史标签`);
+          this.verboseLog(`显示标签 ${tab.title} 的悬浮列表: ${deduplicatedTabs.length} 个历史标签`);
         } catch (error) {
           this.warn('显示悬浮标签列表失败:', error);
         }
@@ -9300,11 +9525,7 @@ class OrcaTabsPlugin {
         this.log(`🔄 替换当前激活标签页: "${currentActiveTab.title}" -> "${newTabInfo.title}"`);
         
         // 记录标签切换历史 - 记录从当前标签切换到新标签
-        const currentTabElement = this.tabContainer?.querySelector(`[data-tab-id="${currentActiveTab.blockId}"]`) as HTMLElement;
-        const currentTabHistoryId = currentTabElement?.getAttribute('data-tab-history-id');
-        if (currentTabHistoryId) {
-          this.recordTabSwitchHistory(currentTabHistoryId, newTabInfo);
-        }
+        this.recordTabSwitchHistory(currentActiveTab.blockId, newTabInfo);
         
         currentTabs[activeIndex] = newTabInfo;
         this.updateFocusState(blockId, newTabInfo.title);
@@ -9335,11 +9556,7 @@ class OrcaTabsPlugin {
         this.log(`🔄 使用上一个激活标签页作为替换目标: "${currentTabs[lastActiveIndex].title}" -> "${newTabInfo.title}"`);
         
         // 记录标签切换历史 - 记录从上一个标签切换到新标签
-        const lastTabElement = this.tabContainer?.querySelector(`[data-tab-id="${currentTabs[lastActiveIndex].blockId}"]`) as HTMLElement;
-        const lastTabHistoryId = lastTabElement?.getAttribute('data-tab-history-id');
-        if (lastTabHistoryId) {
-          this.recordTabSwitchHistory(lastTabHistoryId, newTabInfo);
-        }
+        this.recordTabSwitchHistory(currentTabs[lastActiveIndex].blockId, newTabInfo);
         
         currentTabs[lastActiveIndex] = newTabInfo;
         this.updateFocusState(blockId, newTabInfo.title);

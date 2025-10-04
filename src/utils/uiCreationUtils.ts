@@ -828,19 +828,18 @@ export function createHoverTabListContainer(
     left: ${position.x}px;
     top: ${position.y}px;
     z-index: 10000;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    box-shadow: none;
-    padding: 0;
-    max-height: ${config.maxDisplayCount * 32}px;
+    background: var(--orca-bg-primary, #ffffff);
+    border: 1px solid var(--orca-border-color, #e0e0e0);
+    border-radius: var(--orca-radius-md, 6px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 4px;
+    max-height: ${config.maxDisplayCount * 32 + 8}px;
+    width: ${config.maxWidth || 150}px;
     overflow: hidden;
     pointer-events: auto;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: opacity 0.2s ease, transform 0.2s ease;
     opacity: 0;
-    transform: translateY(-20px) scale(0.95);
-    mask: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
-    -webkit-mask: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+    transform: translateY(-10px);
   `;
   
   container.style.cssText = containerStyle;
@@ -852,69 +851,29 @@ export function createHoverTabListContainer(
     overflow-y: auto;
     overflow-x: hidden;
     max-height: ${config.maxDisplayCount * 32}px;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    mask: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
-    -webkit-mask: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+    scrollbar-width: thin;
+    scrollbar-color: var(--orca-scrollbar-thumb, #c0c0c0) var(--orca-scrollbar-track, #f0f0f0);
   `;
   
-  // 添加动画样式（移除滚动条样式）
+  // 添加滚动条样式
   const scrollbarStyle = `
     .hover-tab-list-scroll::-webkit-scrollbar {
-      display: none;
+      width: 6px;
     }
-    
-    @keyframes slideInUp {
-      from {
-        opacity: 0;
-        transform: translateY(20px) scale(0.9);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
+    .hover-tab-list-scroll::-webkit-scrollbar-track {
+      background: var(--orca-scrollbar-track, #f0f0f0);
+      border-radius: 3px;
     }
-    
-    @keyframes slideOutDown {
-      from {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-      to {
-        opacity: 0;
-        transform: translateY(-20px) scale(0.9);
-      }
+    .hover-tab-list-scroll::-webkit-scrollbar-thumb {
+      background: var(--orca-scrollbar-thumb, #c0c0c0);
+      border-radius: 3px;
+    }
+    .hover-tab-list-scroll::-webkit-scrollbar-thumb:hover {
+      background: var(--orca-scrollbar-thumb-hover, #a0a0a0);
     }
   `;
   
-  // 添加滚动事件监听器来动态更新蒙版
-  scrollContainer.addEventListener('scroll', () => {
-    const scrollTop = scrollContainer.scrollTop;
-    const scrollHeight = scrollContainer.scrollHeight;
-    const clientHeight = scrollContainer.clientHeight;
-    
-    // 计算滚动位置百分比
-    const scrollPercent = scrollTop / (scrollHeight - clientHeight);
-    
-    // 动态调整蒙版
-    let maskTop = 0;
-    let maskBottom = 100;
-    
-    if (scrollPercent > 0) {
-      // 向上滚动时，顶部蒙版逐渐减少
-      maskTop = Math.max(0, 10 - scrollPercent * 20);
-    }
-    
-    if (scrollPercent < 1) {
-      // 向下滚动时，底部蒙版逐渐减少
-      maskBottom = Math.min(100, 90 + scrollPercent * 20);
-    }
-    
-    // 应用动态蒙版
-    const maskValue = `linear-gradient(to bottom, transparent 0%, black ${maskTop}%, black ${maskBottom}%, transparent 100%)`;
-    scrollContainer.style.mask = maskValue;
-    scrollContainer.style.webkitMask = maskValue;
-  });
+  // 添加样式到页面
   if (!document.getElementById('hover-tab-list-styles')) {
     const styleElement = document.createElement('style');
     styleElement.id = 'hover-tab-list-styles';
@@ -924,10 +883,10 @@ export function createHoverTabListContainer(
   
   container.appendChild(scrollContainer);
   
-  // 显示动画 - 更平滑的效果
+  // 显示动画
   requestAnimationFrame(() => {
     container.style.opacity = '1';
-    container.style.transform = 'translateY(0) scale(1)';
+    container.style.transform = 'translateY(0)';
   });
   
   return container;
@@ -959,11 +918,11 @@ export function createHoverTabItem(
     margin: 2px 0;
     border-radius: var(--orca-radius-sm, 4px);
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all ${config.animationDuration}ms ease;
     opacity: ${opacity};
-    transform: scale(${scale}) translateY(${index * 5}px);
-    background: var(--orca-bg-primary, #ffffff);
-    border: 1px solid var(--orca-border-color, #e0e0e0);
+    transform: scale(${scale});
+    background: transparent;
+    border: none;
     width: 100%;
     box-sizing: border-box;
     font-size: 13px;
@@ -973,7 +932,6 @@ export function createHoverTabItem(
     text-overflow: ellipsis;
     min-height: 24px;
     max-height: 24px;
-    animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.05}s both;
   `;
   
   item.style.cssText = itemStyle;
@@ -990,7 +948,7 @@ export function createHoverTabItem(
   // 添加图标（如果有）
   if (tab.icon) {
     const icon = document.createElement('span');
-    icon.textContent = tab.icon;
+    icon.className = tab.icon; // 使用className而不是textContent
     icon.style.cssText = `
       margin-right: 6px;
       font-size: 12px;
@@ -1107,19 +1065,12 @@ export function showHoverTabList(
 export function hideHoverTabList(): void {
   const container = document.querySelector('.hover-tab-list-container') as HTMLElement;
   if (container) {
-    // 添加平滑的淡出动画
+    // 添加淡出动画
     container.style.opacity = '0';
-    container.style.transform = 'translateY(-20px) scale(0.95)';
-    
-    // 为每个项目添加退出动画
-    const items = container.querySelectorAll('.hover-tab-item');
-    items.forEach((item, index) => {
-      const element = item as HTMLElement;
-      element.style.animation = `slideOutDown 0.3s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.02}s both`;
-    });
+    container.style.transform = 'translateY(-10px)';
     
     setTimeout(() => {
       safeRemoveElement(container);
-    }, 400); // 增加延迟时间以完成动画
+    }, 200);
   }
 }

@@ -179,4 +179,7 @@ export interface HoverTabListConfig {
   
   /** 是否启用滚动 - 是否允许滚动查看更多标签 */
   enableScroll: boolean;
+  
+  /** 最大宽度 - 悬浮列表的最大宽度（像素） */
+  maxWidth?: number;
 }
