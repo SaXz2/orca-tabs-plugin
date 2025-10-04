@@ -3960,7 +3960,7 @@ class OrcaTabsPlugin {
         align-items: center;
         gap: 10px;
         font-size: 14px;
-        color: ${isDarkMode ? '#ffffff' : '#333'};
+        color: var(--orca-color-text-1);
         transition: background-color 0.2s ease;
       `;
       
@@ -6490,7 +6490,7 @@ class OrcaTabsPlugin {
           padding: var(--orca-spacing-sm);
           cursor: pointer;
           font-size: 14px;
-          color: ${isDarkMode ? '#ffffff' : '#333'};
+          color: var(--orca-color-text-1);
           border-bottom: 1px solid var(--orca-color-border);
           transition: background-color 0.2s;
           display: flex;
@@ -7765,7 +7765,7 @@ class OrcaTabsPlugin {
         padding: var(--orca-spacing-sm);
         cursor: pointer;
         font-size: 14px;
-        color: ${(item as any).disabled ? (isDarkMode ? '#666' : '#999') : (isDarkMode ? '#ffffff' : '#333')};
+        color: ${(item as any).disabled ? (isDarkMode ? '#666' : '#999') : 'var(--orca-color-text-1)'};
         border-bottom: 1px solid var(--orca-color-border);
         transition: background-color 0.2s;
       `;
@@ -10043,7 +10043,7 @@ class OrcaTabsPlugin {
         padding: var(--orca-spacing-sm);
         cursor: pointer;
         font-size: 14px;
-        color: ${isDarkMode ? '#ffffff' : '#333'};
+        color: var(--orca-color-text-1);
         transition: background-color 0.2s ease;
         min-height: 24px;
       `;
@@ -10334,7 +10334,7 @@ class OrcaTabsPlugin {
         padding: var(--orca-spacing-sm);
         cursor: pointer;
         font-size: 14px;
-        color: ${isDarkMode ? '#ffffff' : '#333'};
+        color: var(--orca-color-text-1);
         transition: background-color 0.2s ease;
         min-height: 24px;
       `;
@@ -11652,7 +11652,7 @@ class OrcaTabsPlugin {
       border-bottom: 1px solid var(--orca-color-border);
       font-size: 14px;
       font-weight: 600;
-      color: ${isDarkMode ? '#ffffff' : '#333'};
+      color: var(--orca-color-text-1);
     `;
     title.textContent = '工作区';
 
@@ -11666,7 +11666,7 @@ class OrcaTabsPlugin {
       align-items: center;
       gap: 8px;
       border-bottom: 1px solid var(--orca-color-border);
-      color: ${isDarkMode ? '#ffffff' : '#333'};
+      color: var(--orca-color-text-1);
     `;
     saveCurrentItem.innerHTML = `
       <i class="ti ti-plus" style="font-size: 14px; color: var(--orca-color-primary-5);"></i>
@@ -11705,7 +11705,7 @@ class OrcaTabsPlugin {
           align-items: center;
           gap: 8px;
           border-bottom: 1px solid var(--orca-color-border);
-          color: ${isDarkMode ? '#ffffff' : '#333'};
+          color: var(--orca-color-text-1);
           ${this.currentWorkspace === workspace.id ? 'background: rgba(59, 130, 246, 0.1);' : ''}
         `;
         
@@ -11713,7 +11713,7 @@ class OrcaTabsPlugin {
         workspaceItem.innerHTML = `
           <i class="${icon}" style="font-size: 14px; color: var(--orca-color-primary-5);"></i>
           <div style="flex: 1;">
-            <div style="font-weight: 500; color: ${isDarkMode ? '#ffffff' : '#333'};"">${workspace.name}</div>
+            <div style="font-weight: 500; color: var(--orca-color-text-1);"">${workspace.name}</div>
             ${workspace.description ? `<div style="font-size: 12px; color: ${isDarkMode ? '#999' : '#666'}; margin-top: 2px;">${workspace.description}</div>` : ''}
             <div style="font-size: 11px; color: ${isDarkMode ? '#777' : '#999'}; margin-top: 2px;">${workspace.tabs.length}个标签</div>
           </div>
@@ -11738,7 +11738,7 @@ class OrcaTabsPlugin {
       display: flex;
       align-items: center;
       gap: 8px;
-      color: ${isDarkMode ? '#ffffff' : '#333'};
+      color: var(--orca-color-text-1);
     `;
     manageItem.innerHTML = `
       <i class="ti ti-settings" style="font-size: 14px; color: ${isDarkMode ? '#999' : '#666'};"></i>

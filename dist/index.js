@@ -1,6 +1,6 @@
 var Se = Object.defineProperty;
 var Pe = (s, e, t) => e in s ? Se(s, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : s[e] = t;
-var m = (s, e, t) => Pe(s, typeof e != "symbol" ? e + "" : e, t);
+var g = (s, e, t) => Pe(s, typeof e != "symbol" ? e + "" : e, t);
 const me = {
   /** 缓存编辑器数量 - 对应Orca设置中的最大标签页数量配置 */
   CachedEditorNum: 13,
@@ -333,12 +333,12 @@ function fe(s, e) {
 }
 class De {
   constructor(e, t, r) {
-    m(this, "storageService");
-    m(this, "pluginName");
-    m(this, "log");
-    m(this, "warn");
-    m(this, "error");
-    m(this, "verboseLog");
+    g(this, "storageService");
+    g(this, "pluginName");
+    g(this, "log");
+    g(this, "warn");
+    g(this, "error");
+    g(this, "verboseLog");
     this.storageService = e, this.pluginName = t, this.log = r.log, this.warn = r.warn, this.error = r.error, this.verboseLog = r.verboseLog;
   }
   // ==================== 标签页数据存储 ====================
@@ -785,12 +785,12 @@ function Z(s) {
     return s.formats[t] || s.formats[s.defaultWidth];
   };
 }
-const Ue = {
+const _e = {
   full: "EEEE, MMMM do, y",
   long: "MMMM do, y",
   medium: "MMM d, y",
   short: "MM/dd/yyyy"
-}, _e = {
+}, Ue = {
   full: "h:mm:ss a zzzz",
   long: "h:mm:ss a z",
   medium: "h:mm:ss a",
@@ -802,11 +802,11 @@ const Ue = {
   short: "{{date}}, {{time}}"
 }, Ve = {
   date: Z({
-    formats: Ue,
+    formats: _e,
     defaultWidth: "full"
   }),
   time: Z({
-    formats: _e,
+    formats: Ue,
     defaultWidth: "full"
   }),
   dateTime: Z({
@@ -987,7 +987,7 @@ const Qe = {
     defaultFormattingWidth: "wide"
   })
 };
-function U(s) {
+function _(s) {
   return (e, t = {}) => {
     const r = t.width, a = r && s.matchPatterns[r] || s.matchPatterns[s.defaultMatchWidth], i = e.match(a);
     if (!i)
@@ -1100,32 +1100,32 @@ const nt = /^(\d+)(th|st|nd|rd)?/i, st = /\d+/i, ot = {
     parsePattern: st,
     valueCallback: (s) => parseInt(s, 10)
   }),
-  era: U({
+  era: _({
     matchPatterns: ot,
     defaultMatchWidth: "wide",
     parsePatterns: ct,
     defaultParseWidth: "any"
   }),
-  quarter: U({
+  quarter: _({
     matchPatterns: lt,
     defaultMatchWidth: "wide",
     parsePatterns: dt,
     defaultParseWidth: "any",
     valueCallback: (s) => s + 1
   }),
-  month: U({
+  month: _({
     matchPatterns: ut,
     defaultMatchWidth: "wide",
     parsePatterns: ht,
     defaultParseWidth: "any"
   }),
-  day: U({
+  day: _({
     matchPatterns: pt,
     defaultMatchWidth: "wide",
     parsePatterns: gt,
     defaultParseWidth: "any"
   }),
-  dayPeriod: U({
+  dayPeriod: _({
     matchPatterns: mt,
     defaultMatchWidth: "any",
     parsePatterns: bt,
@@ -1801,26 +1801,26 @@ function O(s, e, t) {
   const r = K(), a = r.locale ?? yt, i = r.firstWeekContainsDate ?? ((u = (d = r.locale) == null ? void 0 : d.options) == null ? void 0 : u.firstWeekContainsDate) ?? 1, n = r.weekStartsOn ?? ((p = (h = r.locale) == null ? void 0 : h.options) == null ? void 0 : p.weekStartsOn) ?? 0, o = $(s, t == null ? void 0 : t.in);
   if (!Re(o))
     throw new RangeError("Invalid time value");
-  let c = e.match(At).map((g) => {
-    const f = g[0];
-    if (f === "p" || f === "P") {
-      const b = Ct[f];
-      return b(g, a.formatLong);
+  let c = e.match(At).map((m) => {
+    const b = m[0];
+    if (b === "p" || b === "P") {
+      const f = Ct[b];
+      return f(m, a.formatLong);
     }
-    return g;
-  }).join("").match(Dt).map((g) => {
-    if (g === "''")
+    return m;
+  }).join("").match(Dt).map((m) => {
+    if (m === "''")
       return { isToken: !1, value: "'" };
-    const f = g[0];
-    if (f === "'")
-      return { isToken: !1, value: Wt(g) };
-    if (le[f])
-      return { isToken: !0, value: g };
-    if (f.match(zt))
+    const b = m[0];
+    if (b === "'")
+      return { isToken: !1, value: Wt(m) };
+    if (le[b])
+      return { isToken: !0, value: m };
+    if (b.match(zt))
       throw new RangeError(
-        "Format string contains an unescaped latin alphabet character `" + f + "`"
+        "Format string contains an unescaped latin alphabet character `" + b + "`"
       );
-    return { isToken: !1, value: g };
+    return { isToken: !1, value: m };
   });
   a.localize.preprocessor && (c = a.localize.preprocessor(o, c));
   const l = {
@@ -1828,12 +1828,12 @@ function O(s, e, t) {
     weekStartsOn: n,
     locale: a
   };
-  return c.map((g) => {
-    if (!g.isToken) return g.value;
-    const f = g.value;
-    ($t(f) || Et(f)) && Mt(f, e, String(s));
-    const b = le[f[0]];
-    return b(o, f, a.localize, l);
+  return c.map((m) => {
+    if (!m.isToken) return m.value;
+    const b = m.value;
+    ($t(b) || Et(b)) && Mt(b, e, String(s));
+    const f = le[b[0]];
+    return f(o, b, a.localize, l);
   }).join("");
 }
 function Wt(s) {
@@ -1862,7 +1862,7 @@ function qt(s, e) {
     Ft(ne(s))
   );
 }
-function Ut(s) {
+function _t(s) {
   try {
     let e = orca.state.settings[me.JournalDateFormat];
     if ((!e || typeof e != "string") && (e = (orca.state.locale || "zh-CN").startsWith("zh") ? "yyyy年MM月dd日" : "yyyy-MM-dd"), Rt(s))
@@ -1981,7 +1981,7 @@ async function ee(s) {
     return "default";
   }
 }
-function _(s) {
+function U(s) {
   const e = {
     // 基础块类型
     journal: "📅",
@@ -2152,12 +2152,12 @@ function _(s) {
   };
   let t = e[s];
   if (!t) {
-    const r = _t(s);
+    const r = Ut(s);
     r && (t = r);
   }
   return t || (t = e.default), t;
 }
-function _t(s) {
+function Ut(s) {
   const e = s.toLowerCase(), t = {
     date: "ti ti-calendar",
     time: "ti ti-clock",
@@ -2702,14 +2702,14 @@ function hr(s, e, t = !1) {
 }
 class pr {
   constructor(e = {}, t = {}) {
-    m(this, "observer", null);
-    m(this, "config");
-    m(this, "callbacks");
-    m(this, "mutationQueue", []);
-    m(this, "batchTimer", null);
-    m(this, "lastBatchTime", 0);
-    m(this, "isObserving", !1);
-    m(this, "targetElement");
+    g(this, "observer", null);
+    g(this, "config");
+    g(this, "callbacks");
+    g(this, "mutationQueue", []);
+    g(this, "batchTimer", null);
+    g(this, "lastBatchTime", 0);
+    g(this, "isObserving", !1);
+    g(this, "targetElement");
     this.config = {
       enableBatch: !0,
       batchDelay: 16,
@@ -2889,12 +2889,12 @@ class pr {
 }
 class gr {
   constructor() {
-    m(this, "layers", /* @__PURE__ */ new Map());
-    m(this, "taskQueue", /* @__PURE__ */ new Map());
-    m(this, "activeTimers", /* @__PURE__ */ new Map());
-    m(this, "performanceMetrics");
-    m(this, "taskIdCounter", 0);
-    m(this, "isEnabled", !0);
+    g(this, "layers", /* @__PURE__ */ new Map());
+    g(this, "taskQueue", /* @__PURE__ */ new Map());
+    g(this, "activeTimers", /* @__PURE__ */ new Map());
+    g(this, "performanceMetrics");
+    g(this, "taskIdCounter", 0);
+    g(this, "isEnabled", !0);
     this.performanceMetrics = {
       totalTasks: 0,
       cancelledTasks: 0,
@@ -3146,11 +3146,11 @@ class gr {
 }
 const D = class D {
   constructor() {
-    m(this, "trackedResources", /* @__PURE__ */ new Map());
-    m(this, "cleanupListeners", /* @__PURE__ */ new Set());
-    m(this, "autoCleanupInterval", null);
-    m(this, "isEnabled", !0);
-    m(this, "resourceIdCounter", 0);
+    g(this, "trackedResources", /* @__PURE__ */ new Map());
+    g(this, "cleanupListeners", /* @__PURE__ */ new Set());
+    g(this, "autoCleanupInterval", null);
+    g(this, "isEnabled", !0);
+    g(this, "resourceIdCounter", 0);
     this.startAutoCleanup(), this.setupGlobalCleanup();
   }
   /**
@@ -3492,16 +3492,16 @@ Age: ${Math.round((Date.now() - e.oldestResource.createdAt) / 1e3)}s`), r;
     typeof window < "u" && window.DEBUG_ORCA_TABS && console.log(`[MemoryLeakProtector] ${e}`, ...t);
   }
 };
-m(D, "instance");
+g(D, "instance");
 let ae = D;
 class mr {
   constructor(e = {}) {
-    m(this, "modules", /* @__PURE__ */ new Map());
-    m(this, "config");
-    m(this, "loadingQueue", []);
-    m(this, "activeLoaders", 0);
-    m(this, "observers", /* @__PURE__ */ new Map());
-    m(this, "idleCallbackId", null);
+    g(this, "modules", /* @__PURE__ */ new Map());
+    g(this, "config");
+    g(this, "loadingQueue", []);
+    g(this, "activeLoaders", 0);
+    g(this, "observers", /* @__PURE__ */ new Map());
+    g(this, "idleCallbackId", null);
     this.config = {
       maxConcurrency: 3,
       maxRetries: 3,
@@ -3770,13 +3770,13 @@ class mr {
 }
 class br {
   constructor(e = {}) {
-    m(this, "queue", []);
-    m(this, "config");
-    m(this, "isProcessing", !1);
-    m(this, "processingTimer", null);
-    m(this, "operationIdCounter", 0);
-    m(this, "metrics");
-    m(this, "processingStartTime", 0);
+    g(this, "queue", []);
+    g(this, "config");
+    g(this, "isProcessing", !1);
+    g(this, "processingTimer", null);
+    g(this, "operationIdCounter", 0);
+    g(this, "metrics");
+    g(this, "processingStartTime", 0);
     this.config = {
       maxBatchSize: 50,
       maxWaitTime: 16,
@@ -4060,14 +4060,14 @@ class br {
 }
 const A = class A {
   constructor() {
-    m(this, "metrics", /* @__PURE__ */ new Map());
-    m(this, "thresholds", /* @__PURE__ */ new Map());
-    m(this, "config");
-    m(this, "isMonitoring", !1);
-    m(this, "intervalId", null);
-    m(this, "observers", /* @__PURE__ */ new Map());
-    m(this, "reportCallbacks", /* @__PURE__ */ new Set());
-    m(this, "performanceEntries", []);
+    g(this, "metrics", /* @__PURE__ */ new Map());
+    g(this, "thresholds", /* @__PURE__ */ new Map());
+    g(this, "config");
+    g(this, "isMonitoring", !1);
+    g(this, "intervalId", null);
+    g(this, "observers", /* @__PURE__ */ new Map());
+    g(this, "reportCallbacks", /* @__PURE__ */ new Set());
+    g(this, "performanceEntries", []);
     this.config = {
       samplingInterval: 5e3,
       reportInterval: 3e4,
@@ -4444,19 +4444,19 @@ const A = class A {
     this.stopMonitoring(), this.observers.forEach((e) => e.disconnect()), this.observers.clear(), this.reportCallbacks.clear(), this.metrics.clear(), this.thresholds.clear(), A.instance = null;
   }
 };
-m(A, "instance");
+g(A, "instance");
 let j = A;
 const z = class z {
   constructor() {
-    m(this, "mutationObserver", null);
-    m(this, "debounceOptimizer", null);
-    m(this, "memoryLeakProtector", null);
-    m(this, "lazyLoadingOptimizer", null);
-    m(this, "batchProcessor", null);
-    m(this, "performanceMonitor", null);
-    m(this, "config");
-    m(this, "isInitialized", !1);
-    m(this, "initializationPromise", null);
+    g(this, "mutationObserver", null);
+    g(this, "debounceOptimizer", null);
+    g(this, "memoryLeakProtector", null);
+    g(this, "lazyLoadingOptimizer", null);
+    g(this, "batchProcessor", null);
+    g(this, "performanceMonitor", null);
+    g(this, "config");
+    g(this, "isInitialized", !1);
+    g(this, "initializationPromise", null);
     this.config = this.getDefaultConfig();
   }
   /**
@@ -4741,7 +4741,7 @@ ${e.suggestions.map((i) => `  - ${i}`).join(`
     typeof window < "u" && window.DEBUG_ORCA_TABS && console.log(`[PerformanceOptimizerManager] ${e}`, ...t);
   }
 };
-m(z, "instance");
+g(z, "instance");
 let ie = z;
 function fr(s, e, t) {
   var r, a;
@@ -4965,153 +4965,147 @@ class Sr {
     /* 核心数据属性 - Core Data Properties */
     /* ———————————————————————————————————————————————————————————————————————————— */
     /** 插件名称 - 动态获取的插件名称，用于API调用和存储 */
-    m(this, "pluginName");
+    g(this, "pluginName");
     // ==================== 重构的面板数据管理 ====================
     /** 面板顺序映射 - 存储面板ID和序号的映射关系，支持面板关闭后重新排序 */
-    m(this, "panelOrder", []);
+    g(this, "panelOrder", []);
     /** 当前激活的面板ID - 通过.orca-panel.active获取 */
-    m(this, "currentPanelId", null);
+    g(this, "currentPanelId", null);
     /** 当前面板索引 - 在panelOrder数组中的索引位置 */
-    m(this, "currentPanelIndex", -1);
+    g(this, "currentPanelIndex", -1);
     /** 每个面板的标签页数据 - 索引对应panelOrder数组，完全独立存储 */
-    m(this, "panelTabsData", []);
+    g(this, "panelTabsData", []);
     /** 存储服务实例 - 提供统一的数据存储接口，支持Orca API和localStorage降级 */
-    m(this, "storageService", new Ie());
+    g(this, "storageService", new Ie());
     /** 标签页存储服务实例 - 提供标签页相关的数据存储操作 */
-    m(this, "tabStorageService");
+    g(this, "tabStorageService");
     /** 上次面板检查时间 - 用于防抖面板发现调用 */
-    m(this, "lastPanelCheckTime", 0);
-    /** 上次面板块检查时间 - 用于防抖 checkCurrentPanelBlocks 调用 */
-    m(this, "lastBlockCheckTime", 0);
+    g(this, "lastPanelCheckTime", 0);
     /** 数据保存防抖定时器 - 用于合并频繁的保存操作 */
-    m(this, "saveDataDebounceTimer", null);
+    g(this, "saveDataDebounceTimer", null);
     /** 数据保存防抖延迟（毫秒） - 默认300ms内的多次保存操作会被合并 */
-    m(this, "SAVE_DEBOUNCE_DELAY", 300);
+    g(this, "SAVE_DEBOUNCE_DELAY", 300);
     /* ———————————————————————————————————————————————————————————————————————————— */
     /* 日志管理 - Log Management */
     /* ———————————————————————————————————————————————————————————————————————————— */
     // ==================== 日志系统 ====================
     /** 当前日志级别 */
-    m(this, "currentLogLevel", yr);
+    g(this, "currentLogLevel", yr);
     /* ———————————————————————————————————————————————————————————————————————————— */
     /* UI元素和状态管理 - UI Elements and State Management */
     /* ———————————————————————————————————————————————————————————————————————————— */
     // ==================== UI元素引用 ====================
     /** 标签页容器元素 - 包含所有标签页的主容器 */
-    m(this, "tabContainer", null);
+    g(this, "tabContainer", null);
     /** 循环切换器元素 - 用于在面板间切换的UI元素 */
-    m(this, "cycleSwitcher", null);
+    g(this, "cycleSwitcher", null);
     // ==================== 拖拽状态 ====================
     /** 是否正在拖拽 - 标识当前是否处于拖拽状态 */
-    m(this, "isDragging", !1);
+    g(this, "isDragging", !1);
     /** 是否正在切换标签 - 防止在标签切换过程中错误替换标签 */
-    m(this, "isSwitchingTab", !1);
+    g(this, "isSwitchingTab", !1);
     /** 拖拽起始X坐标 - 记录拖拽开始时的鼠标X坐标 */
-    m(this, "dragStartX", 0);
+    g(this, "dragStartX", 0);
     /** 拖拽起始Y坐标 - 记录拖拽开始时的鼠标Y坐标 */
-    m(this, "dragStartY", 0);
+    g(this, "dragStartY", 0);
     // ==================== 配置参数 ====================
     /** 最大标签页数量 - 限制同时显示的标签页数量，从设置中读取 */
-    m(this, "maxTabs", 10);
+    g(this, "maxTabs", 10);
     /** 主页块ID - 主页块的唯一标识符，从设置中读取 */
-    m(this, "homePageBlockId", null);
+    g(this, "homePageBlockId", null);
     /** 标签页位置 - 标签页容器的屏幕坐标位置 */
-    m(this, "position", { x: 50, y: 50 });
+    g(this, "position", { x: 50, y: 50 });
     // ==================== 状态管理 ====================
     /** 监控定时器 - 用于定期检查面板状态和更新UI */
-    m(this, "monitoringInterval", null);
+    g(this, "monitoringInterval", null);
     /** 焦点同步定时器 - 控制自动同步焦点的轮询逻辑 */
-    m(this, "focusSyncInterval", null);
-    /** 上一次焦点检测的状态 - 用于避免重复调用 checkCurrentPanelBlocks */
-    m(this, "lastFocusState", null);
+    g(this, "focusSyncInterval", null);
     /** 面板块检测任务 - 防止 checkCurrentPanelBlocks 并发执行 */
-    m(this, "panelBlockCheckTask", null);
+    g(this, "panelBlockCheckTask", null);
     /** 面板状态检测任务 - 防止 checkPanelStatusChange 并发执行 */
-    m(this, "panelStatusCheckTask", null);
+    g(this, "panelStatusCheckTask", null);
     /** 正在创建的标签 - 防止重复创建同一个标签 */
-    m(this, "creatingTabs", /* @__PURE__ */ new Set());
+    g(this, "creatingTabs", /* @__PURE__ */ new Set());
     /** 全局事件监听器 - 统一的全局事件处理函数 */
-    m(this, "globalEventListener", null);
+    g(this, "globalEventListener", null);
     /** 更新防抖计时器 - 防止频繁更新UI的防抖机制 */
-    m(this, "updateDebounceTimer", null);
+    g(this, "updateDebounceTimer", null);
     /** 上次更新时间 - 记录最后一次UI更新的时间戳 */
-    m(this, "lastUpdateTime", 0);
+    g(this, "lastUpdateTime", 0);
     /** 是否正在更新 - 标识当前是否正在进行UI更新操作 */
-    m(this, "isUpdating", !1);
+    g(this, "isUpdating", !1);
     /** 是否已完成初始化 - 标识插件是否已完成初始化过程 */
-    m(this, "isInitialized", !1);
+    g(this, "isInitialized", !1);
     /* ———————————————————————————————————————————————————————————————————————————— */
     /* 布局和位置管理 - Layout and Position Management */
     /* ———————————————————————————————————————————————————————————————————————————— */
     // ==================== 布局模式 ====================
     /** 垂直模式标志 - 标识当前是否处于垂直布局模式 */
-    m(this, "isVerticalMode", !1);
+    g(this, "isVerticalMode", !1);
     /** 垂直模式窗口宽度 - 垂直布局模式下的标签页容器宽度 */
-    m(this, "verticalWidth", 120);
+    g(this, "verticalWidth", 120);
     /** 垂直模式位置 - 垂直布局模式下的标签页容器位置 */
-    m(this, "verticalPosition", { x: 20, y: 20 });
+    g(this, "verticalPosition", { x: 20, y: 20 });
     /** 水平模式位置 - 水平布局模式下的标签页容器位置 */
-    m(this, "horizontalPosition", { x: 20, y: 20 });
+    g(this, "horizontalPosition", { x: 20, y: 20 });
     // ==================== 调整大小状态 ====================
     /** 是否正在调整大小 - 标识当前是否正在进行大小调整操作 */
-    m(this, "isResizing", !1);
+    g(this, "isResizing", !1);
     /** 是否固定到顶部 - 标识标签页容器是否固定到屏幕顶部 */
-    m(this, "isFixedToTop", !1);
+    g(this, "isFixedToTop", !1);
     /** 调整大小手柄 - 用于调整标签页容器大小的拖拽手柄元素 */
-    m(this, "resizeHandle", null);
+    g(this, "resizeHandle", null);
     // ==================== 侧边栏对齐 ====================
     /** 侧边栏对齐功能是否启用 - 控制是否自动与侧边栏对齐 */
-    m(this, "isSidebarAlignmentEnabled", !1);
+    g(this, "isSidebarAlignmentEnabled", !1);
     /** 侧边栏状态监听器 - 监听侧边栏状态变化的MutationObserver */
-    m(this, "sidebarAlignmentObserver", null);
+    g(this, "sidebarAlignmentObserver", null);
     /** 上次检测到的侧边栏状态 - 用于检测侧边栏状态变化 */
-    m(this, "lastSidebarState", null);
+    g(this, "lastSidebarState", null);
     /** 侧边栏防抖计时器 - 防止频繁响应侧边栏状态变化 */
-    m(this, "sidebarDebounceTimer", null);
+    g(this, "sidebarDebounceTimer", null);
     // ==================== 窗口可见性 ====================
     /** 浮窗是否可见 - 控制标签页容器的显示/隐藏状态 */
-    m(this, "isFloatingWindowVisible", !0);
+    g(this, "isFloatingWindowVisible", !0);
     // ==================== 功能开关 ====================
     /** 是否显示块类型图标 - 控制是否在标签页中显示块类型图标 */
-    m(this, "showBlockTypeIcons", !0);
+    g(this, "showBlockTypeIcons", !0);
     /** 是否在顶部栏显示按钮 - 控制是否在Orca顶部工具栏显示插件按钮 */
-    m(this, "showInHeadbar", !0);
+    g(this, "showInHeadbar", !0);
     /** 是否启用最近关闭的标签页功能 - 控制是否记录和显示最近关闭的标签页 */
-    m(this, "enableRecentlyClosedTabs", !0);
+    g(this, "enableRecentlyClosedTabs", !0);
     /** 是否启用多标签页保存功能 - 控制是否允许保存多个标签页组合 */
-    m(this, "enableMultiTabSaving", !0);
+    g(this, "enableMultiTabSaving", !0);
     /** 是否在刷新后恢复聚焦标签页 - 控制软件刷新后是否自动聚焦并打开当前聚焦的标签页 */
-    m(this, "restoreFocusedTab", !0);
-    /** 新标签是否添加到末尾（一次性标志，使用后自动重置为false） */
-    m(this, "addNewTabToEnd", !0);
+    g(this, "restoreFocusedTab", !0);
     /* ———————————————————————————————————————————————————————————————————————————— */
     /* 性能优化 - Performance Optimization */
     /* ———————————————————————————————————————————————————————————————————————————— */
     // ==================== 性能优化管理器 ====================
     /** 性能优化管理器 - 统一管理所有性能优化工具 */
-    m(this, "performanceOptimizer", null);
+    g(this, "performanceOptimizer", null);
     /** MutationObserver优化器实例 - 用于优化DOM变化监听 */
-    m(this, "optimizedObserver", null);
+    g(this, "optimizedObserver", null);
     /** 高级防抖优化器实例 - 用于任务防抖和调度 */
-    m(this, "debounceOptimizer", null);
+    g(this, "debounceOptimizer", null);
     /** 内存泄漏防护器实例 - 用于跟踪和清理资源 */
-    m(this, "memoryLeakProtector", null);
+    g(this, "memoryLeakProtector", null);
     /** 批量处理器实例 - 用于批量DOM操作 */
-    m(this, "batchProcessor", null);
+    g(this, "batchProcessor", null);
     /** 性能监控器实例 - 用于监控性能指标 */
-    m(this, "performanceMonitor", null);
+    g(this, "performanceMonitor", null);
     /** 性能指标计数缓存 - 记录自定义指标的累计值 */
-    m(this, "performanceCounters", {});
+    g(this, "performanceCounters", {});
     /** 性能基线定时器ID - 控制基线采集任务 */
-    m(this, "performanceBaselineTimer", null);
+    g(this, "performanceBaselineTimer", null);
     /** 最近一次性能基线场景 */
-    m(this, "lastBaselineScenario", null);
+    g(this, "lastBaselineScenario", null);
     /** 最近一次性能基线报告 */
-    m(this, "lastBaselineReport", null);
+    g(this, "lastBaselineReport", null);
     /** 上一次插件初始化耗时（毫秒） */
-    m(this, "lastInitDurationMs", null);
+    g(this, "lastInitDurationMs", null);
     /** 性能指标名称常量 */
-    m(this, "performanceMetricKeys", {
+    g(this, "performanceMetricKeys", {
       initTotal: "plugin_init_total",
       tabInteraction: "tab_interaction_total",
       domMutations: "dom_mutations"
@@ -5121,70 +5115,70 @@ class Sr {
     /* ———————————————————————————————————————————————————————————————————————————— */
     // ==================== 拖拽状态管理 ====================
     /** 当前正在拖拽的标签 - 存储正在被拖拽的标签页信息 */
-    m(this, "draggingTab", null);
+    g(this, "draggingTab", null);
     /** 全局拖拽结束监听器 - 处理拖拽结束事件的全局监听器 */
-    m(this, "dragEndListener", null);
+    g(this, "dragEndListener", null);
     /** 拖拽交换防抖计时器 - 防止拖拽过程中频繁触发交换操作 */
-    m(this, "swapDebounceTimer", null);
+    g(this, "swapDebounceTimer", null);
     /** 拖拽位置指示器 - 显示拖拽目标位置的视觉指示器 */
-    m(this, "dropIndicator", null);
+    g(this, "dropIndicator", null);
     /** 当前拖拽悬停的标签 - 鼠标悬停的标签页信息 */
-    m(this, "dragOverTab", null);
+    g(this, "dragOverTab", null);
     /** 上次交换的目标标签和位置 - 防止重复交换 */
-    m(this, "lastSwapKey", "");
+    g(this, "lastSwapKey", "");
     /** 优化的拖拽监听器 - 避免全文档监听 */
-    m(this, "dragOverListener", null);
+    g(this, "dragOverListener", null);
     /** 懒加载状态 - 避免不必要的初始化 */
-    m(this, "isDragListenersInitialized", !1);
+    g(this, "isDragListenersInitialized", !1);
     /** 拖拽悬停计时器 - 控制拖拽悬停的延迟响应 */
-    m(this, "dragOverTimer", null);
+    g(this, "dragOverTimer", null);
     /** 是否正在拖拽悬停状态 - 标识当前是否处于拖拽悬停状态 */
-    m(this, "isDragOverActive", !1);
+    g(this, "isDragOverActive", !1);
     // ==================== 事件监听器 ====================
     /** 主题变化监听器 - 监听Orca主题变化的事件监听器 */
-    m(this, "themeChangeListener", null);
+    g(this, "themeChangeListener", null);
     /** 滚动监听器 - 监听页面滚动事件的监听器 */
-    m(this, "scrollListener", null);
+    g(this, "scrollListener", null);
     // ==================== 缓存和优化 ====================
     /** 上次面板发现时间 - 记录最后一次发现面板的时间戳 */
-    m(this, "lastPanelDiscoveryTime", 0);
+    g(this, "lastPanelDiscoveryTime", 0);
     /** 面板发现缓存 - 缓存面板发现结果，避免频繁扫描 */
-    m(this, "panelDiscoveryCache", null);
+    g(this, "panelDiscoveryCache", null);
     /** 设置检查定时器 - 定期检查设置变化的定时器 */
-    m(this, "settingsCheckInterval", null);
+    g(this, "settingsCheckInterval", null);
     /** 上次的设置状态 - 缓存上次的设置状态，用于检测变化 */
-    m(this, "lastSettings", null);
+    g(this, "lastSettings", null);
     /* ———————————————————————————————————————————————————————————————————————————— */
     /* 标签页跟踪和快捷键 - Tab Tracking and Shortcuts */
     /* ———————————————————————————————————————————————————————————————————————————— */
     // ==================== 已关闭标签页跟踪 ====================
     /** 已关闭的标签页blockId集合 - 用于跟踪已关闭的标签页，避免重复创建 */
-    m(this, "closedTabs", /* @__PURE__ */ new Set());
+    g(this, "closedTabs", /* @__PURE__ */ new Set());
     /** 最近关闭的标签页列表 - 按时间倒序存储最近关闭的标签页信息 */
-    m(this, "recentlyClosedTabs", []);
+    g(this, "recentlyClosedTabs", []);
     /** 保存的多标签页集合 - 存储用户保存的标签页组合 */
-    m(this, "savedTabSets", []);
+    g(this, "savedTabSets", []);
     /** 记录上一个标签集合 - 用于比较标签页变化 */
-    m(this, "previousTabSet", null);
+    g(this, "previousTabSet", null);
     // ==================== 工作区功能 ====================
     /** 工作区列表 - 存储所有用户创建的工作区 */
-    m(this, "workspaces", []);
+    g(this, "workspaces", []);
     /** 当前工作区ID - 标识当前激活的工作区 */
-    m(this, "currentWorkspace", null);
+    g(this, "currentWorkspace", null);
     /** 是否启用工作区功能 - 控制工作区功能的开关 */
-    m(this, "enableWorkspaces", !0);
+    g(this, "enableWorkspaces", !0);
     // ==================== 对话框管理 ====================
     /** 对话框层级管理器 - 管理对话框的z-index层级 */
-    m(this, "dialogZIndex", 2e3);
+    g(this, "dialogZIndex", 2e3);
     /** 最后激活的块ID - 记录最后激活的块，用于快捷键操作 */
-    m(this, "lastActiveBlockId", null);
+    g(this, "lastActiveBlockId", null);
     // ==================== 快捷键相关 ====================
     /** 当前鼠标悬停的块ID - 用于快捷键操作的目标块 */
-    m(this, "hoveredBlockId", null);
+    g(this, "hoveredBlockId", null);
     /** 当前右键菜单对应的块引用ID - 用于上下文菜单操作 */
-    m(this, "currentContextBlockRefId", null);
+    g(this, "currentContextBlockRefId", null);
     // 防抖函数实例（仅用于拖拽等非关键场景）
-    m(this, "draggingDebounce", hr(async () => {
+    g(this, "draggingDebounce", hr(async () => {
       await this.updateTabsUI();
     }, 200));
     this.pluginName = e, this.initializePerformanceOptimizers();
@@ -5708,9 +5702,9 @@ class Sr {
   async swapTabsRealtime(e, t, r) {
     var h, p;
     if (!this.tabContainer) return;
-    const a = this.getCurrentPanelTabs(), i = a.findIndex((g) => g.blockId === t.blockId), n = a.findIndex((g) => g.blockId === e.blockId);
+    const a = this.getCurrentPanelTabs(), i = a.findIndex((m) => m.blockId === t.blockId), n = a.findIndex((m) => m.blockId === e.blockId);
     if (i === -1 || n === -1 || i === n) return;
-    const o = a.filter((g) => g.isPinned).length;
+    const o = a.filter((m) => m.isPinned).length;
     let c = r === "before" ? n : n + 1;
     if (i < c && c--, t.isPinned) {
       if (c >= o) {
@@ -6154,7 +6148,7 @@ class Sr {
       try {
         const d = Ce(a);
         if (d)
-          c = !0, i = Ut(d);
+          c = !0, i = _t(d);
         else if (a.aliases && a.aliases.length > 0)
           i = a.aliases[0];
         else if (a.content && a.content.length > 0)
@@ -6185,9 +6179,9 @@ class Sr {
       }
       try {
         const d = this.findProperty(a, "_color"), u = this.findProperty(a, "_icon");
-        d && d.type === 1 && (n = d.value), u && u.type === 1 && u.value && u.value.trim() ? (o = u.value, this.log(`🎨 使用用户自定义图标: ${o} (块ID: ${e})`)) : (this.showBlockTypeIcons || l === "journal") && (o = _(l), this.log(`🎨 使用块类型图标: ${o} (块类型: ${l}, 块ID: ${e})`));
+        d && d.type === 1 && (n = d.value), u && u.type === 1 && u.value && u.value.trim() ? (o = u.value, this.log(`🎨 使用用户自定义图标: ${o} (块ID: ${e})`)) : (this.showBlockTypeIcons || l === "journal") && (o = U(l), this.log(`🎨 使用块类型图标: ${o} (块类型: ${l}, 块ID: ${e})`));
       } catch (d) {
-        this.warn("获取属性失败:", d), o = _(l);
+        this.warn("获取属性失败:", d), o = U(l);
       }
       return {
         blockId: e,
@@ -6747,14 +6741,14 @@ class Sr {
       if (this.addNewTabButton(), this.enableWorkspaces && this.addWorkspaceButton(), this.isFixedToTop) {
         const c = "var(--orca-tab-bg)", l = "var(--orca-tab-border)", d = "var(--orca-color-text-1)", u = this.tabContainer.querySelectorAll(".orca-tabs-plugin .orca-tab");
         u.forEach((p) => {
-          const g = p.getAttribute("data-tab-id");
-          if (!g) return;
-          const b = this.getCurrentPanelTabs().find((y) => y.blockId === g);
-          if (b) {
+          const m = p.getAttribute("data-tab-id");
+          if (!m) return;
+          const f = this.getCurrentPanelTabs().find((y) => y.blockId === m);
+          if (f) {
             let y, v, w = "normal";
-            if (y = "var(--orca-tab-bg)", v = "var(--orca-color-text-1)", b.color)
+            if (y = "var(--orca-tab-bg)", v = "var(--orca-color-text-1)", f.color)
               try {
-                p.style.setProperty("--tab-color", b.color), y = "var(--orca-tab-colored-bg)", v = "var(--orca-tab-colored-text)", w = "600";
+                p.style.setProperty("--tab-color", f.color), y = "var(--orca-tab-colored-bg)", v = "var(--orca-tab-colored-text)", w = "600";
               } catch {
               }
             p.style.cssText = `
@@ -7005,33 +6999,33 @@ class Sr {
    * 显示新建标签页按钮的右键菜单
    */
   showNewTabButtonContextMenu(e) {
-    var u, h;
+    var d, u;
     const t = document.querySelector(".new-tab-context-menu");
-    t && t.remove();
-    const r = document.documentElement.hasAttribute("data-theme") ? document.documentElement.getAttribute("data-theme") === "dark" : document.documentElement.classList.contains("dark") || ((h = (u = window.orca) == null ? void 0 : u.state) == null ? void 0 : h.themeMode) === "dark", a = document.createElement("div");
-    a.className = "new-tab-context-menu";
-    const i = 200, n = 140, { x: o, y: c } = H(e.clientX, e.clientY, i, n);
-    a.style.cssText = `
+    t && t.remove(), document.documentElement.hasAttribute("data-theme") ? document.documentElement.getAttribute("data-theme") : document.documentElement.classList.contains("dark") || ((u = (d = window.orca) == null ? void 0 : d.state) == null || u.themeMode);
+    const r = document.createElement("div");
+    r.className = "new-tab-context-menu";
+    const a = 200, i = 140, { x: n, y: o } = H(e.clientX, e.clientY, a, i);
+    r.style.cssText = `
       position: fixed;
-      left: ${o}px;
-      top: ${c}px;
+      left: ${n}px;
+      top: ${o}px;
       background: var(--orca-color-bg-1);
       border: 1px solid var(--sakura-dark-surface0);
       border-radius: var(--orca-radius-md);
       box-shadow: var(--orca-shadow-menu);
       z-index: 1000;
-      min-width: ${i}px;
+      min-width: ${a}px;
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
     `;
-    const l = [
+    const c = [
       {
         text: "新建标签页",
         action: () => this.createNewTab(),
         icon: "+"
       }
     ];
-    this.isFixedToTop && l.push(
+    this.isFixedToTop && c.push(
       {
         text: "---",
         action: () => {
@@ -7043,7 +7037,7 @@ class Sr {
         action: () => this.toggleFixedToTop(),
         icon: "📌"
       }
-    ), this.isFixedToTop || l.push(
+    ), this.isFixedToTop || c.push(
       {
         text: "---",
         action: () => {
@@ -7055,7 +7049,7 @@ class Sr {
         action: () => this.toggleLayoutMode(),
         icon: this.isVerticalMode ? "⏸" : "⏵"
       }
-    ), !this.isVerticalMode && !this.isFixedToTop && l.push(
+    ), !this.isVerticalMode && !this.isFixedToTop && c.push(
       {
         text: "---",
         action: () => {
@@ -7067,7 +7061,7 @@ class Sr {
         action: () => this.toggleFixedToTop(),
         icon: "📌"
       }
-    ), this.isVerticalMode && !this.isFixedToTop && l.push(
+    ), this.isVerticalMode && !this.isFixedToTop && c.push(
       {
         text: "---",
         action: () => {
@@ -7079,7 +7073,7 @@ class Sr {
         action: () => this.showWidthAdjustmentDialog(),
         icon: "📏"
       }
-    ), this.isFixedToTop || l.push(
+    ), this.isFixedToTop || c.push(
       {
         text: "---",
         action: () => {
@@ -7091,7 +7085,7 @@ class Sr {
         action: () => this.toggleSidebarAlignment(),
         icon: this.isSidebarAlignmentEnabled ? "🔴" : "🟢"
       }
-    ), this.enableMultiTabSaving && l.push(
+    ), this.enableMultiTabSaving && c.push(
       {
         text: "---",
         action: () => {
@@ -7103,48 +7097,48 @@ class Sr {
         action: () => this.saveCurrentTabs(),
         icon: "💾"
       }
-    ), l.forEach((p) => {
-      if (p.separator) {
+    ), c.forEach((h) => {
+      if (h.separator) {
         const b = document.createElement("div");
         b.style.cssText = `
           height: 1px;
           background: var(--orca-color-border);
           margin: 4px 8px;
-        `, a.appendChild(b);
+        `, r.appendChild(b);
         return;
       }
-      const g = document.createElement("div");
-      if (g.style.cssText = `
+      const p = document.createElement("div");
+      if (p.style.cssText = `
         padding: var(--orca-spacing-sm);
         cursor: pointer;
         display: flex;
         align-items: center;
         gap: 10px;
         font-size: 14px;
-        color: ${r ? "#ffffff" : "#333"};
+        color: var(--orca-color-text-1);
         transition: background-color 0.2s ease;
-      `, p.icon) {
+      `, h.icon) {
         const b = document.createElement("span");
-        b.textContent = p.icon, b.style.cssText = `
+        b.textContent = h.icon, b.style.cssText = `
           font-size: 14px;
           width: 18px;
           text-align: center;
-        `, g.appendChild(b);
+        `, p.appendChild(b);
       }
-      const f = document.createElement("span");
-      f.textContent = p.text, g.appendChild(f), g.addEventListener("mouseenter", () => {
-        g.style.backgroundColor = "var(--orca-color-menu-highlight)";
-      }), g.addEventListener("mouseleave", () => {
-        g.style.backgroundColor = "transparent";
-      }), g.addEventListener("click", () => {
-        p.action && p.action(), a.remove();
-      }), a.appendChild(g);
-    }), document.body.appendChild(a);
-    const d = (p) => {
-      a.contains(p.target) || (a.remove(), document.removeEventListener("click", d));
+      const m = document.createElement("span");
+      m.textContent = h.text, p.appendChild(m), p.addEventListener("mouseenter", () => {
+        p.style.backgroundColor = "var(--orca-color-menu-highlight)";
+      }), p.addEventListener("mouseleave", () => {
+        p.style.backgroundColor = "transparent";
+      }), p.addEventListener("click", () => {
+        h.action && h.action(), r.remove();
+      }), r.appendChild(p);
+    }), document.body.appendChild(r);
+    const l = (h) => {
+      r.contains(h.target) || (r.remove(), document.removeEventListener("click", l));
     };
     setTimeout(() => {
-      document.addEventListener("click", d);
+      document.addEventListener("click", l);
     }, 100);
   }
   /* ———————————————————————————————————————————————————————————————————————————— */
@@ -7453,7 +7447,7 @@ class Sr {
         if (i) {
           const n = await ee(i), o = this.findProperty(i, "_color"), c = this.findProperty(i, "_icon");
           let l = a.color, d = a.icon;
-          o && o.type === 1 && (l = o.value), c && c.type === 1 && c.value && c.value.trim() ? d = c.value : d || (d = _(n)), a.blockType !== n || a.icon !== d || a.color !== l ? (e[r] = {
+          o && o.type === 1 && (l = o.value), c && c.type === 1 && c.value && c.value.trim() ? d = c.value : d || (d = U(n)), a.blockType !== n || a.icon !== d || a.color !== l ? (e[r] = {
             ...a,
             blockType: n,
             icon: d,
@@ -7635,8 +7629,8 @@ class Sr {
       const d = document.createElement("img");
       d.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", d.style.opacity = "0";
       try {
-        const p = t.getBoundingClientRect(), g = c.clientX - p.left, f = c.clientY - p.top;
-        (h = c.dataTransfer) == null || h.setDragImage(d, g, f);
+        const p = t.getBoundingClientRect(), m = c.clientX - p.left, b = c.clientY - p.top;
+        (h = c.dataTransfer) == null || h.setDragImage(d, m, b);
       } catch {
       }
       this.draggingTab = e, this.dragOverTab = null, this.lastSwapKey = "", this.isDragListenersInitialized || (this.setupOptimizedDragListeners(), this.isDragListenersInitialized = !0), this.dragOverListener && (console.log("🔄 添加全局拖拽监听器"), document.addEventListener("dragover", this.dragOverListener)), console.log("🔄 拖拽开始，设置draggingTab:", e.title), this.swapDebounceTimer && (clearTimeout(this.swapDebounceTimer), this.swapDebounceTimer = null), requestAnimationFrame(() => {
@@ -7662,11 +7656,11 @@ class Sr {
           const d = t.getBoundingClientRect(), u = this.isVerticalMode && !this.isFixedToTop;
           let h;
           if (u) {
-            const g = d.top + d.height / 2;
-            h = c.clientY < g ? "before" : "after";
+            const m = d.top + d.height / 2;
+            h = c.clientY < m ? "before" : "after";
           } else {
-            const g = d.left + d.width / 2;
-            h = c.clientX < g ? "before" : "after";
+            const m = d.left + d.width / 2;
+            h = c.clientX < m ? "before" : "after";
           }
           this.updateDropIndicator(t, h), this.dragOverTab = e;
           const p = `${e.blockId}-${h}`;
@@ -7722,14 +7716,14 @@ class Sr {
    * RGB转OKLCH颜色空间
    */
   rgbToOklch(e, t, r) {
-    const a = e / 255, i = t / 255, n = r / 255, o = (J) => J <= 0.04045 ? J / 12.92 : Math.pow((J + 0.055) / 1.055, 2.4), c = o(a), l = o(i), d = o(n), u = c * 0.4124564 + l * 0.3575761 + d * 0.1804375, h = c * 0.2126729 + l * 0.7151522 + d * 0.072175, p = c * 0.0193339 + l * 0.119192 + d * 0.9503041, g = 0.2104542553 * u + 0.793617785 * h - 0.0040720468 * p, f = 1.9779984951 * u - 2.428592205 * h + 0.4505937099 * p, b = 0.0259040371 * u + 0.7827717662 * h - 0.808675766 * p, y = Math.cbrt(g), v = Math.cbrt(f), w = Math.cbrt(b), x = 0.2104542553 * y + 0.793617785 * v + 0.0040720468 * w, S = 1.9779984951 * y - 2.428592205 * v + 0.4505937099 * w, M = 0.0259040371 * y + 0.7827717662 * v - 0.808675766 * w, C = Math.sqrt(S * S + M * M), N = Math.atan2(M, S) * 180 / Math.PI, F = N < 0 ? N + 360 : N;
+    const a = e / 255, i = t / 255, n = r / 255, o = (J) => J <= 0.04045 ? J / 12.92 : Math.pow((J + 0.055) / 1.055, 2.4), c = o(a), l = o(i), d = o(n), u = c * 0.4124564 + l * 0.3575761 + d * 0.1804375, h = c * 0.2126729 + l * 0.7151522 + d * 0.072175, p = c * 0.0193339 + l * 0.119192 + d * 0.9503041, m = 0.2104542553 * u + 0.793617785 * h - 0.0040720468 * p, b = 1.9779984951 * u - 2.428592205 * h + 0.4505937099 * p, f = 0.0259040371 * u + 0.7827717662 * h - 0.808675766 * p, y = Math.cbrt(m), v = Math.cbrt(b), w = Math.cbrt(f), x = 0.2104542553 * y + 0.793617785 * v + 0.0040720468 * w, S = 1.9779984951 * y - 2.428592205 * v + 0.4505937099 * w, M = 0.0259040371 * y + 0.7827717662 * v - 0.808675766 * w, C = Math.sqrt(S * S + M * M), N = Math.atan2(M, S) * 180 / Math.PI, F = N < 0 ? N + 360 : N;
     return { l: x, c: C, h: F };
   }
   /**
    * OKLCH转RGB颜色空间
    */
   oklchToRgb(e, t, r) {
-    const a = r * Math.PI / 180, i = t * Math.cos(a), n = t * Math.sin(a), o = e, c = i, l = n, d = o * o * o, u = c * c * c, h = l * l * l, p = 1.0478112 * d + 0.0228866 * u - 0.050217 * h, g = 0.0295424 * d + 0.9904844 * u + 0.0170491 * h, f = -92345e-7 * d + 0.0150436 * u + 0.7521316 * h, b = 3.2404542 * p - 1.5371385 * g - 0.4985314 * f, y = -0.969266 * p + 1.8760108 * g + 0.041556 * f, v = 0.0556434 * p - 0.2040259 * g + 1.0572252 * f, w = (C) => C <= 31308e-7 ? 12.92 * C : 1.055 * Math.pow(C, 1 / 2.4) - 0.055, x = Math.max(0, Math.min(255, Math.round(w(b) * 255))), S = Math.max(0, Math.min(255, Math.round(w(y) * 255))), M = Math.max(0, Math.min(255, Math.round(w(v) * 255)));
+    const a = r * Math.PI / 180, i = t * Math.cos(a), n = t * Math.sin(a), o = e, c = i, l = n, d = o * o * o, u = c * c * c, h = l * l * l, p = 1.0478112 * d + 0.0228866 * u - 0.050217 * h, m = 0.0295424 * d + 0.9904844 * u + 0.0170491 * h, b = -92345e-7 * d + 0.0150436 * u + 0.7521316 * h, f = 3.2404542 * p - 1.5371385 * m - 0.4985314 * b, y = -0.969266 * p + 1.8760108 * m + 0.041556 * b, v = 0.0556434 * p - 0.2040259 * m + 1.0572252 * b, w = (C) => C <= 31308e-7 ? 12.92 * C : 1.055 * Math.pow(C, 1 / 2.4) - 0.055, x = Math.max(0, Math.min(255, Math.round(w(f) * 255))), S = Math.max(0, Math.min(255, Math.round(w(y) * 255))), M = Math.max(0, Math.min(255, Math.round(w(v) * 255)));
     return { r: x, g: S, b: M };
   }
   /**
@@ -8037,9 +8031,7 @@ class Sr {
       this.log(`📋 新标签页信息: "${a.title}" (ID: ${e})`);
       const i = this.getCurrentActiveTab();
       let n = r.length;
-      if (this.log(`📊 当前标签数量: ${r.length}, 标签列表: ${r.map((o) => o.title).join(", ")}`), this.addNewTabToEnd)
-        n = r.length, this.log(`🎯 [一次性] 将新标签添加到末尾: "${a.title}", 插入位置: ${n}`), this.addNewTabToEnd = !1, this.log("♻️ 已重置标志，后续新标签将在聚焦标签后插入");
-      else if (i) {
+      if (i) {
         const o = r.findIndex((c) => c.blockId === i.blockId);
         o !== -1 && (n = o + 1, this.log(`🎯 将在聚焦标签 "${i.title}" 后面插入新标签: "${a.title}"`));
       } else
@@ -8049,9 +8041,7 @@ class Sr {
         const o = this.findLastNonPinnedTabIndex();
         if (o !== -1) {
           const c = r[o];
-          r.splice(o, 1), this.log(`🗑️ 删除末尾的非固定标签: "${c.title}" 来保持数量限制`), r.forEach((l, d) => {
-            l.order = d;
-          });
+          r.splice(o, 1), this.log(`🗑️ 删除末尾的非固定标签: "${c.title}" 来保持数量限制`);
         } else {
           const c = r.findIndex((l) => l.blockId === a.blockId);
           if (c !== -1) {
@@ -8061,9 +8051,7 @@ class Sr {
         }
       } else
         r.splice(n, 0, a), this.verboseLog(`➕ 在位置 ${n} 插入新标签: ${a.title}`);
-      r.forEach((o, c) => {
-        o.order = c;
-      }), this.log(`🔄 已重新计算标签顺序: ${r.map((o) => `${o.title}(${o.order})`).join(", ")}`), this.syncCurrentTabsToStorage(r), await this.saveCurrentPanelTabs(), await this.updateTabsUI(), this.enableWorkspaces && this.currentWorkspace && (await this.saveCurrentTabsToWorkspace(), this.log(`🔄 创建新标签页，实时更新工作区: ${a.title}`)), await orca.nav.goTo("block", { blockId: parseInt(e) }, this.currentPanelId || ""), this.log(`🔄 导航到块: ${e}`), this.log(`✅ 成功创建新标签页: "${a.title}"`);
+      this.syncCurrentTabsToStorage(r), await this.saveCurrentPanelTabs(), await this.updateTabsUI(), this.enableWorkspaces && this.currentWorkspace && (await this.saveCurrentTabsToWorkspace(), this.log(`🔄 创建新标签页，实时更新工作区: ${a.title}`)), await orca.nav.goTo("block", { blockId: parseInt(e) }, this.currentPanelId || ""), this.log(`🔄 导航到块: ${e}`), this.log(`✅ 成功创建新标签页: "${a.title}"`);
     } catch (e) {
       this.error("创建新标签页时出错:", e);
     }
@@ -8265,7 +8253,7 @@ class Sr {
           padding: var(--orca-spacing-sm);
           cursor: pointer;
           font-size: 14px;
-          color: ${d ? "#ffffff" : "#333"};
+          color: var(--orca-color-text-1);
           border-bottom: 1px solid var(--orca-color-border);
           transition: background-color 0.2s;
           display: flex;
@@ -8595,9 +8583,9 @@ class Sr {
     const i = document.querySelector(`[data-tab-id="${e.blockId}"]`);
     let n = { x: "50%", y: "50%" };
     if (i) {
-      const u = i.getBoundingClientRect(), h = window.innerWidth, p = window.innerHeight, g = 300, f = 100, b = 20;
-      let y = u.left, v = u.top - f - 10;
-      y + g > h - b && (y = h - g - b), y < b && (y = b), v < b && (v = u.bottom + 10, v + f > p - b && (v = (p - f) / 2)), v + f > p - b && (v = p - f - b), y = Math.max(b, Math.min(y, h - g - b)), v = Math.max(b, Math.min(v, p - f - b)), n = { x: `${y}px`, y: `${v}px` };
+      const u = i.getBoundingClientRect(), h = window.innerWidth, p = window.innerHeight, m = 300, b = 100, f = 20;
+      let y = u.left, v = u.top - b - 10;
+      y + m > h - f && (y = h - m - f), y < f && (y = f), v < f && (v = u.bottom + 10, v + b > p - f && (v = (p - b) / 2)), v + b > p - f && (v = p - b - f), y = Math.max(f, Math.min(y, h - m - f)), v = Math.max(f, Math.min(v, p - b - f)), n = { x: `${y}px`, y: `${v}px` };
     }
     const o = orca.components.InputBox, c = t.createElement(o, {
       label: "重命名标签",
@@ -8783,7 +8771,7 @@ class Sr {
           }
         })
       ])
-    }, (p, g) => r.createElement("div", {
+    }, (p, m) => r.createElement("div", {
       style: {
         position: "absolute",
         top: 0,
@@ -8793,17 +8781,17 @@ class Sr {
         pointerEvents: "auto",
         background: "transparent"
       },
-      onContextMenu: (b) => {
-        b.preventDefault(), b.stopPropagation(), p(b);
+      onContextMenu: (f) => {
+        f.preventDefault(), f.stopPropagation(), p(f);
       }
     }));
     a.render(d, i);
     const u = () => {
       a.unmountComponentAtNode(i), i.remove();
     }, h = new MutationObserver((p) => {
-      p.forEach((g) => {
-        g.removedNodes.forEach((f) => {
-          f === e && (u(), h.disconnect());
+      p.forEach((m) => {
+        m.removedNodes.forEach((b) => {
+          b === e && (u(), h.disconnect());
         });
       });
     });
@@ -8861,25 +8849,25 @@ class Sr {
         action: () => this.closeAllTabs(),
         disabled: this.getCurrentPanelTabs().length <= 1
       }
-    ), d.forEach((g) => {
-      const f = document.createElement("div");
-      f.textContent = g.text, f.style.cssText = `
+    ), d.forEach((m) => {
+      const b = document.createElement("div");
+      b.textContent = m.text, b.style.cssText = `
         padding: var(--orca-spacing-sm);
         cursor: pointer;
         font-size: 14px;
-        color: ${g.disabled ? a ? "#666" : "#999" : a ? "#ffffff" : "#333"};
+        color: ${m.disabled ? a ? "#666" : "#999" : "var(--orca-color-text-1)"};
         border-bottom: 1px solid var(--orca-color-border);
         transition: background-color 0.2s;
-      `, g.disabled || (f.addEventListener("mouseenter", () => {
-        f.style.backgroundColor = "var(--orca-color-menu-highlight)";
-      }), f.addEventListener("mouseleave", () => {
-        f.style.backgroundColor = "transparent";
-      }), f.addEventListener("click", () => {
-        g.action(), i.remove();
-      })), i.appendChild(f);
+      `, m.disabled || (b.addEventListener("mouseenter", () => {
+        b.style.backgroundColor = "var(--orca-color-menu-highlight)";
+      }), b.addEventListener("mouseleave", () => {
+        b.style.backgroundColor = "transparent";
+      }), b.addEventListener("click", () => {
+        m.action(), i.remove();
+      })), i.appendChild(b);
     }), document.body.appendChild(i);
-    const u = (g) => {
-      i.contains(g.target) || (i.remove(), document.removeEventListener("click", u));
+    const u = (m) => {
+      i.contains(m.target) || (i.remove(), document.removeEventListener("click", u));
     };
     setTimeout(() => {
       document.addEventListener("click", u);
@@ -8932,7 +8920,7 @@ class Sr {
           if (n) {
             const o = await ee(n);
             let c = a.icon;
-            c || (c = _(o)), e[r] = {
+            c || (c = U(o)), e[r] = {
               ...a,
               blockType: o,
               icon: c
@@ -9260,7 +9248,6 @@ class Sr {
    * @param panelId 所在面板ID
    */
   async handleNewBlockInPanel(e, t) {
-    var p, g;
     if (!e || !t) return;
     if (this.isSwitchingTab) {
       this.log(`🔄 正在切换标签，跳过 handleNewBlockInPanel: ${e}`);
@@ -9273,15 +9260,15 @@ class Sr {
     }
     const n = this.getPanelIds().indexOf(t);
     if (n === -1) {
-      const f = document.querySelectorAll(".orca-panel");
-      if (!(f.length > 0 && f[0].getAttribute("data-panel-id") === t)) {
+      const d = document.querySelectorAll(".orca-panel");
+      if (!(d.length > 0 && d[0].getAttribute("data-panel-id") === t)) {
         this.log(`🚫 不管理辅助面板 ${t} 的标签页`);
         return;
       }
     }
     n !== -1 && (this.currentPanelIndex = n, this.currentPanelId = t);
     let o = this.getCurrentPanelTabs();
-    const c = o.find((f) => f.blockId === e);
+    const c = o.find((d) => d.blockId === e);
     if (c) {
       this.closedTabs.has(e) && (this.closedTabs.delete(e), this.saveClosedTabs()), this.updateFocusState(e, c.title), this.immediateUpdateTabsUI();
       return;
@@ -9295,67 +9282,27 @@ class Sr {
     try {
       if (l = await this.createTabInfoFromBlock(e, t), !l) return;
       o = this.getCurrentPanelTabs();
-      const f = o.find((b) => b.blockId === e);
-      if (f) {
-        this.log(`✅ 标签已被其他地方创建（在await期间），只更新聚焦状态: "${f.title}"`), this.updateFocusState(e, f.title), this.immediateUpdateTabsUI();
+      const d = o.find((u) => u.blockId === e);
+      if (d) {
+        this.log(`✅ 标签已被其他地方创建（在await期间），只更新聚焦状态: "${d.title}"`), this.updateFocusState(e, d.title), this.immediateUpdateTabsUI();
         return;
       }
     } finally {
       this.creatingTabs.delete(e);
     }
-    const d = this.getCurrentActiveTab();
-    if (d) {
-      if (d.isPinned) {
-        this.log(`📌 当前激活标签已置顶，创建新标签: "${l.title}"`);
-        const b = o.filter((y) => y.isPinned).length;
-        o.splice(b, 0, l), this.updateFocusState(e, l.title), this.setCurrentPanelTabs(o), this.immediateUpdateTabsUI();
+    if (o.length >= this.maxTabs) {
+      this.log(`⚠️ 标签页已达上限 (${this.maxTabs})，需要替换最后一个非固定标签页`);
+      const d = this.findLastNonPinnedTabIndex();
+      if (d !== -1) {
+        const u = o[d];
+        o[d] = l, this.log(`🔄 替换最后一个非固定标签页: "${u.title}" -> "${l.title}"`), this.updateFocusState(e, l.title), this.setCurrentPanelTabs(o), this.immediateUpdateTabsUI();
         return;
-      }
-      const f = o.findIndex((b) => b.blockId === d.blockId);
-      if (f !== -1) {
-        this.log(`🔄 替换当前激活标签页: "${d.title}" -> "${l.title}"`), o[f] = l, this.updateFocusState(e, l.title), this.setCurrentPanelTabs(o), this.immediateUpdateTabsUI();
-        return;
-      }
-    }
-    if (this.lastActiveBlockId) {
-      const f = o.findIndex((b) => b.blockId === this.lastActiveBlockId);
-      if (f !== -1) {
-        if (o[f].isPinned) {
-          this.log(`📌 上一个激活标签已置顶，创建新标签: "${l.title}"`);
-          const y = o.filter((v) => v.isPinned).length;
-          o.splice(y, 0, l), this.updateFocusState(e, l.title), this.setCurrentPanelTabs(o), this.immediateUpdateTabsUI();
-          return;
-        }
-        this.log(`🔄 使用上一个激活标签页作为替换目标: "${o[f].title}" -> "${l.title}"`), o[f] = l, this.updateFocusState(e, l.title), this.setCurrentPanelTabs(o), this.immediateUpdateTabsUI();
+      } else {
+        this.log(`⚠️ 所有标签页都是固定的，无法添加新标签页: "${l.title}"`);
         return;
       }
     }
-    let u = -1;
-    const h = (p = this.tabContainer) == null ? void 0 : p.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
-    if (h) {
-      const f = h.getAttribute("data-tab-id");
-      u = o.findIndex((b) => b.blockId === f);
-    }
-    if (u === -1) {
-      const f = (g = this.tabContainer) == null ? void 0 : g.querySelectorAll(".orca-tabs-plugin .orca-tab");
-      if (f && f.length > 0)
-        for (let b = 0; b < f.length; b++) {
-          const y = f[b];
-          if (y.classList.contains("focused") || y.getAttribute("data-focused") === "true" || y.classList.contains("active")) {
-            u = b;
-            break;
-          }
-        }
-    }
-    if (u === -1 && o.length > 0 && (u = 0, this.log("⚠️ 无法确定当前聚焦的标签页，使用第一个标签页作为替换目标")), u >= 0 && u < o.length)
-      if (o[u].isPinned) {
-        this.log(`📌 目标标签已置顶，创建新标签: "${l.title}"`);
-        const b = o.filter((y) => y.isPinned).length;
-        o.splice(b, 0, l), this.updateFocusState(e, l.title), this.setCurrentPanelTabs(o), this.immediateUpdateTabsUI();
-      } else
-        o[u] = l, this.updateFocusState(e, l.title), this.setCurrentPanelTabs(o), this.immediateUpdateTabsUI();
-    else
-      o = [l], this.updateFocusState(e, l.title), this.setCurrentPanelTabs(o), this.immediateUpdateTabsUI();
+    o.length > 0 ? (this.log(`➕ 添加新标签页到末尾: "${l.title}"`), o.push(l), this.updateFocusState(e, l.title), this.setCurrentPanelTabs(o), this.immediateUpdateTabsUI()) : (o = [l], this.updateFocusState(e, l.title), this.setCurrentPanelTabs(o), this.immediateUpdateTabsUI());
   }
   async checkCurrentPanelBlocks() {
     if (this.panelBlockCheckTask) {
@@ -9368,10 +9315,10 @@ class Sr {
       const e = document.querySelector(".orca-panel.active");
       if (!e) {
         this.log("❌ 没有找到当前激活的面板");
-        const g = document.querySelectorAll(".orca-panel");
-        this.log("📊 当前所有面板状态:"), g.forEach((f, b) => {
-          const y = f.getAttribute("data-panel-id"), v = f.classList.contains("active");
-          this.log(`  面板${b + 1}: ID=${y}, active=${v}`);
+        const m = document.querySelectorAll(".orca-panel");
+        this.log("📊 当前所有面板状态:"), m.forEach((b, f) => {
+          const y = b.getAttribute("data-panel-id"), v = b.classList.contains("active");
+          this.log(`  面板${f + 1}: ID=${y}, active=${v}`);
         });
         return;
       }
@@ -9395,7 +9342,7 @@ class Sr {
       }
       let n = this.getCurrentPanelTabs();
       n.length === 0 && (this.log("📋 当前面板没有标签数据，先扫描面板数据"), await this.scanCurrentPanelTabs(), n = this.getCurrentPanelTabs());
-      const o = n.find((g) => g.blockId === i);
+      const o = n.find((m) => m.blockId === i);
       if (o) {
         this.closedTabs.has(i) && (this.closedTabs.delete(i), await this.saveClosedTabs()), this.updateFocusState(i, o.title), await this.immediateUpdateTabsUI();
         return;
@@ -9408,14 +9355,14 @@ class Sr {
       const l = c.getAttribute("data-tab-id");
       if (!l)
         return;
-      const d = n.findIndex((g) => g.blockId === l);
+      const d = n.findIndex((m) => m.blockId === l);
       if (d === -1)
         return;
       if (n[d].isPinned) {
         this.log(`📌 聚焦标签已置顶，不替换，创建新标签: "${i}"`);
-        const g = n.find((f) => f.blockId === i);
-        if (g) {
-          this.log(`✅ 标签已被其他地方创建，只更新聚焦状态: "${g.title}"`), this.updateFocusState(i, g.title), await this.immediateUpdateTabsUI();
+        const m = n.find((b) => b.blockId === i);
+        if (m) {
+          this.log(`✅ 标签已被其他地方创建，只更新聚焦状态: "${m.title}"`), this.updateFocusState(i, m.title), await this.immediateUpdateTabsUI();
           return;
         }
         if (this.creatingTabs.has(i)) {
@@ -9424,17 +9371,17 @@ class Sr {
         }
         this.creatingTabs.add(i);
         try {
-          const f = await this.getTabInfo(i, t, n.length);
-          if (!f)
+          const b = await this.getTabInfo(i, t, n.length);
+          if (!b)
             return;
           n = this.getCurrentPanelTabs();
-          const b = n.find((v) => v.blockId === i);
-          if (b) {
-            this.log(`✅ 标签在创建过程中已被其他地方创建: "${b.title}"`), this.updateFocusState(i, b.title), await this.immediateUpdateTabsUI();
+          const f = n.find((v) => v.blockId === i);
+          if (f) {
+            this.log(`✅ 标签在创建过程中已被其他地方创建: "${f.title}"`), this.updateFocusState(i, f.title), await this.immediateUpdateTabsUI();
             return;
           }
           const y = n.filter((v) => v.isPinned).length;
-          n.splice(y, 0, f), this.updateFocusState(i, f.title), this.setCurrentPanelTabs(n), await this.immediateUpdateTabsUI();
+          n.splice(y, 0, b), this.updateFocusState(i, b.title), this.setCurrentPanelTabs(n), await this.immediateUpdateTabsUI();
         } finally {
           this.creatingTabs.delete(i);
         }
@@ -9464,13 +9411,13 @@ class Sr {
     new MutationObserver(async (i) => {
       let n = !1, o = !1, c = !1, l = this.currentPanelIndex;
       const d = Date.now(), u = this.lastPanelCheckTime || 0, h = 1e3;
-      if (i.forEach((p) => {
+      i.forEach((p) => {
         if (p.type === "childList") {
-          const g = p.target;
-          if ((g.classList.contains("orca-panels-row") || g.closest(".orca-panels-row")) && (o = !0), p.addedNodes.length > 0 && g.closest(".orca-panel")) {
-            for (const b of p.addedNodes)
-              if (b.nodeType === Node.ELEMENT_NODE) {
-                const y = b;
+          const m = p.target;
+          if ((m.classList.contains("orca-panels-row") || m.closest(".orca-panels-row")) && (o = !0), p.addedNodes.length > 0 && m.closest(".orca-panel")) {
+            for (const f of p.addedNodes)
+              if (f.nodeType === Node.ELEMENT_NODE) {
+                const y = f;
                 if (this.handleNewHideableElement(y)) {
                   n = !0;
                   break;
@@ -9487,15 +9434,15 @@ class Sr {
           }
         }
         if (p.type === "attributes" && p.attributeName === "class") {
-          const g = p.target;
-          if (g.classList.contains("orca-panel")) {
-            if (c = !0, g.classList.contains("active")) {
-              const f = g.getAttribute("data-panel-id"), b = g.querySelectorAll(".orca-hideable");
+          const m = p.target;
+          if (m.classList.contains("orca-panel")) {
+            if (c = !0, m.classList.contains("active")) {
+              const b = m.getAttribute("data-panel-id"), f = m.querySelectorAll(".orca-hideable");
               let y = null;
-              b.forEach((v) => {
+              f.forEach((v) => {
                 const w = v.classList.contains("orca-hideable-hidden"), x = v.querySelector(".orca-block-editor[data-block-id]"), S = x == null ? void 0 : x.getAttribute("data-block-id");
                 !w && x && S && (y = S);
-              }), y && f && this.handleNewBlockInPanel(y, f).catch((v) => {
+              }), y && b && this.handleNewBlockInPanel(y, b).catch((v) => {
                 this.error(`处理面板激活时的新块失败: ${y}`, v);
               }), setTimeout(async () => {
                 await this.checkCurrentPanelBlocks();
@@ -9503,16 +9450,13 @@ class Sr {
                 await this.checkCurrentPanelBlocks();
               }, 200);
             }
-            g.classList.contains("orca-locked") && g.classList.contains("active") && (this.log("🔒 检测到锁定面板激活，聚焦上一个面板"), this.focusToPreviousPanel());
+            m.classList.contains("orca-locked") && m.classList.contains("active") && (this.log("🔒 检测到锁定面板激活，聚焦上一个面板"), this.focusToPreviousPanel());
           }
-          g.classList.contains("orca-hideable") && !g.classList.contains("orca-hideable-hidden") && (this.verboseLog("🎯 检测到 orca-hideable 元素聚焦状态变化"), n = !0);
+          m.classList.contains("orca-hideable") && !m.classList.contains("orca-hideable-hidden") && (this.verboseLog("🎯 检测到 orca-hideable 元素聚焦状态变化"), n = !0);
         }
       }), c && (await this.updateCurrentPanelIndex(), l !== this.currentPanelIndex && (this.log(`🔄 面板切换: ${l} -> ${this.currentPanelIndex}`), await this.immediateUpdateTabsUI())), o && d - u > h ? (this.lastPanelCheckTime = d, this.log(`🔍 面板检查防抖：距离上次检查 ${d - u}ms`), setTimeout(async () => {
         await this.checkForNewPanels();
-      }, 100)) : o && this.verboseLog(`⏭️ 跳过面板检查：距离上次检查仅 ${d - u}ms`), n) {
-        const p = Date.now(), g = 300, f = p - this.lastBlockCheckTime;
-        f > g ? (this.verboseLog(`🔍 块检查防抖：距离上次检查 ${f}ms，执行检查`), this.lastBlockCheckTime = p, await this.checkCurrentPanelBlocks()) : this.verboseLog(`⏭️ 跳过块检查：距离上次检查仅 ${f}ms`);
-      }
+      }, 100)) : o && this.verboseLog(`⏭️ 跳过面板检查：距离上次检查仅 ${d - u}ms`), n && await this.checkCurrentPanelBlocks();
     }).observe(document.body, {
       childList: !0,
       subtree: !0,
@@ -9547,13 +9491,12 @@ class Sr {
           if (o) {
             const c = o.getAttribute("data-block-id");
             if (c) {
-              const l = (i = this.tabContainer) == null ? void 0 : i.querySelector('.orca-tab[data-focused="true"]'), d = !!l;
-              if (!this.lastFocusState || this.lastFocusState.blockId !== c || this.lastFocusState.hasFocusedTab !== d)
-                if (this.lastFocusState = { blockId: c, hasFocusedTab: d }, l) {
-                  const h = l.getAttribute("data-tab-id");
-                  h !== c && (this.verboseLog(`?? 焦点检测到变更: ${h} -> ${c}`), await this.checkCurrentPanelBlocks());
-                } else
-                  this.verboseLog(`?? 焦点检测到无聚焦标签页，当前块: ${c}`), await this.checkCurrentPanelBlocks();
+              const l = (i = this.tabContainer) == null ? void 0 : i.querySelector('.orca-tab[data-focused="true"]');
+              if (l) {
+                const d = l.getAttribute("data-tab-id");
+                d !== c && (this.verboseLog(`?? 焦点检测到变更: ${d} -> ${c}`), await this.checkCurrentPanelBlocks());
+              } else
+                this.verboseLog(`?? 焦点检测到无聚焦标签页，当前块: ${c}`), await this.checkCurrentPanelBlocks();
             }
           }
         }
@@ -9888,7 +9831,7 @@ class Sr {
     }
     const t = e ? { x: e.clientX, y: e.clientY } : { x: 0, y: 0 }, r = this.recentlyClosedTabs.map((a, i) => ({
       label: `${a.title}`,
-      icon: a.icon || _(a.blockType || "default"),
+      icon: a.icon || U(a.blockType || "default"),
       onClick: () => this.restoreRecentlyClosedTab(a, i)
     }));
     r.push({
@@ -9901,10 +9844,10 @@ class Sr {
    * 创建最近关闭标签页菜单
    */
   createRecentlyClosedTabsMenu(e, t) {
-    var g, f;
+    var m, b;
     const r = document.querySelector(".recently-closed-tabs-menu");
     r && r.remove();
-    const a = document.documentElement.classList.contains("dark") || ((f = (g = window.orca) == null ? void 0 : g.state) == null ? void 0 : f.themeMode) === "dark", i = document.createElement("div");
+    const a = document.documentElement.classList.contains("dark") || ((b = (m = window.orca) == null ? void 0 : m.state) == null ? void 0 : b.themeMode) === "dark", i = document.createElement("div");
     i.className = "recently-closed-tabs-menu";
     const n = 280, o = 350, { x: c, y: l } = H(t.x, t.y, n, o);
     i.style.cssText = `
@@ -9921,8 +9864,8 @@ class Sr {
       max-height: ${o}px;
       overflow-y: auto;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    `, e.forEach((b, y) => {
-      if (b.label === "---") {
+    `, e.forEach((f, y) => {
+      if (f.label === "---") {
         const x = document.createElement("div");
         x.style.cssText = `
           height: 1px;
@@ -9937,10 +9880,10 @@ class Sr {
         padding: var(--orca-spacing-sm);
         cursor: pointer;
         font-size: 14px;
-        color: ${a ? "#ffffff" : "#333"};
+        color: var(--orca-color-text-1);
         transition: background-color 0.2s ease;
         min-height: 24px;
-      `, b.icon) {
+      `, f.icon) {
         const x = document.createElement("div");
         if (x.style.cssText = `
           margin-right: 8px;
@@ -9951,15 +9894,15 @@ class Sr {
           display: flex;
           align-items: center;
           justify-content: center;
-        `, b.icon.startsWith("ti ti-")) {
+        `, f.icon.startsWith("ti ti-")) {
           const S = document.createElement("i");
-          S.className = b.icon, x.appendChild(S);
+          S.className = f.icon, x.appendChild(S);
         } else
-          x.textContent = b.icon;
+          x.textContent = f.icon;
         v.appendChild(x);
       }
       const w = document.createElement("span");
-      w.textContent = b.label, w.style.cssText = `
+      w.textContent = f.label, w.style.cssText = `
         flex: 1;
         white-space: nowrap;
         overflow: hidden;
@@ -9969,13 +9912,13 @@ class Sr {
       }), v.addEventListener("mouseleave", () => {
         v.style.backgroundColor = "transparent";
       }), v.addEventListener("click", () => {
-        b.onClick(), i.remove();
+        f.onClick(), i.remove();
       }), i.appendChild(v);
     }), document.body.appendChild(i);
     const d = i.getBoundingClientRect(), u = window.innerWidth, h = window.innerHeight;
     d.right > u && (i.style.left = `${u - d.width - 10}px`), d.bottom > h && (i.style.top = `${h - d.height - 10}px`);
-    const p = (b) => {
-      i.contains(b.target) || (i.remove(), document.removeEventListener("click", p), document.removeEventListener("contextmenu", p));
+    const p = (f) => {
+      i.contains(f.target) || (i.remove(), document.removeEventListener("click", p), document.removeEventListener("contextmenu", p));
     };
     setTimeout(() => {
       document.addEventListener("click", p), document.addEventListener("contextmenu", p);
@@ -10071,10 +10014,10 @@ class Sr {
    * 创建多标签页保存菜单
    */
   createMultiTabSavingMenu(e, t) {
-    var g, f;
+    var m, b;
     const r = document.querySelector(".multi-tab-saving-menu");
     r && r.remove();
-    const a = document.documentElement.classList.contains("dark") || ((f = (g = window.orca) == null ? void 0 : g.state) == null ? void 0 : f.themeMode) === "dark", i = document.createElement("div");
+    const a = document.documentElement.classList.contains("dark") || ((b = (m = window.orca) == null ? void 0 : m.state) == null ? void 0 : b.themeMode) === "dark", i = document.createElement("div");
     i.className = "multi-tab-saving-menu";
     const n = 300, o = 400, { x: c, y: l } = H(t.x, t.y, n, o);
     i.style.cssText = `
@@ -10091,8 +10034,8 @@ class Sr {
       max-height: ${o}px;
       overflow-y: auto;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    `, e.forEach((b, y) => {
-      if (b.label === "---") {
+    `, e.forEach((f, y) => {
+      if (f.label === "---") {
         const x = document.createElement("div");
         x.style.cssText = `
           height: 1px;
@@ -10108,10 +10051,10 @@ class Sr {
         padding: var(--orca-spacing-sm);
         cursor: pointer;
         font-size: 14px;
-        color: ${a ? "#ffffff" : "#333"};
+        color: var(--orca-color-text-1);
         transition: background-color 0.2s ease;
         min-height: 24px;
-      `, b.icon) {
+      `, f.icon) {
         const x = document.createElement("div");
         if (x.style.cssText = `
           margin-right: 8px;
@@ -10122,15 +10065,15 @@ class Sr {
           display: flex;
           align-items: center;
           justify-content: center;
-        `, b.icon.startsWith("ti ti-")) {
+        `, f.icon.startsWith("ti ti-")) {
           const S = document.createElement("i");
-          S.className = b.icon, x.appendChild(S);
+          S.className = f.icon, x.appendChild(S);
         } else
-          x.textContent = b.icon;
+          x.textContent = f.icon;
         v.appendChild(x);
       }
       const w = document.createElement("span");
-      w.textContent = b.label, w.style.cssText = `
+      w.textContent = f.label, w.style.cssText = `
         flex: 1;
         white-space: nowrap;
         overflow: hidden;
@@ -10140,13 +10083,13 @@ class Sr {
       }), v.addEventListener("mouseleave", () => {
         v.style.backgroundColor = "transparent";
       }), v.addEventListener("click", () => {
-        b.onClick(), i.remove();
+        f.onClick(), i.remove();
       }), i.appendChild(v);
     }), document.body.appendChild(i);
     const d = i.getBoundingClientRect(), u = window.innerWidth, h = window.innerHeight;
     d.right > u && (i.style.left = `${u - d.width - 10}px`), d.bottom > h && (i.style.top = `${h - d.height - 10}px`);
-    const p = (b) => {
-      i.contains(b.target) || (i.remove(), document.removeEventListener("click", p), document.removeEventListener("contextmenu", p));
+    const p = (f) => {
+      i.contains(f.target) || (i.remove(), document.removeEventListener("click", p), document.removeEventListener("contextmenu", p));
     };
     setTimeout(() => {
       document.addEventListener("click", p), document.addEventListener("contextmenu", p);
@@ -10210,9 +10153,9 @@ class Sr {
     o.className = "orca-button", o.textContent = "更新已有标签组", o.style.cssText = "flex: 1;";
     let c = !1;
     const l = () => {
-      c = !1, n.className = "orca-button orca-button-secondary", n.style.cssText = "flex: 1;", o.className = "orca-button", o.style.cssText = "flex: 1;", u.style.display = "block", g.style.display = "none", S();
+      c = !1, n.className = "orca-button orca-button-secondary", n.style.cssText = "flex: 1;", o.className = "orca-button", o.style.cssText = "flex: 1;", u.style.display = "block", m.style.display = "none", S();
     }, d = () => {
-      c = !0, o.className = "orca-button orca-button-secondary", o.style.cssText = "flex: 1;", n.className = "orca-button", n.style.cssText = "flex: 1;", u.style.display = "none", g.style.display = "block", S();
+      c = !0, o.className = "orca-button orca-button-secondary", o.style.cssText = "flex: 1;", n.className = "orca-button", n.style.cssText = "flex: 1;", u.style.display = "none", m.style.display = "block", S();
     };
     n.onclick = l, o.onclick = d, i.appendChild(n), i.appendChild(o), a.appendChild(i);
     const u = document.createElement("div");
@@ -10244,19 +10187,19 @@ class Sr {
       p.style.borderColor = "#ddd";
     }), p.addEventListener("input", (C) => {
     }), u.appendChild(p);
-    const g = document.createElement("div");
-    g.style.cssText = `
+    const m = document.createElement("div");
+    m.style.cssText = `
       display: none;
     `;
-    const f = document.createElement("label");
-    f.style.cssText = `
+    const b = document.createElement("label");
+    b.style.cssText = `
       display: block;
       margin-bottom: 8px;
       font-size: 14px;
       color: var(--orca-color-text-1);
-    `, f.textContent = "请选择要更新的标签页集合:", g.appendChild(f);
-    const b = document.createElement("select");
-    b.style.cssText = `
+    `, b.textContent = "请选择要更新的标签页集合:", m.appendChild(b);
+    const f = document.createElement("select");
+    f.style.cssText = `
       width: 100%;
       padding: .175rem var(--orca-spacing-md);
       border: 1px solid var(--orca-color-border);
@@ -10267,16 +10210,16 @@ class Sr {
       transition: border-color 0.2s;
       pointer-events: auto;
       background: var(--orca-color-bg-1);
-    `, b.addEventListener("focus", () => {
-      b.style.borderColor = "var(--orca-color-primary-5)";
-    }), b.addEventListener("blur", () => {
-      b.style.borderColor = "#ddd";
+    `, f.addEventListener("focus", () => {
+      f.style.borderColor = "var(--orca-color-primary-5)";
+    }), f.addEventListener("blur", () => {
+      f.style.borderColor = "#ddd";
     });
     const y = document.createElement("option");
-    y.value = "", y.textContent = "请选择标签页集合...", b.appendChild(y), this.savedTabSets.forEach((C, N) => {
+    y.value = "", y.textContent = "请选择标签页集合...", f.appendChild(y), this.savedTabSets.forEach((C, N) => {
       const F = document.createElement("option");
-      F.value = N.toString(), F.textContent = `${C.name} (${C.tabs.length}个标签)`, b.appendChild(F);
-    }), g.appendChild(b), a.appendChild(u), a.appendChild(g), t.appendChild(a);
+      F.value = N.toString(), F.textContent = `${C.name} (${C.tabs.length}个标签)`, f.appendChild(F);
+    }), m.appendChild(f), a.appendChild(u), a.appendChild(m), t.appendChild(a);
     const v = document.createElement("div");
     v.style.cssText = `
       padding: 20px;
@@ -10303,7 +10246,7 @@ class Sr {
     };
     x.onclick = async () => {
       if (c) {
-        const C = parseInt(b.value);
+        const C = parseInt(f.value);
         if (isNaN(C) || C < 0 || C >= this.savedTabSets.length) {
           orca.notify("warn", "请选择要更新的标签页集合");
           return;
@@ -10423,9 +10366,9 @@ class Sr {
       o.style.borderColor = "#ddd";
     });
     const c = document.createElement("option");
-    c.value = "", c.textContent = "请选择标签组...", o.appendChild(c), this.savedTabSets.forEach((p, g) => {
-      const f = document.createElement("option");
-      f.value = g.toString(), f.textContent = `${p.name} (${p.tabs.length}个标签)`, o.appendChild(f);
+    c.value = "", c.textContent = "请选择标签组...", o.appendChild(c), this.savedTabSets.forEach((p, m) => {
+      const b = document.createElement("option");
+      b.value = m.toString(), b.textContent = `${p.name} (${p.tabs.length}个标签)`, o.appendChild(b);
     }), i.appendChild(o), r.appendChild(i);
     const l = document.createElement("div");
     l.style.cssText = `
@@ -10556,8 +10499,8 @@ class Sr {
         width: 16px;
         height: 20px;
       `, u.innerHTML = "⋮⋮", d.appendChild(u), c.icon) {
-        const b = document.createElement("div");
-        if (b.style.cssText = `
+        const f = document.createElement("div");
+        if (f.style.cssText = `
           margin-right: 8px;
           font-size: 14px;
           color: ${a ? "#cccccc" : "#666"};
@@ -10569,10 +10512,10 @@ class Sr {
           flex-shrink: 0;
         `, c.icon.startsWith("ti ti-")) {
           const y = document.createElement("i");
-          y.className = c.icon, b.appendChild(y);
+          y.className = c.icon, f.appendChild(y);
         } else
-          b.textContent = c.icon;
-        d.appendChild(b);
+          f.textContent = c.icon;
+        d.appendChild(f);
       }
       const h = document.createElement("div");
       h.style.cssText = `
@@ -10587,15 +10530,15 @@ class Sr {
         <div style="font-size: 12px; color: #666; line-height: 1.2;">ID: ${c.blockId}</div>
       `;
       h.innerHTML = p, d.appendChild(h);
-      const g = document.createElement("div");
-      g.style.cssText = `
+      const m = document.createElement("div");
+      m.style.cssText = `
         display: flex;
         align-items: center;
         gap: 8px;
         margin-left: 8px;
       `;
-      const f = document.createElement("div");
-      f.style.cssText = `
+      const b = document.createElement("div");
+      b.style.cssText = `
         font-size: 12px;
         color: #999;
         background: rgba(0, 0, 0, 0.1);
@@ -10607,17 +10550,17 @@ class Sr {
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-      `, f.textContent = (l + 1).toString(), g.appendChild(f), d.appendChild(g), d.addEventListener("dragstart", (b) => {
-        console.log("拖拽开始，索引:", l), i = l, b.dataTransfer.setData("text/plain", l.toString()), b.dataTransfer.setData("application/json", JSON.stringify(c)), b.dataTransfer.effectAllowed = "move", d.style.opacity = "0.5", d.style.transform = "rotate(2deg)";
-      }), d.addEventListener("dragend", (b) => {
+      `, b.textContent = (l + 1).toString(), m.appendChild(b), d.appendChild(m), d.addEventListener("dragstart", (f) => {
+        console.log("拖拽开始，索引:", l), i = l, f.dataTransfer.setData("text/plain", l.toString()), f.dataTransfer.setData("application/json", JSON.stringify(c)), f.dataTransfer.effectAllowed = "move", d.style.opacity = "0.5", d.style.transform = "rotate(2deg)";
+      }), d.addEventListener("dragend", (f) => {
         d.style.opacity = "1", d.style.transform = "rotate(0deg)", i = -1;
-      }), d.addEventListener("dragover", (b) => {
-        b.preventDefault(), b.dataTransfer.dropEffect = "move", i !== -1 && i !== l && (d.style.borderColor = "var(--orca-color-primary-5)", d.style.backgroundColor = "rgba(59, 130, 246, 0.1)");
-      }), d.addEventListener("dragleave", (b) => {
+      }), d.addEventListener("dragover", (f) => {
+        f.preventDefault(), f.dataTransfer.dropEffect = "move", i !== -1 && i !== l && (d.style.borderColor = "var(--orca-color-primary-5)", d.style.backgroundColor = "rgba(59, 130, 246, 0.1)");
+      }), d.addEventListener("dragleave", (f) => {
         d.style.borderColor = "#e0e0e0", d.style.backgroundColor = "var(--orca-color-bg-1)";
-      }), d.addEventListener("drop", (b) => {
-        b.preventDefault(), b.stopPropagation();
-        const y = parseInt(b.dataTransfer.getData("text/plain")), v = l;
+      }), d.addEventListener("drop", (f) => {
+        f.preventDefault(), f.stopPropagation();
+        const y = parseInt(f.dataTransfer.getData("text/plain")), v = l;
         if (d.style.borderColor = "#e0e0e0", d.style.backgroundColor = "var(--orca-color-bg-1)", y !== v && y >= 0) {
           const w = t[y];
           t.splice(y, 1), t.splice(v, 0, w), this.renderSortableTabs(e, t);
@@ -10671,10 +10614,10 @@ class Sr {
    * 显示保存工作区对话框
    */
   showSaveWorkspaceDialog() {
-    var g, f;
+    var m, b;
     const e = document.querySelector(".save-workspace-dialog");
     e && e.remove();
-    const t = document.documentElement.classList.contains("dark") || ((f = (g = window.orca) == null ? void 0 : g.state) == null ? void 0 : f.themeMode) === "dark", r = document.createElement("div");
+    const t = document.documentElement.classList.contains("dark") || ((b = (m = window.orca) == null ? void 0 : m.state) == null ? void 0 : b.themeMode) === "dark", r = document.createElement("div");
     r.className = "save-workspace-dialog", r.style.cssText = `
       position: fixed;
       top: 50%;
@@ -10772,21 +10715,21 @@ class Sr {
       cursor: pointer;
       font-size: 14px;
     `, h.textContent = "保存", h.onclick = async () => {
-      const b = o.value.trim();
-      if (!b) {
+      const f = o.value.trim();
+      if (!f) {
         orca.notify("warn", "请输入工作区名称");
         return;
       }
-      if (this.workspaces.some((y) => y.name === b)) {
+      if (this.workspaces.some((y) => y.name === f)) {
         orca.notify("warn", "工作区名称已存在");
         return;
       }
-      await this.performSaveWorkspace(b, l.value.trim()), r.remove();
-    }, d.appendChild(u), d.appendChild(h), a.appendChild(i), a.appendChild(n), a.appendChild(o), a.appendChild(c), a.appendChild(l), a.appendChild(d), r.appendChild(a), document.body.appendChild(r), o.focus(), r.addEventListener("click", (b) => {
-      b.target === r && r.remove();
+      await this.performSaveWorkspace(f, l.value.trim()), r.remove();
+    }, d.appendChild(u), d.appendChild(h), a.appendChild(i), a.appendChild(n), a.appendChild(o), a.appendChild(c), a.appendChild(l), a.appendChild(d), r.appendChild(a), document.body.appendChild(r), o.focus(), r.addEventListener("click", (f) => {
+      f.target === r && r.remove();
     });
-    const p = (b) => {
-      b.key === "Escape" && (r.remove(), document.removeEventListener("keydown", p));
+    const p = (f) => {
+      f.key === "Escape" && (r.remove(), document.removeEventListener("keydown", p));
     };
     document.addEventListener("keydown", p);
   }
@@ -10813,14 +10756,14 @@ class Sr {
    * 显示工作区切换菜单
    */
   showWorkspaceMenu(e) {
-    var f, b;
+    var b, f;
     if (!this.enableWorkspaces) {
       orca.notify("warn", "工作区功能已禁用");
       return;
     }
     const t = document.querySelector(".workspace-menu");
     t && t.remove();
-    const r = document.documentElement.classList.contains("dark") || ((b = (f = window.orca) == null ? void 0 : f.state) == null ? void 0 : b.themeMode) === "dark", a = document.createElement("div");
+    const r = document.documentElement.classList.contains("dark") || ((f = (b = window.orca) == null ? void 0 : b.state) == null ? void 0 : f.themeMode) === "dark", a = document.createElement("div");
     a.className = "workspace-menu";
     const i = 280, n = 400, o = e ? { x: e.clientX, y: e.clientY } : { x: 20, y: 60 }, { x: c, y: l } = H(o.x, o.y, i, n);
     a.style.cssText = `
@@ -10842,7 +10785,7 @@ class Sr {
       border-bottom: 1px solid var(--orca-color-border);
       font-size: 14px;
       font-weight: 600;
-      color: ${r ? "#ffffff" : "#333"};
+      color: var(--orca-color-text-1);
     `, d.textContent = "工作区";
     const u = document.createElement("div");
     u.style.cssText = `
@@ -10853,7 +10796,7 @@ class Sr {
       align-items: center;
       gap: 8px;
       border-bottom: 1px solid var(--orca-color-border);
-      color: ${r ? "#ffffff" : "#333"};
+      color: var(--orca-color-text-1);
     `, u.innerHTML = `
       <i class="ti ti-plus" style="font-size: 14px; color: var(--orca-color-primary-5);"></i>
       <span>保存当前工作区</span>
@@ -10883,14 +10826,14 @@ class Sr {
           align-items: center;
           gap: 8px;
           border-bottom: 1px solid var(--orca-color-border);
-          color: ${r ? "#ffffff" : "#333"};
+          color: var(--orca-color-text-1);
           ${this.currentWorkspace === y.id ? "background: rgba(59, 130, 246, 0.1);" : ""}
         `;
         const w = y.icon || "ti ti-folder";
         v.innerHTML = `
           <i class="${w}" style="font-size: 14px; color: var(--orca-color-primary-5);"></i>
           <div style="flex: 1;">
-            <div style="font-weight: 500; color: ${r ? "#ffffff" : "#333"};"">${y.name}</div>
+            <div style="font-weight: 500; color: var(--orca-color-text-1);"">${y.name}</div>
             ${y.description ? `<div style="font-size: 12px; color: ${r ? "#999" : "#666"}; margin-top: 2px;">${y.description}</div>` : ""}
             <div style="font-size: 11px; color: ${r ? "#777" : "#999"}; margin-top: 2px;">${y.tabs.length}个标签</div>
           </div>
@@ -10907,18 +10850,18 @@ class Sr {
       display: flex;
       align-items: center;
       gap: 8px;
-      color: ${r ? "#ffffff" : "#333"};
+      color: var(--orca-color-text-1);
     `, p.innerHTML = `
       <i class="ti ti-settings" style="font-size: 14px; color: ${r ? "#999" : "#666"};"></i>
       <span>管理工作区</span>
     `, p.onclick = () => {
       a.remove(), this.manageWorkspaces();
     }, a.appendChild(d), a.appendChild(u), a.appendChild(h), a.appendChild(p), document.body.appendChild(a);
-    const g = (y) => {
-      a.contains(y.target) || (a.remove(), document.removeEventListener("click", g));
+    const m = (y) => {
+      a.contains(y.target) || (a.remove(), document.removeEventListener("click", m));
     };
     setTimeout(() => {
-      document.addEventListener("click", g);
+      document.addEventListener("click", m);
     }, 100);
   }
   /**
@@ -11055,9 +10998,9 @@ class Sr {
           margin-bottom: 8px;
           background: ${this.currentWorkspace === h.id ? "rgba(59, 130, 246, 0.05)" : "var(--orca-color-bg-1)"};
         `;
-        const g = h.icon || "ti ti-folder";
+        const m = h.icon || "ti ti-folder";
         p.innerHTML = `
-          <i class="${g}" style="font-size: 20px; color: var(--orca-color-primary-5); margin-right: 12px;"></i>
+          <i class="${m}" style="font-size: 20px; color: var(--orca-color-primary-5); margin-right: 12px;"></i>
           <div style="flex: 1;">
             <div style="font-weight: 500; font-size: 14px; margin-bottom: 4px; color: ${t ? "#ffffff" : "#333"};"">${h.name}</div>
             ${h.description ? `<div style="font-size: 12px; color: ${t ? "#999" : "#666"}; margin-bottom: 4px;">${h.description}</div>` : ""}
@@ -11096,8 +11039,8 @@ class Sr {
       r.remove();
     }, o.appendChild(c), a.appendChild(i), a.appendChild(n), a.appendChild(o), r.appendChild(a), document.body.appendChild(r), r.querySelectorAll(".delete-workspace-btn").forEach((h) => {
       h.addEventListener("click", async (p) => {
-        const g = p.target.getAttribute("data-workspace-id");
-        g && (await this.deleteWorkspace(g), r.remove(), this.manageWorkspaces());
+        const m = p.target.getAttribute("data-workspace-id");
+        m && (await this.deleteWorkspace(m), r.remove(), this.manageWorkspaces());
       });
     }), r.addEventListener("click", (h) => {
       h.target === r && r.remove();
@@ -11185,8 +11128,8 @@ class Sr {
       p.style.cssText = `
         margin-bottom: 16px;
       `;
-      const g = document.createElement("div");
-      g.style.cssText = `
+      const m = document.createElement("div");
+      m.style.cssText = `
         font-weight: 600;
         font-size: 14px;
         color: var(--orca-color-text-1);
@@ -11195,14 +11138,14 @@ class Sr {
         align-items: center;
         justify-content: space-between;
       `;
-      const f = document.createElement("span");
-      f.textContent = "包含的标签 (可拖拽排序):", g.appendChild(f);
       const b = document.createElement("span");
-      b.style.cssText = `
+      b.textContent = "包含的标签 (可拖拽排序):", m.appendChild(b);
+      const f = document.createElement("span");
+      f.style.cssText = `
         font-size: 12px;
         color: #666;
         font-weight: normal;
-      `, b.textContent = "拖拽调整顺序", g.appendChild(b), p.appendChild(g);
+      `, f.textContent = "拖拽调整顺序", m.appendChild(f), p.appendChild(m);
       const y = document.createElement("div");
       y.className = "sortable-tabs-container", y.style.cssText = `
         min-height: 100px;
@@ -11312,27 +11255,27 @@ class Sr {
     }), h.addEventListener("mouseleave", () => {
       h.style.backgroundColor = "var(--orca-color-primary-5)";
     }), h.onclick = async () => {
-      const g = l.value.trim();
-      if (!g) {
+      const m = l.value.trim();
+      if (!m) {
         orca.notify("warn", "请输入名称");
         return;
       }
-      if (g === e.name) {
+      if (m === e.name) {
         i.remove(), this.manageSavedTabSets();
         return;
       }
-      if (this.savedTabSets.find((b) => b.name === g && b.id !== e.id)) {
+      if (this.savedTabSets.find((f) => f.name === m && f.id !== e.id)) {
         orca.notify("warn", "该名称已存在");
         return;
       }
-      e.name = g, e.updatedAt = Date.now(), await this.saveSavedTabSets(), i.remove(), r.remove(), this.manageSavedTabSets(), orca.notify("success", "重命名成功");
+      e.name = m, e.updatedAt = Date.now(), await this.saveSavedTabSets(), i.remove(), r.remove(), this.manageSavedTabSets(), orca.notify("success", "重命名成功");
     }, d.appendChild(u), d.appendChild(h), i.appendChild(d), document.body.appendChild(i), setTimeout(() => {
       l.focus(), l.select();
-    }, 100), l.addEventListener("keydown", (g) => {
-      g.key === "Enter" ? (g.preventDefault(), h.click()) : g.key === "Escape" && (g.preventDefault(), u.click());
+    }, 100), l.addEventListener("keydown", (m) => {
+      m.key === "Enter" ? (m.preventDefault(), h.click()) : m.key === "Escape" && (m.preventDefault(), u.click());
     });
-    const p = (g) => {
-      i.contains(g.target) || (i.remove(), document.removeEventListener("click", p), document.removeEventListener("contextmenu", p));
+    const p = (m) => {
+      i.contains(m.target) || (i.remove(), document.removeEventListener("click", p), document.removeEventListener("contextmenu", p));
     };
     setTimeout(() => {
       document.addEventListener("click", p), document.addEventListener("contextmenu", p);
@@ -11445,9 +11388,9 @@ class Sr {
       grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
       gap: 8px;
       margin-bottom: 16px;
-    `, l.forEach((g) => {
-      const f = document.createElement("div");
-      f.style.cssText = `
+    `, l.forEach((m) => {
+      const b = document.createElement("div");
+      b.style.cssText = `
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -11456,29 +11399,29 @@ class Sr {
         border-radius: var(--orca-radius-md);
         cursor: pointer;
         transition: all 0.2s;
-        background: ${e.icon === g.value ? "#e3f2fd" : "white"};
+        background: ${e.icon === m.value ? "#e3f2fd" : "white"};
       `;
-      const b = document.createElement("div");
-      if (b.style.cssText = `
+      const f = document.createElement("div");
+      if (f.style.cssText = `
         font-size: 24px;
         margin-bottom: 4px;
-      `, g.value.startsWith("ti ti-")) {
+      `, m.value.startsWith("ti ti-")) {
         const v = document.createElement("i");
-        v.className = g.value, b.appendChild(v);
+        v.className = m.value, f.appendChild(v);
       } else
-        b.textContent = g.icon;
+        f.textContent = m.icon;
       const y = document.createElement("div");
       y.style.cssText = `
         font-size: 12px;
         color: #666;
         text-align: center;
-      `, y.textContent = g.name, f.appendChild(b), f.appendChild(y), f.addEventListener("click", async (v) => {
-        v.stopPropagation(), e.icon = g.value, e.updatedAt = Date.now(), await this.saveSavedTabSets(), a(), n.remove(), i && i.focus(), orca.notify("success", "图标已更新");
-      }), f.addEventListener("mouseenter", () => {
-        f.style.backgroundColor = "#f5f5f5", f.style.borderColor = "var(--orca-color-primary-5)";
-      }), f.addEventListener("mouseleave", () => {
-        f.style.backgroundColor = e.icon === g.value ? "#e3f2fd" : "white", f.style.borderColor = "#e0e0e0";
-      }), d.appendChild(f);
+      `, y.textContent = m.name, b.appendChild(f), b.appendChild(y), b.addEventListener("click", async (v) => {
+        v.stopPropagation(), e.icon = m.value, e.updatedAt = Date.now(), await this.saveSavedTabSets(), a(), n.remove(), i && i.focus(), orca.notify("success", "图标已更新");
+      }), b.addEventListener("mouseenter", () => {
+        b.style.backgroundColor = "#f5f5f5", b.style.borderColor = "var(--orca-color-primary-5)";
+      }), b.addEventListener("mouseleave", () => {
+        b.style.backgroundColor = e.icon === m.value ? "#e3f2fd" : "white", b.style.borderColor = "#e0e0e0";
+      }), d.appendChild(b);
     }), c.appendChild(d), n.appendChild(c);
     const u = document.createElement("div");
     u.style.cssText = `
@@ -11491,11 +11434,11 @@ class Sr {
       h.style.backgroundColor = "#4b5563";
     }), h.addEventListener("mouseleave", () => {
       h.style.backgroundColor = "#6b7280";
-    }), h.onclick = (g) => {
-      g.stopPropagation(), n.remove(), i && i.focus();
+    }), h.onclick = (m) => {
+      m.stopPropagation(), n.remove(), i && i.focus();
     }, u.appendChild(h), n.appendChild(u), document.body.appendChild(n);
-    const p = (g) => {
-      n.contains(g.target) || (g.stopPropagation(), n.remove(), document.removeEventListener("click", p), document.removeEventListener("contextmenu", p), i && i.focus());
+    const p = (m) => {
+      n.contains(m.target) || (m.stopPropagation(), n.remove(), document.removeEventListener("click", p), document.removeEventListener("contextmenu", p), i && i.focus());
     };
     setTimeout(() => {
       document.addEventListener("click", p), document.addEventListener("contextmenu", p);
@@ -11594,15 +11537,15 @@ class Sr {
       }), h.addEventListener("mouseleave", () => {
         h.style.backgroundColor = "transparent";
       });
-      const g = document.createElement("div");
-      g.style.cssText = `
+      const m = document.createElement("div");
+      m.style.cssText = `
         flex: 1;
         display: flex;
         flex-direction: column;
         gap: 2px;
       `;
-      const f = document.createElement("div");
-      f.style.cssText = `
+      const b = document.createElement("div");
+      b.style.cssText = `
         font-weight: 600;
         font-size: 14px;
         color: var(--orca-color-text-1);
@@ -11613,18 +11556,18 @@ class Sr {
         min-height: 20px;
         display: flex;
         align-items: center;
-      `, f.textContent = c.name, f.title = "点击编辑名称", f.addEventListener("click", () => {
-        this.editTabSetName(c, l, f, t);
-      }), f.addEventListener("mouseenter", () => {
-        f.style.backgroundColor = "rgba(59, 130, 246, 0.1)";
-      }), f.addEventListener("mouseleave", () => {
-        f.style.backgroundColor = "transparent";
+      `, b.textContent = c.name, b.title = "点击编辑名称", b.addEventListener("click", () => {
+        this.editTabSetName(c, l, b, t);
+      }), b.addEventListener("mouseenter", () => {
+        b.style.backgroundColor = "rgba(59, 130, 246, 0.1)";
+      }), b.addEventListener("mouseleave", () => {
+        b.style.backgroundColor = "transparent";
       });
-      const b = document.createElement("div");
-      b.style.cssText = `
+      const f = document.createElement("div");
+      f.style.cssText = `
         font-size: 12px;
         color: #666;
-      `, b.textContent = `${c.tabs.length}个标签 • ${new Date(c.updatedAt).toLocaleString()}`, g.appendChild(f), g.appendChild(b), u.appendChild(h), u.appendChild(g);
+      `, f.textContent = `${c.tabs.length}个标签 • ${new Date(c.updatedAt).toLocaleString()}`, m.appendChild(b), m.appendChild(f), u.appendChild(h), u.appendChild(m);
       const y = document.createElement("div");
       y.style.cssText = `
         display: flex;
