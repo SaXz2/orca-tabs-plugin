@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tooltip 功能测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 14px;
+        }
+        
+        .button:hover {
+            background: #005a9e;
+        }
+        
+        .status {
+            background: #e8f4fd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border-left: 4px solid #007acc;
+        }
+        
+        .tab {
+            background: #f0f0f0;
+            padding: 8px 16px;
+            border-radius: 4px;
+            margin: 5px;
+            display: inline-block;
+            cursor: pointer;
+        }
+        
+        .tab:hover {
+            background: #e0e0e0;
+        }
+        
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .code {
+            background: #f8f8f8;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Tooltip 功能测试页面</h1>
+        
+        <div class="section">
+            <h3>1. 基本按钮 Tooltip</h3>
+            <button id="save-button" class="button">保存</button>
+            <button id="delete-button" class="button">删除</button>
+            <button id="edit-button" class="button">编辑</button>
+            
+            <div class="code">
+// 这些按钮会自动添加 tooltip
+addTooltip(saveButton, createButtonTooltip('保存文件', 'Ctrl+S'));
+addTooltip(deleteButton, createButtonTooltip('删除文件', 'Delete'));
+addTooltip(editButton, createButtonTooltip('编辑文件', 'F2'));
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>2. 状态信息 Tooltip</h3>
+            <div id="status-info" class="status">当前状态：已保存</div>
+            <div id="progress-info" class="status">进度：75%</div>
+            
+            <div class="code">
+// 状态元素会自动添加 tooltip
+addTooltip(statusInfo, createStatusTooltip('文件已保存到磁盘'));
+addTooltip(progressInfo, createStatusTooltip('正在处理中，请稍候...'));
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>3. 标签页 Tooltip（长文本支持）</h3>
+            <div id="tab-main" class="tab">main.ts</div>
+            <div id="tab-utils" class="tab">utils.ts</div>
+            <div id="tab-config" class="tab">config.ts</div>
+            <div id="tab-long" class="tab">狂测5万次! DLSS增加延迟? 帧生成延迟爆炸? 让数据来说话! 超详细DLSS帧生成全链路延迟测试</div>
+            
+            <div class="code">
+// 标签页会自动添加 tooltip，支持长文本
+// 第一行：标题
+// 第二行：详细信息（用 | 分隔）
+const tabInfo = { 
+    title: '狂测5万次! DLSS增加延迟? 帧生成延迟爆炸? 让数据来说话! 超详细DLSS帧生成全链路延迟测试',
+    blockId: 'block-123',
+    panelId: 'panel-1',
+    blockType: 'video',
+    isPinned: true
+};
+
+// 显示效果：
+// 狂测5万次! DLSS增加延迟? 帧生成延迟爆炸? 让数据来说话! 超详细DLSS帧生成全链路延迟测试
+// ID: block-123 | 面板: panel-1 | 类型: video | 📌 已固定
+addTooltip(tabElement, createTabTooltip(tabInfo));
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>4. 自定义 Tooltip</h3>
+            <button id="custom-button" class="button">自定义提示</button>
+            <button id="position-button" class="button">位置测试</button>
+            
+            <div class="code">
+// 自定义配置
+addTooltip(customButton, {
+    text: '这是一个自定义的提示信息',
+    delay: 100,
+    defaultPlacement: 'right'
+});
+
+addTooltip(positionButton, {
+    text: '测试不同位置的提示',
+    shortcut: 'Alt+T',
+    delay: 500,
+    defaultPlacement: 'bottom'
+});
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>5. Data 属性初始化</h3>
+            <button data-tooltip="true" data-tooltip-text="通过 data 属性添加的提示" data-tooltip-shortcut="F1" class="button">Data 属性</button>
+            <div data-tooltip="true" data-tooltip-text="延迟 2 秒显示的提示" data-tooltip-delay="2000" class="status">延迟提示</div>
+            
+            <div class="code">
+// HTML 中使用 data 属性
+&lt;button data-tooltip="true" 
+        data-tooltip-text="通过 data 属性添加的提示" 
+        data-tooltip-shortcut="F1"&gt;
+    Data 属性
+&lt;/button&gt;
+
+// 会自动通过 initializeTooltips() 初始化
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>6. 动态添加 Tooltip</h3>
+            <button id="add-dynamic" class="button">添加动态按钮</button>
+            <div id="dynamic-container"></div>
+            
+            <div class="code">
+// 动态创建元素并添加 tooltip
+const newButton = document.createElement('button');
+newButton.textContent = '动态按钮';
+addTooltip(newButton, createButtonTooltip('这是动态添加的按钮'));
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>7. 换行测试</h3>
+            <button id="test-multiline" class="button">测试多行 Tooltip</button>
+            <button id="test-simple-multiline" class="button">测试简单换行</button>
+            
+            <div class="code">
+// 测试多行 tooltip
+window.testMultilineTooltip();
+
+// 测试简单换行
+window.testSimpleMultiline();
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>8. 控制台测试</h3>
+            <p>打开浏览器控制台，可以使用以下命令测试：</p>
+            <div class="code">
+// 全局函数测试
+window.addTooltip(document.querySelector('#save-button'), {
+    text: "控制台添加的提示",
+    shortcut: "Ctrl+Shift+S",
+    delay: 200
+});
+
+// 移除 tooltip
+window.removeTooltip(document.querySelector('#save-button'));
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟 tooltip 功能（实际项目中会从插件加载）
+        console.log('Tooltip 测试页面已加载');
+        console.log('请确保插件已正确加载，然后测试 tooltip 功能');
+        
+        // 动态添加按钮的示例
+        document.getElementById('add-dynamic').addEventListener('click', function() {
+            const container = document.getElementById('dynamic-container');
+            const newButton = document.createElement('button');
+            newButton.textContent = '动态按钮 ' + (container.children.length + 1);
+            newButton.className = 'button';
+            newButton.style.margin = '5px';
+            
+            container.appendChild(newButton);
+            
+            // 这里应该调用 addTooltip，但需要插件加载后才能使用
+            console.log('动态按钮已创建，需要插件加载后才能添加 tooltip');
+        });
+    </script>
+</body>
+</html>

@@ -87,6 +87,15 @@ import {
   calculateContextMenuPosition
 } from './utils/uiUtils';
 
+// Tooltip 工具函数
+import { 
+  addTooltip,
+  createButtonTooltip,
+  createStatusTooltip,
+  createTabTooltip as createCustomTabTooltip,
+  initializeTooltips
+} from './utils/tooltipUtils';
+
 // 数据处理工具函数
 import { 
   findLastNonPinnedTabIndex, 
@@ -1104,8 +1113,19 @@ class OrcaTabsPlugin {
     // 监听主题变化
     this.setupThemeChangeListener();
     
-    // 设置滚动监听器
-    this.setupScrollListener();
+      // 设置滚动监听器
+      this.setupScrollListener();
+      
+      // ==================== 初始化 Tooltips ====================
+      // 延迟初始化 Tooltips，确保 DOM 完全加载
+      setTimeout(() => {
+        try {
+          initializeTooltips();
+          this.log('✅ Tooltips 初始化完成');
+        } catch (error) {
+          this.log('⚠️ Tooltips 初始化失败:', error);
+        }
+      }, 1000);
     
     // 设置设置检查监听器
     this.setupSettingsChecker();
@@ -3588,7 +3608,7 @@ class OrcaTabsPlugin {
       
       const panelNumber = this.currentPanelIndex + 1;
       statusElement.textContent = `面板 ${panelNumber}（无标签页）`;
-      statusElement.title = `当前在面板 ${panelNumber}，该面板没有标签页`;
+        addTooltip(statusElement, createStatusTooltip(`当前在面板 ${panelNumber}，该面板没有标签页`));
       
       fragment.appendChild(statusElement);
     }
@@ -3649,7 +3669,7 @@ class OrcaTabsPlugin {
       
       const panelNumber = this.currentPanelIndex + 1;
       statusElement.textContent = `面板 ${panelNumber}（无标签页）`;
-      statusElement.title = `当前在面板 ${panelNumber}，该面板没有标签页`;
+        addTooltip(statusElement, createStatusTooltip(`当前在面板 ${panelNumber}，该面板没有标签页`));
       
       fragment.appendChild(statusElement);
     }
@@ -3729,7 +3749,7 @@ class OrcaTabsPlugin {
     
     newTabButton.style.cssText = newButtonStyle;
     newTabButton.innerHTML = '+';
-    newTabButton.title = '新建标签页';
+      addTooltip(newTabButton, createButtonTooltip('新建标签页'));
 
     // 添加悬停效果
     newTabButton.addEventListener('mouseenter', () => {
@@ -3951,7 +3971,7 @@ class OrcaTabsPlugin {
     
     workspaceButton.style.cssText = workspaceButtonStyle;
     workspaceButton.innerHTML = '<i class="ti ti-layout-grid" style="font-size: 14px;"></i>';
-    workspaceButton.title = `工作区 (${this.workspaces?.length || 0})`;
+      addTooltip(workspaceButton, createButtonTooltip(`工作区 (${this.workspaces?.length || 0})`));
 
     // 添加悬停效果
     workspaceButton.addEventListener('mouseenter', () => {
@@ -5118,8 +5138,8 @@ class OrcaTabsPlugin {
       this.enableDragResize();
     }
     
-    // 设置悬停提示
-    tabElement.title = createTabTooltip(tab);
+      // 设置悬停提示
+      addTooltip(tabElement, createCustomTabTooltip(tab));
 
     // 添加点击事件
     tabElement.addEventListener('click', (e) => {
@@ -13559,7 +13579,7 @@ class OrcaTabsPlugin {
         border-radius: var(--orca-radius-md);
         transition: background-color 0.2s;
       `;
-      iconContainer.title = '点击编辑图标';
+        addTooltip(iconContainer, createButtonTooltip('点击编辑图标'));
       
       // 设置图标
       const updateIcon = () => {
@@ -13614,7 +13634,7 @@ class OrcaTabsPlugin {
         align-items: center;
       `;
       nameDisplay.textContent = tabSet.name;
-      nameDisplay.title = '点击编辑名称';
+        addTooltip(nameDisplay, createButtonTooltip('点击编辑名称'));
 
       // 名称编辑功能
       nameDisplay.addEventListener('click', () => {
