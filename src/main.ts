@@ -988,6 +988,12 @@ class OrcaTabsPlugin {
   /** 最后激活的块ID - 记录最后激活的块，用于快捷键操作 */
   private lastActiveBlockId: string | null = null;
   
+  /** 临时保存的原始聚焦标签ID - 用于openInNewTab场景下保持原始聚焦状态 */
+  private tempFocusedBlockId: string | null = null;
+  
+  /** 是否正在导航中 - 用于避免导航时触发重复的聚焦检测 */
+  private isNavigating: boolean = false;
+  
   // ==================== 快捷键相关 ====================
   /** 当前鼠标悬停的块ID - 用于快捷键操作的目标块 */
   private hoveredBlockId: string | null = null;
@@ -1296,6 +1302,12 @@ class OrcaTabsPlugin {
    */
   private async autoDetectAndSyncCurrentFocus() {
     try {
+      // 【修复BUG】如果正在导航中，跳过自动检测，避免重复创建标签页
+      if (this.isNavigating) {
+        this.log('⏭️ 正在导航中，跳过自动检测当前聚焦页面');
+        return;
+      }
+      
       this.log("🔍 开始自动检测当前面板中可见的页面并同步到标签页");
       
       // 步骤1: 获取当前激活的面板
@@ -3490,6 +3502,9 @@ class OrcaTabsPlugin {
       
       // 确保标签按固定状态排序
       this.sortTabsByPinStatus();
+      
+      // 【修复BUG】重新获取排序后的标签数组，因为 sortTabsByPinStatus 会创建新数组
+      targetTabs = this.panelTabsData[targetPanelIndex] || [];
       
       targetTabs.forEach((tab, index) => {
         const tabElement = this.createTabElement(tab);
@@ -5784,9 +5799,9 @@ class OrcaTabsPlugin {
          * 3. 确保所有标签页使用相同的导航方式
          * 4. 避免复杂的条件判断，保持代码简洁
          */
-        this.log(`🚀 尝试使用 orca.nav.goTo 导航到块 ${tab.blockId}`);
-        await orca.nav.goTo("block", { blockId: parseInt(tab.blockId) }, targetPanelId);
-        this.log(`✅ orca.nav.goTo 导航成功`);
+        this.log(`🚀 尝试使用安全导航到块 ${tab.blockId}`);
+        await this.safeNavigate(tab.blockId, targetPanelId);
+        this.log(`✅ 安全导航成功`);
       } catch (navError) {
         this.warn("导航失败，尝试备用方法:", navError);
         // 备用方法：直接点击块引用
@@ -5887,7 +5902,7 @@ class OrcaTabsPlugin {
       
       // 导航到目标标签页（在当前面板中打开）
       if (this.currentPanelId || '') {
-        await orca.nav.goTo("block", { blockId: parseInt(targetTab.blockId) }, this.currentPanelId || '');
+        await this.safeNavigate(targetTab.blockId, this.currentPanelId || '');
       }
     } else {
       this.log("没有可切换的相邻标签页");
@@ -6288,7 +6303,7 @@ class OrcaTabsPlugin {
       }
       
       // 导航到目标块
-      await orca.nav.goTo("block", { blockId: parseInt(newBlockId) }, this.currentPanelId || '');
+      await this.safeNavigate(newBlockId, this.currentPanelId || '');
       this.log(`🔄 导航到块: ${newBlockId}`);
       
       // 成功提示已移除
@@ -6377,156 +6392,176 @@ class OrcaTabsPlugin {
    */
   private async addTabToPanel(blockId: string, insertMode: 'replace' | 'after' | 'end', navigate: boolean = false): Promise<boolean> {
     // 支持所有面板添加标签
+    this.verboseLog(`📋 [addTabToPanel] 开始处理 - blockId: ${blockId}, mode: ${insertMode}, navigate: ${navigate}`);
 
     try {
       const currentTabs = this.getCurrentPanelTabs();
+      this.verboseLog(`📋 [addTabToPanel] 当前标签页数量: ${currentTabs.length}`);
+      this.verboseLog(`📋 [addTabToPanel] 当前标签页列表: ${currentTabs.map(t => `${t.title}(${t.blockId})`).join(', ')}`);
+      this.verboseLog(`📋 [addTabToPanel] closedTabs包含 ${blockId}: ${this.closedTabs.has(blockId)}`);
 
       // 检查块是否已经存在于标签页中
       const existingTab = currentTabs.find(tab => tab.blockId === blockId);
       if (existingTab) {
-        this.log(`📋 块 ${blockId} 已存在于标签页中，聚焦已有标签`);
+        this.verboseLog(`📋 [addTabToPanel] 块 ${blockId} 已存在于标签页中: "${existingTab.title}"`);
 
         if (this.closedTabs.has(blockId)) {
+          this.verboseLog(`📋 [addTabToPanel] 从closedTabs中移除 ${blockId}`);
           this.closedTabs.delete(blockId);
           await this.saveClosedTabs();
         }
 
+        this.verboseLog(`📋 [addTabToPanel] 切换到已存在标签: "${existingTab.title}"`);
         await this.switchToTab(existingTab);
         await this.focusTabElementById(existingTab.blockId);
 
+        this.verboseLog(`📋 [addTabToPanel] 完成 - 已切换到已存在标签`);
         return true;
       }
+      
+      this.verboseLog(`📋 [addTabToPanel] 块 ${blockId} 不存在，准备创建新标签`);
+
 
       // 获取块信息
       const block = orca.state.blocks[parseInt(blockId)];
       if (!block) {
+        this.verboseLog(`📋 [addTabToPanel] 错误 - 无法找到块 ${blockId}`);
         this.warn(`无法找到块 ${blockId}`);
-        // 错误提示已移除
         return false;
       }
+      this.verboseLog(`📋 [addTabToPanel] 找到块信息`);
 
       // 使用getTabInfo方法获取完整的标签信息（包括块类型和图标）
+      this.verboseLog(`📋 [addTabToPanel] 获取标签信息...`);
       const tabInfo = await this.getTabInfo(blockId, this.currentPanelId || '', currentTabs.length);
       if (!tabInfo) {
+        this.verboseLog(`📋 [addTabToPanel] 错误 - 无法获取块 ${blockId} 的标签信息`);
         this.warn(`无法获取块 ${blockId} 的标签信息`);
         return false;
       }
+      this.verboseLog(`📋 [addTabToPanel] 标签信息: "${tabInfo.title}" (类型: ${tabInfo.blockType})`);
+
 
       // 确定插入位置
       let insertIndex = currentTabs.length; // 默认插入到末尾
       let shouldReplace = false;
+      this.verboseLog(`📋 [addTabToPanel] 插入模式: ${insertMode}`);
 
       if (insertMode === 'replace') {
         // 替换模式：获取聚焦标签并替换
+        this.verboseLog(`📋 [addTabToPanel] 替换模式 - 获取当前聚焦标签`);
         const focusedTab = this.getCurrentActiveTab();
         if (!focusedTab) {
+          this.verboseLog(`📋 [addTabToPanel] 错误 - 没有找到当前聚焦的标签`);
           this.warn("没有找到当前聚焦的标签");
-          // 警告提示已移除
           return false;
         }
+        this.verboseLog(`📋 [addTabToPanel] 聚焦标签: "${focusedTab.title}" (${focusedTab.blockId})`);
         
         const focusedIndex = currentTabs.findIndex(tab => tab.blockId === focusedTab.blockId);
         if (focusedIndex === -1) {
+          this.verboseLog(`📋 [addTabToPanel] 错误 - 无法找到聚焦标签在数组中的位置`);
           this.warn("无法找到聚焦标签在数组中的位置");
-          // 错误提示已移除
           return false;
         }
         
         // 检查聚焦的标签是否是固定标签
         if (focusedTab.isPinned) {
           // 如果是固定标签，拒绝替换操作，改为在其后面插入
+          this.verboseLog(`📋 [addTabToPanel] 聚焦标签是固定的，改为插入模式`);
           this.log(`📌 聚焦标签是固定的，拒绝替换操作，改为在其后面插入`);
           insertIndex = focusedIndex + 1;
           shouldReplace = false;
         } else {
           // 如果不是固定标签，可以替换
+          this.verboseLog(`📋 [addTabToPanel] 将替换位置 ${focusedIndex} 的标签`);
           insertIndex = focusedIndex;
           shouldReplace = true;
         }
       } else if (insertMode === 'after') {
         // 在聚焦标签后面插入
-        // 【修复BUG】优先使用保存的lastActiveBlockId，避免在openInNewTab场景下获取到错误的聚焦标签
-        if (this.lastActiveBlockId) {
-          const lastActiveIndex = currentTabs.findIndex(tab => tab.blockId === this.lastActiveBlockId);
-          if (lastActiveIndex !== -1) {
-            insertIndex = lastActiveIndex + 1;
-            this.log(`📌 使用保存的聚焦标签ID ${this.lastActiveBlockId} 在位置 ${insertIndex} 插入新标签`);
-            // 使用后清除，避免影响后续操作
-            this.lastActiveBlockId = null;
+        this.verboseLog(`📋 [addTabToPanel] After模式 - 在聚焦标签后插入`);
+        
+        // 获取当前聚焦的标签
+        const focusedTab = this.getCurrentActiveTab();
+        if (focusedTab) {
+          this.verboseLog(`📋 [addTabToPanel] 找到聚焦标签: "${focusedTab.title}" (${focusedTab.blockId})`);
+          const focusedIndex = currentTabs.findIndex(tab => tab.blockId === focusedTab.blockId);
+          if (focusedIndex !== -1) {
+            insertIndex = focusedIndex + 1;
+            this.verboseLog(`📋 [addTabToPanel] 将在位置 ${insertIndex} 插入（聚焦标签后面）`);
+            this.log(`📌 在聚焦标签后面插入新标签`);
           } else {
-            this.log(`⚠️ 保存的聚焦标签ID ${this.lastActiveBlockId} 在当前标签列表中未找到，回退到DOM查找`);
-            this.lastActiveBlockId = null;
-            // 回退到原来的逻辑
-            const focusedTab = this.getCurrentActiveTab();
-            if (focusedTab) {
-              const focusedIndex = currentTabs.findIndex(tab => tab.blockId === focusedTab.blockId);
-              if (focusedIndex !== -1) {
-                insertIndex = focusedIndex + 1;
-                this.log(`📌 在聚焦标签后面插入新标签`);
-              }
-            }
+            this.verboseLog(`📋 [addTabToPanel] 警告 - 聚焦标签不在列表中，使用默认位置`);
           }
         } else {
-          // 没有保存的聚焦标签ID，使用原来的逻辑
-          const focusedTab = this.getCurrentActiveTab();
-          if (focusedTab) {
-            const focusedIndex = currentTabs.findIndex(tab => tab.blockId === focusedTab.blockId);
-            if (focusedIndex !== -1) {
-              insertIndex = focusedIndex + 1;
-              this.log(`📌 在聚焦标签后面插入新标签`);
-            }
-          }
+          this.verboseLog(`📋 [addTabToPanel] 警告 - 没有找到聚焦标签，使用默认位置`);
         }
       }
       // 'end' 模式使用默认的末尾插入
+      this.verboseLog(`📋 [addTabToPanel] 最终插入位置: ${insertIndex}, 替换模式: ${shouldReplace}`);
 
       // 处理标签数量限制和插入逻辑
       if (currentTabs.length >= this.maxTabs) {
+        this.verboseLog(`📋 [addTabToPanel] 已达到标签上限 ${this.maxTabs}`);
         if (shouldReplace) {
           // 直接替换
+          this.verboseLog(`📋 [addTabToPanel] 替换位置 ${insertIndex} 的标签`);
           currentTabs[insertIndex] = tabInfo;
         } else {
           // 插入新标签，然后删除最后一个非固定标签
+          this.verboseLog(`📋 [addTabToPanel] 插入新标签并删除最后一个非固定标签`);
           currentTabs.splice(insertIndex, 0, tabInfo);
           const lastNonPinnedIndex = this.findLastNonPinnedTabIndex();
           if (lastNonPinnedIndex !== -1) {
+            this.verboseLog(`📋 [addTabToPanel] 删除位置 ${lastNonPinnedIndex} 的非固定标签`);
             currentTabs.splice(lastNonPinnedIndex, 1);
           } else {
             // 如果所有标签都是固定的，删除刚插入的新标签
+            this.verboseLog(`📋 [addTabToPanel] 所有标签都是固定的，无法插入`);
             const newTabIndex = currentTabs.findIndex(tab => tab.blockId === tabInfo.blockId);
             if (newTabIndex !== -1) {
               currentTabs.splice(newTabIndex, 1);
-              // 警告提示已移除
-              return false;
             }
+            return false;
           }
         }
       } else {
+        this.verboseLog(`📋 [addTabToPanel] 标签数量未达到上限，直接${shouldReplace ? '替换' : '插入'}`);
         if (shouldReplace) {
           currentTabs[insertIndex] = tabInfo;
         } else {
           currentTabs.splice(insertIndex, 0, tabInfo);
         }
       }
+
+      this.verboseLog(`📋 [addTabToPanel] 插入后标签列表: ${currentTabs.map(t => `${t.title}(${t.blockId})`).join(', ')}`);
 
       // 同步更新存储数组
       this.syncCurrentTabsToStorage(currentTabs);
       
       // 保存标签数据
-       await this.saveCurrentPanelTabs();
+      this.verboseLog(`📋 [addTabToPanel] 保存标签数据...`);
+      await this.saveCurrentPanelTabs();
 
       // 如果启用了工作区功能且有当前工作区，实时更新工作区
       if (this.enableWorkspaces && this.currentWorkspace) {
+        this.verboseLog(`📋 [addTabToPanel] 更新工作区...`);
         await this.saveCurrentTabsToWorkspace();
         this.log(`🔄 标签页添加，实时更新工作区: ${tabInfo.title}`);
       }
 
       // 更新UI
+      this.verboseLog(`📋 [addTabToPanel] 更新UI...`);
       await this.updateTabsUI();
 
       // 导航（如果需要）
       if (navigate) {
-        await orca.nav.goTo("block", { blockId: parseInt(blockId) }, this.currentPanelId || '');
+        this.verboseLog(`📋 [addTabToPanel] 开始导航到块 ${blockId}`);
+        // 使用统一的安全导航方法
+        await this.safeNavigate(blockId, this.currentPanelId || '');
+      } else {
+        this.verboseLog(`📋 [addTabToPanel] 跳过导航`);
       }
 
       // 成功提示已移除
@@ -6540,6 +6575,30 @@ class OrcaTabsPlugin {
   }
 
   /**
+   * 统一的导航方法，确保所有导航都设置 isNavigating 标志
+   * @param blockId 要导航到的块ID
+   * @param panelId 目标面板ID
+   */
+  private async safeNavigate(blockId: string, panelId: string): Promise<void> {
+    this.isNavigating = true;
+    this.verboseLog(`🚀 [safeNavigate] 开始导航到块 ${blockId}，设置 isNavigating = true`);
+    
+    try {
+      await orca.nav.goTo("block", { blockId: parseInt(blockId) }, panelId);
+      this.verboseLog(`✅ [safeNavigate] 导航成功`);
+    } catch (error) {
+      this.error(`❌ [safeNavigate] 导航失败:`, error);
+      throw error;
+    } finally {
+      // 导航完成后重新启用聚焦检测
+      setTimeout(() => {
+        this.isNavigating = false;
+        this.verboseLog(`🏁 [safeNavigate] 设置 isNavigating = false`);
+      }, 150); // 稍微增加延迟，确保DOM完全稳定
+    }
+  }
+
+  /**
    * 将指定块添加到标签页中，替换当前聚焦标签
    */
   async createBlockAfterFocused(blockId: string) {
@@ -6547,18 +6606,77 @@ class OrcaTabsPlugin {
   }
 
   /**
-   * 在后台新建标签页打开指定块（在聚焦标签后面插入新标签但不跳转）
+   * 在新标签页打开指定块（参考块菜单逻辑重构）
+   * 
+   * 功能说明：
+   * 1. 检查块是否已存在于标签页中
+   * 2. 如果存在，直接切换到该标签页
+   * 3. 如果不存在，在当前聚焦标签后面创建新标签页
+   * 4. 创建后导航到新标签页
+   * 
+   * @param blockId 要打开的块ID
    */
   async openInNewTab(blockId: string) {
-    // 【修复BUG】保存当前聚焦的标签页信息，避免在创建新标签页后丢失原始聚焦状态
-    const currentFocusedTab = this.getCurrentActiveTab();
-    if (currentFocusedTab) {
-      this.log(`🔗 保存当前聚焦标签页: ${currentFocusedTab.title} (ID: ${currentFocusedTab.blockId})`);
-      // 临时保存当前聚焦标签页的ID，用于后续插入位置计算
-      this.lastActiveBlockId = currentFocusedTab.blockId;
-    }
+    this.verboseLog(`🔗 [openInNewTab] 开始处理块 ${blockId}`);
     
-    await this.addTabToPanel(blockId, 'after', false);
+    try {
+      // 步骤1: 获取当前标签页列表
+      const currentTabs = this.getCurrentPanelTabs();
+      this.verboseLog(`🔗 [openInNewTab] 当前标签页数量: ${currentTabs.length}`);
+      this.verboseLog(`🔗 [openInNewTab] 当前标签页列表: ${currentTabs.map(t => `${t.title}(${t.blockId})`).join(', ')}`);
+      
+      // 步骤2: 检查块是否已存在
+      const existingTab = currentTabs.find(tab => tab.blockId === blockId);
+      
+      if (existingTab) {
+        // 分支A: 块已存在，直接切换
+        this.verboseLog(`🔗 [openInNewTab] 块 ${blockId} 已存在，标签: "${existingTab.title}"`);
+        
+        // 从已关闭列表中移除（如果存在）
+        if (this.closedTabs.has(blockId)) {
+          this.verboseLog(`🔗 [openInNewTab] 从已关闭列表中移除块 ${blockId}`);
+          this.closedTabs.delete(blockId);
+          await this.saveClosedTabs();
+        }
+        
+        // 更新聚焦状态
+        this.updateFocusState(blockId, existingTab.title);
+        
+        // 切换到该标签页
+        this.verboseLog(`🔗 [openInNewTab] 切换到已存在的标签页: "${existingTab.title}"`);
+        await this.switchToTab(existingTab);
+        
+        this.verboseLog(`🔗 [openInNewTab] 完成 - 已切换到已存在标签页`);
+        return;
+      }
+      
+      // 分支B: 块不存在，创建新标签页
+      this.verboseLog(`🔗 [openInNewTab] 块 ${blockId} 不存在，准备创建新标签页`);
+      
+      // 从已关闭列表中移除（如果存在）
+      if (this.closedTabs.has(blockId)) {
+        this.verboseLog(`🔗 [openInNewTab] 从已关闭列表中移除块 ${blockId}`);
+        this.closedTabs.delete(blockId);
+        await this.saveClosedTabs();
+      }
+      
+      // 调用 addTabToPanel 创建新标签页
+      // 参数说明：
+      // - blockId: 要打开的块ID
+      // - 'after': 在当前聚焦标签后面插入
+      // - true: 导航到新标签页
+      this.verboseLog(`🔗 [openInNewTab] 调用 addTabToPanel 创建新标签页`);
+      const success = await this.addTabToPanel(blockId, 'after', true);
+      
+      if (success) {
+        this.verboseLog(`🔗 [openInNewTab] 完成 - 成功创建新标签页`);
+      } else {
+        this.verboseLog(`🔗 [openInNewTab] 失败 - 创建新标签页失败`);
+      }
+      
+    } catch (error) {
+      this.error(`[openInNewTab] 处理失败:`, error);
+    }
   }
 
 
@@ -8747,6 +8865,12 @@ class OrcaTabsPlugin {
   private async handleNewBlockInPanel(blockId: string, panelId: string) {
     if (!blockId || !panelId) return;
     
+    // 【修复BUG】如果正在导航中，跳过处理，避免导航时替换标签页内容
+    if (this.isNavigating) {
+      this.log(`⏭️ 正在导航中，跳过 handleNewBlockInPanel: ${blockId}`);
+      return;
+    }
+    
     // 如果正在切换标签，不要替换现有标签
     if (this.isSwitchingTab) {
       this.log(`🔄 正在切换标签，跳过 handleNewBlockInPanel: ${blockId}`);
@@ -8952,6 +9076,11 @@ class OrcaTabsPlugin {
     }
 
     this.panelBlockCheckTask = (async () => {
+      // 【修复BUG】如果正在导航中，跳过面板块检查，避免重复创建标签页
+      if (this.isNavigating) {
+        this.verboseLog('⏭️ 正在导航中，跳过面板块检查');
+        return;
+      }
 
       this.log('🔍 开始检查当前面板块...');
 
@@ -9435,6 +9564,12 @@ class OrcaTabsPlugin {
           // 步骤4: 验证聚焦状态
           // 检查元素是否现在是可见的（没有 orca-hideable-hidden 类）
           if (!hideableElement.classList.contains('orca-hideable-hidden')) {
+            // 【修复BUG】如果正在导航中，跳过聚焦检测，避免重复创建标签页
+            if (this.isNavigating) {
+              this.verboseLog('⏭️ 正在导航中，跳过聚焦检测');
+              return;
+            }
+            
             this.verboseLog('🎯 检测到 orca-hideable 元素聚焦变化');
             
             // 更新上次检查的块ID
@@ -12424,7 +12559,7 @@ class OrcaTabsPlugin {
             this.log(`🎯 工作区中没有记录最后激活标签页，导航到第一个标签页: ${targetTab.title}`);
           }
           
-          await orca.nav.goTo("block", { blockId: parseInt(targetTab.blockId) }, this.currentPanelId || '');
+          await this.safeNavigate(targetTab.blockId, this.currentPanelId || '');
         }
       }, 100); // 延迟100ms确保UI更新完成
 
