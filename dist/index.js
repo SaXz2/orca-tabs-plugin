@@ -2538,7 +2538,7 @@ function aa(s, e, t, a) {
     z-index: 300;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
     background: ${t};
@@ -6253,7 +6253,7 @@ class Sa {
           -webkit-backdrop-filter: blur(8px);
           margin: 0 4px;
           padding: 0 8px;
-          gap: 4px;
+          gap: 10px;
         `, this.tabContainer.classList.add("fixed-to-top"), this.log(`📌 标签页已添加到顶部工具栏: ${n.className || n.tagName}`);
     } else
       document.body.appendChild(this.tabContainer);
@@ -6911,7 +6911,7 @@ class Sa {
             -webkit-app-region: no-drag;
             app-region: no-drag;
             pointer-events: auto;
-          `;
+          `, f.color && p.style.setProperty("--tab-color", f.color);
           }
         });
         const u = this.tabContainer.querySelector(".new-tab-button");

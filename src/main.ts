@@ -2757,7 +2757,7 @@ class OrcaTabsPlugin {
           -webkit-backdrop-filter: blur(8px);
           margin: 0 4px;
           padding: 0 8px;
-          gap: 4px;
+          gap: 10px;
         `;
       }
       
@@ -3551,7 +3551,7 @@ class OrcaTabsPlugin {
             }
           }
           
-          // 只设置基础样式，不覆盖聚焦样式
+          // 只设置基础样式，不覆盖聚焦和悬浮样式
           (tabElement as HTMLElement).style.cssText = `
             display: flex;
             align-items: center;
@@ -3575,6 +3575,11 @@ class OrcaTabsPlugin {
             app-region: no-drag;
             pointer-events: auto;
           `;
+          
+          // 确保CSS变量正确设置，让CSS规则能够生效
+          if (tabInfo.color) {
+            (tabElement as HTMLElement).style.setProperty('--tab-color', tabInfo.color);
+          }
         }
       });
       

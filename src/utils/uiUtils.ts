@@ -496,7 +496,7 @@ export function createTabContainerStyle(
     z-index: 300;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
     background: ${backgroundColor};
