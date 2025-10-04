@@ -92,4 +92,7 @@ export const PLUGIN_STORAGE_KEYS = {
   
   /** 调试模式 - 存储是否启用详细日志输出 */
   DEBUG_MODE: 'debug-mode',
+  
+  /** 刷新后恢复聚焦标签页 - 存储是否在软件刷新后自动聚焦并打开当前聚焦的标签页 */
+  RESTORE_FOCUSED_TAB: 'restore-focused-tab',
 } as const;

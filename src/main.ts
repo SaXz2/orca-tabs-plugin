@@ -694,6 +694,20 @@ class OrcaTabsPlugin {
     }
   }
   
+  /**
+   * 恢复聚焦标签页恢复设置
+   */
+  private async restoreRestoreFocusedTabSetting(): Promise<void> {
+    try {
+      const restoreFocusedTab = await this.storageService.getConfig<boolean>(PLUGIN_STORAGE_KEYS.RESTORE_FOCUSED_TAB, this.pluginName);
+      if (restoreFocusedTab !== null && restoreFocusedTab !== undefined) {
+        this.restoreFocusedTab = restoreFocusedTab;
+      }
+    } catch (error) {
+      // 静默失败，使用默认值
+    }
+  }
+  
   /* ———————————————————————————————————————————————————————————————————————————— */
   /* UI元素和状态管理 - UI Elements and State Management */
   /* ———————————————————————————————————————————————————————————————————————————— */
@@ -815,6 +829,9 @@ class OrcaTabsPlugin {
   
   /** 是否启用多标签页保存功能 - 控制是否允许保存多个标签页组合 */
   public enableMultiTabSaving: boolean = true;
+  
+  /** 是否在刷新后恢复聚焦标签页 - 控制软件刷新后是否自动聚焦并打开当前聚焦的标签页 */
+  public restoreFocusedTab: boolean = true;
   
   /* ———————————————————————————————————————————————————————————————————————————— */
   /* 性能优化 - Performance Optimization */
@@ -988,6 +1005,9 @@ class OrcaTabsPlugin {
     // ==================== 日志级别恢复 ====================
     // 先恢复调试模式设置，这样后续的日志输出会根据级别控制
     await this.restoreDebugMode();
+    
+    // 恢复聚焦标签页恢复设置
+    await this.restoreRestoreFocusedTabSetting();
     
     const stopInitMeasurement = this.startPerformanceMeasurement(this.performanceMetricKeys.initTotal);
     // ==================== 性能优化器初始化 ====================
@@ -1167,28 +1187,37 @@ class OrcaTabsPlugin {
     } else if (activePanelId && this.currentPanelIndex === 0) {
       this.log(`📋 当前活动面板是第一个面板，使用持久化数据`);
       
-      // 检查当前激活的页面是否在持久化标签页中
-      const currentActivePanel = document.querySelector('.orca-panel.active');
-      if (currentActivePanel) {
-        const activeBlockEditor = currentActivePanel.querySelector('.orca-hideable:not(.orca-hideable-hidden) .orca-block-editor[data-block-id]');
-        if (activeBlockEditor) {
-          const blockId = activeBlockEditor.getAttribute('data-block-id');
-          if (blockId) {
-            const currentTabs = this.getCurrentPanelTabs();
-            const existingTab = currentTabs.find(tab => tab.blockId === blockId);
-            if (!existingTab) {
-              this.log(`📋 当前激活页面不在持久化标签页中，添加到前面: ${blockId}`);
-              await this.checkCurrentPanelBlocks();
+      // 根据设置决定是否恢复聚焦页面
+      if (this.restoreFocusedTab) {
+        // 检查当前激活的页面是否在持久化标签页中
+        const currentActivePanel = document.querySelector('.orca-panel.active');
+        if (currentActivePanel) {
+          const activeBlockEditor = currentActivePanel.querySelector('.orca-hideable:not(.orca-hideable-hidden) .orca-block-editor[data-block-id]');
+          if (activeBlockEditor) {
+            const blockId = activeBlockEditor.getAttribute('data-block-id');
+            if (blockId) {
+              const currentTabs = this.getCurrentPanelTabs();
+              const existingTab = currentTabs.find(tab => tab.blockId === blockId);
+              if (!existingTab) {
+                this.log(`📋 当前激活页面不在持久化标签页中，添加到前面: ${blockId}`);
+                await this.checkCurrentPanelBlocks();
+              }
             }
           }
         }
+      } else {
+        this.log(`📋 已关闭"刷新后恢复聚焦标签页"，跳过当前聚焦页面的恢复`);
       }
     }
     
     // ==================== 启动时自动检测聚焦页面 ====================
     // 软件启动后自动检测当前面板中聚焦的页面并显示在标签页中
     // 这确保用户打开软件时，当前聚焦的页面（如"今日"）会自动显示在标签页中
-    await this.autoDetectAndSyncCurrentFocus();
+    if (this.restoreFocusedTab) {
+      await this.autoDetectAndSyncCurrentFocus();
+    } else {
+      this.log(`📋 已关闭"刷新后恢复聚焦标签页"，跳过自动检测聚焦页面`);
+    }
     
     // 创建标签页UI
     await this.createTabsUI();
@@ -5737,6 +5766,12 @@ class OrcaTabsPlugin {
           defaultValue: false,
           description: "开启后将显示详细的调试日志（仅用于开发调试，可能影响性能）"
         },
+        restoreFocusedTab: {
+          label: "刷新后恢复聚焦标签页",
+          type: "boolean" as const,
+          defaultValue: true,
+          description: "开启后，软件刷新时将自动聚焦并打开当前聚焦的标签页；关闭后，只打开持久化的标签页"
+        },
       };
 
       await orca.plugins.setSettingsSchema(this.pluginName, settingsSchema);
@@ -5779,6 +5814,13 @@ class OrcaTabsPlugin {
         await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.DEBUG_MODE, settings.debugMode, this.pluginName);
       }
       
+      if (settings?.restoreFocusedTab !== undefined) {
+        this.restoreFocusedTab = settings.restoreFocusedTab;
+        this.log(`🎯 刷新后恢复聚焦标签页: ${this.restoreFocusedTab ? '开启' : '关闭'}`);
+        // 保存设置
+        await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.RESTORE_FOCUSED_TAB, settings.restoreFocusedTab, this.pluginName);
+      }
+      
       this.log("✅ 插件设置已注册");
     } catch (error) {
       this.error("注册插件设置失败:", error);
@@ -5794,7 +5836,8 @@ class OrcaTabsPlugin {
       showInHeadbar: this.showInHeadbar,
       homePageBlockId: this.homePageBlockId,
       enableWorkspaces: this.enableWorkspaces,
-      debugMode: this.currentLogLevel === LogLevel.VERBOSE
+      debugMode: this.currentLogLevel === LogLevel.VERBOSE,
+      restoreFocusedTab: this.restoreFocusedTab
     };
     
     // 每2秒检查一次设置变化
@@ -5854,6 +5897,17 @@ class OrcaTabsPlugin {
           this.error("保存调试模式设置失败:", err);
         });
         this.lastSettings.debugMode = currentSettings.debugMode;
+      }
+      
+      if (currentSettings.restoreFocusedTab !== this.lastSettings.restoreFocusedTab) {
+        const oldValue = this.restoreFocusedTab;
+        this.restoreFocusedTab = currentSettings.restoreFocusedTab;
+        this.log(`🎯 设置变化：刷新后恢复聚焦标签页 ${oldValue ? '开启' : '关闭'} -> ${this.restoreFocusedTab ? '开启' : '关闭'}`);
+        // 异步保存设置
+        this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.RESTORE_FOCUSED_TAB, currentSettings.restoreFocusedTab, this.pluginName).catch(err => {
+          this.error("保存聚焦标签页恢复设置失败:", err);
+        });
+        this.lastSettings.restoreFocusedTab = this.restoreFocusedTab;
       }
     } catch (error) {
       this.error("检查设置变化失败:", error);
@@ -8468,109 +8522,34 @@ class OrcaTabsPlugin {
       this.creatingTabs.delete(blockId);
     }
     
-    // 使用更可靠的方法获取当前激活的标签页
-    const currentActiveTab = this.getCurrentActiveTab();
-    if (currentActiveTab) {
-      // 如果当前激活的标签是置顶的，不应该替换它，而应该创建新标签
-      if (currentActiveTab.isPinned) {
-        this.log(`📌 当前激活标签已置顶，创建新标签: "${newTabInfo.title}"`);
-        // 在所有置顶标签后面插入新标签（而不是当前标签后面）
-        const pinnedCount = currentTabs.filter(t => t.isPinned).length;
-        currentTabs.splice(pinnedCount, 0, newTabInfo);
-        this.updateFocusState(blockId, newTabInfo.title);
-        this.setCurrentPanelTabs(currentTabs);
-        this.immediateUpdateTabsUI();
-        return;
-      }
+    // 检查标签页数量是否达到上限
+    if (currentTabs.length >= this.maxTabs) {
+      this.log(`⚠️ 标签页已达上限 (${this.maxTabs})，需要替换最后一个非固定标签页`);
       
-      // 找到当前激活标签页的索引
-      const activeIndex = currentTabs.findIndex(tab => tab.blockId === currentActiveTab.blockId);
-      if (activeIndex !== -1) {
-        // 替换当前激活的标签页内容
-        this.log(`🔄 替换当前激活标签页: "${currentActiveTab.title}" -> "${newTabInfo.title}"`);
-        currentTabs[activeIndex] = newTabInfo;
+      // 查找最后一个非固定标签页
+      const lastNonPinnedIndex = this.findLastNonPinnedTabIndex();
+      if (lastNonPinnedIndex !== -1) {
+        const oldTab = currentTabs[lastNonPinnedIndex];
+        currentTabs[lastNonPinnedIndex] = newTabInfo;
+        this.log(`🔄 替换最后一个非固定标签页: "${oldTab.title}" -> "${newTabInfo.title}"`);
         this.updateFocusState(blockId, newTabInfo.title);
         this.setCurrentPanelTabs(currentTabs);
         this.immediateUpdateTabsUI();
         return;
-      }
-    }
-    
-    // 备用方案：如果getCurrentActiveTab()无法获取（可能是时序问题），
-    // 尝试通过lastActiveBlockId来确定上一个激活的标签页
-    if (this.lastActiveBlockId) {
-      const lastActiveIndex = currentTabs.findIndex(tab => tab.blockId === this.lastActiveBlockId);
-      if (lastActiveIndex !== -1) {
-        const lastActiveTab = currentTabs[lastActiveIndex];
-        // 如果上一个激活的标签是置顶的，创建新标签而不是替换
-        if (lastActiveTab.isPinned) {
-          this.log(`📌 上一个激活标签已置顶，创建新标签: "${newTabInfo.title}"`);
-          // 在所有置顶标签后面插入新标签（而不是上一个标签后面）
-          const pinnedCount = currentTabs.filter(t => t.isPinned).length;
-          currentTabs.splice(pinnedCount, 0, newTabInfo);
-          this.updateFocusState(blockId, newTabInfo.title);
-          this.setCurrentPanelTabs(currentTabs);
-          this.immediateUpdateTabsUI();
-          return;
-        }
-        
-        this.log(`🔄 使用上一个激活标签页作为替换目标: "${currentTabs[lastActiveIndex].title}" -> "${newTabInfo.title}"`);
-        currentTabs[lastActiveIndex] = newTabInfo;
-        this.updateFocusState(blockId, newTabInfo.title);
-        this.setCurrentPanelTabs(currentTabs);
-        this.immediateUpdateTabsUI();
-        return;
-      }
-    }
-    
-    // 如果无法获取当前激活标签页，尝试通过DOM元素查找
-    let targetIndex = -1;
-    const focusedTabElement = this.tabContainer?.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
-    if (focusedTabElement) {
-      const focusedTabId = focusedTabElement.getAttribute('data-tab-id');
-      targetIndex = currentTabs.findIndex(tab => tab.blockId === focusedTabId);
-    }
-    
-    // 如果还是没找到，查找有聚焦样式的标签页
-    if (targetIndex === -1) {
-      const allTabElements = this.tabContainer?.querySelectorAll('.orca-tabs-plugin .orca-tab');
-      if (allTabElements && allTabElements.length > 0) {
-        for (let i = 0; i < allTabElements.length; i++) {
-          const tabElement = allTabElements[i];
-          if (tabElement.classList.contains('focused') || 
-              tabElement.getAttribute('data-focused') === 'true' ||
-              tabElement.classList.contains('active')) {
-            targetIndex = i;
-            break;
-          }
-        }
-      }
-    }
-    
-    // 如果还是没找到，使用第一个标签页而不是最后一个（更符合用户预期）
-    if (targetIndex === -1 && currentTabs.length > 0) {
-      targetIndex = 0;
-      this.log(`⚠️ 无法确定当前聚焦的标签页，使用第一个标签页作为替换目标`);
-    }
-    
-    if (targetIndex >= 0 && targetIndex < currentTabs.length) {
-      const targetTab = currentTabs[targetIndex];
-      // 如果目标标签是置顶的，创建新标签而不是替换
-      if (targetTab.isPinned) {
-        this.log(`📌 目标标签已置顶，创建新标签: "${newTabInfo.title}"`);
-        // 在所有置顶标签后面插入新标签（而不是目标标签后面）
-        const pinnedCount = currentTabs.filter(t => t.isPinned).length;
-        currentTabs.splice(pinnedCount, 0, newTabInfo);
-        this.updateFocusState(blockId, newTabInfo.title);
-        this.setCurrentPanelTabs(currentTabs);
-        this.immediateUpdateTabsUI();
       } else {
-        // 替换目标标签页的内容
-        currentTabs[targetIndex] = newTabInfo;
-        this.updateFocusState(blockId, newTabInfo.title);
-        this.setCurrentPanelTabs(currentTabs);
-        this.immediateUpdateTabsUI();
+        this.log(`⚠️ 所有标签页都是固定的，无法添加新标签页: "${newTabInfo.title}"`);
+        return;
       }
+    }
+    
+    // 未达到上限，添加到末尾
+    if (currentTabs.length > 0) {
+      // 如果有标签页，添加到末尾
+      this.log(`➕ 添加新标签页到末尾: "${newTabInfo.title}"`);
+      currentTabs.push(newTabInfo);
+      this.updateFocusState(blockId, newTabInfo.title);
+      this.setCurrentPanelTabs(currentTabs);
+      this.immediateUpdateTabsUI();
     } else {
       // 如果没有任何标签页，创建第一个标签页
       currentTabs = [newTabInfo];
