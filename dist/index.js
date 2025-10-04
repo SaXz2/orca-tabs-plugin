@@ -7382,18 +7382,6 @@ class Sa {
         action: () => this.toggleFixedToTop(),
         icon: "📌"
       }
-    ), this.isVerticalMode && !this.isFixedToTop && c.push(
-      {
-        text: "---",
-        action: () => {
-        },
-        separator: !0
-      },
-      {
-        text: "调整面板宽度",
-        action: () => this.showWidthAdjustmentDialog(),
-        icon: "📏"
-      }
     ), this.isVerticalMode || c.push(
       {
         text: "---",

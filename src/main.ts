@@ -4020,21 +4020,7 @@ class OrcaTabsPlugin {
       );
     }
 
-    // 在垂直模式下且非固定到顶部时添加面板宽度调整选项
-    if (this.isVerticalMode && !this.isFixedToTop) {
-      menuItems.push(
-        {
-          text: '---',
-          action: () => {},
-          separator: true
-        },
-        {
-          text: '调整面板宽度',
-          action: () => this.showWidthAdjustmentDialog(),
-          icon: '📏'
-        }
-      );
-    }
+    // 垂直模式下通过拖动右侧调整手柄来调整面板宽度，无需菜单项
 
     // 在水平布局下添加标签宽度调整选项
     if (!this.isVerticalMode) {
