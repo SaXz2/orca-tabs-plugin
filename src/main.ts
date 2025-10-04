@@ -6393,13 +6393,36 @@ class OrcaTabsPlugin {
         }
       } else if (insertMode === 'after') {
         // 在聚焦标签后面插入
-        const focusedTab = this.getCurrentActiveTab();
-        if (focusedTab) {
-          const focusedIndex = currentTabs.findIndex(tab => tab.blockId === focusedTab.blockId);
-          if (focusedIndex !== -1) {
-            // 直接在聚焦标签后面插入
-            insertIndex = focusedIndex + 1;
-            this.log(`📌 在聚焦标签后面插入新标签`);
+        // 【修复BUG】优先使用保存的lastActiveBlockId，避免在openInNewTab场景下获取到错误的聚焦标签
+        if (this.lastActiveBlockId) {
+          const lastActiveIndex = currentTabs.findIndex(tab => tab.blockId === this.lastActiveBlockId);
+          if (lastActiveIndex !== -1) {
+            insertIndex = lastActiveIndex + 1;
+            this.log(`📌 使用保存的聚焦标签ID ${this.lastActiveBlockId} 在位置 ${insertIndex} 插入新标签`);
+            // 使用后清除，避免影响后续操作
+            this.lastActiveBlockId = null;
+          } else {
+            this.log(`⚠️ 保存的聚焦标签ID ${this.lastActiveBlockId} 在当前标签列表中未找到，回退到DOM查找`);
+            this.lastActiveBlockId = null;
+            // 回退到原来的逻辑
+            const focusedTab = this.getCurrentActiveTab();
+            if (focusedTab) {
+              const focusedIndex = currentTabs.findIndex(tab => tab.blockId === focusedTab.blockId);
+              if (focusedIndex !== -1) {
+                insertIndex = focusedIndex + 1;
+                this.log(`📌 在聚焦标签后面插入新标签`);
+              }
+            }
+          }
+        } else {
+          // 没有保存的聚焦标签ID，使用原来的逻辑
+          const focusedTab = this.getCurrentActiveTab();
+          if (focusedTab) {
+            const focusedIndex = currentTabs.findIndex(tab => tab.blockId === focusedTab.blockId);
+            if (focusedIndex !== -1) {
+              insertIndex = focusedIndex + 1;
+              this.log(`📌 在聚焦标签后面插入新标签`);
+            }
           }
         }
       }
@@ -6475,6 +6498,14 @@ class OrcaTabsPlugin {
    * 在后台新建标签页打开指定块（在聚焦标签后面插入新标签但不跳转）
    */
   async openInNewTab(blockId: string) {
+    // 【修复BUG】保存当前聚焦的标签页信息，避免在创建新标签页后丢失原始聚焦状态
+    const currentFocusedTab = this.getCurrentActiveTab();
+    if (currentFocusedTab) {
+      this.log(`🔗 保存当前聚焦标签页: ${currentFocusedTab.title} (ID: ${currentFocusedTab.blockId})`);
+      // 临时保存当前聚焦标签页的ID，用于后续插入位置计算
+      this.lastActiveBlockId = currentFocusedTab.blockId;
+    }
+    
     await this.addTabToPanel(blockId, 'after', false);
   }
 
