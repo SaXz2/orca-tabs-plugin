@@ -6017,10 +6017,12 @@ class OrcaTabsPlugin {
       const focusedTab = this.getCurrentActiveTab();
       let insertIndex = currentTabs.length; // 默认插入到末尾
       
+      this.log(`📊 当前标签数量: ${currentTabs.length}, 标签列表: ${currentTabs.map(t => t.title).join(', ')}`);
+      
       // 一次性逻辑：如果 addNewTabToEnd 为 true，将新标签添加到末尾，然后重置标志
       if (this.addNewTabToEnd) {
         insertIndex = currentTabs.length; // 添加到末尾
-        this.log(`🎯 [一次性] 将新标签添加到末尾: "${tabInfo.title}"`);
+        this.log(`🎯 [一次性] 将新标签添加到末尾: "${tabInfo.title}", 插入位置: ${insertIndex}`);
         this.addNewTabToEnd = false; // 重置标志，后续恢复正常行为
         this.log(`♻️ 已重置标志，后续新标签将在聚焦标签后插入`);
       } else if (focusedTab) {
@@ -6046,6 +6048,11 @@ class OrcaTabsPlugin {
           const removedTab = currentTabs[lastNonPinnedIndex];
           currentTabs.splice(lastNonPinnedIndex, 1);
           this.log(`🗑️ 删除末尾的非固定标签: "${removedTab.title}" 来保持数量限制`);
+          
+          // 重新计算所有标签的 order 值
+          currentTabs.forEach((tab, index) => {
+            tab.order = index;
+          });
         } else {
           // 如果所有标签都是固定的，删除刚插入的新标签
           const newTabIndex = currentTabs.findIndex(tab => tab.blockId === tabInfo.blockId);
@@ -6060,6 +6067,12 @@ class OrcaTabsPlugin {
         currentTabs.splice(insertIndex, 0, tabInfo);
         this.verboseLog(`➕ 在位置 ${insertIndex} 插入新标签: ${tabInfo.title}`);
       }
+      
+      // 重新计算所有标签的 order 值，确保按插入顺序排列
+      currentTabs.forEach((tab, index) => {
+        tab.order = index;
+      });
+      this.log(`🔄 已重新计算标签顺序: ${currentTabs.map(t => `${t.title}(${t.order})`).join(', ')}`);
       
       // 同步更新存储数组
       this.syncCurrentTabsToStorage(currentTabs);
