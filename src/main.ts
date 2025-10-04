@@ -11567,6 +11567,171 @@ class OrcaTabsPlugin {
   }
 
   /**
+   * 退出当前工作区
+   */
+  private async exitWorkspace() {
+    try {
+      if (!this.currentWorkspace) {
+        orca.notify('warn', '当前没有工作区');
+        return;
+      }
+
+      // 使用自定义确认对话框
+      const confirmed = await this.showExitWorkspaceConfirmDialog();
+      if (!confirmed) {
+        return;
+      }
+
+      // 清除当前工作区状态
+      await this.clearCurrentWorkspace();
+      
+      // 保存工作区配置
+      await this.saveWorkspaces();
+
+      this.log(`🚪 已退出工作区`);
+      orca.notify('success', '已退出工作区');
+    } catch (error) {
+      this.error("退出工作区失败:", error);
+      orca.notify('error', '退出工作区失败');
+    }
+  }
+
+  /**
+   * 显示退出工作区确认对话框
+   */
+  private async showExitWorkspaceConfirmDialog(): Promise<boolean> {
+    return new Promise((resolve) => {
+      // 移除现有对话框
+      const existingDialog = document.querySelector('.exit-workspace-confirm-dialog');
+      if (existingDialog) {
+        existingDialog.remove();
+      }
+
+      // 创建对话框
+      const dialog = document.createElement('div');
+      dialog.className = 'exit-workspace-confirm-dialog';
+      dialog.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--orca-color-bg-1);
+        border: 1px solid var(--orca-color-border);
+        border-radius: var(--orca-radius-lg);
+        box-shadow: var(--orca-shadow-dialog);
+        z-index: ${this.getNextDialogZIndex()};
+        min-width: 400px;
+        max-width: 500px;
+        padding: var(--orca-spacing-lg);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      `;
+
+      // 标题
+      const title = document.createElement('div');
+      title.style.cssText = `
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--orca-color-text-1);
+        margin-bottom: var(--orca-spacing-md);
+      `;
+      title.textContent = '退出工作区';
+
+      // 消息
+      const message = document.createElement('div');
+      message.style.cssText = `
+        font-size: 14px;
+        color: var(--orca-color-text-2);
+        line-height: 1.5;
+        margin-bottom: var(--orca-spacing-lg);
+      `;
+      message.textContent = '确定要退出当前工作区吗？退出后当前标签页状态将不会保存到工作区中。';
+
+      // 按钮容器
+      const buttonContainer = document.createElement('div');
+      buttonContainer.style.cssText = `
+        display: flex;
+        gap: var(--orca-spacing-sm);
+        justify-content: flex-end;
+      `;
+
+      // 取消按钮
+      const cancelButton = document.createElement('button');
+      cancelButton.textContent = '取消';
+      cancelButton.style.cssText = `
+        padding: var(--orca-spacing-sm) var(--orca-spacing-md);
+        border: 1px solid var(--orca-color-border);
+        border-radius: var(--orca-radius-md);
+        background: var(--orca-color-bg-1);
+        color: var(--orca-color-text-1);
+        cursor: pointer;
+        font-family: var(--orca-fontfamily-ui);
+        font-size: var(--orca-fontsize-sm);
+        transition: all 0.2s ease;
+      `;
+      cancelButton.addEventListener('click', () => {
+        dialog.remove();
+        resolve(false);
+      });
+
+      // 确认按钮
+      const confirmButton = document.createElement('button');
+      confirmButton.textContent = '确认退出';
+      confirmButton.style.cssText = `
+        padding: var(--orca-spacing-sm) var(--orca-spacing-md);
+        border: 1px solid var(--orca-color-danger);
+        border-radius: var(--orca-radius-md);
+        background: var(--orca-color-danger);
+        color: white;
+        cursor: pointer;
+        font-family: var(--orca-fontfamily-ui);
+        font-size: var(--orca-fontsize-sm);
+        transition: all 0.2s ease;
+      `;
+      confirmButton.addEventListener('click', () => {
+        dialog.remove();
+        resolve(true);
+      });
+
+      // 添加悬停效果
+      cancelButton.addEventListener('mouseenter', () => {
+        cancelButton.style.backgroundColor = 'var(--orca-color-menu-highlight)';
+      });
+      cancelButton.addEventListener('mouseleave', () => {
+        cancelButton.style.backgroundColor = 'var(--orca-color-bg-1)';
+      });
+
+      confirmButton.addEventListener('mouseenter', () => {
+        confirmButton.style.opacity = '0.9';
+      });
+      confirmButton.addEventListener('mouseleave', () => {
+        confirmButton.style.opacity = '1';
+      });
+
+      // 组装对话框
+      buttonContainer.appendChild(cancelButton);
+      buttonContainer.appendChild(confirmButton);
+      dialog.appendChild(title);
+      dialog.appendChild(message);
+      dialog.appendChild(buttonContainer);
+
+      document.body.appendChild(dialog);
+
+      // 点击外部关闭对话框
+      const handleClickOutside = (e: MouseEvent) => {
+        if (!dialog.contains(e.target as Node)) {
+          dialog.remove();
+          document.removeEventListener('click', handleClickOutside);
+          resolve(false);
+        }
+      };
+      setTimeout(() => {
+        document.addEventListener('click', handleClickOutside);
+      }, 100);
+    });
+  }
+
+  /**
    * 保存当前标签页为工作区
    */
   async saveCurrentWorkspace() {
@@ -11993,11 +12158,57 @@ class OrcaTabsPlugin {
       this.manageWorkspaces();
     };
 
+    // 退出工作区选项（仅在当前有工作区时显示）
+    let exitWorkspaceItem: HTMLElement | null = null;
+    if (this.currentWorkspace) {
+      exitWorkspaceItem = document.createElement('div');
+      exitWorkspaceItem.className = 'workspace-menu-item';
+      exitWorkspaceItem.setAttribute('data-action', 'exit-workspace');
+      exitWorkspaceItem.style.cssText = `
+        padding: var(--orca-spacing-sm);
+        cursor: pointer;
+        font-family: var(--orca-fontfamily-ui);
+        font-size: var(--orca-fontsize-sm);
+        display: flex;
+        align-items: center;
+        border-radius: var(--orca-radius-md);
+        color: var(--orca-color-text-1);
+        border-top: 1px solid var(--orca-color-border);
+        margin-top: var(--orca-spacing-sm);
+      `;
+      
+      // 创建文本子元素
+      const exitText = document.createElement('span');
+      exitText.textContent = '退出工作区';
+      exitText.style.cssText = `
+        margin-right: var(--orca-spacing-md);
+        color: var(--orca-color-danger);
+      `;
+      exitWorkspaceItem.appendChild(exitText);
+      
+      // 添加悬浮效果
+      exitWorkspaceItem.addEventListener('mouseenter', () => {
+        exitWorkspaceItem!.style.backgroundColor = 'var(--orca-color-menu-highlight)';
+      });
+      
+      exitWorkspaceItem.addEventListener('mouseleave', () => {
+        exitWorkspaceItem!.style.backgroundColor = 'transparent';
+      });
+      
+      exitWorkspaceItem.onclick = () => {
+        menu.remove();
+        this.exitWorkspace();
+      };
+    }
+
     // 组装菜单
     menu.appendChild(title);
     menu.appendChild(saveCurrentItem);
     menu.appendChild(workspacesList);
     menu.appendChild(manageItem);
+    if (exitWorkspaceItem) {
+      menu.appendChild(exitWorkspaceItem);
+    }
 
     document.body.appendChild(menu);
 
