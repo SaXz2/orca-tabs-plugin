@@ -3960,7 +3960,8 @@ class OrcaTabsPlugin {
         display: flex;
         align-items: center;
         gap: 10px;
-        font-size: 14px;
+        font-family: var(--orca-fontfamily-ui);
+        font-size: var(--orca-fontsize-sm);
         color: var(--orca-color-text-1);
         border-radius: var(--orca-radius-md);
         transition: background-color 0.2s ease;
@@ -6491,9 +6492,9 @@ class OrcaTabsPlugin {
         addToGroupItem.style.cssText = `
           padding: var(--orca-spacing-sm);
           cursor: pointer;
-          font-size: 14px;
+          font-family: var(--orca-fontfamily-ui);
+          font-size: var(--orca-fontsize-sm);
           color: var(--orca-color-text-1);
-          border-bottom: 1px solid var(--orca-color-border);
           border-radius: var(--orca-radius-md);
           transition: background-color 0.2s;
           display: flex;
@@ -7768,9 +7769,9 @@ class OrcaTabsPlugin {
       menuItem.style.cssText = `
         padding: var(--orca-spacing-sm);
         cursor: pointer;
-        font-size: 14px;
+        font-family: var(--orca-fontfamily-ui);
+        font-size: var(--orca-fontsize-sm);
         color: ${(item as any).disabled ? (isDarkMode ? '#666' : '#999') : 'var(--orca-color-text-1)'};
-        border-bottom: 1px solid var(--orca-color-border);
         border-radius: var(--orca-radius-md);
         transition: background-color 0.2s;
       `;
@@ -10048,7 +10049,8 @@ class OrcaTabsPlugin {
         align-items: center;
         padding: var(--orca-spacing-sm);
         cursor: pointer;
-        font-size: 14px;
+        font-family: var(--orca-fontfamily-ui);
+        font-size: var(--orca-fontsize-sm);
         color: var(--orca-color-text-1);
         border-radius: var(--orca-radius-md);
         transition: background-color 0.2s ease;
@@ -10341,7 +10343,8 @@ class OrcaTabsPlugin {
         align-items: center;
         padding: var(--orca-spacing-sm);
         cursor: pointer;
-        font-size: 14px;
+        font-family: var(--orca-fontfamily-ui);
+        font-size: var(--orca-fontsize-sm);
         color: var(--orca-color-text-1);
         border-radius: var(--orca-radius-md);
         transition: background-color 0.2s ease;
@@ -11671,11 +11674,11 @@ class OrcaTabsPlugin {
     saveCurrentItem.style.cssText = `
       padding: var(--orca-spacing-sm);
       cursor: pointer;
-      font-size: 14px;
+      font-family: var(--orca-fontfamily-ui);
+      font-size: var(--orca-fontsize-sm);
       display: flex;
       align-items: center;
       gap: 8px;
-      border-bottom: 1px solid var(--orca-color-border);
       border-radius: var(--orca-radius-md);
       color: var(--orca-color-text-1);
     `;
@@ -11683,6 +11686,16 @@ class OrcaTabsPlugin {
       <i class="ti ti-plus" style="font-size: 14px; color: var(--orca-color-primary-5);"></i>
       <span>保存当前工作区</span>
     `;
+    
+    // 添加悬浮效果
+    saveCurrentItem.addEventListener('mouseenter', () => {
+      saveCurrentItem.style.backgroundColor = 'var(--orca-color-menu-highlight)';
+    });
+    
+    saveCurrentItem.addEventListener('mouseleave', () => {
+      saveCurrentItem.style.backgroundColor = 'transparent';
+    });
+    
     saveCurrentItem.onclick = () => {
       menu.remove();
       this.saveCurrentWorkspace();
@@ -11711,11 +11724,11 @@ class OrcaTabsPlugin {
         workspaceItem.style.cssText = `
           padding: var(--orca-spacing-sm);
           cursor: pointer;
-          font-size: 14px;
+          font-family: var(--orca-fontfamily-ui);
+          font-size: var(--orca-fontsize-sm);
           display: flex;
           align-items: center;
           gap: 8px;
-          border-bottom: 1px solid var(--orca-color-border);
           border-radius: var(--orca-radius-md);
           color: var(--orca-color-text-1);
           ${this.currentWorkspace === workspace.id ? 'background: rgba(59, 130, 246, 0.1);' : ''}
@@ -11732,6 +11745,15 @@ class OrcaTabsPlugin {
           ${this.currentWorkspace === workspace.id ? '<i class="ti ti-check" style="font-size: 14px; color: var(--orca-color-primary-5);"></i>' : ''}
         `;
         
+        // 添加悬浮效果
+        workspaceItem.addEventListener('mouseenter', () => {
+          workspaceItem.style.backgroundColor = 'var(--orca-color-menu-highlight)';
+        });
+        
+        workspaceItem.addEventListener('mouseleave', () => {
+          workspaceItem.style.backgroundColor = this.currentWorkspace === workspace.id ? 'rgba(59, 130, 246, 0.1)' : 'transparent';
+        });
+        
         workspaceItem.onclick = () => {
           menu.remove();
           this.switchToWorkspace(workspace.id);
@@ -11746,7 +11768,8 @@ class OrcaTabsPlugin {
     manageItem.style.cssText = `
       padding: var(--orca-spacing-sm);
       cursor: pointer;
-      font-size: 14px;
+      font-family: var(--orca-fontfamily-ui);
+      font-size: var(--orca-fontsize-sm);
       display: flex;
       align-items: center;
       gap: 8px;
@@ -11757,6 +11780,16 @@ class OrcaTabsPlugin {
       <i class="ti ti-settings" style="font-size: 14px; color: ${isDarkMode ? '#999' : '#666'};"></i>
       <span>管理工作区</span>
     `;
+    
+    // 添加悬浮效果
+    manageItem.addEventListener('mouseenter', () => {
+      manageItem.style.backgroundColor = 'var(--orca-color-menu-highlight)';
+    });
+    
+    manageItem.addEventListener('mouseleave', () => {
+      manageItem.style.backgroundColor = 'transparent';
+    });
+    
     manageItem.onclick = () => {
       menu.remove();
       this.manageWorkspaces();
@@ -12052,6 +12085,15 @@ class OrcaTabsPlugin {
             ">删除</button>
           </div>
         `;
+
+        // 添加悬浮效果
+        workspaceItem.addEventListener('mouseenter', () => {
+          workspaceItem.style.backgroundColor = 'var(--orca-color-menu-highlight)';
+        });
+        
+        workspaceItem.addEventListener('mouseleave', () => {
+          workspaceItem.style.backgroundColor = this.currentWorkspace === workspace.id ? 'rgba(59, 130, 246, 0.05)' : 'var(--orca-color-bg-1)';
+        });
 
         workspacesList.appendChild(workspaceItem);
       });

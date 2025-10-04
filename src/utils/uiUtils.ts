@@ -381,7 +381,8 @@ export function createMenuItemStyle(disabled: boolean = false): string {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-family: var(--orca-fontfamily-ui);
+    font-size: var(--orca-fontsize-sm);
     color: ${disabled ? '#999' : 'var(--orca-color-text-1)'};
     border-bottom: 1px solid #eee;
     border-radius: var(--orca-radius-md);

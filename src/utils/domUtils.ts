@@ -21,7 +21,8 @@ export function createContextMenuItem(
     cursor: pointer;
     user-select: none;
     transition: background-color 0.15s ease;
-    font-size: 14px;
+    font-family: var(--orca-fontfamily-ui);
+    font-size: var(--orca-fontsize-sm);
     line-height: 1.4;
     border-radius: var(--orca-radius-md);
   `;
