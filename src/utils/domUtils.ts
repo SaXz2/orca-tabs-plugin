@@ -23,6 +23,7 @@ export function createContextMenuItem(
     transition: background-color 0.15s ease;
     font-size: 14px;
     line-height: 1.4;
+    border-radius: var(--orca-radius-md);
   `;
   
   // 图标

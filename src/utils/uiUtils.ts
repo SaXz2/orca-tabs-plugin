@@ -365,6 +365,7 @@ export function createContextMenuStyle(x: number, y: number, width: number = 180
     z-index: 1000;
     min-width: ${width}px;
     max-height: ${height}px;
+    padding: var(--orca-spacing-sm);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   `;
@@ -375,7 +376,7 @@ export function createContextMenuStyle(x: number, y: number, width: number = 180
  */
 export function createMenuItemStyle(disabled: boolean = false): string {
   return `
-    padding: .175rem var(--orca-spacing-md);
+    padding: var(--orca-spacing-sm);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -383,6 +384,7 @@ export function createMenuItemStyle(disabled: boolean = false): string {
     font-size: 13px;
     color: ${disabled ? '#999' : 'var(--orca-color-text-1)'};
     border-bottom: 1px solid #eee;
+    border-radius: var(--orca-radius-md);
     transition: background-color 0.2s ease;
   `;
 }

@@ -3830,6 +3830,7 @@ class OrcaTabsPlugin {
       box-shadow: var(--orca-shadow-menu);
       z-index: 1000;
       min-width: ${menuWidth}px;
+      padding: var(--orca-spacing-sm);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
     `;
@@ -3961,6 +3962,7 @@ class OrcaTabsPlugin {
         gap: 10px;
         font-size: 14px;
         color: var(--orca-color-text-1);
+        border-radius: var(--orca-radius-md);
         transition: background-color 0.2s ease;
       `;
       
@@ -6492,6 +6494,7 @@ class OrcaTabsPlugin {
           font-size: 14px;
           color: var(--orca-color-text-1);
           border-bottom: 1px solid var(--orca-color-border);
+          border-radius: var(--orca-radius-md);
           transition: background-color 0.2s;
           display: flex;
           align-items: center;
@@ -7714,6 +7717,7 @@ class OrcaTabsPlugin {
       box-shadow: var(--orca-shadow-menu);
       z-index: 1000;
       min-width: 180px;
+      padding: var(--orca-spacing-sm);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
     `;
@@ -7767,6 +7771,7 @@ class OrcaTabsPlugin {
         font-size: 14px;
         color: ${(item as any).disabled ? (isDarkMode ? '#666' : '#999') : 'var(--orca-color-text-1)'};
         border-bottom: 1px solid var(--orca-color-border);
+        border-radius: var(--orca-radius-md);
         transition: background-color 0.2s;
       `;
       
@@ -10019,6 +10024,7 @@ class OrcaTabsPlugin {
       min-width: 200px;
       max-width: ${menuWidth}px;
       max-height: ${menuHeight}px;
+      padding: var(--orca-spacing-sm);
       overflow-y: auto;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     `;
@@ -10044,6 +10050,7 @@ class OrcaTabsPlugin {
         cursor: pointer;
         font-size: 14px;
         color: var(--orca-color-text-1);
+        border-radius: var(--orca-radius-md);
         transition: background-color 0.2s ease;
         min-height: 24px;
       `;
@@ -10309,6 +10316,7 @@ class OrcaTabsPlugin {
       min-width: 200px;
       max-width: ${menuWidth}px;
       max-height: ${menuHeight}px;
+      padding: var(--orca-spacing-sm);
       overflow-y: auto;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     `;
@@ -10335,6 +10343,7 @@ class OrcaTabsPlugin {
         cursor: pointer;
         font-size: 14px;
         color: var(--orca-color-text-1);
+        border-radius: var(--orca-radius-md);
         transition: background-color 0.2s ease;
         min-height: 24px;
       `;
@@ -11641,6 +11650,7 @@ class OrcaTabsPlugin {
       box-shadow: var(--orca-shadow-menu);
       z-index: ${this.getNextDialogZIndex()};
       min-width: 200px;
+      padding: var(--orca-spacing-sm);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
     `;
@@ -11666,6 +11676,7 @@ class OrcaTabsPlugin {
       align-items: center;
       gap: 8px;
       border-bottom: 1px solid var(--orca-color-border);
+      border-radius: var(--orca-radius-md);
       color: var(--orca-color-text-1);
     `;
     saveCurrentItem.innerHTML = `
@@ -11705,6 +11716,7 @@ class OrcaTabsPlugin {
           align-items: center;
           gap: 8px;
           border-bottom: 1px solid var(--orca-color-border);
+          border-radius: var(--orca-radius-md);
           color: var(--orca-color-text-1);
           ${this.currentWorkspace === workspace.id ? 'background: rgba(59, 130, 246, 0.1);' : ''}
         `;
@@ -11738,6 +11750,7 @@ class OrcaTabsPlugin {
       display: flex;
       align-items: center;
       gap: 8px;
+      border-radius: var(--orca-radius-md);
       color: var(--orca-color-text-1);
     `;
     manageItem.innerHTML = `
