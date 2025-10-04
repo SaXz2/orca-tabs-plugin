@@ -6001,6 +6001,12 @@ class OrcaTabsPlugin {
       // 更新UI
       await this.updateTabsUI();
       
+      // 如果启用了工作区功能且有当前工作区，实时更新工作区
+      if (this.enableWorkspaces && this.currentWorkspace) {
+        await this.saveCurrentTabsToWorkspace();
+        this.log(`🔄 创建新标签页，实时更新工作区: ${tabInfo.title}`);
+      }
+      
       // 导航到目标块
       await orca.nav.goTo("block", { blockId: parseInt(newBlockId) }, this.currentPanelId || '');
       this.log(`🔄 导航到块: ${newBlockId}`);
