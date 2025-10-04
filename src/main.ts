@@ -864,14 +864,14 @@ class OrcaTabsPlugin {
   /** 拖拽交换防抖计时器 - 防止拖拽过程中频繁触发交换操作 */
   private swapDebounceTimer: number | null = null;
   
-  /** 上次交换的目标标签ID - 防止重复交换同一目标标签 */
-  private lastSwapTarget: string | null = null;
-  
   /** 拖拽位置指示器 - 显示拖拽目标位置的视觉指示器 */
   private dropIndicator: HTMLElement | null = null;
   
   /** 当前拖拽悬停的标签 - 鼠标悬停的标签页信息 */
   private dragOverTab: TabInfo | null = null;
+  
+  /** 上次交换的目标标签和位置 - 防止重复交换 */
+  private lastSwapKey: string = '';
   
   
   
@@ -1502,6 +1502,8 @@ class OrcaTabsPlugin {
   setupDragEndListener() {
     this.dragEndListener = () => {
       this.draggingTab = null;
+      this.dragOverTab = null;
+      this.lastSwapKey = '';
       this.clearDragVisualFeedback();
       this.log("🔄 全局拖拽结束，清除拖拽状态");
     };
@@ -1522,7 +1524,53 @@ class OrcaTabsPlugin {
       if (dragoverThrottle) return;
       dragoverThrottle = requestAnimationFrame(() => {
         dragoverThrottle = null;
-        // 拖拽经过事件处理已移除
+        
+        // 检测鼠标下方的标签元素
+        const elements = document.elementsFromPoint(e.clientX, e.clientY);
+        const tabElement = elements.find(el => 
+          el.classList.contains('orca-tab') && 
+          el.hasAttribute('data-block-id')
+        ) as HTMLElement;
+        
+        if (tabElement) {
+          const blockId = tabElement.getAttribute('data-block-id');
+          const currentTabs = this.getCurrentPanelTabs();
+          const targetTab = currentTabs.find(t => t.blockId === blockId);
+          
+          if (targetTab && targetTab.blockId !== this.draggingTab!.blockId) {
+            // 计算位置
+            const rect = tabElement.getBoundingClientRect();
+            const isVertical = this.isVerticalMode && !this.isFixedToTop;
+            let position: 'before' | 'after';
+            
+            if (isVertical) {
+              const midY = rect.top + rect.height / 2;
+              position = e.clientY < midY ? 'before' : 'after';
+            } else {
+              const midX = rect.left + rect.width / 2;
+              position = e.clientX < midX ? 'before' : 'after';
+            }
+            
+            // 更新指示器并执行实时交换
+            this.updateDropIndicator(tabElement, position);
+            
+            // 使用防抖优化，避免频繁交换
+            const swapKey = `${targetTab.blockId}-${position}`;
+            if (this.lastSwapKey !== swapKey) {
+              this.lastSwapKey = swapKey;
+              
+              // 清除之前的定时器
+              if (this.swapDebounceTimer) {
+                clearTimeout(this.swapDebounceTimer);
+              }
+              
+              // 延迟执行交换
+              this.swapDebounceTimer = setTimeout(async () => {
+                await this.swapTabsRealtime(targetTab, this.draggingTab!, position);
+              }, 50) as any as number;
+            }
+          }
+        }
       });
     };
     
@@ -1593,20 +1641,25 @@ class OrcaTabsPlugin {
   }
 
   /**
-   * 更新拖拽位置指示器
+   * 更新拖拽位置指示器（使用CSS伪元素）
    */
   updateDropIndicator(tabElement: HTMLElement, position: 'before' | 'after') {
+    // 清除之前的指示器
     this.clearDropIndicator();
-    this.dropIndicator = this.createDropIndicator(tabElement, position);
+    
+    // 设置新的指示器
+    tabElement.setAttribute('data-drop-target', position);
   }
 
   /**
    * 清除拖拽位置指示器
    */
   clearDropIndicator() {
-    if (this.dropIndicator) {
-      this.dropIndicator.remove();
-      this.dropIndicator = null;
+    if (this.tabContainer) {
+      const tabs = this.tabContainer.querySelectorAll('.orca-tab');
+      tabs.forEach(tab => {
+        tab.removeAttribute('data-drop-target');
+      });
     }
   }
 
@@ -1614,24 +1667,36 @@ class OrcaTabsPlugin {
 
 
   /**
-   * 防抖的标签交换函数（改进版）
+   * 实时交换标签位置（拖拽过程中）- 优化版
    */
-  async debouncedSwapTab(targetTab: TabInfo, draggingTab: TabInfo) {
-    // 防止重复交换同一个目标
-    if (this.lastSwapTarget === targetTab.blockId) {
-      return;
+  async swapTabsRealtime(targetTab: TabInfo, draggingTab: TabInfo, position: 'before' | 'after') {
+    const currentTabs = this.getCurrentPanelTabs();
+    const dragIndex = currentTabs.findIndex(tab => tab.blockId === draggingTab.blockId);
+    const targetIndex = currentTabs.findIndex(tab => tab.blockId === targetTab.blockId);
+    
+    if (dragIndex === -1 || targetIndex === -1) return;
+    if (dragIndex === targetIndex) return;
+    
+    // 计算实际插入位置
+    let insertIndex = position === 'before' ? targetIndex : targetIndex + 1;
+    
+    // 如果拖拽源在目标之前，需要调整插入位置
+    if (dragIndex < insertIndex) {
+      insertIndex--;
     }
     
-    // 清除之前的防抖定时器
-    if (this.swapDebounceTimer) {
-      clearTimeout(this.swapDebounceTimer);
-    }
+    // 如果位置没变，跳过
+    if (dragIndex === insertIndex) return;
     
-    // 使用短延迟确保拖拽事件稳定
-    this.swapDebounceTimer = window.setTimeout(async () => {
-      await this.swapTab(targetTab, draggingTab);
-      this.lastSwapTarget = targetTab.blockId;
-    }, 16); // 一帧的时间，确保流畅性
+    this.verboseLog(`🔄 [实时交换] ${draggingTab.title}: ${dragIndex} -> ${insertIndex}`);
+    
+    // 移动标签
+    const [draggedTab] = currentTabs.splice(dragIndex, 1);
+    currentTabs.splice(insertIndex, 0, draggedTab);
+    
+    // 保存并更新UI
+    await this.setCurrentPanelTabs(currentTabs);
+    this.debouncedUpdateTabsUI();
   }
 
   /**
@@ -2732,7 +2797,7 @@ class OrcaTabsPlugin {
       }
 
       /* 拖拽容器状态 */
-      .orca-tabs-plugin .orca-tabs-plugin .orca-tabs-plugin .orca-tabs-container[data-dragging="true"] {
+      .orca-tabs-container[data-dragging="true"] {
         background-color: var(--orca-color-bg-1);
         border: 2px dashed rgba(239, 68, 68, 0.4);
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
@@ -2808,8 +2873,70 @@ class OrcaTabsPlugin {
       }
 
       /* 拖拽时的标签容器动画 */
-      .orca-tabs-plugin .orca-tabs-plugin .orca-tabs-plugin .orca-tabs-container[data-dragging="true"] .orca-tabs-plugin .orca-tab:not([data-dragging="true"]) {
-        transition: all 0.2s ease;
+      .orca-tabs-container[data-dragging="true"] .orca-tab:not([data-dragging="true"]) {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      
+      /* 被拖拽的标签样式 */
+      .orca-tab[data-dragging="true"] {
+        opacity: 0.5;
+        transform: scale(1.05);
+        z-index: 1000;
+        cursor: grabbing !important;
+      }
+      
+      /* 拖拽目标位置指示器 - 红色虚线外框 */
+      .orca-tab[data-drop-target="before"]::before,
+      .orca-tab[data-drop-target="after"]::after {
+        content: '';
+        position: absolute;
+        background: rgba(239, 68, 68, 0.2);
+        border: 2px dashed rgba(239, 68, 68, 0.8);
+        border-radius: 4px;
+        z-index: 999;
+        animation: dropTargetPulse 1s ease-in-out infinite;
+      }
+      
+      /* 水平布局 - 左右指示器 */
+      .orca-tabs-container:not(.vertical) .orca-tab[data-drop-target="before"]::before {
+        left: -4px;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+      }
+      
+      .orca-tabs-container:not(.vertical) .orca-tab[data-drop-target="after"]::after {
+        right: -4px;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+      }
+      
+      /* 垂直布局 - 上下指示器 */
+      .orca-tabs-container.vertical .orca-tab[data-drop-target="before"]::before {
+        left: 0;
+        right: 0;
+        top: -4px;
+        height: 4px;
+      }
+      
+      .orca-tabs-container.vertical .orca-tab[data-drop-target="after"]::after {
+        left: 0;
+        right: 0;
+        bottom: -4px;
+        height: 4px;
+      }
+      
+      /* 指示器脉冲动画 */
+      @keyframes dropTargetPulse {
+        0%, 100% {
+          opacity: 0.6;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1.05);
+        }
       }
 
       /* 拖拽完成后的回弹效果 */
@@ -4757,7 +4884,8 @@ class OrcaTabsPlugin {
       
       // 记录当前被拖拽的标签
       this.draggingTab = tab;
-      this.lastSwapTarget = null; // 重置上次交换目标
+      this.dragOverTab = null; // 重置悬停标签
+      this.lastSwapKey = ''; // 重置交换键
       
       // 优化：懒加载拖拽监听器
       if (!this.isDragListenersInitialized) {
@@ -4803,7 +4931,8 @@ class OrcaTabsPlugin {
       
       // 清除所有拖拽状态
       this.draggingTab = null;
-      this.lastSwapTarget = null;
+      this.dragOverTab = null;
+      this.lastSwapKey = '';
       
       // 清除所有拖拽相关的定时器
       if (this.swapDebounceTimer) {
@@ -4840,19 +4969,42 @@ class OrcaTabsPlugin {
         e.stopPropagation(); // 阻止事件冒泡
         e.dataTransfer!.dropEffect = 'move';
         
-        // 显示位置指示器（节流）
-        if (!this.dragOverTab || this.dragOverTab.blockId !== tab.blockId) {
-          const rect = tabElement.getBoundingClientRect();
+        // 根据布局模式判断位置
+        const rect = tabElement.getBoundingClientRect();
+        const isVertical = this.isVerticalMode && !this.isFixedToTop;
+        let position: 'before' | 'after';
+        
+        if (isVertical) {
+          // 垂直布局：根据Y轴判断
           const midY = rect.top + rect.height / 2;
-          const position = e.clientY < midY ? 'before' : 'after';
-          this.updateDropIndicator(tabElement, position);
-          this.dragOverTab = tab;
+          position = e.clientY < midY ? 'before' : 'after';
+        } else {
+          // 水平布局：根据X轴判断
+          const midX = rect.left + rect.width / 2;
+          position = e.clientX < midX ? 'before' : 'after';
         }
         
-        // 调用交换函数（改进的防抖）
-        this.debouncedSwapTab(tab, this.draggingTab);
+        // 更新拖拽目标指示器
+        this.updateDropIndicator(tabElement, position);
+        this.dragOverTab = tab;
         
-        this.verboseLog(`🔄 拖拽经过: ${tab.title} (目标: ${this.draggingTab.title})`);
+        // 使用防抖优化，避免频繁交换
+        const swapKey = `${tab.blockId}-${position}`;
+        if (this.lastSwapKey !== swapKey) {
+          this.lastSwapKey = swapKey;
+          
+          // 清除之前的定时器
+          if (this.swapDebounceTimer) {
+            clearTimeout(this.swapDebounceTimer);
+          }
+          
+          // 延迟执行交换，避免快速移动时频繁触发
+          this.swapDebounceTimer = setTimeout(async () => {
+            await this.swapTabsRealtime(tab, this.draggingTab!, position);
+          }, 50) as any as number; // 50ms防抖
+        }
+        
+        this.verboseLog(`🔄 拖拽经过: ${tab.title} (位置: ${position})`);
       }
     });
 
@@ -4886,12 +5038,13 @@ class OrcaTabsPlugin {
       }
     });
 
-    // 拖拽放置事件（保留作为备用）
+    // 拖拽放置事件 - 已在拖拽过程中实时交换，这里只需清理状态
     tabElement.addEventListener('drop', (e) => {
       e.preventDefault();
+      e.stopPropagation();
+      
       const draggedBlockId = e.dataTransfer?.getData('text/plain');
-      this.log(`🔄 拖拽放置: ${draggedBlockId} -> ${tab.blockId}`);
-      // 这个事件现在主要用于调试，实际交换逻辑在dragover中处理
+      this.log(`🔄 拖拽放置完成: ${draggedBlockId} -> ${tab.blockId}`);
     });
 
 

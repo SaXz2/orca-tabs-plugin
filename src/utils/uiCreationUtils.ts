@@ -16,7 +16,9 @@ export function createTabContainer(
   backgroundColor: string
 ): HTMLElement {
   const container = document.createElement('div');
-  container.className = 'orca-tabs-plugin orca-tabs-container';
+  container.className = isVerticalMode 
+    ? 'orca-tabs-plugin orca-tabs-container vertical'
+    : 'orca-tabs-plugin orca-tabs-container';
   
   const containerStyle = createTabContainerStyle(isVerticalMode, position, backgroundColor, verticalWidth);
   container.style.cssText = containerStyle;
