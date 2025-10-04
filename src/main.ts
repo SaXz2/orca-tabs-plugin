@@ -122,7 +122,6 @@ import {
   createTabTextContainer,       // 创建标签页文本容器样式
   createPinIcon,                // 创建固定图标样式
   createTabTooltip,             // 创建标签页提示框样式
-  createTabSeparator,           // 创建标签分割线样式
   createNewTabButtonStyle,      // 创建新标签页按钮样式
   createDragHandleStyle,        // 创建拖拽手柄样式
   createResizeHandleStyle,      // 创建调整大小手柄样式
@@ -1520,17 +1519,61 @@ class OrcaTabsPlugin {
     this.dragOverListener = (e: DragEvent) => {
       if (!this.draggingTab) return;
       
+      // 默认允许移动（保持move光标，避免禁止符号）
+      e.preventDefault();
+      e.dataTransfer!.dropEffect = 'move';
+      
+      // 检查是否在标签容器内
+      if (this.tabContainer) {
+        const containerRect = this.tabContainer.getBoundingClientRect();
+        const isInside = (
+          e.clientX >= containerRect.left &&
+          e.clientX <= containerRect.right &&
+          e.clientY >= containerRect.top &&
+          e.clientY <= containerRect.bottom
+        );
+        
+        if (!isInside) {
+          this.clearDropIndicator();
+          return;
+        }
+        
+        // 检查鼠标下方是否有非标签元素
+        const elements = document.elementsFromPoint(e.clientX, e.clientY);
+        const hasNonTabElement = elements.some(el => 
+          el.classList.contains('new-tab-button') ||
+          el.classList.contains('drag-handle') ||
+          el.classList.contains('resize-handle')
+        );
+        
+        if (hasNonTabElement) {
+          this.clearDropIndicator();
+          return;
+        }
+      }
+      
       // 节流处理，避免频繁触发
       if (dragoverThrottle) return;
       dragoverThrottle = requestAnimationFrame(() => {
         dragoverThrottle = null;
         
-        // 检测鼠标下方的标签元素
+        // 检测鼠标下方的标签元素 - 严格过滤
         const elements = document.elementsFromPoint(e.clientX, e.clientY);
-        const tabElement = elements.find(el => 
-          el.classList.contains('orca-tab') && 
-          el.hasAttribute('data-block-id')
-        ) as HTMLElement;
+        const tabElement = elements.find(el => {
+          // 必须是标签元素
+          if (!el.classList.contains('orca-tab')) return false;
+          // 必须有blockId
+          if (!el.hasAttribute('data-block-id')) return false;
+          // 排除被拖拽的标签（通过opacity判断）
+          const style = (el as HTMLElement).style;
+          if (style.opacity === '0' && style.pointerEvents === 'none') return false;
+          // 排除按钮等子元素
+          if (el.classList.contains('close-button') || 
+              el.classList.contains('new-tab-button') || 
+              el.classList.contains('drag-handle') ||
+              el.classList.contains('resize-handle')) return false;
+          return true;
+        }) as HTMLElement;
         
         if (tabElement) {
           const blockId = tabElement.getAttribute('data-block-id');
@@ -1567,7 +1610,7 @@ class OrcaTabsPlugin {
               // 延迟执行交换
               this.swapDebounceTimer = setTimeout(async () => {
                 await this.swapTabsRealtime(targetTab, this.draggingTab!, position);
-              }, 50) as any as number;
+              }, 100) as any as number;
             }
           }
         }
@@ -1585,12 +1628,19 @@ class OrcaTabsPlugin {
    */
   clearDragVisualFeedback() {
     if (this.tabContainer) {
-      // 移除所有拖拽相关的CSS类
-      const tabs = this.tabContainer.querySelectorAll('.orca-tabs-plugin .orca-tab');
+      // 移除所有拖拽相关的CSS类和属性
+      const tabs = this.tabContainer.querySelectorAll('.orca-tab');
       tabs.forEach(tab => {
-        tab.removeAttribute('data-dragging');
-        tab.removeAttribute('data-drag-over');
-        tab.classList.remove('dragging', 'drag-over');
+        const tabElement = tab as HTMLElement;
+        tabElement.removeAttribute('data-dragging');
+        tabElement.removeAttribute('data-drag-over');
+        tabElement.classList.remove('dragging', 'drag-over');
+        
+        // 恢复被隐藏标签的样式
+        if (tabElement.style.opacity === '0' && tabElement.style.pointerEvents === 'none') {
+          tabElement.style.opacity = '';
+          tabElement.style.pointerEvents = '';
+        }
       });
       
       // 移除容器拖拽状态
@@ -1667,9 +1717,11 @@ class OrcaTabsPlugin {
 
 
   /**
-   * 实时交换标签位置（拖拽过程中）- 优化版
+   * 实时交换标签位置（拖拽过程中）- DOM级别平滑动画
    */
   async swapTabsRealtime(targetTab: TabInfo, draggingTab: TabInfo, position: 'before' | 'after') {
+    if (!this.tabContainer) return;
+    
     const currentTabs = this.getCurrentPanelTabs();
     const dragIndex = currentTabs.findIndex(tab => tab.blockId === draggingTab.blockId);
     const targetIndex = currentTabs.findIndex(tab => tab.blockId === targetTab.blockId);
@@ -1690,13 +1742,23 @@ class OrcaTabsPlugin {
     
     this.verboseLog(`🔄 [实时交换] ${draggingTab.title}: ${dragIndex} -> ${insertIndex}`);
     
-    // 移动标签
+    // 更新数据
     const [draggedTab] = currentTabs.splice(dragIndex, 1);
     currentTabs.splice(insertIndex, 0, draggedTab);
-    
-    // 保存并更新UI
     await this.setCurrentPanelTabs(currentTabs);
-    this.debouncedUpdateTabsUI();
+    
+    // DOM级别的移动 - 直接操作DOM顺序，触发CSS过渡
+    const draggedElement = this.tabContainer.querySelector(`[data-block-id="${draggingTab.blockId}"]`);
+    const targetElement = this.tabContainer.querySelector(`[data-block-id="${targetTab.blockId}"]`);
+    
+    if (draggedElement && targetElement) {
+      // 使用DOM操作而不是重新渲染，这样CSS transition才能生效
+      if (position === 'before') {
+        targetElement.parentNode?.insertBefore(draggedElement, targetElement);
+      } else {
+        targetElement.parentNode?.insertBefore(draggedElement, targetElement.nextSibling);
+      }
+    }
   }
 
   /**
@@ -2747,18 +2809,7 @@ class OrcaTabsPlugin {
         --orca-tab-colored-text: oklch(from var(--tab-color, #3b82f6) calc(l * 1.6) c h);
       }
       
-      /* 拖拽中的标签样式 */
-      .orca-tabs-plugin .orca-tabs-plugin .orca-tabs-plugin .orca-tab[data-dragging="true"] {
-        border: 2px solid #ef4444;
-        margin: 0 12px;
-        transform: rotate(2deg);
-        box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
-        z-index: 1000;
-        position: relative;
-        opacity: 0.3;
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
-        transition: opacity 0.2s ease;
-      }
+
 
       /* 拖拽悬停目标样式 */
       .orca-tabs-plugin .orca-tab[data-drag-over="true"] {
@@ -2796,16 +2847,38 @@ class OrcaTabsPlugin {
         }
       }
 
-      /* 拖拽容器状态 */
+      /* 拖拽容器状态 - 使用border紧贴，并放大1.05倍 */
       .orca-tabs-container[data-dragging="true"] {
         background-color: var(--orca-color-bg-1);
-        border: 2px dashed rgba(239, 68, 68, 0.4);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        outline: 1px dashed var(--orca-color-primary-5);
+        outline-offset: 2px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        border-radius: 8px;
+        transform: scale(1.05);
+        transform-origin: center;
+      }
+      
+      /* 拖拽状态下水平布局标签间距增加，便于拖拽操作 */
+      .orca-tabs-container:not(.vertical)[data-dragging="true"] {
+        gap: 10px !important;
+      }
+      
+      /* 标签容器变化的平滑过渡（包括gap和transform） */
+      .orca-tabs-container:not(.vertical) {
+        transition: gap 0.2s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      
+      /* 垂直布局也需要transform过渡 */
+      .orca-tabs-container.vertical {
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       }
 
       /* 拖拽时的过渡动画 */
       .orca-tabs-plugin .orca-tab {
         will-change: transform, box-shadow, background, opacity, border;
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                    opacity 0.2s ease,
+                    box-shadow 0.2s ease;
       }
 
       /* 未选中标签的基础样式 */
@@ -2872,70 +2945,94 @@ class OrcaTabsPlugin {
         cursor: pointer;
       }
 
-      /* 拖拽时的标签容器动画 */
-      .orca-tabs-container[data-dragging="true"] .orca-tab:not([data-dragging="true"]) {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      /* 拖拽时的标签容器动画 - 平滑滑动 */
+      .orca-tabs-container[data-dragging="true"] .orca-tab {
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                    opacity 0.25s ease,
+                    width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                    margin 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                    padding 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       }
       
-      /* 被拖拽的标签样式 */
-      .orca-tab[data-dragging="true"] {
-        opacity: 0.5;
-        transform: scale(1.05);
-        z-index: 1000;
-        cursor: grabbing !important;
+      /* 拖拽时标签的过渡效果 */
+      .orca-tabs-container[data-dragging="true"] .orca-tab {
+        will-change: transform;
       }
       
-      /* 拖拽目标位置指示器 - 红色虚线外框 */
-      .orca-tab[data-drop-target="before"]::before,
-      .orca-tab[data-drop-target="after"]::after {
+      /* 标签分隔线 - 使用伪元素（水平布局，有相邻标签时才显示） */
+      .orca-tabs-container:not(.vertical) .orca-tab:not([data-drop-target]):has(+ .orca-tab)::after {
         content: '';
         position: absolute;
-        background: rgba(239, 68, 68, 0.2);
-        border: 2px dashed rgba(239, 68, 68, 0.8);
-        border-radius: 4px;
-        z-index: 999;
-        animation: dropTargetPulse 1s ease-in-out infinite;
+        right: -6px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 1px;
+        height: 16px;
+        background: color-mix(in srgb, var(--orca-color-text-1), transparent 75%);
+        pointer-events: none;
+        z-index: 10;
       }
       
-      /* 水平布局 - 左右指示器 */
+      /* 拖拽时隐藏分隔线，避免与拖拽指示器冲突 */
+      .orca-tabs-container[data-dragging="true"] .orca-tab::after {
+        display: none;
+      }
+
+      /* 拖拽目标位置指示器 - 插入线样式（使用Orca主题色，优先级更高） */
+      .orca-tab[data-drop-target="before"]::before,
+      .orca-tab[data-drop-target="after"]::after {
+        content: '' !important;
+        position: absolute;
+        background: var(--orca-color-primary-5, #5B8DEF);
+        z-index: 1000;
+        animation: dropIndicatorSlide 0.2s ease-out;
+        box-shadow: 0 0 8px var(--orca-color-primary-shadow, rgba(91, 141, 239, 0.5));
+        display: block !important;
+      }
+      
+      /* 水平布局 - 左右插入线 */
       .orca-tabs-container:not(.vertical) .orca-tab[data-drop-target="before"]::before {
-        left: -4px;
-        top: 0;
-        bottom: 0;
-        width: 4px;
+        left: -2px;
+        top: 2px;
+        bottom: 2px;
+        width: 3px;
+        border-radius: 2px;
       }
       
       .orca-tabs-container:not(.vertical) .orca-tab[data-drop-target="after"]::after {
-        right: -4px;
-        top: 0;
-        bottom: 0;
-        width: 4px;
+        right: -2px;
+        top: 2px;
+        bottom: 2px;
+        width: 3px;
+        border-radius: 2px;
       }
       
-      /* 垂直布局 - 上下指示器 */
+      /* 垂直布局 - 上下插入线 */
       .orca-tabs-container.vertical .orca-tab[data-drop-target="before"]::before {
-        left: 0;
-        right: 0;
-        top: -4px;
-        height: 4px;
+        left: 2px;
+        right: 2px;
+        top: -2px;
+        height: 3px;
+        border-radius: 2px;
       }
       
       .orca-tabs-container.vertical .orca-tab[data-drop-target="after"]::after {
-        left: 0;
-        right: 0;
-        bottom: -4px;
-        height: 4px;
+        left: 2px;
+        right: 2px;
+        bottom: -2px;
+        height: 3px;
+        border-radius: 2px;
       }
       
-      /* 指示器脉冲动画 */
-      @keyframes dropTargetPulse {
-        0%, 100% {
-          opacity: 0.6;
-          transform: scale(1);
+      /* 插入线滑入动画 */
+      @keyframes dropIndicatorSlide {
+        from {
+          opacity: 0;
+          transform: scaleY(0.5);
         }
-        50% {
+        to {
           opacity: 1;
-          transform: scale(1.05);
+          transform: scaleY(1);
         }
       }
 
@@ -3190,12 +3287,6 @@ class OrcaTabsPlugin {
       targetTabs.forEach((tab, index) => {
         const tabElement = this.createTabElement(tab);
         this.tabContainer?.appendChild(tabElement);
-        
-        // 如果是水平模式且不是最后一个标签，添加分割线
-        if (!this.isVerticalMode && index < targetTabs.length - 1) {
-          const separator = createTabSeparator();
-          this.tabContainer?.appendChild(separator);
-        }
       });
     } else {
       this.log(`⚠️ 没有可显示的面板，跳过标签页显示`);
@@ -4880,7 +4971,22 @@ class OrcaTabsPlugin {
       }
       
       e.dataTransfer!.effectAllowed = 'move'; // 声明拖拽类型为"移动"
+      e.dataTransfer!.dropEffect = 'move'; // 设置鼠标样式为移动
       e.dataTransfer?.setData('text/plain', tab.blockId);
+      
+      // 使用透明图像完全隐藏浏览器默认的拖拽预览（设置偏移避免元素跳动）
+      const emptyImg = document.createElement('img');
+      emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+      emptyImg.style.opacity = '0';
+      try {
+        // 使用鼠标相对位置作为偏移，避免拖拽时元素跳动
+        const rect = tabElement.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        const offsetY = e.clientY - rect.top;
+        e.dataTransfer?.setDragImage(emptyImg, offsetX, offsetY);
+      } catch (error) {
+        // 某些浏览器可能不支持
+      }
       
       // 记录当前被拖拽的标签
       this.draggingTab = tab;
@@ -4907,9 +5013,11 @@ class OrcaTabsPlugin {
         this.swapDebounceTimer = null;
       }
       
-      // 设置拖拽视觉反馈
-      tabElement.setAttribute('data-dragging', 'true');
-      tabElement.classList.add('dragging');
+      // 延迟隐藏原位置的标签（避免干扰拖拽事件）
+      requestAnimationFrame(() => {
+        tabElement.style.opacity = '0';
+        tabElement.style.pointerEvents = 'none';
+      });
       
       // 设置容器拖拽状态
       if (this.tabContainer) {
@@ -4920,7 +5028,7 @@ class OrcaTabsPlugin {
     });
 
     // 拖拽结束事件（改进版）
-    tabElement.addEventListener('dragend', (e) => {
+    tabElement.addEventListener('dragend', async (e) => {
       console.log('🔄 拖拽结束，清除draggingTab');
       
       // 优化：拖拽结束时移除全局监听器
@@ -4928,11 +5036,6 @@ class OrcaTabsPlugin {
         console.log('🔄 移除全局拖拽监听器');
         document.removeEventListener('dragover', this.dragOverListener);
       }
-      
-      // 清除所有拖拽状态
-      this.draggingTab = null;
-      this.dragOverTab = null;
-      this.lastSwapKey = '';
       
       // 清除所有拖拽相关的定时器
       if (this.swapDebounceTimer) {
@@ -4950,17 +5053,41 @@ class OrcaTabsPlugin {
       // 清除视觉反馈
       this.clearDragVisualFeedback();
       
+      // 保存最终的标签顺序（重要：确保拖拽结果被持久化）
+      const currentTabs = this.getCurrentPanelTabs();
+      await this.setCurrentPanelTabs(currentTabs);
+      
+      // 清除所有拖拽状态
+      this.draggingTab = null;
+      this.dragOverTab = null;
+      this.lastSwapKey = '';
+      
       // 拖拽结束后立即更新UI
       this.debouncedUpdateTabsUI();
       
       this.log(`🔄 结束拖拽标签: ${tab.title}`);
     });
 
-    // 拖拽经过事件（改进版）
+    // 拖拽经过事件（改进版）- 限制在容器内
     tabElement.addEventListener('dragover', (e) => {
       // 检查是否在侧边栏拖拽区域，如果是则不处理标签拖拽
       const target = e.target as HTMLElement;
       if (target.closest('.sidebar, .side-panel, .panel-resize, .resize-handle, .orca-sidebar, .orca-panel, .orca-menu, .orca-recents-menu, [data-panel-id]')) {
+        return;
+      }
+      
+      // 检查是否在标签容器内
+      if (this.tabContainer && !this.tabContainer.contains(target)) {
+        e.dataTransfer!.dropEffect = 'none';
+        return;
+      }
+      
+      // 检查是否点击到了非标签元素（如关闭按钮等）
+      if (target.classList.contains('close-button') || 
+          target.classList.contains('new-tab-button') || 
+          target.classList.contains('drag-handle') ||
+          target.classList.contains('resize-handle') ||
+          target.classList.contains('tab-icon')) {
         return;
       }
       
@@ -5001,7 +5128,7 @@ class OrcaTabsPlugin {
           // 延迟执行交换，避免快速移动时频繁触发
           this.swapDebounceTimer = setTimeout(async () => {
             await this.swapTabsRealtime(tab, this.draggingTab!, position);
-          }, 50) as any as number; // 50ms防抖
+          }, 100) as any as number; // 100ms防抖，更流畅
         }
         
         this.verboseLog(`🔄 拖拽经过: ${tab.title} (位置: ${position})`);

@@ -54,7 +54,8 @@ export function createTabBaseStyle(
     -webkit-app-region: no-drag;
     app-region: no-drag;
     pointer-events: auto;
-    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, margin, opacity;
   ` : `
     ${customColorProps}
     background: ${backgroundColor};
@@ -73,7 +74,8 @@ export function createTabBaseStyle(
     -webkit-app-region: no-drag;
     app-region: no-drag;
     pointer-events: auto;
-    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, margin, opacity;
   `;
 }
 
@@ -516,7 +518,7 @@ export function createTabContainerStyle(
     left: ${position.x}px;
     z-index: 300;
     display: flex;
-    gap: 4px;
+    gap: 10px;
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
     background: ${backgroundColor};
