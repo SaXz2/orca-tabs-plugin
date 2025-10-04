@@ -46,40 +46,17 @@ import { TabStorageService } from './services/tabStorage';
 // ==================== 块处理工具函数 ====================
 // 基础块处理工具 - 提供块类型检测、日期格式化、属性提取等基础功能
 import { formatJournalDate, extractJournalInfo, detectBlockType, getBlockTypeIcon, isDateString, findProperty, format } from './utils/blockUtils';
-// 增强块处理工具 - 提供更高级的块分析、扫描、搜索和统计功能
+// 增强块处理工具
 import { 
-  detectBlockTypeEnhanced,      // 增强的块类型检测
-  analyzeBlockContent,          // 块内容分析
-  isTextWithBlockRefs,          // 检查文本是否包含块引用
-  getBlockProperty,             // 获取块属性
-  getAllBlockProperties,        // 获取所有块属性
-  hasBlockProperty,             // 检查块是否有特定属性
-  getBlockPropertyValue,        // 获取块属性值
-  isDateStringEnhanced,         // 增强的日期字符串检测
-  getBlockTypeIconEnhanced,     // 增强的块类型图标获取
-  scanBlock,                    // 扫描单个块
-  extractTextFromContent,       // 从内容中提取文本
-  scanBlocks,                   // 批量扫描块
-  filterBlocks,                 // 过滤块
-  searchBlocks,                 // 搜索块
-  sortBlocks,                   // 排序块
-  getBlockStats,                // 获取块统计信息
-  validateBlockData,            // 验证块数据
-  cleanBlockData,               // 清理块数据
-  type BlockTypeDetectionResult, // 块类型检测结果类型
-  type BlockContentAnalysis,     // 块内容分析类型
-  type BlockProperty,            // 块属性类型
-  type BlockScanResult          // 块扫描结果类型
+  isTextWithBlockRefs,
+  extractTextFromContent
 } from './utils/blockProcessingUtils';
 
 // ==================== DOM操作工具函数 ====================
 // DOM操作工具 - 提供安全的DOM元素创建、操作和事件处理功能
 import { 
-  createContextMenuItem,  // 创建上下文菜单项
-  createStyledElement,    // 创建带样式的元素
-  addHoverEffect,         // 添加悬停效果
-  safeRemoveElement,      // 安全移除元素
-  findClosestParent       // 查找最近的父元素
+  findClosestParent,
+  createContextMenuItem
 } from './utils/domUtils';
 
 // ==================== 样式工具函数 ====================
@@ -87,76 +64,33 @@ import {
 import { hexToRgba } from './utils/styleUtils';
 
 // ==================== 配置管理工具函数 ====================
-// 配置管理工具 - 提供布局配置、位置配置的创建、验证和管理功能
 import { 
-  createDefaultLayoutConfig,    // 创建默认布局配置
-  createDefaultPositionConfig,  // 创建默认位置配置
-  validatePosition,             // 验证位置配置
-  mergeLayoutConfig,            // 合并布局配置
-  getPositionByMode,            // 根据模式获取位置
-  updatePositionConfig,         // 更新位置配置
-  generateLayoutLogMessage,     // 生成布局日志消息
-  generatePositionLogMessage,   // 生成位置日志消息
-  type LayoutConfig             // 布局配置类型
+  createDefaultLayoutConfig,
+  validatePosition,
+  mergeLayoutConfig,
+  getPositionByMode,
+  generateLayoutLogMessage,
+  generatePositionLogMessage,
+  type LayoutConfig
 } from './utils/configUtils';
 
-// ==================== 事件处理工具函数 ====================
-// 事件处理工具 - 提供统一的事件监听器创建、管理和清理功能
-import { 
-  createEventListenerCleanup,  // 创建事件监听器清理函数
-  createKeyboardHandler,       // 创建键盘事件处理器
-  createMouseHandler,          // 创建鼠标事件处理器
-  createResizeHandler,         // 创建调整大小事件处理器
-  createTabDragHandler,        // 创建标签页拖拽事件处理器
-  createTabClickHandler,       // 创建标签页点击事件处理器
-  isSidebarElement,            // 检查是否为侧边栏元素
-  isTabElement                 // 检查是否为标签页元素
-} from './utils/eventUtils';
+// 注: 已移除未使用的事件处理工具以减小包体积
 
 // ==================== UI创建工具函数 ====================
-// UI创建工具 - 提供各种UI组件的样式创建和元素生成功能
 import { 
-  createTabBaseStyle,           // 创建标签页基础样式
-  createTabContentContainer,    // 创建标签页内容容器样式
-  createTabIconContainer,       // 创建标签页图标容器样式
-  createTabTextContainer,       // 创建标签页文本容器样式
-  createPinIcon,                // 创建固定图标样式
-  createTabTooltip,             // 创建标签页提示框样式
-  createNewTabButtonStyle,      // 创建新标签页按钮样式
-  createDragHandleStyle,        // 创建拖拽手柄样式
-  createResizeHandleStyle,      // 创建调整大小手柄样式
-  createStatusElementStyle,     // 创建状态元素样式
-  createContextMenuStyle,       // 创建上下文菜单样式
-  calculateContextMenuPosition, // 计算智能菜单位置
-  createMenuItemStyle,          // 创建菜单项样式
-  createSeparatorStyle,         // 创建分隔符样式
-  createDialogStyle,            // 创建对话框样式
-  createButtonStyle,            // 创建按钮样式
-  createInputStyle,             // 创建输入框样式
-  createSliderStyle,            // 创建滑块样式
-  createTabContainerStyle       // 创建标签页容器样式
+  createTabBaseStyle,
+  createTabContentContainer,
+  createTabIconContainer,
+  createTabTextContainer,
+  createPinIcon,
+  createTabTooltip,
+  calculateContextMenuPosition
 } from './utils/uiUtils';
 
 // 数据处理工具函数
 import { 
   findLastNonPinnedTabIndex, 
-  sortTabsByPinStatus, 
-  findExistingTab, 
-  calculateSmartInsertPosition, 
-  handleTabLimit, 
-  getAdjacentTab, 
-  filterTabs, 
-  updateTabProperty, 
-  batchUpdateTabProperties, 
-  validateTabData, 
-  cleanInvalidTabs, 
-  moveTab, 
-  swapTabs, 
-  isValidPosition, 
-  constrainPosition, 
-  calculateContainerSize, 
-  shouldUpdateUI, 
-  generateTabStats 
+  sortTabsByPinStatus
 } from './utils/dataUtils';
 
 // 标签操作工具函数
@@ -199,53 +133,16 @@ import {
   type TabUpdateOptions
 } from './utils/tabOperationsUtils';
 import { 
-  calculatePanelPosition, 
-  isPositionInBounds, 
-  constrainPositionToBounds, 
-  calculateDragBounds, 
-  calculateResizeBounds, 
-  calculateSmartPosition, 
-  calculateOverlap, 
-  calculateVisibleArea, 
-  isPanelFullyVisible, 
-  calculatePanelCenter, 
-  calculateDistanceToEdges, 
-  calculateBestResizeDirection, 
-  calculateScrollPosition, 
-  calculateTabPosition, 
-  calculateMaxContainerHeight, 
-  calculateMaxContainerWidth, 
   shouldAdjustPanelPosition, 
-  calculateAdjustedPosition 
+  calculateAdjustedPosition,
+  constrainPositionToBounds
 } from './utils/layoutUtils';
 import { 
-  createFadeInAnimation, 
-  createFadeOutAnimation, 
-  createSlideInAnimation, 
-  createSlideOutAnimation, 
-  createScaleAnimation, 
-  createBounceAnimation, 
-  createShakeAnimation, 
-  createPulseAnimation, 
-  createRotateAnimation, 
-  createColorTransitionAnimation, 
-  createHeightTransitionAnimation, 
-  createCombinedAnimation, 
-  createDelayedAnimation, 
-  createLoopAnimation, 
-  isElementInViewport, 
-  createViewportEnterAnimation, 
-  createAnimationQueue 
+  isElementInViewport
 } from './utils/animationUtils';
 import { 
   debounce,
-  createBatchProcessor, 
-  createObjectPool, 
-  createLRUCache, 
-  createVirtualScroll, 
-  createLazyLoader, 
-  createTaskQueue, 
-  createResourcePreloader 
+  createBatchProcessor
 } from './utils/performanceUtils';
 
 // ==================== 性能优化工具导入 ====================
@@ -257,8 +154,6 @@ import { OptimizedMutationObserver } from './utils/mutationObserverOptimizer';
 import { AdvancedDebounceOptimizer } from './utils/advancedDebounceOptimizer';
 // 内存泄漏防护器 - 防止内存泄漏
 import { MemoryLeakProtector } from './utils/memoryLeakProtector';
-// 懒加载优化器 - 按需加载非关键功能
-import { LazyLoadingOptimizer } from './utils/lazyLoadingOptimizer';
 // 批量处理器优化器 - DOM操作批量处理
 import { BatchProcessorOptimizer } from './utils/batchProcessorOptimizer';
 // 性能监控优化器 - 性能监控和分析
@@ -266,34 +161,10 @@ import { PerformanceMonitorOptimizer, type PerformanceMetric, type PerformanceRe
 import { 
   isDarkMode, 
   getCurrentThemeMode, 
-  setThemeMode, 
-  updateDocumentTheme, 
   watchThemeChange, 
-  getThemeColor, 
-  applyOklchFormula, 
-  generateGradientBackground, 
-  generateShadow, 
-  generateTransition, 
-  generateBackdropBlur, 
-  generateDarkBackdropBlur, 
-  generateBorder, 
-  generateFocusStyle, 
-  generateHoverEffect, 
-  generateActiveEffect, 
-  generateDisabledStyle, 
-  generateResponsiveBreakpoints, 
-  generateMediaQuery, 
-  generateDarkModeQuery, 
-  generatePrintStyles, 
-  generateKeyframes, 
-  generateCSSVariables, 
-  applyThemeToElement, 
-  createThemeStyleSheet, 
-  updateThemeStyleSheet,
-  type ThemeMode,
-  type ColorType,
-  type ThemeConfig,
-  DEFAULT_THEME_CONFIG
+  getThemeColor,
+  applyOklchFormula,
+  type ThemeMode
 } from './utils/themeUtils';
 import { 
   LogLevel,
@@ -350,26 +221,8 @@ import {
   isSidebarVisible, 
   getSidebarPosition, 
   calculateAlignmentPosition, 
-  shouldAlignToSidebar, 
-  createPanelStatusMonitor, 
-  createSidebarAlignmentMonitor, 
-  createPanelChangeListener, 
-  calculatePanelSwitchAnimation, 
-  getPanelScreenPosition, 
-  isPanelInViewport, 
-  getPanelVisibleArea, 
-  calculatePanelRelativePosition, 
-  checkPanelOverlap, 
-  calculatePanelOverlapArea, 
-  getPanelZIndex, 
-  setPanelZIndex, 
-  getPanelOpacity, 
-  setPanelOpacity, 
-  isPanelOccluded, 
-  getPanelOccludingElements,
-  type PanelDiscoveryCache,
-  type PanelStatus,
-  type SidebarAlignmentConfig
+  shouldAlignToSidebar,
+  type PanelStatus
 } from './utils/panelManagementUtils';
 
 /* ———————————————————————————————————————————————————————————————————————————— */
@@ -1025,49 +878,6 @@ class OrcaTabsPlugin {
     await this.restoreRestoreFocusedTabSetting();
     
     const stopInitMeasurement = this.startPerformanceMeasurement(this.performanceMetricKeys.initTotal);
-    // ==================== 性能优化器初始化 ====================
-    // 初始化性能优化管理器
-    if (this.performanceOptimizer) {
-      try {
-        await this.performanceOptimizer.initialize({
-          mutationObserver: {
-            enableBatch: true,
-            batchDelay: 16,
-            maxBatchSize: 50,
-            enableSmartFilter: true,
-            coolingPeriod: 100
-          },
-          debounce: [
-            { name: 'immediate', delay: 0, priority: 10, cancelable: false },
-            { name: 'high', delay: 8, priority: 8, cancelable: true, maxWait: 100 },
-            { name: 'normal', delay: 16, priority: 5, cancelable: true, maxWait: 200 },
-            { name: 'low', delay: 32, priority: 3, cancelable: true, maxWait: 500 }
-          ],
-          memoryLeak: {
-            autoCleanupInterval: 30000,
-            enableAutoCleanup: true
-          },
-          lazyLoading: {
-            enableCache: true,
-            maxConcurrency: 3,
-            preloadStrategy: 'idle'
-          },
-          batchProcessing: {
-            maxBatchSize: 50,
-            maxWaitTime: 16,
-            enableVirtualization: true
-          },
-          performanceMonitoring: {
-            enableMonitoring: true,
-            enableAutoOptimization: true,
-            reportInterval: 30000
-          }
-        });
-        this.log('✅ 性能优化管理器初始化完成');
-      } catch (error) {
-        this.error('❌ 性能优化管理器初始化失败:', error);
-      }
-    }
     
     // ==================== 样式初始化 ====================
     // 添加对话框样式 - 为所有对话框组件添加基础样式
@@ -1098,23 +908,24 @@ class OrcaTabsPlugin {
     // 注册块菜单命令 - 注册右键菜单中的命令，如"添加到标签页"等
     this.registerBlockMenuCommands();
 
-    // ==================== 状态恢复 ====================
-    // 恢复保存的位置 - 从存储中恢复标签页容器的位置信息
-    await this.restorePosition();
+    // ==================== 并行状态恢复 ====================
+    // 将独立的恢复操作并行执行以减少初始化时间
+    const [
+      _position,
+      _layoutMode,
+      _fixedToTop,
+      _floatingVisibility,
+      workspaceResult
+    ] = await Promise.all([
+      this.restorePosition(),
+      this.restoreLayoutMode(),
+      this.restoreFixedToTopMode(),
+      this.restoreFloatingWindowVisibility(),
+      this.tabStorageService.loadWorkspaces()
+    ]);
     
-    // 恢复布局模式 - 恢复用户选择的布局模式（水平/垂直）
-    await this.restoreLayoutMode();
-    
-    // 恢复固定到顶部状态 - 恢复标签页容器是否固定到顶部的状态
-    await this.restoreFixedToTopMode();
-    
-    // 恢复浮窗可见状态 - 恢复标签页容器的显示/隐藏状态
-    await this.restoreFloatingWindowVisibility();
-    
-    // 加载工作区数据 - 从存储中加载用户创建的工作区
-    const { workspaces, enableWorkspaces } = await this.tabStorageService.loadWorkspaces();
-    this.workspaces = workspaces;
-    this.enableWorkspaces = enableWorkspaces;
+    this.workspaces = workspaceResult.workspaces;
+    this.enableWorkspaces = workspaceResult.enableWorkspaces;
     
     // 注意：页面刷新后不自动更新工作区，用户需要手动切换工作区
     
@@ -1138,27 +949,36 @@ class OrcaTabsPlugin {
     // 监听器会自动检测新面板的创建
     
     
-    // 测试API配置序列化（开发模式）
-    if (typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS !== false) {
-      await this.storageService.testConfigSerialization();
-    }
+    // ==================== 并行加载标签页数据 ====================
+    // 将所有标签页数据的恢复操作并行执行
+    const [
+      firstPanelTabs,
+      closedTabs,
+      recentlyClosedTabs,
+      savedTabSets
+    ] = await Promise.all([
+      this.tabStorageService.restoreFirstPanelTabs(),
+      this.tabStorageService.restoreClosedTabs(),
+      this.tabStorageService.restoreRecentlyClosedTabs(),
+      this.tabStorageService.restoreSavedTabSets()
+    ]);
     
-    // 恢复第一个面板的标签页数据（修复持久化失效问题）
-    const firstPanelTabs = await this.tabStorageService.restoreFirstPanelTabs();
     if (this.panelTabsData.length === 0) {
       this.panelTabsData.push([]);
     }
     this.panelTabsData[0] = firstPanelTabs;
+    this.closedTabs = closedTabs;
+    this.recentlyClosedTabs = recentlyClosedTabs;
+    this.savedTabSets = savedTabSets;
+    
     await this.updateRestoredTabsBlockTypes();
     
-    // 恢复已关闭标签列表
-    this.closedTabs = await this.tabStorageService.restoreClosedTabs();
-    
-    // 恢复最近关闭的标签页列表
-    this.recentlyClosedTabs = await this.tabStorageService.restoreRecentlyClosedTabs();
-    
-    // 恢复多标签页集合
-    this.savedTabSets = await this.tabStorageService.restoreSavedTabSets();
+    // 测试API配置序列化（开发模式）- 延迟到空闲时间
+    if (typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS !== false) {
+      requestIdleCallback(() => {
+        this.storageService.testConfigSerialization();
+      }, { timeout: 2000 });
+    }
     
     // 设置当前活动面板，排除特殊面板
     const currentActivePanel = document.querySelector('.orca-panel.active');
@@ -1172,27 +992,30 @@ class OrcaTabsPlugin {
     // 确保panelTabsData数组有足够的大小
     this.ensurePanelTabsDataSize();
     
-    // 加载其他面板的数据（如果有的话）
+    // ==================== 延迟加载其他面板数据 ====================
+    // 将其他面板的数据加载延迟到空闲时间，优先完成首屏渲染
     if (this.panelOrder.length > 1) {
-      this.log(`📂 开始加载其他面板的标签页数据`);
-      for (let i = 1; i < this.panelOrder.length; i++) {
-        const storageKey = `panel_${i + 1}_tabs`;
-        try {
-          const savedTabs = await this.storageService.getConfig<TabInfo[]>(storageKey, this.pluginName, []);
-          this.log(`📂 从存储获取到第 ${i + 1} 个面板的数据: ${savedTabs ? savedTabs.length : 0} 个标签页`);
-          
-          if (savedTabs && savedTabs.length > 0) {
-            this.panelTabsData[i] = [...savedTabs];
-            this.log(`✅ 成功加载第 ${i + 1} 个面板的标签页数据: ${savedTabs.length} 个`);
-          } else {
+      requestIdleCallback(async () => {
+        this.log(`📂 延迟加载其他面板的标签页数据`);
+        for (let i = 1; i < this.panelOrder.length; i++) {
+          const storageKey = `panel_${i + 1}_tabs`;
+          try {
+            const savedTabs = await this.storageService.getConfig<TabInfo[]>(storageKey, this.pluginName, []);
+            this.log(`📂 从存储获取到第 ${i + 1} 个面板的数据: ${savedTabs ? savedTabs.length : 0} 个标签页`);
+            
+            if (savedTabs && savedTabs.length > 0) {
+              this.panelTabsData[i] = [...savedTabs];
+              this.log(`✅ 成功加载第 ${i + 1} 个面板的标签页数据: ${savedTabs.length} 个`);
+            } else {
+              this.panelTabsData[i] = [];
+              this.log(`📂 第 ${i + 1} 个面板没有保存的数据`);
+            }
+          } catch (error) {
+            this.warn(`❌ 加载第 ${i + 1} 个面板数据失败:`, error);
             this.panelTabsData[i] = [];
-            this.log(`📂 第 ${i + 1} 个面板没有保存的数据`);
           }
-        } catch (error) {
-          this.warn(`❌ 加载第 ${i + 1} 个面板数据失败:`, error);
-          this.panelTabsData[i] = [];
         }
-      }
+      }, { timeout: 1000 });
     }
     
     // 扫描当前活动面板的标签页（如果不是第一个面板）
@@ -1270,6 +1093,52 @@ class OrcaTabsPlugin {
     // 标记初始化完成
     this.isInitialized = true;
     this.log("✅ 插件初始化完成");
+    
+    // ==================== 延迟初始化性能优化器 ====================
+    // 将性能优化管理器的初始化延迟到空闲时间，避免阻塞主线程
+    requestIdleCallback(async () => {
+      if (this.performanceOptimizer) {
+        try {
+          await this.performanceOptimizer.initialize({
+            mutationObserver: {
+              enableBatch: true,
+              batchDelay: 16,
+              maxBatchSize: 50,
+              enableSmartFilter: true,
+              coolingPeriod: 100
+            },
+            debounce: [
+              { name: 'immediate', delay: 0, priority: 10, cancelable: false },
+              { name: 'high', delay: 8, priority: 8, cancelable: true, maxWait: 100 },
+              { name: 'normal', delay: 16, priority: 5, cancelable: true, maxWait: 200 },
+              { name: 'low', delay: 32, priority: 3, cancelable: true, maxWait: 500 }
+            ],
+            memoryLeak: {
+              autoCleanupInterval: 30000,
+              enableAutoCleanup: true
+            },
+            lazyLoading: {
+              enableCache: true,
+              maxConcurrency: 3,
+              preloadStrategy: 'idle'
+            },
+            batchProcessing: {
+              maxBatchSize: 50,
+              maxWaitTime: 16,
+              enableVirtualization: true
+            },
+            performanceMonitoring: {
+              enableMonitoring: true,
+              enableAutoOptimization: true,
+              reportInterval: 30000
+            }
+          });
+          this.log('✅ 性能优化管理器延迟初始化完成');
+        } catch (error) {
+          this.error('❌ 性能优化管理器延迟初始化失败:', error);
+        }
+      }
+    }, { timeout: 2000 });
   }
 
 
@@ -3482,7 +3351,7 @@ class OrcaTabsPlugin {
     }
     
     if (targetPanelId) {
-      this.log(`📋 显示面板 ${targetPanelId} 的标签页`);
+      this.verboseLog(`📋 显示面板 ${targetPanelId} 的标签页`);
       
       // 获取目标面板的标签页数据
       let targetTabs = this.panelTabsData[targetPanelIndex] || [];
@@ -5649,7 +5518,8 @@ class OrcaTabsPlugin {
     // 直接更新对应索引的标签页数据
     this.panelTabsData[this.currentPanelIndex] = [...tabs];
     
-    this.log(`📋 设置面板 ${this.getPanelIds()[this.currentPanelIndex]} (索引: ${this.currentPanelIndex}) 的标签页数据: ${tabs.length} 个`);
+    // 改为VERBOSE级别，减少生产环境日志输出
+    this.verboseLog(`📋 设置面板 ${this.getPanelIds()[this.currentPanelIndex]} (索引: ${this.currentPanelIndex}) 的标签页数据: ${tabs.length} 个`);
     
     // 保存数据到存储
     this.saveCurrentPanelTabs();
@@ -8681,7 +8551,7 @@ class OrcaTabsPlugin {
     if (currentTabElement) {
       // 设置聚焦状态，触发CSS样式变化
       currentTabElement.setAttribute('data-focused', 'true');
-      this.log(`🎯 更新聚焦状态到已存在的标签: "${title}"`);
+      this.verboseLog(`🎯 更新聚焦状态到已存在的标签: "${title}"`);
     } else {
       // 如果找不到标签页元素，记录警告日志
       this.verboseLog(`⚠️ 未找到标签元素: ${blockId}`);
@@ -9020,7 +8890,7 @@ class OrcaTabsPlugin {
         return;
       }
 
-      this.log('🔍 开始检查当前面板块...');
+      this.verboseLog('🔍 开始检查当前面板块...');
 
       // 步骤1: 获取当前激活的面板
       // 查找带有 .active 类的面板元素
@@ -9046,7 +8916,7 @@ class OrcaTabsPlugin {
         return;
       }
 
-      this.log(`✅ 找到激活面板: ID=${currentPanelId}, class=${currentActivePanel.className}`);
+      this.verboseLog(`✅ 找到激活面板: ID=${currentPanelId}, class=${currentActivePanel.className}`);
 
       // 步骤3: 更新当前面板索引
       // 确保 this.currentPanelIndex 和 this.currentPanelId 与DOM状态同步

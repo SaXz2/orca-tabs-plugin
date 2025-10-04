@@ -4769,7 +4769,7 @@ function va(s, e, t) {
   }
 }
 var S = /* @__PURE__ */ ((s) => (s[s.ERROR = 0] = "ERROR", s[s.WARN = 1] = "WARN", s[s.INFO = 2] = "INFO", s[s.DEBUG = 3] = "DEBUG", s[s.VERBOSE = 4] = "VERBOSE", s))(S || {});
-const ya = 2;
+const ya = 1;
 function re(s, ...e) {
   console.info("[OrcaPlugin]", s, ...e);
 }
@@ -5467,45 +5467,6 @@ class Sa {
   async init() {
     await this.restoreDebugMode(), await this.restoreRestoreFocusedTabSetting();
     const e = this.startPerformanceMeasurement(this.performanceMetricKeys.initTotal);
-    if (this.performanceOptimizer)
-      try {
-        await this.performanceOptimizer.initialize({
-          mutationObserver: {
-            enableBatch: !0,
-            batchDelay: 16,
-            maxBatchSize: 50,
-            enableSmartFilter: !0,
-            coolingPeriod: 100
-          },
-          debounce: [
-            { name: "immediate", delay: 0, priority: 10, cancelable: !1 },
-            { name: "high", delay: 8, priority: 8, cancelable: !0, maxWait: 100 },
-            { name: "normal", delay: 16, priority: 5, cancelable: !0, maxWait: 200 },
-            { name: "low", delay: 32, priority: 3, cancelable: !0, maxWait: 500 }
-          ],
-          memoryLeak: {
-            autoCleanupInterval: 3e4,
-            enableAutoCleanup: !0
-          },
-          lazyLoading: {
-            enableCache: !0,
-            maxConcurrency: 3,
-            preloadStrategy: "idle"
-          },
-          batchProcessing: {
-            maxBatchSize: 50,
-            maxWaitTime: 16,
-            enableVirtualization: !0
-          },
-          performanceMonitoring: {
-            enableMonitoring: !0,
-            enableAutoOptimization: !0,
-            reportInterval: 3e4
-          }
-        }), this.log("✅ 性能优化管理器初始化完成");
-      } catch (c) {
-        this.error("❌ 性能优化管理器初始化失败:", c);
-      }
     Ea(), this.tabStorageService = new ze(this.storageService, this.pluginName, {
       log: this.log.bind(this),
       warn: this.warn.bind(this),
@@ -5517,41 +5478,104 @@ class Sa {
     } catch {
       this.warn("无法读取最大标签数设置，使用默认值10");
     }
-    await this.registerPluginSettings(), this.registerBlockMenuCommands(), await this.restorePosition(), await this.restoreLayoutMode(), await this.restoreFixedToTopMode(), await this.restoreFloatingWindowVisibility();
-    const { workspaces: t, enableWorkspaces: a } = await this.tabStorageService.loadWorkspaces();
-    this.workspaces = t, this.enableWorkspaces = a, this.registerHeadbarButton(), await this.discoverPanels();
-    const r = this.getFirstPanel();
-    r ? this.log(`🎯 初始化第1个面板（持久化面板）: ${r}`) : this.log("⚠️ 初始化时没有发现面板"), typeof window < "u" && window.DEBUG_ORCA_TABS !== !1 && await this.storageService.testConfigSerialization();
-    const i = await this.tabStorageService.restoreFirstPanelTabs();
-    this.panelTabsData.length === 0 && this.panelTabsData.push([]), this.panelTabsData[0] = i, await this.updateRestoredTabsBlockTypes(), this.closedTabs = await this.tabStorageService.restoreClosedTabs(), this.recentlyClosedTabs = await this.tabStorageService.restoreRecentlyClosedTabs(), this.savedTabSets = await this.tabStorageService.restoreSavedTabSets();
-    const n = document.querySelector(".orca-panel.active"), o = n == null ? void 0 : n.getAttribute("data-panel-id");
-    if (o && !o.startsWith("_") && (this.currentPanelId = o, this.currentPanelIndex = this.getPanelIds().indexOf(o), this.log(`🎯 当前活动面板: ${o} (索引: ${this.currentPanelIndex})`)), this.ensurePanelTabsDataSize(), this.panelOrder.length > 1) {
-      this.log("📂 开始加载其他面板的标签页数据");
-      for (let c = 1; c < this.panelOrder.length; c++) {
-        const l = `panel_${c + 1}_tabs`;
+    await this.registerPluginSettings(), this.registerBlockMenuCommands();
+    const [
+      t,
+      a,
+      r,
+      i,
+      n
+    ] = await Promise.all([
+      this.restorePosition(),
+      this.restoreLayoutMode(),
+      this.restoreFixedToTopMode(),
+      this.restoreFloatingWindowVisibility(),
+      this.tabStorageService.loadWorkspaces()
+    ]);
+    this.workspaces = n.workspaces, this.enableWorkspaces = n.enableWorkspaces, this.registerHeadbarButton(), await this.discoverPanels();
+    const o = this.getFirstPanel();
+    o ? this.log(`🎯 初始化第1个面板（持久化面板）: ${o}`) : this.log("⚠️ 初始化时没有发现面板");
+    const [
+      c,
+      l,
+      d,
+      h
+    ] = await Promise.all([
+      this.tabStorageService.restoreFirstPanelTabs(),
+      this.tabStorageService.restoreClosedTabs(),
+      this.tabStorageService.restoreRecentlyClosedTabs(),
+      this.tabStorageService.restoreSavedTabSets()
+    ]);
+    this.panelTabsData.length === 0 && this.panelTabsData.push([]), this.panelTabsData[0] = c, this.closedTabs = l, this.recentlyClosedTabs = d, this.savedTabSets = h, await this.updateRestoredTabsBlockTypes(), typeof window < "u" && window.DEBUG_ORCA_TABS !== !1 && requestIdleCallback(() => {
+      this.storageService.testConfigSerialization();
+    }, { timeout: 2e3 });
+    const u = document.querySelector(".orca-panel.active"), g = u == null ? void 0 : u.getAttribute("data-panel-id");
+    if (g && !g.startsWith("_") && (this.currentPanelId = g, this.currentPanelIndex = this.getPanelIds().indexOf(g), this.log(`🎯 当前活动面板: ${g} (索引: ${this.currentPanelIndex})`)), this.ensurePanelTabsDataSize(), this.panelOrder.length > 1 && requestIdleCallback(async () => {
+      this.log("📂 延迟加载其他面板的标签页数据");
+      for (let p = 1; p < this.panelOrder.length; p++) {
+        const b = `panel_${p + 1}_tabs`;
         try {
-          const d = await this.storageService.getConfig(l, this.pluginName, []);
-          this.log(`📂 从存储获取到第 ${c + 1} 个面板的数据: ${d ? d.length : 0} 个标签页`), d && d.length > 0 ? (this.panelTabsData[c] = [...d], this.log(`✅ 成功加载第 ${c + 1} 个面板的标签页数据: ${d.length} 个`)) : (this.panelTabsData[c] = [], this.log(`📂 第 ${c + 1} 个面板没有保存的数据`));
-        } catch (d) {
-          this.warn(`❌ 加载第 ${c + 1} 个面板数据失败:`, d), this.panelTabsData[c] = [];
+          const m = await this.storageService.getConfig(b, this.pluginName, []);
+          this.log(`📂 从存储获取到第 ${p + 1} 个面板的数据: ${m ? m.length : 0} 个标签页`), m && m.length > 0 ? (this.panelTabsData[p] = [...m], this.log(`✅ 成功加载第 ${p + 1} 个面板的标签页数据: ${m.length} 个`)) : (this.panelTabsData[p] = [], this.log(`📂 第 ${p + 1} 个面板没有保存的数据`));
+        } catch (m) {
+          this.warn(`❌ 加载第 ${p + 1} 个面板数据失败:`, m), this.panelTabsData[p] = [];
         }
       }
-    }
-    if (o && this.currentPanelIndex !== 0)
-      this.log(`🔍 扫描当前活动面板 ${o} 的标签页`), await this.scanCurrentPanelTabs();
-    else if (o && this.currentPanelIndex === 0)
+    }, { timeout: 1e3 }), g && this.currentPanelIndex !== 0)
+      this.log(`🔍 扫描当前活动面板 ${g} 的标签页`), await this.scanCurrentPanelTabs();
+    else if (g && this.currentPanelIndex === 0)
       if (this.log("📋 当前活动面板是第一个面板，使用持久化数据"), this.restoreFocusedTab) {
-        const c = document.querySelector(".orca-panel.active");
-        if (c) {
-          const l = c.querySelector(".orca-hideable:not(.orca-hideable-hidden) .orca-block-editor[data-block-id]");
-          if (l) {
-            const d = l.getAttribute("data-block-id");
-            d && (this.getCurrentPanelTabs().find((g) => g.blockId === d) || (this.log(`📋 当前激活页面不在持久化标签页中，添加到前面: ${d}`), await this.checkCurrentPanelBlocks()));
+        const p = document.querySelector(".orca-panel.active");
+        if (p) {
+          const b = p.querySelector(".orca-hideable:not(.orca-hideable-hidden) .orca-block-editor[data-block-id]");
+          if (b) {
+            const m = b.getAttribute("data-block-id");
+            m && (this.getCurrentPanelTabs().find((T) => T.blockId === m) || (this.log(`📋 当前激活页面不在持久化标签页中，添加到前面: ${m}`), await this.checkCurrentPanelBlocks()));
           }
         }
       } else
         this.log('📋 已关闭"刷新后恢复聚焦标签页"，跳过当前聚焦页面的恢复');
-    this.restoreFocusedTab ? await this.autoDetectAndSyncCurrentFocus() : this.log('📋 已关闭"刷新后恢复聚焦标签页"，跳过自动检测聚焦页面'), await this.createTabsUI(), this.observeChanges(), this.observeWindowResize(), this.initializeOptimizedDOMObserver(), this.startActiveMonitoring(), this.setupDragEndListener(), this.setupThemeChangeListener(), this.setupScrollListener(), this.setupSettingsChecker(), e && (this.lastInitDurationMs = e()), this.schedulePerformanceBaselineReport("startup"), this.isInitialized = !0, this.log("✅ 插件初始化完成");
+    this.restoreFocusedTab ? await this.autoDetectAndSyncCurrentFocus() : this.log('📋 已关闭"刷新后恢复聚焦标签页"，跳过自动检测聚焦页面'), await this.createTabsUI(), this.observeChanges(), this.observeWindowResize(), this.initializeOptimizedDOMObserver(), this.startActiveMonitoring(), this.setupDragEndListener(), this.setupThemeChangeListener(), this.setupScrollListener(), this.setupSettingsChecker(), e && (this.lastInitDurationMs = e()), this.schedulePerformanceBaselineReport("startup"), this.isInitialized = !0, this.log("✅ 插件初始化完成"), requestIdleCallback(async () => {
+      if (this.performanceOptimizer)
+        try {
+          await this.performanceOptimizer.initialize({
+            mutationObserver: {
+              enableBatch: !0,
+              batchDelay: 16,
+              maxBatchSize: 50,
+              enableSmartFilter: !0,
+              coolingPeriod: 100
+            },
+            debounce: [
+              { name: "immediate", delay: 0, priority: 10, cancelable: !1 },
+              { name: "high", delay: 8, priority: 8, cancelable: !0, maxWait: 100 },
+              { name: "normal", delay: 16, priority: 5, cancelable: !0, maxWait: 200 },
+              { name: "low", delay: 32, priority: 3, cancelable: !0, maxWait: 500 }
+            ],
+            memoryLeak: {
+              autoCleanupInterval: 3e4,
+              enableAutoCleanup: !0
+            },
+            lazyLoading: {
+              enableCache: !0,
+              maxConcurrency: 3,
+              preloadStrategy: "idle"
+            },
+            batchProcessing: {
+              maxBatchSize: 50,
+              maxWaitTime: 16,
+              enableVirtualization: !0
+            },
+            performanceMonitoring: {
+              enableMonitoring: !0,
+              enableAutoOptimization: !0,
+              reportInterval: 3e4
+            }
+          }), this.log("✅ 性能优化管理器延迟初始化完成");
+        } catch (p) {
+          this.error("❌ 性能优化管理器延迟初始化失败:", p);
+        }
+    }, { timeout: 2e3 });
   }
   /**
    * 手动触发性能基线采集
@@ -6964,7 +6988,7 @@ class Sa {
       this.tabContainer.innerHTML = "", t && this.tabContainer.appendChild(t);
       let n = this.currentPanelId, o = this.currentPanelIndex;
       if (!n && this.panelOrder.length > 0 && (n = this.panelOrder[0].id, o = 0, this.log(`📋 没有当前活动面板，显示第1个面板（持久化面板）: ${n}`)), n) {
-        this.log(`📋 显示面板 ${n} 的标签页`);
+        this.verboseLog(`📋 显示面板 ${n} 的标签页`);
         let c = this.panelTabsData[o] || [];
         c.length === 0 && (this.log(`🔍 面板 ${n} 没有标签数据，重新扫描`), await this.scanPanelTabsByIndex(o, n), c = this.panelTabsData[o] || []), this.sortTabsByPinStatus(), c = this.panelTabsData[o] || [], c.forEach((l, d) => {
           var u;
@@ -8038,7 +8062,7 @@ class Sa {
       this.log(`⚠️ 无法设置标签页数据，当前面板索引无效: ${this.currentPanelIndex}`);
       return;
     }
-    this.currentPanelIndex >= this.panelTabsData.length && this.adjustPanelTabsDataSize(), this.panelTabsData[this.currentPanelIndex] = [...e], this.log(`📋 设置面板 ${this.getPanelIds()[this.currentPanelIndex]} (索引: ${this.currentPanelIndex}) 的标签页数据: ${e.length} 个`), this.saveCurrentPanelTabs();
+    this.currentPanelIndex >= this.panelTabsData.length && this.adjustPanelTabsDataSize(), this.panelTabsData[this.currentPanelIndex] = [...e], this.verboseLog(`📋 设置面板 ${this.getPanelIds()[this.currentPanelIndex]} (索引: ${this.currentPanelIndex}) 的标签页数据: ${e.length} 个`), this.saveCurrentPanelTabs();
   }
   /**
    * 保存当前面板的标签页数据到存储（带防抖）
@@ -9474,7 +9498,7 @@ class Sa {
     const a = (i = this.tabContainer) == null ? void 0 : i.querySelectorAll(".orca-tabs-plugin .orca-tab");
     a == null || a.forEach((o) => o.removeAttribute("data-focused"));
     const r = (n = this.tabContainer) == null ? void 0 : n.querySelector(`[data-tab-id="${e}"]`);
-    r ? (r.setAttribute("data-focused", "true"), this.log(`🎯 更新聚焦状态到已存在的标签: "${t}"`)) : this.verboseLog(`⚠️ 未找到标签元素: ${e}`);
+    r ? (r.setAttribute("data-focused", "true"), this.verboseLog(`🎯 更新聚焦状态到已存在的标签: "${t}"`)) : this.verboseLog(`⚠️ 未找到标签元素: ${e}`);
   }
   /**
    * 检查当前面板的当前激活页面（统一处理所有面板）
@@ -9680,7 +9704,7 @@ class Sa {
         this.verboseLog("⏭️ 正在导航中，跳过面板块检查");
         return;
       }
-      this.log("🔍 开始检查当前面板块...");
+      this.verboseLog("🔍 开始检查当前面板块...");
       const e = document.querySelector(".orca-panel.active");
       if (!e) {
         this.log("❌ 没有找到当前激活的面板");
@@ -9696,7 +9720,7 @@ class Sa {
         this.log("❌ 激活面板没有 data-panel-id");
         return;
       }
-      this.log(`✅ 找到激活面板: ID=${t}, class=${e.className}`);
+      this.verboseLog(`✅ 找到激活面板: ID=${t}, class=${e.className}`);
       const a = this.getPanelIds().indexOf(t);
       a !== -1 && (this.currentPanelIndex = a, this.currentPanelId = t, this.verboseLog(`🔄 更新当前面板索引: ${a} (面板ID: ${t})`)), e.querySelectorAll(".orca-hideable");
       const r = e.querySelector(".orca-hideable:not(.orca-hideable-hidden) .orca-block-editor[data-block-id]");
