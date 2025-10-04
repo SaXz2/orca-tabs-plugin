@@ -135,3 +135,48 @@ export interface Workspace {
   /** 最后激活的标签页ID - 记录工作区中最后激活的标签页，用于恢复状态 */
   lastActiveTabId?: string;
 }
+
+/**
+ * 最近切换标签历史接口
+ * 
+ * 定义单个标签的最近切换历史记录，用于悬浮显示功能。
+ * 记录从该标签切换到其他标签的历史，支持快速切换回之前的标签。
+ */
+export interface RecentTabSwitchHistory {
+  /** 标签ID - 当前标签的唯一标识符 */
+  tabId: string;
+  
+  /** 最近切换的标签列表 - 按时间倒序排列，最新的在前 */
+  recentTabs: TabInfo[];
+  
+  /** 最后更新时间 - 记录历史最后更新的时间戳 */
+  lastUpdated: number;
+  
+  /** 最大记录数量 - 限制历史记录的最大数量，避免存储过多数据 */
+  maxRecords: number;
+}
+
+/**
+ * 悬浮标签列表配置接口
+ * 
+ * 定义悬浮显示标签列表的配置选项，控制显示效果和交互行为。
+ */
+export interface HoverTabListConfig {
+  /** 最大显示数量 - 悬浮列表中最多显示的标签数量 */
+  maxDisplayCount: number;
+  
+  /** 滚动步长 - 每次滚动显示的标签数量 */
+  scrollStep: number;
+  
+  /** 动画持续时间 - 标签大小和透明度变化的动画时间（毫秒） */
+  animationDuration: number;
+  
+  /** 最小透明度 - 最远标签的最小透明度值（0-1） */
+  minOpacity: number;
+  
+  /** 最小缩放比例 - 最远标签的最小缩放比例（0-1） */
+  minScale: number;
+  
+  /** 是否启用滚动 - 是否允许滚动查看更多标签 */
+  enableScroll: boolean;
+}

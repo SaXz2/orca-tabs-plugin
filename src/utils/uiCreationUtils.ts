@@ -2,7 +2,7 @@
  * UI创建相关的工具函数
  */
 
-import { TabInfo, TabPosition } from '../types';
+import { TabInfo, TabPosition, HoverTabListConfig } from '../types';
 import { createStyledElement, addHoverEffect, safeRemoveElement } from './domUtils';
 import { createTabContainerStyle, createDialogStyle, createButtonStyle, createInputStyle, createSliderStyle, createContextMenuStyle, createMenuItemStyle, createSeparatorStyle } from './uiUtils';
 
@@ -810,4 +810,316 @@ export function createContextMenu(
   }, 0);
 
   return menu;
+}
+
+/**
+ * 创建悬浮标签列表容器
+ */
+export function createHoverTabListContainer(
+  config: HoverTabListConfig,
+  position: { x: number; y: number },
+  isVerticalMode: boolean
+): HTMLElement {
+  const container = document.createElement('div');
+  container.className = 'hover-tab-list-container';
+  
+  const containerStyle = `
+    position: fixed;
+    left: ${position.x}px;
+    top: ${position.y}px;
+    z-index: 10000;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+    max-height: ${config.maxDisplayCount * 32}px;
+    overflow: hidden;
+    pointer-events: auto;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+    mask: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+    -webkit-mask: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+  `;
+  
+  container.style.cssText = containerStyle;
+  
+  // 创建滚动容器
+  const scrollContainer = document.createElement('div');
+  scrollContainer.className = 'hover-tab-list-scroll';
+  scrollContainer.style.cssText = `
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: ${config.maxDisplayCount * 32}px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    mask: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+    -webkit-mask: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+  `;
+  
+  // 添加动画样式（移除滚动条样式）
+  const scrollbarStyle = `
+    .hover-tab-list-scroll::-webkit-scrollbar {
+      display: none;
+    }
+    
+    @keyframes slideInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    
+    @keyframes slideOutDown {
+      from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+      to {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.9);
+      }
+    }
+  `;
+  
+  // 添加滚动事件监听器来动态更新蒙版
+  scrollContainer.addEventListener('scroll', () => {
+    const scrollTop = scrollContainer.scrollTop;
+    const scrollHeight = scrollContainer.scrollHeight;
+    const clientHeight = scrollContainer.clientHeight;
+    
+    // 计算滚动位置百分比
+    const scrollPercent = scrollTop / (scrollHeight - clientHeight);
+    
+    // 动态调整蒙版
+    let maskTop = 0;
+    let maskBottom = 100;
+    
+    if (scrollPercent > 0) {
+      // 向上滚动时，顶部蒙版逐渐减少
+      maskTop = Math.max(0, 10 - scrollPercent * 20);
+    }
+    
+    if (scrollPercent < 1) {
+      // 向下滚动时，底部蒙版逐渐减少
+      maskBottom = Math.min(100, 90 + scrollPercent * 20);
+    }
+    
+    // 应用动态蒙版
+    const maskValue = `linear-gradient(to bottom, transparent 0%, black ${maskTop}%, black ${maskBottom}%, transparent 100%)`;
+    scrollContainer.style.mask = maskValue;
+    scrollContainer.style.webkitMask = maskValue;
+  });
+  if (!document.getElementById('hover-tab-list-styles')) {
+    const styleElement = document.createElement('style');
+    styleElement.id = 'hover-tab-list-styles';
+    styleElement.textContent = scrollbarStyle;
+    document.head.appendChild(styleElement);
+  }
+  
+  container.appendChild(scrollContainer);
+  
+  // 显示动画 - 更平滑的效果
+  requestAnimationFrame(() => {
+    container.style.opacity = '1';
+    container.style.transform = 'translateY(0) scale(1)';
+  });
+  
+  return container;
+}
+
+/**
+ * 创建悬浮标签项
+ */
+export function createHoverTabItem(
+  tab: TabInfo,
+  index: number,
+  config: HoverTabListConfig,
+  onClick: (tab: TabInfo) => void,
+  isVerticalMode: boolean
+): HTMLElement {
+  const item = document.createElement('div');
+  item.className = 'hover-tab-item';
+  item.setAttribute('data-tab-id', tab.blockId);
+  
+  // 计算透明度和缩放比例
+  const maxIndex = config.maxDisplayCount - 1;
+  const opacity = Math.max(config.minOpacity, 1 - (index / maxIndex) * (1 - config.minOpacity));
+  const scale = Math.max(config.minScale, 1 - (index / maxIndex) * (1 - config.minScale));
+  
+  const itemStyle = `
+    display: flex;
+    align-items: center;
+    padding: 6px 8px;
+    margin: 2px 0;
+    border-radius: var(--orca-radius-sm, 4px);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: ${opacity};
+    transform: scale(${scale}) translateY(${index * 5}px);
+    background: var(--orca-bg-primary, #ffffff);
+    border: 1px solid var(--orca-border-color, #e0e0e0);
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 13px;
+    color: var(--orca-text-primary, #333333);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-height: 24px;
+    max-height: 24px;
+    animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.05}s both;
+  `;
+  
+  item.style.cssText = itemStyle;
+  
+  // 添加标签内容
+  const content = document.createElement('div');
+  content.style.cssText = `
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+  `;
+  
+  // 添加图标（如果有）
+  if (tab.icon) {
+    const icon = document.createElement('span');
+    icon.textContent = tab.icon;
+    icon.style.cssText = `
+      margin-right: 6px;
+      font-size: 12px;
+      flex-shrink: 0;
+    `;
+    content.appendChild(icon);
+  }
+  
+  // 添加标题
+  const title = document.createElement('span');
+  title.textContent = tab.title;
+  title.style.cssText = `
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  `;
+  content.appendChild(title);
+  
+  item.appendChild(content);
+  
+  // 添加点击事件
+  item.addEventListener('click', (e) => {
+    e.stopPropagation();
+    onClick(tab);
+  });
+  
+  // 添加悬停效果
+  item.addEventListener('mouseenter', () => {
+    item.style.background = 'var(--orca-bg-hover, rgba(0, 0, 0, 0.05))';
+    item.style.transform = `scale(${Math.min(1, scale + 0.05)})`;
+  });
+  
+  item.addEventListener('mouseleave', () => {
+    item.style.background = 'transparent';
+    item.style.transform = `scale(${scale})`;
+  });
+  
+  return item;
+}
+
+/**
+ * 更新悬浮标签列表
+ */
+export function updateHoverTabList(
+  container: HTMLElement,
+  tabs: TabInfo[],
+  config: HoverTabListConfig,
+  onClick: (tab: TabInfo) => void,
+  isVerticalMode: boolean,
+  scrollOffset: number = 0
+): void {
+  const scrollContainer = container.querySelector('.hover-tab-list-scroll') as HTMLElement;
+  if (!scrollContainer) return;
+  
+  // 清空现有内容
+  scrollContainer.innerHTML = '';
+  
+  // 计算显示范围
+  const startIndex = scrollOffset;
+  const endIndex = Math.min(startIndex + config.maxDisplayCount, tabs.length);
+  const visibleTabs = tabs.slice(startIndex, endIndex);
+  
+  // 创建标签项
+  visibleTabs.forEach((tab, index) => {
+    const item = createHoverTabItem(tab, index, config, onClick, isVerticalMode);
+    scrollContainer.appendChild(item);
+  });
+  
+  // 更新滚动位置
+  if (scrollOffset > 0) {
+    scrollContainer.scrollTop = scrollOffset * 32; // 每个标签项高度约32px
+  }
+}
+
+/**
+ * 显示悬浮标签列表
+ */
+export function showHoverTabList(
+  tabs: TabInfo[],
+  position: { x: number; y: number },
+  config: HoverTabListConfig,
+  onClick: (tab: TabInfo) => void,
+  isVerticalMode: boolean
+): HTMLElement {
+  console.log('🎨 showHoverTabList 被调用', { tabs: tabs.length, position, config });
+  
+  // 移除现有的悬浮列表
+  const existingContainer = document.querySelector('.hover-tab-list-container') as HTMLElement;
+  if (existingContainer) {
+    console.log('🗑️ 移除现有的悬浮列表');
+    safeRemoveElement(existingContainer);
+  }
+  
+  // 创建新容器
+  console.log('🏗️ 创建新容器');
+  const container = createHoverTabListContainer(config, position, isVerticalMode);
+  console.log('📦 容器创建完成', container);
+  
+  document.body.appendChild(container);
+  console.log('📄 容器已添加到页面');
+  
+  // 更新内容
+  console.log('🔄 更新内容');
+  updateHoverTabList(container, tabs, config, onClick, isVerticalMode);
+  console.log('✅ 内容更新完成');
+  
+  return container;
+}
+
+/**
+ * 隐藏悬浮标签列表
+ */
+export function hideHoverTabList(): void {
+  const container = document.querySelector('.hover-tab-list-container') as HTMLElement;
+  if (container) {
+    // 添加平滑的淡出动画
+    container.style.opacity = '0';
+    container.style.transform = 'translateY(-20px) scale(0.95)';
+    
+    // 为每个项目添加退出动画
+    const items = container.querySelectorAll('.hover-tab-item');
+    items.forEach((item, index) => {
+      const element = item as HTMLElement;
+      element.style.animation = `slideOutDown 0.3s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.02}s both`;
+    });
+    
+    setTimeout(() => {
+      safeRemoveElement(container);
+    }, 400); // 增加延迟时间以完成动画
+  }
 }

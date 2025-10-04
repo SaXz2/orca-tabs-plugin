@@ -104,4 +104,7 @@ export const PLUGIN_STORAGE_KEYS = {
   
   /** 进入工作区前的标签页组 - 存储进入工作区前的普通标签页组，用于退出工作区时恢复 */
   TABS_BEFORE_WORKSPACE: 'tabs-before-workspace',
+  
+  /** 最近切换标签历史 - 存储每个标签的最近切换历史，用于悬浮显示功能 */
+  RECENT_TAB_SWITCH_HISTORY: 'recent-tab-switch-history',
 } as const;

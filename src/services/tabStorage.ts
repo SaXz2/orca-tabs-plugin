@@ -13,7 +13,7 @@
  * @since 2024
  */
 
-import { TabInfo, SavedTabSet, Workspace, TabPosition } from '../types';
+import { TabInfo, SavedTabSet, Workspace, TabPosition, RecentTabSwitchHistory } from '../types';
 import { PLUGIN_STORAGE_KEYS } from '../constants';
 import { OrcaStorageService } from './storage';
 import { 
@@ -464,6 +464,106 @@ export class TabStorageService {
     }
   }
 
+  // ==================== 最近切换标签历史管理 ====================
+
+  /**
+   * 保存最近切换标签历史
+   */
+  async saveRecentTabSwitchHistory(history: Record<string, RecentTabSwitchHistory>): Promise<void> {
+    try {
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.RECENT_TAB_SWITCH_HISTORY, history, this.pluginName);
+      this.log(`💾 保存最近切换标签历史: ${Object.keys(history).length} 个标签的历史记录`);
+    } catch (e) {
+      this.warn("无法保存最近切换标签历史:", e);
+    }
+  }
+
+  /**
+   * 恢复最近切换标签历史
+   */
+  async restoreRecentTabSwitchHistory(): Promise<Record<string, RecentTabSwitchHistory>> {
+    try {
+      const saved = await this.storageService.getConfig<Record<string, RecentTabSwitchHistory>>(
+        PLUGIN_STORAGE_KEYS.RECENT_TAB_SWITCH_HISTORY, 
+        this.pluginName, 
+        {}
+      );
+      if (saved && typeof saved === 'object') {
+        this.log(`📂 从API配置恢复了 ${Object.keys(saved).length} 个标签的切换历史`);
+        return saved;
+      } else {
+        this.log(`📂 没有找到最近切换标签历史数据，返回空对象`);
+        return {};
+      }
+    } catch (e) {
+      this.warn("无法恢复最近切换标签历史:", e);
+      return {};
+    }
+  }
+
+  /**
+   * 更新单个标签的切换历史
+   */
+  async updateTabSwitchHistory(fromTabId: string, toTab: TabInfo): Promise<void> {
+    try {
+      const allHistory = await this.restoreRecentTabSwitchHistory();
+      
+      // 获取或创建当前标签的历史记录
+      if (!allHistory[fromTabId]) {
+        allHistory[fromTabId] = {
+          tabId: fromTabId,
+          recentTabs: [],
+          lastUpdated: Date.now(),
+          maxRecords: 20 // 最多保存20个历史记录
+        };
+      }
+      
+      const history = allHistory[fromTabId];
+      
+      // 移除重复的标签（如果存在）
+      history.recentTabs = history.recentTabs.filter(tab => tab.blockId !== toTab.blockId);
+      
+      // 添加新的标签到历史记录开头
+      history.recentTabs.unshift(toTab);
+      
+      // 限制历史记录数量
+      if (history.recentTabs.length > history.maxRecords) {
+        history.recentTabs = history.recentTabs.slice(0, history.maxRecords);
+      }
+      
+      // 更新最后更新时间
+      history.lastUpdated = Date.now();
+      
+      // 保存更新后的历史记录
+      await this.saveRecentTabSwitchHistory(allHistory);
+      
+      this.log(`📝 更新标签 ${fromTabId} 的切换历史: 切换到 ${toTab.title} (历史记录数量: ${history.recentTabs.length})`);
+    } catch (e) {
+      this.warn(`更新标签 ${fromTabId} 的切换历史失败:`, e);
+    }
+  }
+
+  /**
+   * 获取指定标签的最近切换历史
+   */
+  async getTabSwitchHistory(tabId: string): Promise<TabInfo[]> {
+    try {
+      const allHistory = await this.restoreRecentTabSwitchHistory();
+      const history = allHistory[tabId];
+      
+      if (history && history.recentTabs) {
+        this.log(`📖 获取标签 ${tabId} 的切换历史: ${history.recentTabs.length} 个记录`);
+        return history.recentTabs;
+      } else {
+        this.log(`📖 标签 ${tabId} 没有切换历史记录，存储中的所有历史ID: ${Object.keys(allHistory).join(', ')}`);
+        return [];
+      }
+    } catch (e) {
+      this.warn(`获取标签 ${tabId} 的切换历史失败:`, e);
+      return [];
+    }
+  }
+
   // ==================== 缓存清理 ====================
 
   /**
@@ -473,7 +573,8 @@ export class TabStorageService {
     try {
       await this.storageService.removeConfig(PLUGIN_STORAGE_KEYS.FIRST_PANEL_TABS);
       await this.storageService.removeConfig(PLUGIN_STORAGE_KEYS.CLOSED_TABS);
-      this.log(`🗑️ 已删除API配置缓存: 标签页数据和已关闭标签列表`);
+      await this.storageService.removeConfig(PLUGIN_STORAGE_KEYS.RECENT_TAB_SWITCH_HISTORY);
+      this.log(`🗑️ 已删除API配置缓存: 标签页数据、已关闭标签列表和切换历史`);
     } catch (e) {
       this.warn("删除API配置缓存失败:", e);
     }
@@ -492,5 +593,24 @@ export class TabStorageService {
       hash = hash & hash; // 转换为32位整数
     }
     return Math.abs(hash).toString(36);
+  }
+
+  /**
+   * 删除指定标签的切换历史记录
+   */
+  async deleteTabSwitchHistory(tabId: string): Promise<void> {
+    try {
+      const allHistory = await this.restoreRecentTabSwitchHistory();
+      
+      if (allHistory[tabId]) {
+        delete allHistory[tabId];
+        await this.saveRecentTabSwitchHistory(allHistory);
+        this.log(`🗑️ 删除标签 ${tabId} 的切换历史记录`);
+      } else {
+        this.verboseLog(`📖 标签 ${tabId} 没有切换历史记录，无需删除`);
+      }
+    } catch (e) {
+      this.warn(`删除标签 ${tabId} 的切换历史失败:`, e);
+    }
   }
 }
