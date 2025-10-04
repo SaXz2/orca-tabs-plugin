@@ -1121,6 +1121,8 @@ class OrcaTabsPlugin {
       setTimeout(() => {
         try {
           initializeTooltips();
+          // 为用户工具栏按钮添加 tooltip
+          this.initializeHeadbarUserToolsTooltips();
           this.log('✅ Tooltips 初始化完成');
         } catch (error) {
           this.log('⚠️ Tooltips 初始化失败:', error);
@@ -1420,6 +1422,51 @@ class OrcaTabsPlugin {
       orca.broadcasts.unregisterHandler("core.themeChanged", handleThemeChange);
       clearInterval(themeCheckInterval);
     };
+  }
+
+  /**
+   * 为用户工具栏按钮添加 tooltip
+   * 使用与标签页标题相同的 tooltip 风格
+   */
+  private initializeHeadbarUserToolsTooltips() {
+    try {
+      // 查找用户工具栏容器
+      const userTools = document.querySelector('.orca-headbar-user-tools');
+      
+      if (!userTools) {
+        this.log('⚠️ 未找到用户工具栏容器 (.orca-headbar-user-tools)');
+        return;
+      }
+
+      // 查找所有按钮
+      const buttons = userTools.querySelectorAll('button, [role="button"]');
+      this.log(`📌 找到 ${buttons.length} 个用户工具栏按钮`);
+
+      buttons.forEach((button, index) => {
+        const buttonEl = button as HTMLElement;
+        
+        // 获取按钮的原始 title 属性
+        const originalTitle = buttonEl.getAttribute('title');
+        
+        if (originalTitle) {
+          // 移除原始 title 属性，避免浏览器默认 tooltip
+          buttonEl.removeAttribute('title');
+          
+          // 添加自定义 tooltip
+          addTooltip(buttonEl, {
+            text: originalTitle,
+            delay: 300,
+            defaultPlacement: 'bottom'
+          });
+          
+          this.log(`✅ 已为用户工具栏按钮 ${index + 1} 添加 tooltip: "${originalTitle}"`);
+        }
+      });
+
+      this.log('✅ 用户工具栏按钮 tooltip 初始化完成');
+    } catch (error) {
+      this.error('⚠️ 初始化用户工具栏按钮 tooltip 失败:', error);
+    }
   }
 
   /**

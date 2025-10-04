@@ -75,31 +75,78 @@ export function addTooltip(element: HTMLElement, config: TooltipConfig): void {
       let top = 0;
       let placement = config.defaultPlacement || 'top';
 
-      // 根据位置计算坐标
-      switch (placement) {
-        case 'top':
-          left = rect.left + (rect.width - tooltipRect.width) / 2;
-          top = rect.top - tooltipRect.height - 8;
-          break;
-        case 'bottom':
-          left = rect.left + (rect.width - tooltipRect.width) / 2;
-          top = rect.bottom + 8;
-          break;
-        case 'left':
-          left = rect.left - tooltipRect.width - 8;
-          top = rect.top + (rect.height - tooltipRect.height) / 2;
-          break;
-        case 'right':
-          left = rect.right + 8;
-          top = rect.top + (rect.height - tooltipRect.height) / 2;
-          break;
-      }
-
-      // 确保不超出屏幕边界
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
       const margin = 8;
 
+      // 智能位置选择：检查默认位置是否合适，如果不合适则自动调整
+      const calculatePosition = (pos: "top" | "bottom" | "left" | "right") => {
+        let x = 0, y = 0;
+        switch (pos) {
+          case 'top':
+            x = rect.left + (rect.width - tooltipRect.width) / 2;
+            y = rect.top - tooltipRect.height - 8;
+            break;
+          case 'bottom':
+            x = rect.left + (rect.width - tooltipRect.width) / 2;
+            y = rect.bottom + 8;
+            break;
+          case 'left':
+            x = rect.left - tooltipRect.width - 8;
+            y = rect.top + (rect.height - tooltipRect.height) / 2;
+            break;
+          case 'right':
+            x = rect.right + 8;
+            y = rect.top + (rect.height - tooltipRect.height) / 2;
+            break;
+        }
+        return { x, y };
+      };
+
+      // 检查位置是否合适（不超出屏幕边界）
+      const isPositionValid = (pos: "top" | "bottom" | "left" | "right") => {
+        const { x, y } = calculatePosition(pos);
+        return x >= margin && 
+               x + tooltipRect.width <= viewportWidth - margin &&
+               y >= margin && 
+               y + tooltipRect.height <= viewportHeight - margin;
+      };
+
+      // 智能选择最佳位置
+      if (isPositionValid(placement)) {
+        // 默认位置合适，使用默认位置
+        const pos = calculatePosition(placement);
+        left = pos.x;
+        top = pos.y;
+      } else {
+        // 默认位置不合适，尝试其他位置
+        const alternatives: ("top" | "bottom" | "left" | "right")[] = 
+          placement === 'bottom' ? ['top', 'left', 'right'] : 
+          placement === 'top' ? ['bottom', 'left', 'right'] :
+          placement === 'left' ? ['right', 'top', 'bottom'] :
+          ['left', 'top', 'bottom'];
+
+        let foundValidPosition = false;
+        for (const alt of alternatives) {
+          if (isPositionValid(alt)) {
+            const pos = calculatePosition(alt);
+            left = pos.x;
+            top = pos.y;
+            placement = alt;
+            foundValidPosition = true;
+            break;
+          }
+        }
+
+        // 如果所有位置都不合适，使用默认位置但进行边界调整
+        if (!foundValidPosition) {
+          const pos = calculatePosition(placement);
+          left = pos.x;
+          top = pos.y;
+        }
+      }
+
+      // 最终边界检查和调整
       // 水平边界检查
       if (left < margin) {
         left = margin;
@@ -179,7 +226,8 @@ export function createButtonTooltip(text: string, shortcut?: string): TooltipCon
   return {
     text,
     shortcut,
-    delay: 200
+    delay: 200,
+    defaultPlacement: 'bottom' // 按钮tooltip默认显示在下方
   };
 }
 
@@ -235,7 +283,8 @@ export function createTabTooltip(tab: any): TooltipConfig {
 export function createStatusTooltip(text: string): TooltipConfig {
   return {
     text,
-    delay: 500
+    delay: 500,
+    defaultPlacement: 'bottom' // 状态tooltip默认显示在下方
   };
 }
 
