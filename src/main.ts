@@ -3333,10 +3333,14 @@ class OrcaTabsPlugin {
       .map(el => el.getAttribute('data-tab-id'))
       .filter(id => id !== null) as string[];
     
-    // 清除现有标签和分割线
-    this.tabContainer.innerHTML = '';
-    if (dragHandle) {
-      this.tabContainer.appendChild(dragHandle);
+    // 优化：使用选择性删除而不是innerHTML = ''，减少强制重排
+    // 只删除标签元素，保留其他元素
+    const tabsToRemove = this.tabContainer.querySelectorAll('.orca-tab');
+    tabsToRemove.forEach(tab => tab.remove());
+    
+    // 保留拖拽手柄在最前面
+    if (dragHandle && dragHandle.parentElement !== this.tabContainer) {
+      this.tabContainer.insertBefore(dragHandle, this.tabContainer.firstChild);
     }
 
     // 显示标签页 - 优先显示当前活动面板，否则显示第1个面板（持久化面板）
@@ -3369,10 +3373,24 @@ class OrcaTabsPlugin {
       // 【修复BUG】重新获取排序后的标签数组，因为 sortTabsByPinStatus 会创建新数组
       targetTabs = this.panelTabsData[targetPanelIndex] || [];
       
+      // 优化：使用DocumentFragment批量添加标签，减少DOM重排次数
+      const fragment = document.createDocumentFragment();
       targetTabs.forEach((tab, index) => {
         const tabElement = this.createTabElement(tab);
-        this.tabContainer?.appendChild(tabElement);
+        fragment.appendChild(tabElement);
       });
+      
+      // 找到新建按钮的位置，在它之前插入标签
+      const newTabBtn = this.tabContainer?.querySelector('.new-tab-button');
+      if (this.tabContainer) {
+        if (newTabBtn) {
+          // 在新建按钮之前插入所有标签
+          this.tabContainer.insertBefore(fragment, newTabBtn);
+        } else {
+          // 如果没有按钮，直接添加到末尾
+          this.tabContainer.appendChild(fragment);
+        }
+      }
     } else {
       this.log(`⚠️ 没有可显示的面板，跳过标签页显示`);
     }
@@ -3868,7 +3886,7 @@ class OrcaTabsPlugin {
     `;
     
     workspaceButton.style.cssText = workspaceButtonStyle;
-    workspaceButton.innerHTML = '📁';
+    workspaceButton.innerHTML = '<i class="ti ti-layout-grid" style="font-size: 14px;"></i>';
     workspaceButton.title = `工作区 (${this.workspaces?.length || 0})`;
 
     // 添加悬停效果
