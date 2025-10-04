@@ -5277,15 +5277,11 @@ class Sa {
     f(this, "dialogZIndex", 2e3);
     /** 最后激活的块ID - 记录最后激活的块，用于快捷键操作 */
     f(this, "lastActiveBlockId", null);
-    /** 临时保存的原始聚焦标签ID - 用于openInNewTab场景下保持原始聚焦状态 */
-    f(this, "tempFocusedBlockId", null);
     /** 是否正在导航中 - 用于避免导航时触发重复的聚焦检测 */
     f(this, "isNavigating", !1);
     // ==================== 快捷键相关 ====================
     /** 当前鼠标悬停的块ID - 用于快捷键操作的目标块 */
     f(this, "hoveredBlockId", null);
-    /** 当前右键菜单对应的块引用ID - 用于上下文菜单操作 */
-    f(this, "currentContextBlockRefId", null);
     // 防抖函数实例（仅用于拖拽等非关键场景）
     f(this, "draggingDebounce", pa(async () => {
       await this.updateTabsUI();
@@ -8473,65 +8469,29 @@ class Sa {
     }
   }
   /**
-   * 将指定块添加到标签页中，替换当前聚焦标签
-   */
-  async createBlockAfterFocused(e) {
-    await this.addTabToPanel(e, "replace", !1);
-  }
-  /**
-   * 在新标签页打开指定块（参考块菜单逻辑重构）
+   * 在新标签页打开指定块（后台打开，不导航不聚焦）
    * 
    * 功能说明：
    * 1. 检查块是否已存在于标签页中
-   * 2. 如果存在，直接切换到该标签页
-   * 3. 如果不存在，在当前聚焦标签后面创建新标签页
-   * 4. 创建后导航到新标签页
+   * 2. 如果存在，不做任何操作（标签页已经存在）
+   * 3. 如果不存在，在当前聚焦标签后面创建新标签页（后台打开）
+   * 4. 不会导航或聚焦到新标签页
    * 
    * @param blockId 要打开的块ID
    */
   async openInNewTab(e) {
-    this.verboseLog(`🔗 [openInNewTab] 开始处理块 ${e}`);
+    this.verboseLog(`🔗 [openInNewTab] 开始处理块 ${e}（后台打开模式）`);
     try {
       const t = this.getCurrentPanelTabs();
       this.verboseLog(`🔗 [openInNewTab] 当前标签页数量: ${t.length}`), this.verboseLog(`🔗 [openInNewTab] 当前标签页列表: ${t.map((i) => `${i.title}(${i.blockId})`).join(", ")}`);
       const a = t.find((i) => i.blockId === e);
       if (a) {
-        this.verboseLog(`🔗 [openInNewTab] 块 ${e} 已存在，标签: "${a.title}"`), this.closedTabs.has(e) && (this.verboseLog(`🔗 [openInNewTab] 从已关闭列表中移除块 ${e}`), this.closedTabs.delete(e), await this.saveClosedTabs()), this.updateFocusState(e, a.title), this.verboseLog(`🔗 [openInNewTab] 切换到已存在的标签页: "${a.title}"`), await this.switchToTab(a), this.verboseLog("🔗 [openInNewTab] 完成 - 已切换到已存在标签页");
+        this.verboseLog(`🔗 [openInNewTab] 块 ${e} 已存在，标签: "${a.title}"，无需操作`), this.closedTabs.has(e) && (this.verboseLog(`🔗 [openInNewTab] 从已关闭列表中移除块 ${e}`), this.closedTabs.delete(e), await this.saveClosedTabs()), this.verboseLog("🔗 [openInNewTab] 完成 - 标签页已存在");
         return;
       }
-      this.verboseLog(`🔗 [openInNewTab] 块 ${e} 不存在，准备创建新标签页`), this.closedTabs.has(e) && (this.verboseLog(`🔗 [openInNewTab] 从已关闭列表中移除块 ${e}`), this.closedTabs.delete(e), await this.saveClosedTabs()), this.verboseLog("🔗 [openInNewTab] 调用 addTabToPanel 创建新标签页"), await this.addTabToPanel(e, "after", !0) ? this.verboseLog("🔗 [openInNewTab] 完成 - 成功创建新标签页") : this.verboseLog("🔗 [openInNewTab] 失败 - 创建新标签页失败");
+      this.verboseLog(`🔗 [openInNewTab] 块 ${e} 不存在，准备在后台创建新标签页`), this.closedTabs.has(e) && (this.verboseLog(`🔗 [openInNewTab] 从已关闭列表中移除块 ${e}`), this.closedTabs.delete(e), await this.saveClosedTabs()), this.verboseLog("🔗 [openInNewTab] 调用 addTabToPanel 在后台创建新标签页"), await this.addTabToPanel(e, "after", !1) ? this.verboseLog("🔗 [openInNewTab] 完成 - 成功在后台创建新标签页") : this.verboseLog("🔗 [openInNewTab] 失败 - 创建新标签页失败");
     } catch (t) {
       this.error("[openInNewTab] 处理失败:", t);
-    }
-  }
-  /**
-   * 从DOM元素中获取块引用的ID
-   */
-  getBlockRefId(e) {
-    var t, a;
-    try {
-      let r = e;
-      for (; r && r !== document.body; ) {
-        const i = r.classList;
-        if (i.contains("orca-ref") || i.contains("block-ref") || i.contains("block-reference") || i.contains("orca-fragment-r") || i.contains("fragment-r") || i.contains("orca-block-reference") || r.tagName.toLowerCase() === "a" && ((t = r.getAttribute("href")) != null && t.startsWith("#"))) {
-          const s = r.getAttribute("data-ref-id") || r.getAttribute("data-target-block-id") || r.getAttribute("data-fragment-v") || r.getAttribute("data-v") || ((a = r.getAttribute("href")) == null ? void 0 : a.replace("#", "")) || r.getAttribute("data-id");
-          if (s && !isNaN(parseInt(s)))
-            return this.log(`🔗 从块引用元素中提取到ID: ${s}`), s;
-        }
-        const n = r.dataset;
-        for (const [s, c] of Object.entries(n))
-          if ((s.toLowerCase().includes("ref") || s.toLowerCase().includes("fragment")) && c && !isNaN(parseInt(c)))
-            return this.log(`🔗 从data属性 ${s} 中提取到块引用ID: ${c}`), c;
-        r = r.parentElement;
-      }
-      if (e.textContent) {
-        const i = e.textContent.trim(), n = i.match(/\[\[(?:块)?(\d+)\]\]/) || i.match(/block[:\s]*(\d+)/i);
-        if (n && n[1])
-          return this.log(`🔗 从文本内容中解析到块引用ID: ${n[1]}`), n[1];
-      }
-      return null;
-    } catch (r) {
-      return this.error("获取块引用ID时出错:", r), null;
     }
   }
   /**
@@ -8549,71 +8509,6 @@ class Sa {
       return this.log(`🔍 获取到当前光标块ID: ${a}`), a;
     } catch (e) {
       return this.error("获取当前光标块ID时出错:", e), null;
-    }
-  }
-  /**
-   * 增强块引用的右键菜单，添加标签页相关选项
-   */
-  enhanceBlockRefContextMenu(e) {
-    var t, a, r, i;
-    try {
-      const n = document.querySelectorAll('.orca-context-menu, .context-menu, [role="menu"]');
-      let s = null;
-      for (let l = n.length - 1; l >= 0; l--) {
-        const d = n[l];
-        if (d.offsetParent !== null && getComputedStyle(d).display !== "none") {
-          s = d;
-          break;
-        }
-      }
-      if (!s) {
-        this.log("🔗 未找到显示的右键菜单");
-        return;
-      }
-      if (s.querySelector(".orca-tabs-plugin .orca-tabs-ref-menu-item")) {
-        this.log("🔗 块引用菜单项已存在");
-        return;
-      }
-      if (this.log(`🔗 为块引用 ${e} 添加菜单项`), s.querySelectorAll('[role="menuitem"], .menu-item').length > 0) {
-        const l = document.createElement("div");
-        l.className = "orca-tabs-ref-menu-separator";
-        const d = document.documentElement.classList.contains("dark") || ((a = (t = window.orca) == null ? void 0 : t.state) == null ? void 0 : a.themeMode) === "dark";
-        l.style.cssText = `
-          height: 1px;
-          background: var(--orca-color-border);
-          margin: 4px 8px;
-        `, s.appendChild(l);
-      }
-      if (this.savedTabSets.length > 0) {
-        const l = document.createElement("div");
-        l.className = "orca-tabs-ref-menu-item", l.setAttribute("role", "menuitem");
-        const d = document.documentElement.classList.contains("dark") || ((i = (r = window.orca) == null ? void 0 : r.state) == null ? void 0 : i.themeMode) === "dark";
-        l.className = "add-to-group-menu-item", l.setAttribute("data-action", "add-to-group"), l.style.cssText = `
-          padding: var(--orca-spacing-sm);
-          cursor: pointer;
-          font-family: var(--orca-fontfamily-ui);
-          font-size: var(--orca-fontsize-sm);
-          color: var(--orca-color-text-1);
-          border-radius: var(--orca-radius-md);
-          transition: background-color 0.2s;
-          display: flex;
-          align-items: center;
-        `;
-        const h = document.createElement("span");
-        h.textContent = "添加到已有标签组", h.style.cssText = `
-          margin-right: var(--orca-spacing-md);
-        `, l.appendChild(h), l.addEventListener("mouseenter", () => {
-          l.style.backgroundColor = "var(--orca-color-menu-highlight)";
-        }), l.addEventListener("mouseleave", () => {
-          l.style.backgroundColor = "transparent";
-        }), l.addEventListener("click", () => {
-          const u = this.getCurrentActiveTab();
-          u && this.showAddToTabGroupDialog(u), s == null || s.remove();
-        }), s.appendChild(l);
-      }
-      this.log(`✅ 成功为块引用 ${e} 添加菜单项`);
-    } catch (n) {
-      this.error("增强块引用右键菜单时出错:", n);
     }
   }
   /**
@@ -10032,11 +9927,7 @@ class Sa {
    * 处理点击事件
    */
   async handleClickEvent(e) {
-    const t = e.target, a = this.getBlockRefId(t);
-    if (a) {
-      e.preventDefault(), e.stopPropagation(), e.stopImmediatePropagation(), e.ctrlKey || e.metaKey ? (this.log(`🔗 检测到 Ctrl+点击 块引用: ${a}，将在后台新建标签页`), await this.openInNewTab(a)) : (this.log(`🔗 检测到直接点击 块引用: ${a}，将替换当前标签页`), await this.createBlockAfterFocused(a));
-      return;
-    }
+    const t = e.target;
     if (t.closest(".orca-tabs-plugin")) {
       if (t.closest(".sidebar, .side-panel, .panel-resize, .resize-handle, .orca-sidebar, .orca-panel, .orca-menu, .orca-recents-menu, [data-panel-id]")) {
         this.log("🔄 检测到侧边栏/面板点击，跳过面板状态检查");
@@ -10055,10 +9946,6 @@ class Sa {
    * 处理右键菜单事件
    */
   async handleContextMenuEvent(e) {
-    const t = e.target, a = this.getBlockRefId(t);
-    a && (this.log(`🔗 检测到块引用右键菜单: ${a}`), this.currentContextBlockRefId = a, setTimeout(() => {
-      this.enhanceBlockRefContextMenu(a);
-    }, 50));
   }
   // handleKeydownEvent方法已移除，不再监听全局键盘事件
   /**

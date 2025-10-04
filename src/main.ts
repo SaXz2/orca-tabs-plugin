@@ -988,9 +988,6 @@ class OrcaTabsPlugin {
   /** 最后激活的块ID - 记录最后激活的块，用于快捷键操作 */
   private lastActiveBlockId: string | null = null;
   
-  /** 临时保存的原始聚焦标签ID - 用于openInNewTab场景下保持原始聚焦状态 */
-  private tempFocusedBlockId: string | null = null;
-  
   /** 是否正在导航中 - 用于避免导航时触发重复的聚焦检测 */
   private isNavigating: boolean = false;
   
@@ -998,9 +995,6 @@ class OrcaTabsPlugin {
   /** 当前鼠标悬停的块ID - 用于快捷键操作的目标块 */
   private hoveredBlockId: string | null = null;
   
-  /** 当前右键菜单对应的块引用ID - 用于上下文菜单操作 */
-  private currentContextBlockRefId: string | null = null;
-
   /* ———————————————————————————————————————————————————————————————————————————— */
   /* 初始化和生命周期管理 - Initialization and Lifecycle Management */
   /* ———————————————————————————————————————————————————————————————————————————— */
@@ -6599,25 +6593,18 @@ class OrcaTabsPlugin {
   }
 
   /**
-   * 将指定块添加到标签页中，替换当前聚焦标签
-   */
-  async createBlockAfterFocused(blockId: string) {
-    await this.addTabToPanel(blockId, 'replace', false);
-  }
-
-  /**
-   * 在新标签页打开指定块（参考块菜单逻辑重构）
+   * 在新标签页打开指定块（后台打开，不导航不聚焦）
    * 
    * 功能说明：
    * 1. 检查块是否已存在于标签页中
-   * 2. 如果存在，直接切换到该标签页
-   * 3. 如果不存在，在当前聚焦标签后面创建新标签页
-   * 4. 创建后导航到新标签页
+   * 2. 如果存在，不做任何操作（标签页已经存在）
+   * 3. 如果不存在，在当前聚焦标签后面创建新标签页（后台打开）
+   * 4. 不会导航或聚焦到新标签页
    * 
    * @param blockId 要打开的块ID
    */
   async openInNewTab(blockId: string) {
-    this.verboseLog(`🔗 [openInNewTab] 开始处理块 ${blockId}`);
+    this.verboseLog(`🔗 [openInNewTab] 开始处理块 ${blockId}（后台打开模式）`);
     
     try {
       // 步骤1: 获取当前标签页列表
@@ -6629,8 +6616,8 @@ class OrcaTabsPlugin {
       const existingTab = currentTabs.find(tab => tab.blockId === blockId);
       
       if (existingTab) {
-        // 分支A: 块已存在，直接切换
-        this.verboseLog(`🔗 [openInNewTab] 块 ${blockId} 已存在，标签: "${existingTab.title}"`);
+        // 分支A: 块已存在，不做任何操作
+        this.verboseLog(`🔗 [openInNewTab] 块 ${blockId} 已存在，标签: "${existingTab.title}"，无需操作`);
         
         // 从已关闭列表中移除（如果存在）
         if (this.closedTabs.has(blockId)) {
@@ -6639,19 +6626,12 @@ class OrcaTabsPlugin {
           await this.saveClosedTabs();
         }
         
-        // 更新聚焦状态
-        this.updateFocusState(blockId, existingTab.title);
-        
-        // 切换到该标签页
-        this.verboseLog(`🔗 [openInNewTab] 切换到已存在的标签页: "${existingTab.title}"`);
-        await this.switchToTab(existingTab);
-        
-        this.verboseLog(`🔗 [openInNewTab] 完成 - 已切换到已存在标签页`);
+        this.verboseLog(`🔗 [openInNewTab] 完成 - 标签页已存在`);
         return;
       }
       
-      // 分支B: 块不存在，创建新标签页
-      this.verboseLog(`🔗 [openInNewTab] 块 ${blockId} 不存在，准备创建新标签页`);
+      // 分支B: 块不存在，在后台创建新标签页
+      this.verboseLog(`🔗 [openInNewTab] 块 ${blockId} 不存在，准备在后台创建新标签页`);
       
       // 从已关闭列表中移除（如果存在）
       if (this.closedTabs.has(blockId)) {
@@ -6660,90 +6640,22 @@ class OrcaTabsPlugin {
         await this.saveClosedTabs();
       }
       
-      // 调用 addTabToPanel 创建新标签页
+      // 调用 addTabToPanel 创建新标签页（后台打开）
       // 参数说明：
       // - blockId: 要打开的块ID
       // - 'after': 在当前聚焦标签后面插入
-      // - true: 导航到新标签页
-      this.verboseLog(`🔗 [openInNewTab] 调用 addTabToPanel 创建新标签页`);
-      const success = await this.addTabToPanel(blockId, 'after', true);
+      // - false: 不导航到新标签页（后台打开）
+      this.verboseLog(`🔗 [openInNewTab] 调用 addTabToPanel 在后台创建新标签页`);
+      const success = await this.addTabToPanel(blockId, 'after', false);
       
       if (success) {
-        this.verboseLog(`🔗 [openInNewTab] 完成 - 成功创建新标签页`);
+        this.verboseLog(`🔗 [openInNewTab] 完成 - 成功在后台创建新标签页`);
       } else {
         this.verboseLog(`🔗 [openInNewTab] 失败 - 创建新标签页失败`);
       }
       
     } catch (error) {
       this.error(`[openInNewTab] 处理失败:`, error);
-    }
-  }
-
-
-  /**
-   * 从DOM元素中获取块引用的ID
-   */
-  private getBlockRefId(element: HTMLElement): string | null {
-    try {
-      // 遍历当前元素及其父元素，寻找块引用标识
-      let current: HTMLElement | null = element;
-      
-      while (current && current !== document.body) {
-        // 检查常见的块引用类名和属性
-        const classList = current.classList;
-        
-        // 只检查明确的块引用类名，避免误匹配普通块
-        if (classList.contains('orca-ref') || 
-            classList.contains('block-ref') || 
-            classList.contains('block-reference') ||
-            classList.contains('orca-fragment-r') ||
-            classList.contains('fragment-r') ||
-            classList.contains('orca-block-reference') ||
-            (current.tagName.toLowerCase() === 'a' && current.getAttribute('href')?.startsWith('#'))) {
-          
-          // 尝试从不同的属性中获取块ID
-          const blockId = current.getAttribute('data-ref-id') ||
-                          current.getAttribute('data-target-block-id') ||
-                          current.getAttribute('data-fragment-v') ||
-                          current.getAttribute('data-v') ||
-                          current.getAttribute('href')?.replace('#', '') ||
-                          current.getAttribute('data-id');
-          
-          if (blockId && !isNaN(parseInt(blockId))) {
-            this.log(`🔗 从块引用元素中提取到ID: ${blockId}`);
-            return blockId;
-          }
-        }
-        
-        // 检查内联样式或其他可能的标识，但更加严格
-        const dataAttrs = current.dataset;
-        for (const [key, value] of Object.entries(dataAttrs)) {
-          if ((key.toLowerCase().includes('ref') || key.toLowerCase().includes('fragment')) && 
-              value && !isNaN(parseInt(value))) {
-            this.log(`🔗 从data属性 ${key} 中提取到块引用ID: ${value}`);
-            return value;
-          }
-        }
-        
-        // 继续向上查找父元素
-        current = current.parentElement;
-      }
-      
-      // 如果没有找到明确的块引用标识，尝试从文本内容中解析
-      if (element.textContent) {
-        const text = element.textContent.trim();
-        // 匹配 [[块ID]] 或类似的格式
-        const blockRefMatch = text.match(/\[\[(?:块)?(\d+)\]\]/) || text.match(/block[:\s]*(\d+)/i);
-        if (blockRefMatch && blockRefMatch[1]) {
-          this.log(`🔗 从文本内容中解析到块引用ID: ${blockRefMatch[1]}`);
-          return blockRefMatch[1];
-        }
-      }
-      
-      return null;
-    } catch (error) {
-      this.error("获取块引用ID时出错:", error);
-      return null;
     }
   }
 
@@ -6773,110 +6685,6 @@ class OrcaTabsPlugin {
     } catch (error) {
       this.error("获取当前光标块ID时出错:", error);
       return null;
-    }
-  }
-
-  /**
-   * 增强块引用的右键菜单，添加标签页相关选项
-   */
-  private enhanceBlockRefContextMenu(blockRefId: string) {
-    try {
-      // 查找当前显示的上下文菜单
-      const contextMenus = document.querySelectorAll('.orca-context-menu, .context-menu, [role="menu"]');
-      let targetMenu: HTMLElement | null = null;
-      
-      // 找到最新显示的菜单（通常是最后一个）
-      for (let i = contextMenus.length - 1; i >= 0; i--) {
-        const menu = contextMenus[i] as HTMLElement;
-        if (menu.offsetParent !== null && getComputedStyle(menu).display !== 'none') {
-          targetMenu = menu;
-          break;
-        }
-      }
-      
-      if (!targetMenu) {
-        this.log("🔗 未找到显示的右键菜单");
-        return;
-      }
-      
-      // 检查是否已经添加过我们的选项
-      if (targetMenu.querySelector('.orca-tabs-plugin .orca-tabs-ref-menu-item')) {
-        this.log("🔗 块引用菜单项已存在");
-        return;
-      }
-      
-      this.log(`🔗 为块引用 ${blockRefId} 添加菜单项`);
-      
-      // 创建分隔符（如果需要）
-      const existingItems = targetMenu.querySelectorAll('[role="menuitem"], .menu-item');
-      if (existingItems.length > 0) {
-        const separator = document.createElement('div');
-        separator.className = 'orca-tabs-ref-menu-separator';
-        // 检测暗色模式
-        const isDarkMode = document.documentElement.classList.contains('dark') || 
-                          (window as any).orca?.state?.themeMode === 'dark';
-        
-        separator.style.cssText = `
-          height: 1px;
-          background: var(--orca-color-border);
-          margin: 4px 8px;
-        `;
-        targetMenu.appendChild(separator);
-      }
-      
-      // 如果有保存的标签组，添加"添加到已有标签组"选项
-      if (this.savedTabSets.length > 0) {
-        const addToGroupItem = document.createElement('div');
-        addToGroupItem.className = 'orca-tabs-ref-menu-item';
-        addToGroupItem.setAttribute('role', 'menuitem');
-        // 检测暗色模式
-        const isDarkMode = document.documentElement.classList.contains('dark') || 
-                          (window as any).orca?.state?.themeMode === 'dark';
-        
-        addToGroupItem.className = 'add-to-group-menu-item';
-        addToGroupItem.setAttribute('data-action', 'add-to-group');
-        addToGroupItem.style.cssText = `
-          padding: var(--orca-spacing-sm);
-          cursor: pointer;
-          font-family: var(--orca-fontfamily-ui);
-          font-size: var(--orca-fontsize-sm);
-          color: var(--orca-color-text-1);
-          border-radius: var(--orca-radius-md);
-          transition: background-color 0.2s;
-          display: flex;
-          align-items: center;
-        `;
-        
-        // 创建文本子元素
-        const addToGroupText = document.createElement('span');
-        addToGroupText.textContent = '添加到已有标签组';
-        addToGroupText.style.cssText = `
-          margin-right: var(--orca-spacing-md);
-        `;
-        addToGroupItem.appendChild(addToGroupText);
-        
-        addToGroupItem.addEventListener('mouseenter', () => {
-          addToGroupItem.style.backgroundColor = 'var(--orca-color-menu-highlight)';
-        });
-        addToGroupItem.addEventListener('mouseleave', () => {
-          addToGroupItem.style.backgroundColor = 'transparent';
-        });
-        addToGroupItem.addEventListener('click', () => {
-          // 创建当前块的标签页信息
-          const currentTab = this.getCurrentActiveTab();
-          if (currentTab) {
-            this.showAddToTabGroupDialog(currentTab);
-          }
-          // 关闭菜单
-          targetMenu?.remove();
-        });
-        
-        targetMenu.appendChild(addToGroupItem);
-      }
-      
-      this.log(`✅ 成功为块引用 ${blockRefId} 添加菜单项`);
-    } catch (error) {
-      this.error("增强块引用右键菜单时出错:", error);
     }
   }
 
@@ -9880,25 +9688,6 @@ class OrcaTabsPlugin {
   private async handleClickEvent(e: MouseEvent) {
     const target = e.target as HTMLElement;
     
-    // 检查是否是块引用点击（优先处理，不受插件容器限制）
-    const blockRefId = this.getBlockRefId(target);
-    if (blockRefId) {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-      
-      if (e.ctrlKey || e.metaKey) {
-        // Ctrl+点击: 在新标签页打开
-        this.log(`🔗 检测到 Ctrl+点击 块引用: ${blockRefId}，将在后台新建标签页`);
-        await this.openInNewTab(blockRefId);
-      } else {
-        // 直接点击: 替换当前标签页内容
-        this.log(`🔗 检测到直接点击 块引用: ${blockRefId}，将替换当前标签页`);
-        await this.createBlockAfterFocused(blockRefId);
-      }
-      return;
-    }
-    
     // 如果点击的不是插件相关元素，直接返回，减少干扰
     if (!target.closest('.orca-tabs-plugin')) {
       return;
@@ -9928,19 +9717,7 @@ class OrcaTabsPlugin {
    * 处理右键菜单事件
    */
   private async handleContextMenuEvent(e: MouseEvent) {
-    const target = e.target as HTMLElement;
-    const blockRefId = this.getBlockRefId(target);
-    
-    if (blockRefId) {
-      // 这是块引用的右键菜单
-      this.log(`🔗 检测到块引用右键菜单: ${blockRefId}`);
-      this.currentContextBlockRefId = blockRefId;
-      
-      // 延迟一点时间，让原生菜单先显示，然后我们添加自定义项
-      setTimeout(() => {
-        this.enhanceBlockRefContextMenu(blockRefId);
-      }, 50);
-    }
+    // 右键菜单事件处理已移除
   }
 
   // handleKeydownEvent方法已移除，不再监听全局键盘事件
