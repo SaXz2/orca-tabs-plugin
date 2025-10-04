@@ -11838,13 +11838,13 @@ class OrcaTabsPlugin {
 
       // 确认按钮
       const confirmButton = document.createElement('button');
-      confirmButton.textContent = '确认退出';
+      confirmButton.textContent = '确认';
       confirmButton.style.cssText = `
         padding: var(--orca-spacing-sm) var(--orca-spacing-md);
-        border: 1px solid var(--orca-color-danger);
+        border: 1px solid var(--orca-color-primary);
         border-radius: var(--orca-radius-md);
-        background: var(--orca-color-danger);
-        color: white;
+        background: var(--orca-color-primary);
+        color: var(--orca-color-text-on-primary);
         cursor: pointer;
         font-family: var(--orca-fontfamily-ui);
         font-size: var(--orca-fontsize-sm);

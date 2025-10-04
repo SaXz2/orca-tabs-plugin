@@ -11146,12 +11146,12 @@ class Sa {
         a.remove(), e(!1);
       });
       const c = document.createElement("button");
-      c.textContent = "确认退出", c.style.cssText = `
+      c.textContent = "确认", c.style.cssText = `
         padding: var(--orca-spacing-sm) var(--orca-spacing-md);
-        border: 1px solid var(--orca-color-danger);
+        border: 1px solid var(--orca-color-primary);
         border-radius: var(--orca-radius-md);
-        background: var(--orca-color-danger);
-        color: white;
+        background: var(--orca-color-primary);
+        color: var(--orca-color-text-on-primary);
         cursor: pointer;
         font-family: var(--orca-fontfamily-ui);
         font-size: var(--orca-fontsize-sm);
