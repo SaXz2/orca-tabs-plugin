@@ -652,13 +652,13 @@ export function createContextMenu(config: ContextMenuConfig): HTMLElement {
   const themeStyles = {
     light: {
       backgroundColor: 'var(--orca-color-bg-1)',
-      color: '#333',
+      color: 'var(--orca-color-text-1)',
       border: '1px solid #ddd',
       shadow: '0 2px 8px rgba(0,0,0,0.15)'
     },
     dark: {
       backgroundColor: 'var(--orca-color-bg-1)',
-      color: '#fff',
+      color: 'var(--orca-color-text-1)',
       border: '1px solid #555',
       shadow: '0 2px 8px rgba(0,0,0,0.3)'
     }

@@ -41,7 +41,7 @@ export function createContextMenuItem(
   titleElement.textContent = title;
   titleElement.style.cssText = `
     flex: 1;
-    color: #333;
+    color: var(--orca-color-text-1);
   `;
   
   // 组装元素
