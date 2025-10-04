@@ -101,4 +101,7 @@ export const PLUGIN_STORAGE_KEYS = {
   
   /** 水平布局标签最小宽度 - 存储水平布局下标签的最小宽度设置 */
   HORIZONTAL_TAB_MIN_WIDTH: 'horizontal-tab-min-width',
+  
+  /** 进入工作区前的标签页组 - 存储进入工作区前的普通标签页组，用于退出工作区时恢复 */
+  TABS_BEFORE_WORKSPACE: 'tabs-before-workspace',
 } as const;

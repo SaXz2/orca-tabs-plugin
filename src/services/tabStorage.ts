@@ -276,6 +276,46 @@ export class TabStorageService {
     }
   }
 
+  /**
+   * 保存进入工作区前的标签页组
+   */
+  async saveTabsBeforeWorkspace(tabs: TabInfo[]): Promise<void> {
+    try {
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.TABS_BEFORE_WORKSPACE, tabs, this.pluginName);
+      this.log(`💾 已保存进入工作区前的标签页组: ${tabs.length}个标签页`);
+    } catch (error) {
+      this.error("保存进入工作区前的标签页组失败:", error);
+    }
+  }
+
+  /**
+   * 加载进入工作区前的标签页组
+   */
+  async loadTabsBeforeWorkspace(): Promise<TabInfo[] | null> {
+    try {
+      const tabs = await this.storageService.getConfig<TabInfo[]>(PLUGIN_STORAGE_KEYS.TABS_BEFORE_WORKSPACE, this.pluginName);
+      if (tabs && tabs.length > 0) {
+        this.log(`📁 已加载进入工作区前的标签页组: ${tabs.length}个标签页`);
+      }
+      return tabs;
+    } catch (error) {
+      this.error("加载进入工作区前的标签页组失败:", error);
+      return null;
+    }
+  }
+
+  /**
+   * 清除进入工作区前的标签页组
+   */
+  async clearTabsBeforeWorkspace(): Promise<void> {
+    try {
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.TABS_BEFORE_WORKSPACE, null, this.pluginName);
+      this.log(`📁 已清除进入工作区前的标签页组`);
+    } catch (error) {
+      this.error("清除进入工作区前的标签页组失败:", error);
+    }
+  }
+
   // ==================== 位置和布局配置 ====================
 
   /**

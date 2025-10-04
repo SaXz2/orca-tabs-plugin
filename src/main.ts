@@ -162,8 +162,8 @@ import {
   isDarkMode, 
   getCurrentThemeMode, 
   watchThemeChange, 
-  getThemeColor,
-  applyOklchFormula,
+  getThemeColor, 
+  applyOklchFormula, 
   type ThemeMode
 } from './utils/themeUtils';
 import { 
@@ -221,7 +221,7 @@ import {
   isSidebarVisible, 
   getSidebarPosition, 
   calculateAlignmentPosition, 
-  shouldAlignToSidebar,
+  shouldAlignToSidebar, 
   type PanelStatus
 } from './utils/panelManagementUtils';
 
@@ -824,6 +824,12 @@ class OrcaTabsPlugin {
   /** 是否启用工作区功能 - 控制工作区功能的开关 */
   private enableWorkspaces: boolean = true;
   
+  /** 进入工作区之前的标签页组 - 用于退出工作区时恢复到原始标签页组 */
+  private tabsBeforeWorkspace: TabInfo[] | null = null;
+  
+  /** 是否需要在初始化后恢复标签页组 - 用于处理在工作区状态下关闭软件的情况 */
+  private shouldRestoreTabsBeforeWorkspace: boolean = false;
+  
   // ==================== 对话框管理 ====================
   /** 对话框层级管理器 - 管理对话框的z-index层级 */
   private dialogZIndex = 2000;
@@ -847,7 +853,7 @@ class OrcaTabsPlugin {
   // ==================== 快捷键相关 ====================
   /** 当前鼠标悬停的块ID - 用于快捷键操作的目标块 */
   private hoveredBlockId: string | null = null;
-  
+
   /* ———————————————————————————————————————————————————————————————————————————— */
   /* 初始化和生命周期管理 - Initialization and Lifecycle Management */
   /* ———————————————————————————————————————————————————————————————————————————— */
@@ -908,26 +914,25 @@ class OrcaTabsPlugin {
     // 注册块菜单命令 - 注册右键菜单中的命令，如"添加到标签页"等
     this.registerBlockMenuCommands();
 
+    // ==================== 先加载工作区数据 ====================
+    // 必须先加载工作区数据，以便后续判断是否在工作区状态
+    await this.loadWorkspaces();
+    
     // ==================== 并行状态恢复 ====================
     // 将独立的恢复操作并行执行以减少初始化时间
     const [
       _position,
       _layoutMode,
       _fixedToTop,
-      _floatingVisibility,
-      workspaceResult
+      _floatingVisibility
     ] = await Promise.all([
       this.restorePosition(),
       this.restoreLayoutMode(),
       this.restoreFixedToTopMode(),
-      this.restoreFloatingWindowVisibility(),
-      this.tabStorageService.loadWorkspaces()
+      this.restoreFloatingWindowVisibility()
     ]);
     
-    this.workspaces = workspaceResult.workspaces;
-    this.enableWorkspaces = workspaceResult.enableWorkspaces;
-    
-    // 注意：页面刷新后不自动更新工作区，用户需要手动切换工作区
+    // 注意：页面刷新后不自动加载当前工作区，用户需要手动切换工作区
     
     // ==================== UI初始化 ====================
     // 注册顶部工具栏按钮 - 在Orca顶部工具栏添加插件按钮
@@ -949,29 +954,49 @@ class OrcaTabsPlugin {
     // 监听器会自动检测新面板的创建
     
     
-    // ==================== 并行加载标签页数据 ====================
-    // 将所有标签页数据的恢复操作并行执行
-    const [
-      firstPanelTabs,
-      closedTabs,
-      recentlyClosedTabs,
-      savedTabSets
-    ] = await Promise.all([
-      this.tabStorageService.restoreFirstPanelTabs(),
-      this.tabStorageService.restoreClosedTabs(),
-      this.tabStorageService.restoreRecentlyClosedTabs(),
-      this.tabStorageService.restoreSavedTabSets()
-    ]);
-    
-    if (this.panelTabsData.length === 0) {
-      this.panelTabsData.push([]);
+    // ==================== 检查是否需要恢复标签页组 ====================
+    // 如果发现保存的标签页组，说明用户是在工作区状态下关闭的软件
+    // 应该直接恢复标签页组，而不是加载可能被污染的普通标签页
+    if (this.shouldRestoreTabsBeforeWorkspace && this.tabsBeforeWorkspace) {
+      this.log(`🔄 检测到保存的标签页组，直接恢复而不加载普通标签页`);
+      
+      // 直接使用保存的标签页组
+      if (this.panelTabsData.length === 0) {
+        this.panelTabsData.push([]);
+      }
+      this.panelTabsData[0] = [...this.tabsBeforeWorkspace];
+      
+      // 清除恢复标记和保存的数据
+      this.shouldRestoreTabsBeforeWorkspace = false;
+      this.tabsBeforeWorkspace = null;
+      await this.tabStorageService.clearTabsBeforeWorkspace();
+      
+      this.log(`✅ 已直接恢复到进入工作区前的标签页组`);
+    } else {
+      // ==================== 正常加载标签页数据 ====================
+      // 只有在没有保存的标签页组时才加载普通标签页
+      const [
+        firstPanelTabs,
+        closedTabs,
+        recentlyClosedTabs,
+        savedTabSets
+      ] = await Promise.all([
+        this.tabStorageService.restoreFirstPanelTabs(),
+        this.tabStorageService.restoreClosedTabs(),
+        this.tabStorageService.restoreRecentlyClosedTabs(),
+        this.tabStorageService.restoreSavedTabSets()
+      ]);
+      
+      if (this.panelTabsData.length === 0) {
+        this.panelTabsData.push([]);
+      }
+      this.panelTabsData[0] = firstPanelTabs;
+      this.closedTabs = closedTabs;
+      this.recentlyClosedTabs = recentlyClosedTabs;
+      this.savedTabSets = savedTabSets;
+      
+      await this.updateRestoredTabsBlockTypes();
     }
-    this.panelTabsData[0] = firstPanelTabs;
-    this.closedTabs = closedTabs;
-    this.recentlyClosedTabs = recentlyClosedTabs;
-    this.savedTabSets = savedTabSets;
-    
-    await this.updateRestoredTabsBlockTypes();
     
     // 测试API配置序列化（开发模式）- 延迟到空闲时间
     if (typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS !== false) {
@@ -997,24 +1022,24 @@ class OrcaTabsPlugin {
     if (this.panelOrder.length > 1) {
       requestIdleCallback(async () => {
         this.log(`📂 延迟加载其他面板的标签页数据`);
-        for (let i = 1; i < this.panelOrder.length; i++) {
-          const storageKey = `panel_${i + 1}_tabs`;
-          try {
-            const savedTabs = await this.storageService.getConfig<TabInfo[]>(storageKey, this.pluginName, []);
-            this.log(`📂 从存储获取到第 ${i + 1} 个面板的数据: ${savedTabs ? savedTabs.length : 0} 个标签页`);
-            
-            if (savedTabs && savedTabs.length > 0) {
-              this.panelTabsData[i] = [...savedTabs];
-              this.log(`✅ 成功加载第 ${i + 1} 个面板的标签页数据: ${savedTabs.length} 个`);
-            } else {
-              this.panelTabsData[i] = [];
-              this.log(`📂 第 ${i + 1} 个面板没有保存的数据`);
-            }
-          } catch (error) {
-            this.warn(`❌ 加载第 ${i + 1} 个面板数据失败:`, error);
+      for (let i = 1; i < this.panelOrder.length; i++) {
+        const storageKey = `panel_${i + 1}_tabs`;
+        try {
+          const savedTabs = await this.storageService.getConfig<TabInfo[]>(storageKey, this.pluginName, []);
+          this.log(`📂 从存储获取到第 ${i + 1} 个面板的数据: ${savedTabs ? savedTabs.length : 0} 个标签页`);
+          
+          if (savedTabs && savedTabs.length > 0) {
+            this.panelTabsData[i] = [...savedTabs];
+            this.log(`✅ 成功加载第 ${i + 1} 个面板的标签页数据: ${savedTabs.length} 个`);
+          } else {
             this.panelTabsData[i] = [];
+            this.log(`📂 第 ${i + 1} 个面板没有保存的数据`);
           }
+        } catch (error) {
+          this.warn(`❌ 加载第 ${i + 1} 个面板数据失败:`, error);
+          this.panelTabsData[i] = [];
         }
+      }
       }, { timeout: 1000 });
     }
     
@@ -4950,7 +4975,7 @@ class OrcaTabsPlugin {
       this.verticalWidth = newWidth;
       
       // 直接调整标签容器宽度
-      this.tabContainer!.style.width = `${newWidth}px`;
+        this.tabContainer!.style.width = `${newWidth}px`;
     };
 
     const handleMouseUp = async () => {
@@ -4976,7 +5001,7 @@ class OrcaTabsPlugin {
   cleanupDragResize() {
     this.removeResizeHandle();
   }
-
+  
   /**
    * 更新垂直模式宽度
    */
@@ -6298,7 +6323,7 @@ class OrcaTabsPlugin {
         this.log(`📋 [DEBUG] ========== addTabToPanel 完成（已存在）==========`);
         return true;
       }
-      
+
       this.log(`📋 [DEBUG] ✅ 块 ${blockId} 不存在，准备创建新标签`);
 
       // 【修复BUG】如果还没有标记，则标记为正在创建
@@ -6312,22 +6337,22 @@ class OrcaTabsPlugin {
       
       let tabInfo: TabInfo | null = null;
       try {
-        // 获取块信息
-        const block = orca.state.blocks[parseInt(blockId)];
-        if (!block) {
+      // 获取块信息
+      const block = orca.state.blocks[parseInt(blockId)];
+      if (!block) {
           this.verboseLog(`📋 [addTabToPanel] 错误 - 无法找到块 ${blockId}`);
-          this.warn(`无法找到块 ${blockId}`);
-          return false;
-        }
+        this.warn(`无法找到块 ${blockId}`);
+        return false;
+      }
         this.verboseLog(`📋 [addTabToPanel] 找到块信息`);
 
-        // 使用getTabInfo方法获取完整的标签信息（包括块类型和图标）
+      // 使用getTabInfo方法获取完整的标签信息（包括块类型和图标）
         this.verboseLog(`📋 [addTabToPanel] 获取标签信息...`);
         tabInfo = await this.getTabInfo(blockId, this.currentPanelId || '', currentTabs.length);
-        if (!tabInfo) {
+      if (!tabInfo) {
           this.verboseLog(`📋 [addTabToPanel] 错误 - 无法获取块 ${blockId} 的标签信息`);
-          this.warn(`无法获取块 ${blockId} 的标签信息`);
-          return false;
+        this.warn(`无法获取块 ${blockId} 的标签信息`);
+        return false;
         }
         this.verboseLog(`📋 [addTabToPanel] 标签信息: "${tabInfo.title}" (类型: ${tabInfo.blockType})`);
       } finally {
@@ -6418,7 +6443,7 @@ class OrcaTabsPlugin {
             if (newTabIndex !== -1) {
               currentTabs.splice(newTabIndex, 1);
             }
-            return false;
+              return false;
           }
         }
       } else {
@@ -6438,7 +6463,7 @@ class OrcaTabsPlugin {
       
       // 保存标签数据
       this.log(`📋 [DEBUG] 保存标签数据...`);
-      await this.saveCurrentPanelTabs();
+       await this.saveCurrentPanelTabs();
 
       // 如果启用了工作区功能且有当前工作区，实时更新工作区
       if (this.enableWorkspaces && this.currentWorkspace) {
@@ -6604,11 +6629,11 @@ class OrcaTabsPlugin {
         if (
           classList.contains('orca-inline-r-content') ||
           classList.contains('orca-ref') ||
-          classList.contains('block-ref') ||
-          classList.contains('block-reference') ||
-          classList.contains('orca-fragment-r') ||
-          classList.contains('fragment-r') ||
-          classList.contains('orca-block-reference') ||
+            classList.contains('block-ref') || 
+            classList.contains('block-reference') ||
+            classList.contains('orca-fragment-r') ||
+            classList.contains('fragment-r') ||
+            classList.contains('orca-block-reference') ||
           (current.tagName.toLowerCase() === 'a' && current.getAttribute('href')?.startsWith('#'))
         ) {
           // 尝试从各种可能的属性中获取块ID
@@ -6616,11 +6641,11 @@ class OrcaTabsPlugin {
             current.getAttribute('data-block-id') ||
             current.getAttribute('data-ref-id') ||
             current.getAttribute('data-blockid') ||
-            current.getAttribute('data-target-block-id') ||
-            current.getAttribute('data-fragment-v') ||
-            current.getAttribute('data-v') ||
-            current.getAttribute('href')?.replace('#', '') ||
-            current.getAttribute('data-id');
+                          current.getAttribute('data-target-block-id') ||
+                          current.getAttribute('data-fragment-v') ||
+                          current.getAttribute('data-v') ||
+                          current.getAttribute('href')?.replace('#', '') ||
+                          current.getAttribute('data-id');
           
           // 验证块ID是否有效（应该是数字）
           if (blockId && !isNaN(parseInt(blockId))) {
@@ -8011,6 +8036,13 @@ class OrcaTabsPlugin {
    * 保存第一个面板的标签数据到持久化存储（使用API）
    */
   async saveFirstPanelTabs() {
+    // 在工作区状态下，不保存标签页到普通存储
+    // 避免工作区的标签页覆盖用户的普通标签页
+    if (this.currentWorkspace) {
+      this.log(`🚫 在工作区状态下，跳过保存标签页到普通存储`);
+      return;
+    }
+    
     const firstPanelTabs = this.panelTabsData[0] || [];
     await this.tabStorageService.saveFirstPanelTabs(firstPanelTabs);
   }
@@ -8102,11 +8134,17 @@ class OrcaTabsPlugin {
     }
     
     if (hasUpdates) {
-      this.log("🔄 检测到恢复的标签页有更新，保存到存储...");
       // 更新panelTabsData数组
       this.panelTabsData[0] = firstPanelTabs;
-      // 保存第一个面板的数据
+      
+      // 只有在非工作区状态下才保存更新的标签页
+      // 如果在工作区状态下，不应该覆盖普通标签页的存储
+      if (!this.currentWorkspace) {
+        this.log("🔄 检测到恢复的标签页有更新，保存到存储...");
       await this.saveFirstPanelTabs();
+      } else {
+        this.log("🔄 在工作区状态下，跳过保存更新的标签页到存储");
+      }
     }
     
     this.log("✅ 恢复的标签页块类型和图标更新完成");
@@ -9706,8 +9744,8 @@ class OrcaTabsPlugin {
       this.log(`🖱️ [DEBUG] Ctrl+点击检测: ctrlKey=${e.ctrlKey}, metaKey=${e.metaKey}`);
       this.log(`🖱️ [DEBUG] 点击目标: ${target.tagName}, classes: ${target.className}`);
       
-      const blockRefId = this.getBlockRefId(target);
-      if (blockRefId) {
+    const blockRefId = this.getBlockRefId(target);
+    if (blockRefId) {
         this.log(`🔗 [DEBUG] 检测到 Ctrl+点击 块引用: ${blockRefId}`);
         
         // 【关键修复】立即标记为正在创建，防止任何后续处理
@@ -9718,10 +9756,10 @@ class OrcaTabsPlugin {
         
         // 阻止默认行为和事件传播
         // 在捕获阶段就彻底阻止，避免Orca的原生处理
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      
         this.log(`🔗 [DEBUG] 当前面板ID: ${this.currentPanelId}, 索引: ${this.currentPanelIndex}`);
         this.log(`🔗 [DEBUG] 当前标签页数量: ${this.getCurrentPanelTabs().length}`);
         
@@ -11600,6 +11638,16 @@ class OrcaTabsPlugin {
     
     // 页面刷新后不自动加载当前工作区，重置为默认状态
     await this.clearCurrentWorkspace();
+    
+    // 加载保存的标签页组数据，如果存在则自动恢复
+    const tabsBeforeWorkspace = await this.tabStorageService.loadTabsBeforeWorkspace();
+    if (tabsBeforeWorkspace && tabsBeforeWorkspace.length > 0) {
+      this.tabsBeforeWorkspace = tabsBeforeWorkspace;
+      this.log(`📁 发现保存的标签页组数据: ${this.tabsBeforeWorkspace.length}个标签页，将在初始化后恢复`);
+      
+      // 标记需要恢复标签页组
+      this.shouldRestoreTabsBeforeWorkspace = true;
+    }
   }
 
   /**
@@ -11607,6 +11655,52 @@ class OrcaTabsPlugin {
    */
   private async saveWorkspaces() {
     await this.tabStorageService.saveWorkspaces(this.workspaces, this.currentWorkspace, this.enableWorkspaces);
+  }
+
+  /**
+   * 恢复标签页组但不保存到持久化存储
+   * 用于退出工作区时恢复原始标签页组
+   */
+  private async restoreTabsWithoutSaving(tabs: TabInfo[]) {
+    try {
+      // 清空当前标签页数据
+      this.panelTabsData[0] = [];
+      this.panelTabsData[1] = [];
+
+      // 重新获取每个标签页的最新信息
+      const updatedTabs: TabInfo[] = [];
+      for (const tab of tabs) {
+        try {
+          // 重新获取标签页信息，确保包含最新的块类型和图标
+          const updatedTab = await this.getTabInfo(tab.blockId, this.currentPanelId || '', updatedTabs.length);
+          if (updatedTab) {
+            // 保留原有的一些重要信息
+            updatedTab.isPinned = tab.isPinned;
+            updatedTab.order = tab.order;
+            updatedTab.scrollPosition = tab.scrollPosition;
+            updatedTabs.push(updatedTab);
+          } else {
+            // 如果无法获取最新信息，使用原始数据
+            updatedTabs.push(tab);
+          }
+        } catch (error) {
+          this.warn(`无法更新标签页信息 ${tab.title}:`, error);
+          // 如果更新失败，使用原始数据
+          updatedTabs.push(tab);
+        }
+      }
+
+      // 设置到第一个面板
+      this.panelTabsData[0] = updatedTabs;
+      
+      // 更新UI显示，但不保存到持久化存储
+      await this.updateTabsUI();
+      
+      this.log(`📋 已恢复标签页组，共 ${updatedTabs.length} 个标签（未保存到持久化存储）`);
+    } catch (error) {
+      this.error("恢复标签页组失败:", error);
+      throw error;
+    }
   }
 
   /**
@@ -11639,8 +11733,23 @@ class OrcaTabsPlugin {
       // 保存工作区配置
       await this.saveWorkspaces();
 
+      // 如果有保存的标签页组，恢复到进入工作区之前的状态
+      if (this.tabsBeforeWorkspace && this.tabsBeforeWorkspace.length > 0) {
+        this.log(`🔄 恢复到进入工作区前的标签页组: ${this.tabsBeforeWorkspace.length}个标签页`);
+        
+        // 直接恢复标签页组，不保存到持久化存储
+        await this.restoreTabsWithoutSaving(this.tabsBeforeWorkspace);
+        
+        // 清除保存的标签页组（内存和持久化存储）
+        this.tabsBeforeWorkspace = null;
+        await this.tabStorageService.clearTabsBeforeWorkspace();
+        
+        orca.notify('success', '已退出工作区并恢复之前的标签页组');
+      } else {
+        orca.notify('success', '已退出工作区');
+      }
+
       this.log(`🚪 已退出工作区`);
-      orca.notify('success', '已退出工作区');
     } catch (error) {
       this.error("退出工作区失败:", error);
       orca.notify('error', '退出工作区失败');
@@ -11696,7 +11805,9 @@ class OrcaTabsPlugin {
         line-height: 1.5;
         margin-bottom: var(--orca-spacing-lg);
       `;
-      message.textContent = '确定要退出当前工作区吗？退出后当前标签页状态将不会保存到工作区中。';
+      message.textContent = this.tabsBeforeWorkspace && this.tabsBeforeWorkspace.length > 0 
+        ? '确定要退出当前工作区吗？退出后将恢复到进入工作区之前的标签页组。'
+        : '确定要退出当前工作区吗？退出后当前工作区的标签页将不会保存。';
 
       // 按钮容器
       const buttonContainer = document.createElement('div');
@@ -12286,6 +12397,16 @@ class OrcaTabsPlugin {
         return;
       }
       
+      // 如果之前不在任何工作区中，保存当前标签页组以便退出时恢复
+      if (!this.currentWorkspace && !this.tabsBeforeWorkspace) {
+        const currentTabs = this.getCurrentPanelTabs();
+        this.tabsBeforeWorkspace = [...currentTabs];
+        
+        // 只保存到专用的"进入工作区前"存储，不要覆盖普通标签页存储
+        await this.tabStorageService.saveTabsBeforeWorkspace(this.tabsBeforeWorkspace);
+        
+        this.log(`💾 保存了进入工作区前的标签页组: ${this.tabsBeforeWorkspace.length}个标签页`);
+      }
 
       // 保存当前工作区（如果存在）
       if (this.currentWorkspace) {
