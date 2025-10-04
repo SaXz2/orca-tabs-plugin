@@ -445,6 +445,9 @@ class OrcaTabsPlugin {
   /** 上次面板检查时间 - 用于防抖面板发现调用 */
   private lastPanelCheckTime: number = 0;
   
+  /** 上次面板块检查时间 - 用于防抖 checkCurrentPanelBlocks 调用 */
+  private lastBlockCheckTime: number = 0;
+  
   /** 数据保存防抖定时器 - 用于合并频繁的保存操作 */
   private saveDataDebounceTimer: number | null = null;
   
@@ -749,6 +752,9 @@ class OrcaTabsPlugin {
   /** 焦点同步定时器 - 控制自动同步焦点的轮询逻辑 */
   private focusSyncInterval: number | null = null;
   
+  /** 上一次焦点检测的状态 - 用于避免重复调用 checkCurrentPanelBlocks */
+  private lastFocusState: { blockId: string | null; hasFocusedTab: boolean } | null = null;
+  
   /** 面板块检测任务 - 防止 checkCurrentPanelBlocks 并发执行 */
   private panelBlockCheckTask: Promise<void> | null = null;
   
@@ -832,6 +838,9 @@ class OrcaTabsPlugin {
   
   /** 是否在刷新后恢复聚焦标签页 - 控制软件刷新后是否自动聚焦并打开当前聚焦的标签页 */
   public restoreFocusedTab: boolean = true;
+  
+  /** 新标签是否添加到末尾（一次性标志，使用后自动重置为false） */
+  private addNewTabToEnd: boolean = true;
   
   /* ———————————————————————————————————————————————————————————————————————————— */
   /* 性能优化 - Performance Optimization */
@@ -3951,7 +3960,7 @@ class OrcaTabsPlugin {
         align-items: center;
         gap: 10px;
         font-size: 14px;
-        color: var(--orca-color-text-1);
+        color: ${isDarkMode ? '#ffffff' : '#333'};
         transition: background-color 0.2s ease;
       `;
       
@@ -6008,7 +6017,13 @@ class OrcaTabsPlugin {
       const focusedTab = this.getCurrentActiveTab();
       let insertIndex = currentTabs.length; // 默认插入到末尾
       
-      if (focusedTab) {
+      // 一次性逻辑：如果 addNewTabToEnd 为 true，将新标签添加到末尾，然后重置标志
+      if (this.addNewTabToEnd) {
+        insertIndex = currentTabs.length; // 添加到末尾
+        this.log(`🎯 [一次性] 将新标签添加到末尾: "${tabInfo.title}"`);
+        this.addNewTabToEnd = false; // 重置标志，后续恢复正常行为
+        this.log(`♻️ 已重置标志，后续新标签将在聚焦标签后插入`);
+      } else if (focusedTab) {
         // 找到聚焦标签的索引，在其后面插入新标签
         const focusedIndex = currentTabs.findIndex(tab => tab.blockId === focusedTab.blockId);
         if (focusedIndex !== -1) {
@@ -6462,7 +6477,7 @@ class OrcaTabsPlugin {
           padding: var(--orca-spacing-sm);
           cursor: pointer;
           font-size: 14px;
-          color: var(--orca-color-text-1);
+          color: ${isDarkMode ? '#ffffff' : '#333'};
           border-bottom: 1px solid var(--orca-color-border);
           transition: background-color 0.2s;
           display: flex;
@@ -7737,7 +7752,7 @@ class OrcaTabsPlugin {
         padding: var(--orca-spacing-sm);
         cursor: pointer;
         font-size: 14px;
-        color: ${(item as any).disabled ? (isDarkMode ? '#666' : '#999') : 'var(--orca-color-text-1)'};
+        color: ${(item as any).disabled ? (isDarkMode ? '#666' : '#999') : (isDarkMode ? '#ffffff' : '#333')};
         border-bottom: 1px solid var(--orca-color-border);
         transition: background-color 0.2s;
       `;
@@ -8522,34 +8537,109 @@ class OrcaTabsPlugin {
       this.creatingTabs.delete(blockId);
     }
     
-    // 检查标签页数量是否达到上限
-    if (currentTabs.length >= this.maxTabs) {
-      this.log(`⚠️ 标签页已达上限 (${this.maxTabs})，需要替换最后一个非固定标签页`);
-      
-      // 查找最后一个非固定标签页
-      const lastNonPinnedIndex = this.findLastNonPinnedTabIndex();
-      if (lastNonPinnedIndex !== -1) {
-        const oldTab = currentTabs[lastNonPinnedIndex];
-        currentTabs[lastNonPinnedIndex] = newTabInfo;
-        this.log(`🔄 替换最后一个非固定标签页: "${oldTab.title}" -> "${newTabInfo.title}"`);
+    // 使用更可靠的方法获取当前激活的标签页
+    const currentActiveTab = this.getCurrentActiveTab();
+    if (currentActiveTab) {
+      // 如果当前激活的标签是置顶的，不应该替换它，而应该创建新标签
+      if (currentActiveTab.isPinned) {
+        this.log(`📌 当前激活标签已置顶，创建新标签: "${newTabInfo.title}"`);
+        // 在所有置顶标签后面插入新标签（而不是当前标签后面）
+        const pinnedCount = currentTabs.filter(t => t.isPinned).length;
+        currentTabs.splice(pinnedCount, 0, newTabInfo);
         this.updateFocusState(blockId, newTabInfo.title);
         this.setCurrentPanelTabs(currentTabs);
         this.immediateUpdateTabsUI();
         return;
-      } else {
-        this.log(`⚠️ 所有标签页都是固定的，无法添加新标签页: "${newTabInfo.title}"`);
+      }
+      
+      // 找到当前激活标签页的索引
+      const activeIndex = currentTabs.findIndex(tab => tab.blockId === currentActiveTab.blockId);
+      if (activeIndex !== -1) {
+        // 替换当前激活的标签页内容
+        this.log(`🔄 替换当前激活标签页: "${currentActiveTab.title}" -> "${newTabInfo.title}"`);
+        currentTabs[activeIndex] = newTabInfo;
+        this.updateFocusState(blockId, newTabInfo.title);
+        this.setCurrentPanelTabs(currentTabs);
+        this.immediateUpdateTabsUI();
         return;
       }
     }
     
-    // 未达到上限，添加到末尾
-    if (currentTabs.length > 0) {
-      // 如果有标签页，添加到末尾
-      this.log(`➕ 添加新标签页到末尾: "${newTabInfo.title}"`);
-      currentTabs.push(newTabInfo);
-      this.updateFocusState(blockId, newTabInfo.title);
-      this.setCurrentPanelTabs(currentTabs);
-      this.immediateUpdateTabsUI();
+    // 备用方案：如果getCurrentActiveTab()无法获取（可能是时序问题），
+    // 尝试通过lastActiveBlockId来确定上一个激活的标签页
+    if (this.lastActiveBlockId) {
+      const lastActiveIndex = currentTabs.findIndex(tab => tab.blockId === this.lastActiveBlockId);
+      if (lastActiveIndex !== -1) {
+        const lastActiveTab = currentTabs[lastActiveIndex];
+        // 如果上一个激活的标签是置顶的，创建新标签而不是替换
+        if (lastActiveTab.isPinned) {
+          this.log(`📌 上一个激活标签已置顶，创建新标签: "${newTabInfo.title}"`);
+          // 在所有置顶标签后面插入新标签（而不是上一个标签后面）
+          const pinnedCount = currentTabs.filter(t => t.isPinned).length;
+          currentTabs.splice(pinnedCount, 0, newTabInfo);
+          this.updateFocusState(blockId, newTabInfo.title);
+          this.setCurrentPanelTabs(currentTabs);
+          this.immediateUpdateTabsUI();
+          return;
+        }
+        
+        this.log(`🔄 使用上一个激活标签页作为替换目标: "${currentTabs[lastActiveIndex].title}" -> "${newTabInfo.title}"`);
+        currentTabs[lastActiveIndex] = newTabInfo;
+        this.updateFocusState(blockId, newTabInfo.title);
+        this.setCurrentPanelTabs(currentTabs);
+        this.immediateUpdateTabsUI();
+        return;
+      }
+    }
+    
+    // 如果无法获取当前激活标签页，尝试通过DOM元素查找
+    let targetIndex = -1;
+    const focusedTabElement = this.tabContainer?.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
+    if (focusedTabElement) {
+      const focusedTabId = focusedTabElement.getAttribute('data-tab-id');
+      targetIndex = currentTabs.findIndex(tab => tab.blockId === focusedTabId);
+    }
+    
+    // 如果还是没找到，查找有聚焦样式的标签页
+    if (targetIndex === -1) {
+      const allTabElements = this.tabContainer?.querySelectorAll('.orca-tabs-plugin .orca-tab');
+      if (allTabElements && allTabElements.length > 0) {
+        for (let i = 0; i < allTabElements.length; i++) {
+          const tabElement = allTabElements[i];
+          if (tabElement.classList.contains('focused') || 
+              tabElement.getAttribute('data-focused') === 'true' ||
+              tabElement.classList.contains('active')) {
+            targetIndex = i;
+            break;
+          }
+        }
+      }
+    }
+    
+    // 如果还是没找到，使用第一个标签页而不是最后一个（更符合用户预期）
+    if (targetIndex === -1 && currentTabs.length > 0) {
+      targetIndex = 0;
+      this.log(`⚠️ 无法确定当前聚焦的标签页，使用第一个标签页作为替换目标`);
+    }
+    
+    if (targetIndex >= 0 && targetIndex < currentTabs.length) {
+      const targetTab = currentTabs[targetIndex];
+      // 如果目标标签是置顶的，创建新标签而不是替换
+      if (targetTab.isPinned) {
+        this.log(`📌 目标标签已置顶，创建新标签: "${newTabInfo.title}"`);
+        // 在所有置顶标签后面插入新标签（而不是目标标签后面）
+        const pinnedCount = currentTabs.filter(t => t.isPinned).length;
+        currentTabs.splice(pinnedCount, 0, newTabInfo);
+        this.updateFocusState(blockId, newTabInfo.title);
+        this.setCurrentPanelTabs(currentTabs);
+        this.immediateUpdateTabsUI();
+      } else {
+        // 替换目标标签页的内容
+        currentTabs[targetIndex] = newTabInfo;
+        this.updateFocusState(blockId, newTabInfo.title);
+        this.setCurrentPanelTabs(currentTabs);
+        this.immediateUpdateTabsUI();
+      }
     } else {
       // 如果没有任何标签页，创建第一个标签页
       currentTabs = [newTabInfo];
@@ -8927,25 +9017,33 @@ class OrcaTabsPlugin {
 
       if (shouldCheckNewBlocks) {
         /**
-         * 立即检查聚焦状态变化（修复同步问题）
+         * 检查聚焦状态变化（带防抖）
          * 
          * 问题背景：
-         * - MutationObserver检测到变化后使用100ms延迟
-         * - 延迟导致标签页更新滞后
-         * - 用户看到DOM变化但标签页未同步
+         * - MutationObserver 频繁触发导致大量重复调用
+         * - 每次 DOM 变化都会触发检查
+         * - 导致性能问题和大量日志
          * 
          * 修复方案：
-         * - 移除延迟，立即检查聚焦状态变化
-         * - 确保DOM变化时标签页立即同步
-         * - 提供即时的视觉反馈
+         * - 添加防抖机制，限制调用频率
+         * - 在300ms内只响应一次检查请求
+         * - 确保DOM变化时标签页能够同步，但避免过度调用
          * 
          * 避坑点：
-         * 1. 不要在DOM变化检测后使用延迟
-         * 2. 确保MutationObserver立即响应
-         * 3. 避免用户看到不一致的状态
-         * 4. 保持DOM变化与标签页的同步
+         * 1. 防抖间隔不能太长，避免用户感知延迟
+         * 2. 防抖间隔不能太短，避免频繁调用
+         * 3. 需要在真正有状态变化时才更新
          */
-        await this.checkCurrentPanelBlocks();
+        const now = Date.now();
+        const blockCheckInterval = 300; // 300ms 防抖间隔
+        const timeSinceLastCheck = now - this.lastBlockCheckTime;
+        if (timeSinceLastCheck > blockCheckInterval) {
+          this.verboseLog(`🔍 块检查防抖：距离上次检查 ${timeSinceLastCheck}ms，执行检查`);
+          this.lastBlockCheckTime = now;
+          await this.checkCurrentPanelBlocks();
+        } else {
+          this.verboseLog(`⏭️ 跳过块检查：距离上次检查仅 ${timeSinceLastCheck}ms`);
+        }
       }
     });
 
@@ -9132,15 +9230,27 @@ class OrcaTabsPlugin {
               if (blockId) {
                 // 校验当前焦点的标签页是否匹配
                 const focusedTab = this.tabContainer?.querySelector('.orca-tab[data-focused="true"]');
-                if (focusedTab) {
-                  const focusedTabId = focusedTab.getAttribute('data-tab-id');
-                  if (focusedTabId !== blockId) {
-                    this.verboseLog(`?? 焦点检测到变更: ${focusedTabId} -> ${blockId}`);
+                const hasFocusedTab = !!focusedTab;
+                
+                // 检查状态是否真正改变
+                const stateChanged = !this.lastFocusState || 
+                  this.lastFocusState.blockId !== blockId || 
+                  this.lastFocusState.hasFocusedTab !== hasFocusedTab;
+                
+                if (stateChanged) {
+                  // 更新状态记录
+                  this.lastFocusState = { blockId, hasFocusedTab };
+                  
+                  if (focusedTab) {
+                    const focusedTabId = focusedTab.getAttribute('data-tab-id');
+                    if (focusedTabId !== blockId) {
+                      this.verboseLog(`?? 焦点检测到变更: ${focusedTabId} -> ${blockId}`);
+                      await this.checkCurrentPanelBlocks();
+                    }
+                  } else {
+                    this.verboseLog(`?? 焦点检测到无聚焦标签页，当前块: ${blockId}`);
                     await this.checkCurrentPanelBlocks();
                   }
-                } else {
-                  this.verboseLog(`?? 焦点检测到无聚焦标签页，当前块: ${blockId}`);
-                  await this.checkCurrentPanelBlocks();
                 }
               }
             }
@@ -9920,7 +10030,7 @@ class OrcaTabsPlugin {
         padding: var(--orca-spacing-sm);
         cursor: pointer;
         font-size: 14px;
-        color: var(--orca-color-text-1);
+        color: ${isDarkMode ? '#ffffff' : '#333'};
         transition: background-color 0.2s ease;
         min-height: 24px;
       `;
@@ -10211,7 +10321,7 @@ class OrcaTabsPlugin {
         padding: var(--orca-spacing-sm);
         cursor: pointer;
         font-size: 14px;
-        color: var(--orca-color-text-1);
+        color: ${isDarkMode ? '#ffffff' : '#333'};
         transition: background-color 0.2s ease;
         min-height: 24px;
       `;
@@ -11529,7 +11639,7 @@ class OrcaTabsPlugin {
       border-bottom: 1px solid var(--orca-color-border);
       font-size: 14px;
       font-weight: 600;
-      color: var(--orca-color-text-1);
+      color: ${isDarkMode ? '#ffffff' : '#333'};
     `;
     title.textContent = '工作区';
 
@@ -11543,7 +11653,7 @@ class OrcaTabsPlugin {
       align-items: center;
       gap: 8px;
       border-bottom: 1px solid var(--orca-color-border);
-      color: var(--orca-color-text-1);
+      color: ${isDarkMode ? '#ffffff' : '#333'};
     `;
     saveCurrentItem.innerHTML = `
       <i class="ti ti-plus" style="font-size: 14px; color: var(--orca-color-primary-5);"></i>
@@ -11582,7 +11692,7 @@ class OrcaTabsPlugin {
           align-items: center;
           gap: 8px;
           border-bottom: 1px solid var(--orca-color-border);
-          color: var(--orca-color-text-1);
+          color: ${isDarkMode ? '#ffffff' : '#333'};
           ${this.currentWorkspace === workspace.id ? 'background: rgba(59, 130, 246, 0.1);' : ''}
         `;
         
@@ -11590,7 +11700,7 @@ class OrcaTabsPlugin {
         workspaceItem.innerHTML = `
           <i class="${icon}" style="font-size: 14px; color: var(--orca-color-primary-5);"></i>
           <div style="flex: 1;">
-            <div style="font-weight: 500; color: var(--orca-color-text-1);"">${workspace.name}</div>
+            <div style="font-weight: 500; color: ${isDarkMode ? '#ffffff' : '#333'};"">${workspace.name}</div>
             ${workspace.description ? `<div style="font-size: 12px; color: ${isDarkMode ? '#999' : '#666'}; margin-top: 2px;">${workspace.description}</div>` : ''}
             <div style="font-size: 11px; color: ${isDarkMode ? '#777' : '#999'}; margin-top: 2px;">${workspace.tabs.length}个标签</div>
           </div>
@@ -11615,7 +11725,7 @@ class OrcaTabsPlugin {
       display: flex;
       align-items: center;
       gap: 8px;
-      color: var(--orca-color-text-1);
+      color: ${isDarkMode ? '#ffffff' : '#333'};
     `;
     manageItem.innerHTML = `
       <i class="ti ti-settings" style="font-size: 14px; color: ${isDarkMode ? '#999' : '#666'};"></i>
