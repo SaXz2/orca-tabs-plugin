@@ -2872,16 +2872,34 @@ class OrcaTabsPlugin {
         --orca-input-bg: rgba(255, 255, 255, 0.1);
       }
       
-      /* 有颜色标签的CSS变量 */
+      /* 有颜色标签的CSS变量 - 使用条件CSS变量 */
       .orca-tabs-plugin .orca-tab {
         --orca-tab-colored-bg: oklch(from var(--tab-color, #3b82f6) calc(l * 0.8) calc(c * 1.5) h / 25%);
         --orca-tab-colored-text: oklch(from var(--tab-color, #3b82f6) calc(l * 0.6) c h);
       }
       
-      /* 暗色模式下有颜色标签的CSS变量 */
+      /* 暗色模式下的标签页颜色 - 使用最高优先级的选择器 */
       :root[data-theme="dark"] .orca-tabs-plugin .orca-tab,
-      .dark .orca-tabs-plugin .orca-tab {
-        --orca-tab-colored-text: oklch(from var(--tab-color, #3b82f6) calc(l * 1.6) c h);
+      html[data-theme="dark"] .orca-tabs-plugin .orca-tab,
+      [data-theme="dark"] .orca-tabs-plugin .orca-tab,
+      .dark .orca-tabs-plugin .orca-tab,
+      .orca-tabs-plugin .orca-tab[data-theme="dark"],
+      .orca-tabs-plugin[data-theme="dark"] .orca-tab {
+        --orca-tab-colored-text: oklch(from var(--tab-color, #3b82f6) calc(l * 1.05) c h) !important;
+      }
+      
+      /* 使用CSS媒体查询作为备用方案 */
+      @media (prefers-color-scheme: dark) {
+        .orca-tabs-plugin .orca-tab {
+          --orca-tab-colored-text: oklch(from var(--tab-color, #3b82f6) calc(l * 1.05) c h) !important;
+        }
+      }
+      
+      /* 强制覆盖所有可能的暗色模式选择器 */
+      :root.dark .orca-tabs-plugin .orca-tab,
+      html.dark .orca-tabs-plugin .orca-tab,
+      body.dark .orca-tabs-plugin .orca-tab {
+        --orca-tab-colored-text: oklch(from var(--tab-color, #3b82f6) calc(l * 1.05) c h) !important;
       }
       
 
@@ -3236,6 +3254,87 @@ class OrcaTabsPlugin {
       .orca-tabs-plugin .orca-tabs-plugin .orca-button-secondary:hover {
         background: color-mix(in srgb, var(--orca-color-primary-5), black 10%);
       }
+
+      /* 菜单项图标样式 */
+      .orca-tabs-plugin .tab-context-menu-item::before {
+        content: '';
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        margin-right: var(--orca-spacing-md);
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        vertical-align: middle;
+      }
+
+      /* 标签右键菜单图标 */
+      .orca-tabs-plugin .tab-context-menu-item[data-action="close"]::before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='18' y1='6' x2='6' y2='18'%3E%3C/line%3E%3Cline x1='6' y1='6' x2='18' y2='18'%3E%3C/line%3E%3C/svg%3E");
+      }
+
+      .orca-tabs-plugin .tab-context-menu-item[data-action="close-others"]::before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 6h18'%3E%3C/path%3E%3Cpath d='M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6'%3E%3C/path%3E%3Cpath d='M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2'%3E%3C/path%3E%3C/svg%3E");
+      }
+
+      .orca-tabs-plugin .tab-context-menu-item[data-action="close-right"]::before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 6h18'%3E%3C/path%3E%3Cpath d='M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6'%3E%3C/path%3E%3Cpath d='M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2'%3E%3C/path%3E%3C/svg%3E");
+      }
+
+      .orca-tabs-plugin .tab-context-menu-item[data-action="close-left"]::before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 6h18'%3E%3C/path%3E%3Cpath d='M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6'%3E%3C/path%3E%3Cpath d='M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2'%3E%3C/path%3E%3C/svg%3E");
+      }
+
+      .orca-tabs-plugin .tab-context-menu-item[data-action="duplicate"]::before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='9' width='13' height='13' rx='2' ry='2'%3E%3C/rect%3E%3Cpath d='M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1'%3E%3C/path%3E%3C/svg%3E");
+      }
+
+      .orca-tabs-plugin .tab-context-menu-item[data-action="rename"]::before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7'%3E%3C/path%3E%3Cpath d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z'%3E%3C/path%3E%3C/svg%3E");
+      }
+
+      .orca-tabs-plugin .tab-context-menu-item[data-action="save-to-group"]::before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z'%3E%3C/path%3E%3C/svg%3E");
+      }
+
+      /* 工作区菜单图标 */
+      .orca-tabs-plugin .workspace-menu-item::before {
+        content: '';
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        margin-right: var(--orca-spacing-md);
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        vertical-align: middle;
+      }
+
+      .orca-tabs-plugin .workspace-menu-item[data-action="save-current"]::before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z'%3E%3C/path%3E%3Cpolyline points='17,21 17,13 7,13 7,21'%3E%3C/polyline%3E%3Cpolyline points='7,3 7,8 15,8'%3E%3C/polyline%3E%3C/svg%3E");
+      }
+
+      .orca-tabs-plugin .workspace-menu-item[data-action="manage"]::before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'%3E%3C/circle%3E%3Cpath d='M12 1v6m0 6v6m11-7h-6m-6 0H1'%3E%3C/path%3E%3C/svg%3E");
+      }
+
+      .orca-tabs-plugin .workspace-menu-item[data-action="workspace"]::before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z'%3E%3C/path%3E%3C/svg%3E");
+      }
+
+      /* 添加到标签组菜单图标 */
+      .orca-tabs-plugin .add-to-group-menu-item::before {
+        content: '';
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        margin-right: var(--orca-spacing-md);
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        vertical-align: middle;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z'%3E%3C/path%3E%3C/svg%3E");
+      }
     `;
     
     document.head.appendChild(style);
@@ -3406,6 +3505,18 @@ class OrcaTabsPlugin {
             try {
               // 使用CSS自定义属性存储颜色值，让CSS处理主题变化
               (tabElement as HTMLElement).style.setProperty('--tab-color', tabInfo.color);
+              
+              // 检测暗色模式并直接设置正确的CSS变量
+              const isDarkMode = document.documentElement.hasAttribute('data-theme') 
+                ? document.documentElement.getAttribute('data-theme') === 'dark'
+                : document.documentElement.classList.contains('dark');
+              
+              if (isDarkMode) {
+                // 暗色模式下直接设置1.05的亮度
+                (tabElement as HTMLElement).style.setProperty('--orca-tab-colored-text', 
+                  `oklch(from var(--tab-color, #3b82f6) calc(l * 1.05) c h)`, 'important');
+              }
+              
               tabBackgroundColor = 'var(--orca-tab-colored-bg)';
               tabTextColor = 'var(--orca-tab-colored-text)';
               fontWeight = '600';
@@ -4933,7 +5044,7 @@ class OrcaTabsPlugin {
     // 设置样式 - 移除JS主题检测，让CSS变量自动处理
     // 固定到顶部模式使用水平布局样式
     const useVerticalStyle = this.isVerticalMode && !this.isFixedToTop;
-    const tabStyle = createTabBaseStyle(tab, useVerticalStyle, (hex: string, type: 'text' | 'background') => this.applyOklchFormula(hex, type));
+    const tabStyle = createTabBaseStyle(tab, useVerticalStyle, () => '');
     tabElement.style.cssText = tabStyle;
 
     // 创建标签内容容器
@@ -6489,6 +6600,8 @@ class OrcaTabsPlugin {
         const isDarkMode = document.documentElement.classList.contains('dark') || 
                           (window as any).orca?.state?.themeMode === 'dark';
         
+        addToGroupItem.className = 'add-to-group-menu-item';
+        addToGroupItem.setAttribute('data-action', 'add-to-group');
         addToGroupItem.style.cssText = `
           padding: var(--orca-spacing-sm);
           cursor: pointer;
@@ -6499,13 +6612,15 @@ class OrcaTabsPlugin {
           transition: background-color 0.2s;
           display: flex;
           align-items: center;
-          gap: 10px;
         `;
         
-        addToGroupItem.innerHTML = `
-          <i class="ti ti-bookmark-plus" style="font-size: 14px;"></i>
-          <span>添加到已有标签组</span>
+        // 创建文本子元素
+        const addToGroupText = document.createElement('span');
+        addToGroupText.textContent = '添加到已有标签组';
+        addToGroupText.style.cssText = `
+          margin-right: var(--orca-spacing-md);
         `;
+        addToGroupItem.appendChild(addToGroupText);
         
         addToGroupItem.addEventListener('mouseenter', () => {
           addToGroupItem.style.backgroundColor = 'var(--orca-color-menu-highlight)';
@@ -7159,13 +7274,17 @@ class OrcaTabsPlugin {
     
     // 设置输入框样式，保持透明背景
     let textColor = 'var(--orca-color-text-1)';
+    let customColorProps = '';
     
-    // 如果有颜色，应用颜色样式
+    // 如果有颜色，使用CSS变量处理
     if (tab.color) {
-      textColor = this.applyOklchFormula(tab.color, 'text');
+      const colorHex = tab.color.startsWith('#') ? tab.color : `#${tab.color}`;
+      customColorProps = `--tab-color: ${colorHex};`;
+      textColor = 'var(--orca-tab-colored-text)';
     }
 
     input.style.cssText = `
+      ${customColorProps}
       background: transparent;
       color: ${textColor};
       border: none;
@@ -7534,34 +7653,13 @@ class OrcaTabsPlugin {
    * 为标签添加Orca原生ContextMenu
    */
   addOrcaContextMenu(tabElement: HTMLElement, tab: TabInfo) {
-    // 检查Orca组件是否可用
-    const React = (window as any).React;
-    const ReactDOM = (window as any).ReactDOM;
-    
-    if (!React || !ReactDOM || !orca.components.ContextMenu || !orca.components.Menu || !orca.components.MenuText) {
-      // 如果组件不可用，延迟重试一次
-      setTimeout(() => {
-        const retryReact = (window as any).React;
-        const retryReactDOM = (window as any).ReactDOM;
-        
-        if (!retryReact || !retryReactDOM || !orca.components.ContextMenu || !orca.components.Menu || !orca.components.MenuText) {
-          // 仍然不可用，使用原生实现
-      tabElement.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        this.showTabContextMenu(e, tab);
-      });
-        } else {
-          // 重试成功，使用Orca组件
-          this.createOrcaContextMenu(tabElement, tab);
-        }
-      }, 100);
-      return;
-    }
-    
-    // 组件可用，直接创建
-    this.createOrcaContextMenu(tabElement, tab);
+    // 直接使用原生实现，确保图标能正确显示
+    tabElement.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      this.showTabContextMenu(e, tab);
+    });
   }
   
   createOrcaContextMenu(tabElement: HTMLElement, tab: TabInfo) {
@@ -7592,12 +7690,21 @@ class OrcaTabsPlugin {
           React.createElement(MenuText, {
             key: 'rename',
             title: '重命名标签',
-            preIcon: 'ti ti-edit',
             shortcut: 'F2',
             onClick: () => {
               close();
               this.renameTab(tab);
-            }
+            },
+            children: React.createElement('div', {
+              style: { display: 'flex', alignItems: 'center', gap: '8px' }
+            }, [
+              React.createElement('i', { 
+                key: 'icon',
+                className: 'ti ti-edit',
+                style: { fontSize: '14px', color: 'var(--orca-color-text-1)' }
+              }),
+              React.createElement('span', { key: 'text' }, '重命名标签')
+            ])
           }),
           React.createElement(MenuText, {
             key: 'pin',
@@ -7608,6 +7715,18 @@ class OrcaTabsPlugin {
               this.toggleTabPinStatus(tab);
             }
           }),
+          // 如果有保存的标签组，添加"添加到已有标签组"选项
+          ...(this.savedTabSets.length > 0 ? [
+            React.createElement(MenuText, {
+              key: 'addToGroup',
+              title: '添加到已有标签组',
+              preIcon: 'ti ti-bookmark-plus',
+              onClick: () => {
+                close();
+                this.showAddToTabGroupDialog(tab);
+              }
+            })
+          ] : []),
           React.createElement(MenuSeparator, { key: 'separator1' }),
           React.createElement(MenuText, {
             key: 'close',
@@ -7765,7 +7884,17 @@ class OrcaTabsPlugin {
 
     menuItems.forEach(item => {
       const menuItem = document.createElement('div');
-      menuItem.textContent = item.text;
+      menuItem.className = 'tab-context-menu-item';
+      
+      // 根据文本内容设置data-action属性
+      let actionType = '';
+      if (item.text.includes('关闭')) actionType = 'close';
+      else if (item.text.includes('重命名')) actionType = 'rename';
+      else if (item.text.includes('固定')) actionType = 'pin';
+      else if (item.text.includes('复制')) actionType = 'duplicate';
+      else if (item.text.includes('保存到标签组')) actionType = 'save-to-group';
+      
+      menuItem.setAttribute('data-action', actionType);
       menuItem.style.cssText = `
         padding: var(--orca-spacing-sm);
         cursor: pointer;
@@ -7775,6 +7904,33 @@ class OrcaTabsPlugin {
         border-radius: var(--orca-radius-md);
         transition: background-color 0.2s;
       `;
+      
+      // 创建图标元素
+      const iconElement = document.createElement('i');
+      iconElement.className = 'tab-context-menu-icon';
+      
+      // 根据文本内容设置图标
+      if (item.text.includes('重命名')) iconElement.classList.add('ti', 'ti-edit');
+      else if (item.text.includes('固定')) iconElement.classList.add('ti', tab.isPinned ? 'ti-pin-off' : 'ti-pin');
+      else if (item.text.includes('添加到已有标签组')) iconElement.classList.add('ti', 'ti-bookmark-plus');
+      else if (item.text.includes('关闭')) iconElement.classList.add('ti', 'ti-x');
+      else iconElement.classList.add('ti', 'ti-edit'); // 默认图标
+      
+      iconElement.style.cssText = `
+        flex: 0 0 auto;
+        font-size: var(--orca-fontsize-lg);
+        margin-top: var(--orca-spacing-xs);
+        margin-right: var(--orca-spacing-md);
+        color: var(--orca-tab-colored-text);
+        width: 16px;
+        text-align: center;
+      `;
+      menuItem.appendChild(iconElement);
+      
+      // 创建文本子元素
+      const textElement = document.createElement('span');
+      textElement.textContent = item.text;
+      menuItem.appendChild(textElement);
       
       if (!(item as any).disabled) {
         menuItem.addEventListener('mouseenter', () => {
@@ -11671,6 +11827,8 @@ class OrcaTabsPlugin {
 
     // 保存当前工作区选项
     const saveCurrentItem = document.createElement('div');
+    saveCurrentItem.className = 'workspace-menu-item';
+    saveCurrentItem.setAttribute('data-action', 'save-current');
     saveCurrentItem.style.cssText = `
       padding: var(--orca-spacing-sm);
       cursor: pointer;
@@ -11678,14 +11836,17 @@ class OrcaTabsPlugin {
       font-size: var(--orca-fontsize-sm);
       display: flex;
       align-items: center;
-      gap: 8px;
       border-radius: var(--orca-radius-md);
       color: var(--orca-color-text-1);
     `;
-    saveCurrentItem.innerHTML = `
-      <i class="ti ti-plus" style="font-size: 14px; color: var(--orca-color-primary-5);"></i>
-      <span>保存当前工作区</span>
+    
+    // 创建文本子元素
+    const saveCurrentText = document.createElement('span');
+    saveCurrentText.textContent = '保存当前工作区';
+    saveCurrentText.style.cssText = `
+      margin-right: var(--orca-spacing-md);
     `;
+    saveCurrentItem.appendChild(saveCurrentText);
     
     // 添加悬浮效果
     saveCurrentItem.addEventListener('mouseenter', () => {
@@ -11765,6 +11926,8 @@ class OrcaTabsPlugin {
 
     // 管理选项
     const manageItem = document.createElement('div');
+    manageItem.className = 'workspace-menu-item';
+    manageItem.setAttribute('data-action', 'manage');
     manageItem.style.cssText = `
       padding: var(--orca-spacing-sm);
       cursor: pointer;
@@ -11772,14 +11935,17 @@ class OrcaTabsPlugin {
       font-size: var(--orca-fontsize-sm);
       display: flex;
       align-items: center;
-      gap: 8px;
       border-radius: var(--orca-radius-md);
       color: var(--orca-color-text-1);
     `;
-    manageItem.innerHTML = `
-      <i class="ti ti-settings" style="font-size: 14px; color: ${isDarkMode ? '#999' : '#666'};"></i>
-      <span>管理工作区</span>
+    
+    // 创建文本子元素
+    const manageText = document.createElement('span');
+    manageText.textContent = '管理工作区';
+    manageText.style.cssText = `
+      margin-right: var(--orca-spacing-md);
     `;
+    manageItem.appendChild(manageText);
     
     // 添加悬浮效果
     manageItem.addEventListener('mouseenter', () => {

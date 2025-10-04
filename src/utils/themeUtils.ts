@@ -145,7 +145,7 @@ export function applyOklchFormula(hex: string, type: 'text' | 'background', isDa
       // 文字色：使用OKLCH from语法，基于原色生成文字色
       if (darkMode) {
         // 暗色模式：提高亮度，保持饱和度
-        return `oklch(from rgb(${r}, ${g}, ${b}) calc(l * 1.6) c h)`;
+        return `oklch(from rgb(${r}, ${g}, ${b}) calc(l * 1.05) c h)`;
       } else {
         // 亮色模式：降低亮度，保持饱和度
         return `oklch(from rgb(${r}, ${g}, ${b}) calc(l * 0.6) c h)`;
