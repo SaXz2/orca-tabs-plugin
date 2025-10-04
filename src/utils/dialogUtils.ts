@@ -732,9 +732,231 @@ export function createContextMenu(config: ContextMenuConfig): HTMLElement {
 }
 
 /**
- * 创建宽度调整对话框
+ * 创建标签宽度调整对话框
  */
 export function createWidthAdjustmentDialog(
+  maxWidth: number,
+  minWidth: number,
+  onInput: (maxWidth: number, minWidth: number) => void,
+  onCancel?: () => void
+): HTMLElement;
+/**
+ * 创建面板宽度调整对话框
+ */
+export function createWidthAdjustmentDialog(
+  currentWidth: number,
+  onInput: (width: number) => void,
+  onCancel: () => void
+): HTMLElement;
+export function createWidthAdjustmentDialog(
+  maxWidthOrCurrentWidth: number,
+  minWidthOrOnInput: number | ((width: number) => void),
+  onConfirmOrOnCancel?: ((maxWidth: number, minWidth: number) => void) | (() => void),
+  onCancel?: () => void
+): HTMLElement {
+  // 判断是水平布局还是垂直布局的参数
+  if (typeof minWidthOrOnInput === 'number' && typeof onConfirmOrOnCancel === 'function') {
+    // 水平布局：调整标签宽度
+    return createHorizontalWidthDialog(maxWidthOrCurrentWidth, minWidthOrOnInput, onConfirmOrOnCancel as (maxWidth: number, minWidth: number) => void, onCancel);
+  } else if (typeof minWidthOrOnInput === 'function' && typeof onConfirmOrOnCancel === 'function') {
+    // 垂直布局：调整面板宽度
+    return createVerticalWidthDialog(maxWidthOrCurrentWidth, minWidthOrOnInput as (width: number) => void, onConfirmOrOnCancel as () => void);
+  }
+  
+  throw new Error('Invalid parameters for createWidthAdjustmentDialog');
+}
+
+/**
+ * 创建水平布局标签宽度调整对话框
+ */
+function createHorizontalWidthDialog(
+  maxWidth: number,
+  minWidth: number,
+  onInput: (maxWidth: number, minWidth: number) => void,
+  onCancel?: () => void
+): HTMLElement {
+  const dialog = document.createElement('div');
+  dialog.className = 'width-adjustment-dialog';
+  
+  const dialogStyle = createDialogStyle();
+  dialog.style.cssText = dialogStyle;
+  
+  // 标题
+  const title = document.createElement('div');
+  title.className = 'dialog-title';
+  title.textContent = '调整标签宽度';
+  dialog.appendChild(title);
+  
+  // 最大宽度滑块容器
+  const maxWidthContainer = document.createElement('div');
+  maxWidthContainer.className = 'dialog-slider-container';
+  maxWidthContainer.style.cssText = `
+    margin: 20px 0;
+    padding: 0 20px;
+  `;
+  
+  // 最大宽度标签
+  const maxWidthLabel = document.createElement('div');
+  maxWidthLabel.textContent = '最大宽度 (80px - 200px)';
+  maxWidthLabel.style.cssText = `
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #333;
+  `;
+  
+  // 最大宽度滑块
+  const maxWidthSlider = document.createElement('input');
+  maxWidthSlider.type = 'range';
+  maxWidthSlider.min = '80';
+  maxWidthSlider.max = '200';
+  maxWidthSlider.value = maxWidth.toString();
+  maxWidthSlider.style.cssText = createSliderStyle();
+  
+  // 最大宽度显示
+  const maxWidthDisplay = document.createElement('div');
+  maxWidthDisplay.className = 'dialog-width-display';
+  maxWidthDisplay.style.cssText = `
+    text-align: center;
+    margin-top: 10px;
+    font-size: 14px;
+    color: #666;
+  `;
+  maxWidthDisplay.textContent = `最大宽度: ${maxWidth}px`;
+  
+  // 最小宽度滑块容器
+  const minWidthContainer = document.createElement('div');
+  minWidthContainer.className = 'dialog-slider-container';
+  minWidthContainer.style.cssText = `
+    margin: 20px 0;
+    padding: 0 20px;
+  `;
+  
+  // 最小宽度标签
+  const minWidthLabel = document.createElement('div');
+  minWidthLabel.textContent = '最小宽度 (60px - 150px)';
+  minWidthLabel.style.cssText = `
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #333;
+  `;
+  
+  // 最小宽度滑块
+  const minWidthSlider = document.createElement('input');
+  minWidthSlider.type = 'range';
+  minWidthSlider.min = '60';
+  minWidthSlider.max = '150';
+  minWidthSlider.value = minWidth.toString();
+  minWidthSlider.style.cssText = createSliderStyle();
+  
+  // 最小宽度显示
+  const minWidthDisplay = document.createElement('div');
+  minWidthDisplay.className = 'dialog-width-display';
+  minWidthDisplay.style.cssText = `
+    text-align: center;
+    margin-top: 10px;
+    font-size: 14px;
+    color: #666;
+  `;
+  minWidthDisplay.textContent = `最小宽度: ${minWidth}px`;
+  
+  // 滑块事件
+  maxWidthSlider.oninput = () => {
+    const newMaxWidth = parseInt(maxWidthSlider.value);
+    const newMinWidth = parseInt(minWidthSlider.value);
+    
+    // 确保最大宽度不小于最小宽度
+    if (newMaxWidth < newMinWidth) {
+      minWidthSlider.value = newMaxWidth.toString();
+      minWidthDisplay.textContent = `最小宽度: ${newMaxWidth}px`;
+    }
+    
+    maxWidthDisplay.textContent = `最大宽度: ${newMaxWidth}px`;
+    
+    // 实时调用回调函数
+    const finalMaxWidth = parseInt(maxWidthSlider.value);
+    const finalMinWidth = parseInt(minWidthSlider.value);
+    onInput(finalMaxWidth, finalMinWidth);
+  };
+  
+  minWidthSlider.oninput = () => {
+    const newMaxWidth = parseInt(maxWidthSlider.value);
+    const newMinWidth = parseInt(minWidthSlider.value);
+    
+    // 确保最小宽度不大于最大宽度
+    if (newMinWidth > newMaxWidth) {
+      maxWidthSlider.value = newMinWidth.toString();
+      maxWidthDisplay.textContent = `最大宽度: ${newMinWidth}px`;
+    }
+    
+    minWidthDisplay.textContent = `最小宽度: ${newMinWidth}px`;
+    
+    // 实时调用回调函数
+    const finalMaxWidth = parseInt(maxWidthSlider.value);
+    const finalMinWidth = parseInt(minWidthSlider.value);
+    onInput(finalMaxWidth, finalMinWidth);
+  };
+  
+  // 组装最大宽度容器
+  maxWidthContainer.appendChild(maxWidthLabel);
+  maxWidthContainer.appendChild(maxWidthSlider);
+  maxWidthContainer.appendChild(maxWidthDisplay);
+  
+  // 组装最小宽度容器
+  minWidthContainer.appendChild(minWidthLabel);
+  minWidthContainer.appendChild(minWidthSlider);
+  minWidthContainer.appendChild(minWidthDisplay);
+  
+  dialog.appendChild(maxWidthContainer);
+  dialog.appendChild(minWidthContainer);
+  
+  // 按钮容器
+  const buttonContainer = document.createElement('div');
+  buttonContainer.className = 'dialog-buttons';
+  buttonContainer.style.cssText = `
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 20px;
+    border-top: 1px solid #eee;
+  `;
+  
+  // 确定按钮
+  const confirmButton = document.createElement('button');
+  confirmButton.className = 'btn btn-primary';
+  confirmButton.textContent = '确定';
+  confirmButton.style.cssText = createButtonStyle();
+  confirmButton.onclick = () => {
+    // 确定时保存设置
+    const finalMaxWidth = parseInt(maxWidthSlider.value);
+    const finalMinWidth = parseInt(minWidthSlider.value);
+    onInput(finalMaxWidth, finalMinWidth);
+    closeDialog(dialog);
+  };
+  
+  // 取消按钮
+  const cancelButton = document.createElement('button');
+  cancelButton.className = 'btn btn-secondary';
+  cancelButton.textContent = '取消';
+  cancelButton.style.cssText = createButtonStyle();
+  cancelButton.onclick = () => {
+    // 取消时恢复原始设置
+    if (onCancel) {
+      onCancel();
+    }
+    closeDialog(dialog);
+  };
+  
+  buttonContainer.appendChild(confirmButton);
+  buttonContainer.appendChild(cancelButton);
+  dialog.appendChild(buttonContainer);
+  
+  return dialog;
+}
+
+/**
+ * 创建垂直布局面板宽度调整对话框
+ */
+function createVerticalWidthDialog(
   currentWidth: number,
   onInput: (width: number) => void,
   onCancel: () => void

@@ -304,7 +304,9 @@ export class TabStorageService {
         isSidebarAlignmentEnabled: false, // 这些值需要从外部传入
         isFloatingWindowVisible: false,
         showBlockTypeIcons: false,
-        showInHeadbar: false
+        showInHeadbar: false,
+        horizontalTabMaxWidth: 130,
+        horizontalTabMinWidth: 80
       });
       
       this.log(`💾 位置已保存: ${generatePositionLogMessage(position, isVerticalMode)}`);
@@ -327,6 +329,8 @@ export class TabStorageService {
     isFloatingWindowVisible: boolean;
     showBlockTypeIcons: boolean;
     showInHeadbar: boolean;
+    horizontalTabMaxWidth: number;
+    horizontalTabMinWidth: number;
   }): Promise<void> {
     try {
       await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.LAYOUT_MODE, layoutData, this.pluginName);

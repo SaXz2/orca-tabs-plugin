@@ -11,7 +11,9 @@ import { createStyledElement, addHoverEffect } from './domUtils';
 export function createTabBaseStyle(
   tab: TabInfo,
   isVerticalMode: boolean,
-  applyOklchFormula: (hex: string, type: 'text' | 'background') => string
+  applyOklchFormula: (hex: string, type: 'text' | 'background') => string,
+  horizontalTabMaxWidth?: number,
+  horizontalTabMinWidth?: number
 ): string {
   // 使用CSS变量设置默认颜色，让浏览器自动响应主题变化
   let backgroundColor: string = 'var(--orca-tab-bg)';
@@ -68,7 +70,8 @@ export function createTabBaseStyle(
     line-height: 20px;
     cursor: pointer;
     font-size: 12px;
-    max-width: 130px;
+    max-width: ${horizontalTabMaxWidth || 130}px;
+    min-width: ${horizontalTabMinWidth || 80}px;
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
     -webkit-app-region: no-drag;

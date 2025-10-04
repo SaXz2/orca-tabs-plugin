@@ -14,6 +14,8 @@ export interface LayoutConfig {
   isFloatingWindowVisible: boolean;
   showBlockTypeIcons: boolean;
   showInHeadbar: boolean;
+  horizontalTabMaxWidth: number;
+  horizontalTabMinWidth: number;
 }
 
 export interface PositionConfig {
@@ -33,7 +35,9 @@ export function createDefaultLayoutConfig(): LayoutConfig {
     isSidebarAlignmentEnabled: false,
     isFloatingWindowVisible: true,
     showBlockTypeIcons: true,
-    showInHeadbar: true
+    showInHeadbar: true,
+    horizontalTabMaxWidth: 130,
+    horizontalTabMinWidth: 80
   };
 }
 
@@ -74,7 +78,9 @@ export function mergeLayoutConfig(saved: Partial<LayoutConfig>): LayoutConfig {
     isSidebarAlignmentEnabled: saved.isSidebarAlignmentEnabled ?? defaultConfig.isSidebarAlignmentEnabled,
     isFloatingWindowVisible: saved.isFloatingWindowVisible ?? defaultConfig.isFloatingWindowVisible,
     showBlockTypeIcons: saved.showBlockTypeIcons ?? defaultConfig.showBlockTypeIcons,
-    showInHeadbar: saved.showInHeadbar ?? defaultConfig.showInHeadbar
+    showInHeadbar: saved.showInHeadbar ?? defaultConfig.showInHeadbar,
+    horizontalTabMaxWidth: saved.horizontalTabMaxWidth ?? defaultConfig.horizontalTabMaxWidth,
+    horizontalTabMinWidth: saved.horizontalTabMinWidth ?? defaultConfig.horizontalTabMinWidth
   };
 }
 

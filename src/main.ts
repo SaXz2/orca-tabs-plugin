@@ -796,6 +796,12 @@ class OrcaTabsPlugin {
   /** 水平模式位置 - 水平布局模式下的标签页容器位置 */
   private horizontalPosition: TabPosition = { x: 20, y: 20 };
   
+  /** 水平布局标签最大宽度 - 水平布局下标签的最大宽度 */
+  private horizontalTabMaxWidth: number = 130;
+  
+  /** 水平布局标签最小宽度 - 水平布局下标签的最小宽度 */
+  private horizontalTabMinWidth: number = 80;
+  
   // ==================== 调整大小状态 ====================
   /** 是否正在调整大小 - 标识当前是否正在进行大小调整操作 */
   private isResizing: boolean = false;
@@ -3834,6 +3840,89 @@ class OrcaTabsPlugin {
     }
   }
 
+
+  /**
+   * 显示宽度调整对话框
+   */
+  async showWidthAdjustmentDialog() {
+    try {
+      if (this.isVerticalMode) {
+        // 垂直模式：调整面板宽度
+        const dialog = createWidthAdjustmentDialog(
+          this.verticalWidth,
+          async (newWidth: number) => {
+            // 实时调整面板宽度
+            try {
+              orca.nav.changeSizes(orca.state.activePanel, [newWidth]);
+            } catch (error) {
+              this.error("调整面板宽度失败:", error);
+            }
+            
+            this.verticalWidth = newWidth;
+            
+            // 实时保存设置
+            try {
+              await this.saveLayoutMode();
+            } catch (error) {
+              this.error("保存宽度设置失败:", error);
+            }
+          },
+          async () => {
+            // 取消时恢复原始宽度
+            try {
+              orca.nav.changeSizes(orca.state.activePanel, [this.verticalWidth]);
+            } catch (error) {
+              this.error("恢复面板宽度失败:", error);
+            }
+          }
+        ) as HTMLElement;
+        
+        document.body.appendChild(dialog);
+      } else {
+        // 水平模式：调整标签宽度
+        // 记录原始宽度设置，用于取消时恢复
+        const originalMaxWidth = this.horizontalTabMaxWidth;
+        const originalMinWidth = this.horizontalTabMinWidth;
+        
+        const dialog = createWidthAdjustmentDialog(
+          this.horizontalTabMaxWidth,
+          this.horizontalTabMinWidth,
+          async (maxWidth: number, minWidth: number) => {
+            // 实时更新宽度设置
+            this.horizontalTabMaxWidth = maxWidth;
+            this.horizontalTabMinWidth = minWidth;
+            
+            // 实时重新创建标签UI以应用新宽度
+            await this.createTabsUI();
+            
+            // 保存设置到存储
+            try {
+              await this.saveLayoutMode();
+            } catch (error) {
+              this.error("保存宽度设置失败:", error);
+            }
+            
+            this.log(`📏 标签宽度已实时调整: 最大${maxWidth}px, 最小${minWidth}px`);
+          },
+          async () => {
+            // 取消时恢复原始设置
+            this.horizontalTabMaxWidth = originalMaxWidth;
+            this.horizontalTabMinWidth = originalMinWidth;
+            
+            // 重新创建标签UI以恢复原始宽度
+            await this.createTabsUI();
+            
+            this.log(`📏 标签宽度已恢复: 最大${originalMaxWidth}px, 最小${originalMinWidth}px`);
+          }
+        );
+        
+        document.body.appendChild(dialog);
+      }
+    } catch (error) {
+      this.error("显示宽度调整对话框失败:", error);
+    }
+  }
+
   /**
    * 移除工作区按钮
    */
@@ -4047,6 +4136,22 @@ class OrcaTabsPlugin {
           text: '调整面板宽度',
           action: () => this.showWidthAdjustmentDialog(),
           icon: '📏'
+        }
+      );
+    }
+
+    // 在水平布局下添加标签宽度调整选项
+    if (!this.isVerticalMode) {
+      menuItems.push(
+        {
+          text: '---',
+          action: () => {},
+          separator: true
+        },
+        {
+          text: '调整标签宽度',
+          action: () => this.showWidthAdjustmentDialog(),
+          icon: '⚙'
         }
       );
     }
@@ -4986,59 +5091,6 @@ class OrcaTabsPlugin {
   }
 
   /**
-   * 显示宽度调整对话框
-   */
-  async showWidthAdjustmentDialog() {
-    // 移除现有的对话框
-    const existingDialog = document.querySelector('.width-adjustment-dialog');
-    if (existingDialog) {
-      existingDialog.remove();
-    }
-
-    // 记录原始宽度，用于取消时恢复
-    const originalWidth = this.verticalWidth;
-
-    // 创建对话框
-    const dialog = createWidthAdjustmentDialog(
-      this.verticalWidth,
-      async (newWidth: number) => {
-      // 实时调整面板宽度
-      try {
-        orca.nav.changeSizes(orca.state.activePanel, [newWidth]);
-        
-        if (this.tabContainer) {
-          this.tabContainer.style.width = `${newWidth}px`;
-        }
-        
-        this.verticalWidth = newWidth;
-          
-          // 实时保存设置
-          await this.saveLayoutMode();
-      } catch (error) {
-        this.error("实时调整面板宽度失败:", error);
-      }
-      },
-      async () => {
-      // 恢复到原始宽度
-      try {
-        orca.nav.changeSizes(orca.state.activePanel, [originalWidth]);
-        
-        if (this.tabContainer) {
-          this.tabContainer.style.width = `${originalWidth}px`;
-        }
-        
-        this.verticalWidth = originalWidth;
-      } catch (error) {
-        this.error("恢复面板宽度失败:", error);
-      }
-      }
-    );
-
-    // 添加到页面
-    document.body.appendChild(dialog);
-  }
-  
-  /**
    * 更新垂直模式宽度
    */
   async updateVerticalWidth(newWidth: number) {
@@ -5076,7 +5128,7 @@ class OrcaTabsPlugin {
     // 设置样式 - 移除JS主题检测，让CSS变量自动处理
     // 固定到顶部模式使用水平布局样式
     const useVerticalStyle = this.isVerticalMode && !this.isFixedToTop;
-    const tabStyle = createTabBaseStyle(tab, useVerticalStyle, () => '');
+    const tabStyle = createTabBaseStyle(tab, useVerticalStyle, () => '', this.horizontalTabMaxWidth, this.horizontalTabMinWidth);
     tabElement.style.cssText = tabStyle;
 
     // 创建标签内容容器
@@ -8350,7 +8402,9 @@ class OrcaTabsPlugin {
       isSidebarAlignmentEnabled: this.isSidebarAlignmentEnabled,
       isFloatingWindowVisible: this.isFloatingWindowVisible,
       showBlockTypeIcons: this.showBlockTypeIcons,
-      showInHeadbar: this.showInHeadbar
+      showInHeadbar: this.showInHeadbar,
+      horizontalTabMaxWidth: this.horizontalTabMaxWidth,
+      horizontalTabMinWidth: this.horizontalTabMinWidth
     });
   }
 
@@ -8474,6 +8528,8 @@ class OrcaTabsPlugin {
         this.isFloatingWindowVisible = config.isFloatingWindowVisible;
         this.showBlockTypeIcons = config.showBlockTypeIcons;
         this.showInHeadbar = config.showInHeadbar;
+        this.horizontalTabMaxWidth = config.horizontalTabMaxWidth;
+        this.horizontalTabMinWidth = config.horizontalTabMinWidth;
         
         this.log(`📐 布局模式已恢复: ${generateLayoutLogMessage(config)}, 当前位置: (${this.position.x}, ${this.position.y})`);
       } else {
@@ -8483,6 +8539,8 @@ class OrcaTabsPlugin {
         this.verticalWidth = defaultConfig.verticalWidth;
         this.verticalPosition = defaultConfig.verticalPosition;
         this.horizontalPosition = defaultConfig.horizontalPosition;
+        this.horizontalTabMaxWidth = defaultConfig.horizontalTabMaxWidth;
+        this.horizontalTabMinWidth = defaultConfig.horizontalTabMinWidth;
         this.position = getPositionByMode(
           this.isVerticalMode,
           this.verticalPosition,

@@ -95,4 +95,10 @@ export const PLUGIN_STORAGE_KEYS = {
   
   /** 刷新后恢复聚焦标签页 - 存储是否在软件刷新后自动聚焦并打开当前聚焦的标签页 */
   RESTORE_FOCUSED_TAB: 'restore-focused-tab',
+  
+  /** 水平布局标签最大宽度 - 存储水平布局下标签的最大宽度设置 */
+  HORIZONTAL_TAB_MAX_WIDTH: 'horizontal-tab-max-width',
+  
+  /** 水平布局标签最小宽度 - 存储水平布局下标签的最小宽度设置 */
+  HORIZONTAL_TAB_MIN_WIDTH: 'horizontal-tab-min-width',
 } as const;
