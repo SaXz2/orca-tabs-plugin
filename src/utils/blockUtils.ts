@@ -181,10 +181,10 @@ export async function detectBlockType(block: any): Promise<string> {
           if (isPage) {
             return 'page';
           } else {
-            return 'alias';
+            return 'tag';
           }
         } catch (e) {
-          return 'alias';
+          return 'tag';
         }
       }
     }
@@ -307,7 +307,7 @@ export function getBlockTypeIcon(blockType: string): string {
     // 基础块类型
     'journal': '📅',              // 日期块 - 保持emoji
     'alias': 'ti ti-tag',         // 别名块
-    'page': 'ti ti-file-text',    // 页面
+    'page': 'ti ti-file',         // 页面
     'tag': 'ti ti-hash',          // 标签
     'heading': 'ti ti-heading',   // 标题
     'code': 'ti ti-code',         // 代码

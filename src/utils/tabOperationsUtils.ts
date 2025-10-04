@@ -250,17 +250,21 @@ export function toggleTabPinStatus(
 
     // 切换固定状态
     tabs[tabIndex].isPinned = !tabs[tabIndex].isPinned;
+    const isPinned = tabs[tabIndex].isPinned;
 
     // 重新排序
     if (updateOrder) {
       sortTabsByPinStatus(tabs);
     }
 
-    const status = tabs[tabIndex].isPinned ? '固定' : '取消固定';
+    // 排序后重新查找标签索引
+    const newTabIndex = tabs.findIndex(t => t.blockId === tab.blockId);
+    
+    const status = isPinned ? '固定' : '取消固定';
     return {
       success: true,
       message: `标签 "${tab.title}" 已${status}`,
-      data: { tab: tabs[tabIndex], tabIndex }
+      data: { tab: tabs[newTabIndex], tabIndex: newTabIndex }
     };
   } catch (error) {
     return {

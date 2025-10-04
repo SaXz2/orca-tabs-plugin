@@ -709,6 +709,9 @@ class OrcaTabsPlugin {
   /** 是否正在拖拽 - 标识当前是否处于拖拽状态 */
   private isDragging = false;
   
+  /** 是否正在切换标签 - 防止在标签切换过程中错误替换标签 */
+  private isSwitchingTab = false;
+  
   /** 拖拽起始X坐标 - 记录拖拽开始时的鼠标X坐标 */
   private dragStartX = 0;
   
@@ -737,6 +740,9 @@ class OrcaTabsPlugin {
   
   /** 面板状态检测任务 - 防止 checkPanelStatusChange 并发执行 */
   private panelStatusCheckTask: Promise<void> | null = null;
+  
+  /** 正在创建的标签 - 防止重复创建同一个标签 */
+  private creatingTabs: Set<string> = new Set();
   
   /** 全局事件监听器 - 统一的全局事件处理函数 */
   private globalEventListener: ((e: Event) => void) | null = null;
@@ -1729,12 +1735,43 @@ class OrcaTabsPlugin {
     if (dragIndex === -1 || targetIndex === -1) return;
     if (dragIndex === targetIndex) return;
     
+    // 计算置顶标签的数量
+    const pinnedCount = currentTabs.filter(t => t.isPinned).length;
+    
     // 计算实际插入位置
     let insertIndex = position === 'before' ? targetIndex : targetIndex + 1;
     
     // 如果拖拽源在目标之前，需要调整插入位置
     if (dragIndex < insertIndex) {
       insertIndex--;
+    }
+    
+    // 置顶标签只能在置顶区域内拖动
+    if (draggingTab.isPinned) {
+      // 置顶标签不能拖到非置顶区域
+      if (insertIndex >= pinnedCount) {
+        this.verboseLog(`📌 阻止置顶标签拖到非置顶区域: ${draggingTab.title}`);
+        return;
+      }
+      // 置顶标签不能拖到非置顶标签上
+      if (!targetTab.isPinned) {
+        this.verboseLog(`📌 阻止置顶标签拖到非置顶标签上: ${draggingTab.title} -> ${targetTab.title}`);
+        return;
+      }
+    }
+    
+    // 非置顶标签只能在非置顶区域内拖动
+    if (!draggingTab.isPinned) {
+      // 非置顶标签不能拖到置顶区域
+      if (insertIndex < pinnedCount) {
+        this.verboseLog(`📌 阻止非置顶标签拖到置顶区域: ${draggingTab.title}`);
+        return;
+      }
+      // 非置顶标签不能拖到置顶标签上
+      if (targetTab.isPinned) {
+        this.verboseLog(`📌 阻止非置顶标签拖到置顶标签上: ${draggingTab.title} -> ${targetTab.title}`);
+        return;
+      }
     }
     
     // 如果位置没变，跳过
@@ -4958,7 +4995,7 @@ class OrcaTabsPlugin {
     // 添加右键菜单事件（使用Orca原生ContextMenu）
     this.addOrcaContextMenu(tabElement, tab);
 
-    // 添加标签拖拽排序功能
+    // 添加标签拖拽排序功能（所有标签都可以拖动）
     tabElement.draggable = true;
     
     // 拖拽开始事件（优化版）
@@ -5092,6 +5129,12 @@ class OrcaTabsPlugin {
       }
       
       if (this.draggingTab && this.draggingTab.blockId !== tab.blockId) {
+        // 置顶标签只能拖到置顶标签上，非置顶标签只能拖到非置顶标签上
+        if (this.draggingTab.isPinned !== tab.isPinned) {
+          e.dataTransfer!.dropEffect = 'none';
+          return;
+        }
+        
         e.preventDefault(); // 允许放置（必须调用，否则无法触发后续逻辑）
         e.stopPropagation(); // 阻止事件冒泡
         e.dataTransfer!.dropEffect = 'move';
@@ -5144,6 +5187,11 @@ class OrcaTabsPlugin {
       }
       
       if (this.draggingTab && this.draggingTab.blockId !== tab.blockId) {
+        // 置顶标签只能拖到置顶标签上，非置顶标签只能拖到非置顶标签上
+        if (this.draggingTab.isPinned !== tab.isPinned) {
+          return;
+        }
+        
         e.preventDefault();
         e.stopPropagation();
         this.verboseLog(`🔄 拖拽进入: ${tab.title}`);
@@ -5434,6 +5482,9 @@ class OrcaTabsPlugin {
       this.recordPerformanceCountMetric(this.performanceMetricKeys.tabInteraction);
       this.log(`🔄 开始切换标签: ${tab.title} (ID: ${tab.blockId})`);
       
+      // 设置标记，防止在切换过程中错误替换标签
+      this.isSwitchingTab = true;
+      
       // 记录当前激活标签的滚动位置
       const currentActiveTab = this.getCurrentActiveTab();
       if (currentActiveTab && currentActiveTab.blockId !== tab.blockId) {
@@ -5541,8 +5592,14 @@ class OrcaTabsPlugin {
         await this.saveCurrentTabsToWorkspace();
         this.log(`🔄 标签页切换，实时更新工作区: ${tab.title}`);
       }
+      
+      // 延迟清除标记，确保导航完成后再允许替换操作
+      setTimeout(() => {
+        this.isSwitchingTab = false;
+      }, 300);
     } catch (e) {
       this.error("切换标签失败:", e);
+      this.isSwitchingTab = false; // 出错时也要清除标记
     }
   }
 
@@ -8319,6 +8376,12 @@ class OrcaTabsPlugin {
   private async handleNewBlockInPanel(blockId: string, panelId: string) {
     if (!blockId || !panelId) return;
     
+    // 如果正在切换标签，不要替换现有标签
+    if (this.isSwitchingTab) {
+      this.log(`🔄 正在切换标签，跳过 handleNewBlockInPanel: ${blockId}`);
+      return;
+    }
+    
     // 【修复】验证是否应该处理这个面板的变化
     // 关键判断：只有当新块出现在当前用户正在使用的面板中时，才应该更新标签页
     
@@ -8370,13 +8433,50 @@ class OrcaTabsPlugin {
       return;
     }
     
-    // 标签页不存在，需要创建新的标签页信息
-    const newTabInfo = await this.createTabInfoFromBlock(blockId, panelId);
-    if (!newTabInfo) return;
+    // 检查是否正在创建中
+    if (this.creatingTabs.has(blockId)) {
+      this.log(`⏳ 标签 ${blockId} 正在被其他地方创建，跳过`);
+      return;
+    }
+    
+    // 标记为正在创建
+    this.creatingTabs.add(blockId);
+    
+    let newTabInfo: TabInfo | null = null;
+    try {
+      // 标签页不存在，需要创建新的标签页信息
+      newTabInfo = await this.createTabInfoFromBlock(blockId, panelId);
+      if (!newTabInfo) return;
+      
+      // 重新获取tabs并再次检查（异步操作期间可能被其他地方创建了）
+      currentTabs = this.getCurrentPanelTabs();
+      const recheckExistingTab = currentTabs.find(tab => tab.blockId === blockId);
+      if (recheckExistingTab) {
+        this.log(`✅ 标签已被其他地方创建（在await期间），只更新聚焦状态: "${recheckExistingTab.title}"`);
+        this.updateFocusState(blockId, recheckExistingTab.title);
+        this.immediateUpdateTabsUI();
+        return;
+      }
+    } finally {
+      // 确保清除标记
+      this.creatingTabs.delete(blockId);
+    }
     
     // 使用更可靠的方法获取当前激活的标签页
     const currentActiveTab = this.getCurrentActiveTab();
     if (currentActiveTab) {
+      // 如果当前激活的标签是置顶的，不应该替换它，而应该创建新标签
+      if (currentActiveTab.isPinned) {
+        this.log(`📌 当前激活标签已置顶，创建新标签: "${newTabInfo.title}"`);
+        // 在所有置顶标签后面插入新标签（而不是当前标签后面）
+        const pinnedCount = currentTabs.filter(t => t.isPinned).length;
+        currentTabs.splice(pinnedCount, 0, newTabInfo);
+        this.updateFocusState(blockId, newTabInfo.title);
+        this.setCurrentPanelTabs(currentTabs);
+        this.immediateUpdateTabsUI();
+        return;
+      }
+      
       // 找到当前激活标签页的索引
       const activeIndex = currentTabs.findIndex(tab => tab.blockId === currentActiveTab.blockId);
       if (activeIndex !== -1) {
@@ -8395,6 +8495,19 @@ class OrcaTabsPlugin {
     if (this.lastActiveBlockId) {
       const lastActiveIndex = currentTabs.findIndex(tab => tab.blockId === this.lastActiveBlockId);
       if (lastActiveIndex !== -1) {
+        const lastActiveTab = currentTabs[lastActiveIndex];
+        // 如果上一个激活的标签是置顶的，创建新标签而不是替换
+        if (lastActiveTab.isPinned) {
+          this.log(`📌 上一个激活标签已置顶，创建新标签: "${newTabInfo.title}"`);
+          // 在所有置顶标签后面插入新标签（而不是上一个标签后面）
+          const pinnedCount = currentTabs.filter(t => t.isPinned).length;
+          currentTabs.splice(pinnedCount, 0, newTabInfo);
+          this.updateFocusState(blockId, newTabInfo.title);
+          this.setCurrentPanelTabs(currentTabs);
+          this.immediateUpdateTabsUI();
+          return;
+        }
+        
         this.log(`🔄 使用上一个激活标签页作为替换目标: "${currentTabs[lastActiveIndex].title}" -> "${newTabInfo.title}"`);
         currentTabs[lastActiveIndex] = newTabInfo;
         this.updateFocusState(blockId, newTabInfo.title);
@@ -8435,11 +8548,23 @@ class OrcaTabsPlugin {
     }
     
     if (targetIndex >= 0 && targetIndex < currentTabs.length) {
-      // 替换目标标签页的内容
-      currentTabs[targetIndex] = newTabInfo;
-      this.updateFocusState(blockId, newTabInfo.title);
-      this.setCurrentPanelTabs(currentTabs);
-      this.immediateUpdateTabsUI();
+      const targetTab = currentTabs[targetIndex];
+      // 如果目标标签是置顶的，创建新标签而不是替换
+      if (targetTab.isPinned) {
+        this.log(`📌 目标标签已置顶，创建新标签: "${newTabInfo.title}"`);
+        // 在所有置顶标签后面插入新标签（而不是目标标签后面）
+        const pinnedCount = currentTabs.filter(t => t.isPinned).length;
+        currentTabs.splice(pinnedCount, 0, newTabInfo);
+        this.updateFocusState(blockId, newTabInfo.title);
+        this.setCurrentPanelTabs(currentTabs);
+        this.immediateUpdateTabsUI();
+      } else {
+        // 替换目标标签页的内容
+        currentTabs[targetIndex] = newTabInfo;
+        this.updateFocusState(blockId, newTabInfo.title);
+        this.setCurrentPanelTabs(currentTabs);
+        this.immediateUpdateTabsUI();
+      }
     } else {
       // 如果没有任何标签页，创建第一个标签页
       currentTabs = [newTabInfo];
@@ -8551,6 +8676,7 @@ class OrcaTabsPlugin {
       // 标签页不存在 - 更新当前聚焦标签页的内容
       const focusedTabElement = this.tabContainer?.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
       if (!focusedTabElement) {
+        this.log(`⚠️ 未找到聚焦的标签元素，当前块: ${blockId}`);
         return;
       }
 
@@ -8564,7 +8690,61 @@ class OrcaTabsPlugin {
         return;
       }
 
-      // 创建新的标签页信息并替换
+      const focusedTab = currentTabs[focusedIndex];
+      
+      // 如果聚焦的标签是置顶的，不应该替换它，而应该创建新标签
+      if (focusedTab.isPinned) {
+        this.log(`📌 聚焦标签已置顶，不替换，创建新标签: "${blockId}"`);
+        
+        // 再次检查是否已存在（可能在等待过程中被其他地方创建了）
+        const recheckExistingTab = currentTabs.find(tab => tab.blockId === blockId);
+        if (recheckExistingTab) {
+          this.log(`✅ 标签已被其他地方创建，只更新聚焦状态: "${recheckExistingTab.title}"`);
+          this.updateFocusState(blockId, recheckExistingTab.title);
+          await this.immediateUpdateTabsUI();
+          return;
+        }
+        
+        // 检查是否正在创建中
+        if (this.creatingTabs.has(blockId)) {
+          this.log(`⏳ 标签 ${blockId} 正在被其他地方创建，跳过`);
+          return;
+        }
+        
+        // 标记为正在创建
+        this.creatingTabs.add(blockId);
+        
+        try {
+          // 创建新的标签页信息
+          const newTabInfo = await this.getTabInfo(blockId, currentPanelId, currentTabs.length);
+          if (!newTabInfo) {
+            return;
+          }
+          
+          // 再次获取最新的tabs并检查（可能在await期间被创建了）
+          currentTabs = this.getCurrentPanelTabs();
+          const finalCheck = currentTabs.find(tab => tab.blockId === blockId);
+          if (finalCheck) {
+            this.log(`✅ 标签在创建过程中已被其他地方创建: "${finalCheck.title}"`);
+            this.updateFocusState(blockId, finalCheck.title);
+            await this.immediateUpdateTabsUI();
+            return;
+          }
+          
+          // 在所有置顶标签后面插入新标签（而不是当前聚焦标签后面）
+          const pinnedCount = currentTabs.filter(t => t.isPinned).length;
+          currentTabs.splice(pinnedCount, 0, newTabInfo);
+          this.updateFocusState(blockId, newTabInfo.title);
+          this.setCurrentPanelTabs(currentTabs);
+          await this.immediateUpdateTabsUI();
+        } finally {
+          // 确保清除标记
+          this.creatingTabs.delete(blockId);
+        }
+        return;
+      }
+
+      // 创建新的标签页信息并替换非置顶标签
       const newTabInfo = await this.getTabInfo(blockId, currentPanelId, focusedIndex);
       if (!newTabInfo) {
         return;
