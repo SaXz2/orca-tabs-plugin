@@ -16,6 +16,9 @@ export interface TooltipConfig {
   className?: string;
 }
 
+// 使用 WeakMap 存储清理函数，避免在 DOM 节点上挂载以 "_" 开头的属性
+const tooltipCleanupMap: WeakMap<HTMLElement, () => void> = new WeakMap();
+
 /**
  * 为元素添加悬浮提示
  * @param element 目标元素
@@ -27,33 +30,12 @@ export function addTooltip(element: HTMLElement, config: TooltipConfig): void {
     return;
   }
 
-  // 创建 tooltip 元素
-  const tooltip = document.createElement('div');
-  tooltip.className = `orca-tooltip ${config.className || ''}`;
-  
-  // 设置提示文本
-  const tooltipText = config.shortcut ? `${config.text} (${config.shortcut})` : config.text;
-  
-  // 使用 innerHTML 来支持换行
-  if (tooltipText.includes('\n')) {
-    tooltip.innerHTML = tooltipText.replace(/\n/g, '<br>');
-  } else {
-    tooltip.textContent = tooltipText;
-  }
-  
-  // 只设置必要的定位和显示样式
-  tooltip.style.cssText = `
-    position: absolute;
-    opacity: 0;
-    z-index: 10000;
-    pointer-events: none;
-  `;
-
-  // 添加到 body
-  document.body.appendChild(tooltip);
+  // 懒创建 tooltip，只有显示时才创建并插入 DOM
+  let tooltip: HTMLDivElement | null = null;
 
   let showTimeout: number | null = null;
   let hideTimeout: number | null = null;
+  // 不再使用 MutationObserver；改为严格的创建-销毁策略
 
   // 显示 tooltip
   const showTooltip = (e: MouseEvent) => {
@@ -63,12 +45,28 @@ export function addTooltip(element: HTMLElement, config: TooltipConfig): void {
     }
 
     showTimeout = setTimeout(() => {
+      // 创建并插入
+      if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.className = `orca-tooltip ${config.className || ''}`;
+        const tooltipText = config.shortcut ? `${config.text} (${config.shortcut})` : config.text;
+        if (tooltipText.includes('\n')) {
+          tooltip.innerHTML = tooltipText.replace(/\n/g, '<br>');
+        } else {
+          tooltip.textContent = tooltipText;
+        }
+        tooltip.style.cssText = `
+          position: absolute;
+          opacity: 0;
+          z-index: 10000;
+          pointer-events: none;
+        `;
+        document.body.appendChild(tooltip);
+      }
+
       const rect = element.getBoundingClientRect();
-      
-      // 先让 tooltip 显示以获取实际尺寸
       tooltip.style.opacity = '1';
-      tooltip.style.visibility = 'hidden'; // 隐藏但保持布局
-      
+      tooltip.style.visibility = 'hidden';
       const tooltipRect = tooltip.getBoundingClientRect();
       
       let left = 0;
@@ -169,11 +167,11 @@ export function addTooltip(element: HTMLElement, config: TooltipConfig): void {
 
       tooltip.style.left = `${left}px`;
       tooltip.style.top = `${top}px`;
-      tooltip.style.visibility = 'visible'; // 显示
+      tooltip.style.visibility = 'visible';
     }, config.delay || 300) as unknown as number;
   };
 
-  // 隐藏 tooltip
+  // 隐藏 tooltip（并在短延迟后从 DOM 移除，防止遗留）
   const hideTooltip = () => {
     if (showTimeout) {
       clearTimeout(showTimeout);
@@ -181,9 +179,11 @@ export function addTooltip(element: HTMLElement, config: TooltipConfig): void {
     }
 
     hideTimeout = setTimeout(() => {
-      tooltip.style.opacity = '0';
-      // 不要移除元素，只是隐藏它
-    }, 100) as unknown as number;
+      if (tooltip) {
+        if (tooltip.parentNode) tooltip.parentNode.removeChild(tooltip);
+        tooltip = null;
+      }
+    }, 0) as unknown as number;
   };
 
   // 绑定事件
@@ -191,18 +191,18 @@ export function addTooltip(element: HTMLElement, config: TooltipConfig): void {
   element.addEventListener('mouseleave', hideTooltip);
   element.addEventListener('mousedown', hideTooltip);
 
-  // 存储清理函数
-  (element as any)._tooltipCleanup = () => {
+  // 存储清理函数（通过 WeakMap）
+  const cleanup = () => {
     if (showTimeout) clearTimeout(showTimeout);
     if (hideTimeout) clearTimeout(hideTimeout);
     element.removeEventListener('mouseenter', showTooltip);
     element.removeEventListener('mouseleave', hideTooltip);
     element.removeEventListener('mousedown', hideTooltip);
-    // 只有在真正需要清理时才移除元素
-    if (tooltip.parentNode) {
+    if (tooltip && tooltip.parentNode) {
       tooltip.parentNode.removeChild(tooltip);
     }
   };
+  tooltipCleanupMap.set(element, cleanup);
 }
 
 /**
@@ -210,9 +210,10 @@ export function addTooltip(element: HTMLElement, config: TooltipConfig): void {
  * @param element 目标元素
  */
 export function removeTooltip(element: HTMLElement): void {
-  if ((element as any)._tooltipCleanup) {
-    (element as any)._tooltipCleanup();
-    delete (element as any)._tooltipCleanup;
+  const cleanup = tooltipCleanupMap.get(element);
+  if (cleanup) {
+    cleanup();
+    tooltipCleanupMap.delete(element);
   }
 }
 
