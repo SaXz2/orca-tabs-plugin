@@ -291,7 +291,6 @@ export function createStatusTooltip(text: string): TooltipConfig {
  */
 export function initializeTooltips(): void {
   const elements = document.querySelectorAll('[data-tooltip="true"]');
-  console.log(`找到 ${elements.length} 个需要初始化的 tooltip 元素`);
   
   elements.forEach((element, index) => {
     const text = element.getAttribute('data-tooltip-text');
@@ -306,7 +305,6 @@ export function initializeTooltips(): void {
       };
       
       addTooltip(element as HTMLElement, config);
-      console.log(`初始化 tooltip ${index + 1}:`, config);
     }
   });
 }

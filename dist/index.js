@@ -2996,8 +2996,7 @@ function he(s) {
   };
 }
 function va() {
-  const s = document.querySelectorAll('[data-tooltip="true"]');
-  console.log(`找到 ${s.length} 个需要初始化的 tooltip 元素`), s.forEach((e, t) => {
+  document.querySelectorAll('[data-tooltip="true"]').forEach((e, t) => {
     const a = e.getAttribute("data-tooltip-text"), i = e.getAttribute("data-tooltip-shortcut"), r = e.getAttribute("data-tooltip-delay");
     if (a) {
       const n = {
@@ -3005,7 +3004,7 @@ function va() {
         shortcut: i || void 0,
         delay: r ? parseInt(r) : void 0
       };
-      L(e, n), console.log(`初始化 tooltip ${t + 1}:`, n);
+      L(e, n);
     }
   });
 }
