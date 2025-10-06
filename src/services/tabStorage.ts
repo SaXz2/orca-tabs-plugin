@@ -508,17 +508,20 @@ export class TabStorageService {
     try {
       const allHistory = await this.restoreRecentTabSwitchHistory();
       
-      // 获取或创建当前标签的历史记录
-      if (!allHistory[fromTabId]) {
-        allHistory[fromTabId] = {
-          tabId: fromTabId,
+      // 使用全局历史记录键
+      const globalHistoryKey = 'global_tab_history';
+      
+      // 获取或创建全局历史记录
+      if (!allHistory[globalHistoryKey]) {
+        allHistory[globalHistoryKey] = {
+          tabId: globalHistoryKey,
           recentTabs: [],
           lastUpdated: Date.now(),
-          maxRecords: 20 // 最多保存20个历史记录
+          maxRecords: 50 // 全局历史记录保存更多记录
         };
       }
       
-      const history = allHistory[fromTabId];
+      const history = allHistory[globalHistoryKey];
       
       // 移除重复的标签（如果存在）
       history.recentTabs = history.recentTabs.filter(tab => tab.blockId !== toTab.blockId);
@@ -537,9 +540,9 @@ export class TabStorageService {
       // 保存更新后的历史记录
       await this.saveRecentTabSwitchHistory(allHistory);
       
-      this.log(`📝 更新标签 ${fromTabId} 的切换历史: 切换到 ${toTab.title} (历史记录数量: ${history.recentTabs.length})`);
+      this.log(`📝 更新全局切换历史: ${fromTabId} -> ${toTab.title} (历史记录数量: ${history.recentTabs.length})`);
     } catch (e) {
-      this.warn(`更新标签 ${fromTabId} 的切换历史失败:`, e);
+      this.warn(`更新全局切换历史失败:`, e);
     }
   }
 

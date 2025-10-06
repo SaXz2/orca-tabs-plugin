@@ -107,4 +107,10 @@ export const PLUGIN_STORAGE_KEYS = {
   
   /** 最近切换标签历史 - 存储每个标签的最近切换历史，用于悬浮显示功能 */
   RECENT_TAB_SWITCH_HISTORY: 'recent-tab-switch-history',
+  
+  /** 中键固定标签页功能开关 - 存储是否启用中键固定标签页功能 */
+  ENABLE_MIDDLE_CLICK_PIN: 'enable-middle-click-pin',
+  
+  /** 双击关闭标签页功能开关 - 存储是否启用双击关闭标签页功能 */
+  ENABLE_DOUBLE_CLICK_CLOSE: 'enable-double-click-close',
 } as const;

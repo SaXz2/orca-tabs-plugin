@@ -27,6 +27,70 @@ export function createTabContainer(
 }
 
 /**
+ * 创建功能切换按钮
+ */
+export function createFeatureToggleButton(
+  isVerticalMode: boolean,
+  isEnabled: boolean,
+  onClick: (e: MouseEvent) => void
+): HTMLElement {
+  const button = document.createElement('div');
+  button.className = 'feature-toggle-button';
+  button.innerHTML = isEnabled ? '🔒' : '🔓';
+  button.title = isEnabled ? '中键固定/双击关闭 (已启用)' : '中键固定/双击关闭 (已禁用)';
+  
+  const buttonStyle = isVerticalMode ? `
+    width: calc(100% - 6px);
+    margin: 0 3px;
+    height: 24px;
+    background: ${isEnabled ? 'rgba(0, 150, 0, 0.3)' : 'rgba(255, 0, 0, 0.3)'};
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: ${isEnabled ? '#004400' : '#660000'};
+    min-height: 24px;
+    flex-shrink: 0;
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
+    pointer-events: auto;
+    border-radius: var(--orca-radius-md);
+    transition: all 0.2s ease;
+    border: 2px solid ${isEnabled ? 'rgba(0, 150, 0, 0.8)' : 'rgba(255, 0, 0, 0.8)'};
+    z-index: 1000;
+  ` : `
+    width: 28px;
+    height: 28px;
+    background: ${isEnabled ? 'rgba(0, 150, 0, 0.3)' : 'rgba(255, 0, 0, 0.3)'};
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: ${isEnabled ? '#004400' : '#660000'};
+    margin-left: 4px;
+    min-height: 28px;
+    flex-shrink: 0;
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
+    pointer-events: auto;
+    border-radius: var(--orca-radius-md);
+    transition: all 0.2s ease;
+    border: 2px solid ${isEnabled ? 'rgba(0, 150, 0, 0.8)' : 'rgba(255, 0, 0, 0.8)'};
+    z-index: 1000;
+  `;
+  
+  button.style.cssText = buttonStyle;
+  button.addEventListener('click', onClick);
+  
+  // 添加悬停效果
+  addHoverEffect(button, isEnabled ? '#006600' : '#666', isEnabled ? '#004400' : '#333');
+  
+  return button;
+}
+
+/**
  * 创建新建标签按钮
  */
 export function createNewTabButton(

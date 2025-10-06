@@ -194,7 +194,8 @@ import {
   createNewTabButton, 
   createDragHandle, 
   createResizeHandle, 
-  createStatusElement
+  createStatusElement,
+  createFeatureToggleButton
 } from './utils/uiCreationUtils';
 import { 
   createWidthAdjustmentDialog,
@@ -580,6 +581,26 @@ class OrcaTabsPlugin {
     }
   }
   
+  /**
+   * 恢复功能开关设置
+   */
+  private async restoreFeatureToggleSettings(): Promise<void> {
+    try {
+      // 读取两个键，任意一个存在则以其为准，保持两者一致
+      const v1 = await this.storageService.getConfig<boolean>(PLUGIN_STORAGE_KEYS.ENABLE_MIDDLE_CLICK_PIN, this.pluginName);
+      const v2 = await this.storageService.getConfig<boolean>(PLUGIN_STORAGE_KEYS.ENABLE_DOUBLE_CLICK_CLOSE, this.pluginName);
+      const merged = (v1 !== null && v1 !== undefined) ? v1 : v2;
+      if (merged !== null && merged !== undefined) {
+        this.enableMiddleClickPin = merged;
+        this.enableDoubleClickClose = merged;
+      }
+      
+      this.log(`🔧 功能开关设置已恢复: 中键固定=${this.enableMiddleClickPin}, 双击关闭=${this.enableDoubleClickClose}`);
+    } catch (error) {
+      this.log('⚠️ 恢复功能开关设置失败:', error);
+    }
+  }
+  
   /* ———————————————————————————————————————————————————————————————————————————— */
   /* UI元素和状态管理 - UI Elements and State Management */
   /* ———————————————————————————————————————————————————————————————————————————— */
@@ -716,6 +737,12 @@ class OrcaTabsPlugin {
   
   /** 新标签是否添加到末尾（一次性标志，使用后自动重置为false） */
   private addNewTabToEnd: boolean = true;
+  
+  /** 是否启用中键固定标签页功能 - 控制中键点击是否固定标签页 */
+  private enableMiddleClickPin: boolean = false;
+  
+  /** 是否启用双击关闭标签页功能 - 控制双击是否关闭标签页 */
+  private enableDoubleClickClose: boolean = false;
   
   /* ———————————————————————————————————————————————————————————————————————————— */
   /* 性能优化 - Performance Optimization */
@@ -898,6 +925,9 @@ class OrcaTabsPlugin {
     
     // 恢复聚焦标签页恢复设置
     await this.restoreRestoreFocusedTabSetting();
+    
+    // 恢复功能开关设置
+    await this.restoreFeatureToggleSettings();
     
     const stopInitMeasurement = this.startPerformanceMeasurement(this.performanceMetricKeys.initTotal);
     
@@ -3971,6 +4001,187 @@ class OrcaTabsPlugin {
   }
 
   /**
+   * 添加功能切换按钮
+   */
+  addFeatureToggleButton() {
+    if (!this.tabContainer) return;
+    
+    // 检查是否已经存在功能切换按钮
+    const existingButton = this.tabContainer.querySelector('.feature-toggle-button');
+    if (existingButton) {
+      this.log('🔧 功能切换按钮已存在，跳过创建');
+      return;
+    }
+    
+    // 检查当前功能开关状态
+    const isEnabled = this.enableMiddleClickPin || this.enableDoubleClickClose;
+    this.log(`🔧 创建功能切换按钮，当前状态: 中键固定=${this.enableMiddleClickPin}, 双击关闭=${this.enableDoubleClickClose}, 按钮启用=${isEnabled}`);
+    
+    const featureToggleButton = createFeatureToggleButton(
+      this.isVerticalMode,
+      isEnabled,
+      async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.log('🔧 点击功能切换按钮');
+        alert('功能切换按钮被点击了！');
+        await this.toggleFeatureSettings();
+      }
+    );
+
+    // 添加工具提示
+    addTooltip(featureToggleButton, createButtonTooltip(
+      isEnabled ? '中键固定/双击关闭 (已启用)' : '中键固定/双击关闭 (已禁用)'
+    ));
+
+    // 添加悬停效果
+    featureToggleButton.addEventListener('mouseenter', () => {
+      featureToggleButton.style.background = isEnabled 
+        ? 'rgba(0, 150, 0, 0.2)' 
+        : 'rgba(0, 0, 0, 0.1)';
+      featureToggleButton.style.color = isEnabled ? '#004400' : '#333';
+    });
+    
+    featureToggleButton.addEventListener('mouseleave', () => {
+      featureToggleButton.style.background = isEnabled 
+        ? 'rgba(0, 150, 0, 0.1)' 
+        : 'transparent';
+      featureToggleButton.style.color = isEnabled ? '#006600' : '#666';
+    });
+
+    this.tabContainer.appendChild(featureToggleButton);
+    this.log('🔧 功能切换按钮已添加到DOM');
+  }
+  
+  /**
+   * 切换功能设置
+   */
+  private async toggleFeatureSettings() {
+    try {
+      this.log(`🔧 切换前状态: 中键固定=${this.enableMiddleClickPin}, 双击关闭=${this.enableDoubleClickClose}`);
+      
+      // 切换功能开关状态
+      this.enableMiddleClickPin = !this.enableMiddleClickPin;
+      this.enableDoubleClickClose = !this.enableDoubleClickClose;
+      
+      this.log(`🔧 切换后状态: 中键固定=${this.enableMiddleClickPin}, 双击关闭=${this.enableDoubleClickClose}`);
+      
+      // 保存设置到存储
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.ENABLE_MIDDLE_CLICK_PIN, this.enableMiddleClickPin, this.pluginName);
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.ENABLE_DOUBLE_CLICK_CLOSE, this.enableDoubleClickClose, this.pluginName);
+      
+      this.log('🔧 设置已保存到存储');
+      
+      // 更新按钮状态
+      this.updateFeatureToggleButton();
+      
+      this.log(`🔧 功能开关已切换: 中键固定=${this.enableMiddleClickPin}, 双击关闭=${this.enableDoubleClickClose}`);
+      
+      // 显示通知
+      this.showFeatureToggleNotification();
+    } catch (error) {
+      this.log('⚠️ 切换功能设置失败:', error);
+    }
+  }
+  
+  /**
+   * 更新功能切换按钮状态
+   */
+  private updateFeatureToggleButton() {
+    if (!this.tabContainer) return;
+    
+    const button = this.tabContainer.querySelector('.feature-toggle-button') as HTMLElement;
+    if (!button) return;
+    
+    const isEnabled = this.enableMiddleClickPin || this.enableDoubleClickClose;
+    
+    // 更新按钮内容
+    button.innerHTML = isEnabled ? '🔒' : '🔓';
+    button.title = isEnabled ? '中键固定/双击关闭 (已启用)' : '中键固定/双击关闭 (已禁用)';
+    
+    // 更新样式
+    const buttonStyle = this.isVerticalMode ? `
+      width: calc(100% - 6px);
+      margin: 0 3px;
+      height: 24px;
+      background: ${isEnabled ? 'rgba(0, 150, 0, 0.1)' : 'transparent'};
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: ${isEnabled ? '#006600' : '#666'};
+      min-height: 24px;
+      flex-shrink: 0;
+      -webkit-app-region: no-drag;
+      app-region: no-drag;
+      pointer-events: auto;
+      border-radius: var(--orca-radius-md);
+      transition: all 0.2s ease;
+      border: 1px solid ${isEnabled ? 'rgba(0, 150, 0, 0.3)' : 'transparent'};
+    ` : `
+      width: 24px;
+      height: 24px;
+      background: ${isEnabled ? 'rgba(0, 150, 0, 0.1)' : 'transparent'};
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: ${isEnabled ? '#006600' : '#666'};
+      margin-left: 4px;
+      min-height: 24px;
+      flex-shrink: 0;
+      -webkit-app-region: no-drag;
+      app-region: no-drag;
+      pointer-events: auto;
+      border-radius: var(--orca-radius-md);
+      transition: all 0.2s ease;
+      border: 1px solid ${isEnabled ? 'rgba(0, 150, 0, 0.3)' : 'transparent'};
+    `;
+    
+    button.style.cssText = buttonStyle;
+  }
+  
+  /**
+   * 显示功能切换通知
+   */
+  private showFeatureToggleNotification() {
+    const isEnabled = this.enableMiddleClickPin || this.enableDoubleClickClose;
+    const message = isEnabled 
+      ? '功能已启用：中键固定标签页，双击关闭标签页' 
+      : '功能已禁用：中键关闭标签页，双击固定标签页';
+    
+    // 创建通知元素
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: ${isEnabled ? '#4caf50' : '#ff9800'};
+      color: white;
+      padding: 12px 16px;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 10000;
+      font-size: 14px;
+      max-width: 300px;
+      word-wrap: break-word;
+      animation: slideInRight 0.3s ease;
+    `;
+    
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    // 3秒后自动移除
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 3000);
+  }
+
+  /**
    * 添加工作区按钮
    */
   addWorkspaceButton() {
@@ -5257,7 +5468,18 @@ class OrcaTabsPlugin {
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-      this.toggleTabPinStatus(tab);
+      
+      // 根据功能开关决定行为
+      this.log(`🔧 双击事件处理: enableDoubleClickClose=${this.enableDoubleClickClose}`);
+      if (this.enableDoubleClickClose) {
+        // 双击关闭标签页
+        this.log('🔧 双击关闭标签页');
+        this.closeTab(tab);
+      } else {
+        // 默认行为：切换固定状态
+        this.log('🔧 双击切换固定状态');
+        this.toggleTabPinStatus(tab);
+      }
     });
 
     // 添加中键点击事件
@@ -5266,7 +5488,18 @@ class OrcaTabsPlugin {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
-        this.closeTab(tab);
+        
+        // 根据功能开关决定行为
+        this.log(`🔧 中键事件处理: enableMiddleClickPin=${this.enableMiddleClickPin}`);
+        if (this.enableMiddleClickPin) {
+          // 中键固定标签页
+          this.log('🔧 中键固定标签页');
+          this.toggleTabPinStatus(tab);
+        } else {
+          // 默认行为：关闭标签页
+          this.log('🔧 中键关闭标签页');
+          this.closeTab(tab);
+        }
       }
     });
 
@@ -5792,13 +6025,13 @@ class OrcaTabsPlugin {
       
       // 记录当前激活标签的滚动位置
       const currentActiveTab = this.getCurrentActiveTab();
-      if (currentActiveTab && currentActiveTab.blockId !== tab.blockId) {
+      if (currentActiveTab) {
         this.recordScrollPosition(currentActiveTab);
         // 记录当前激活的标签ID，用于后续新标签的插入位置
         this.lastActiveBlockId = currentActiveTab.blockId;
         this.log(`🎯 记录切换前的激活标签: ${currentActiveTab.title} (ID: ${currentActiveTab.blockId})`);
         
-        // 记录标签切换历史
+        // 记录标签切换历史 - 无论是否切换到不同标签都记录
         this.recordTabSwitchHistory(currentActiveTab.blockId, tab);
       }
       
@@ -6051,6 +6284,12 @@ class OrcaTabsPlugin {
           defaultValue: true,
           description: "开启后，软件刷新时将自动聚焦并打开当前聚焦的标签页；关闭后，只打开持久化的标签页"
         },
+        enableMiddleClickPin: {
+          label: "中键固定/双击关闭模式",
+          type: "boolean" as const,
+          defaultValue: false,
+          description: "开启：中键=固定/取消固定，双击=关闭；关闭：中键=关闭，双击=固定/取消固定"
+        },
       };
 
       await orca.plugins.setSettingsSchema(this.pluginName, settingsSchema);
@@ -6099,6 +6338,21 @@ class OrcaTabsPlugin {
         // 保存设置
         await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.RESTORE_FOCUSED_TAB, settings.restoreFocusedTab, this.pluginName);
       }
+
+      // 新增：读取并持久化“中键固定 / 双击关闭”设置（单一开关，兼容旧字段）
+      if (settings?.enableMiddleClickPin !== undefined) {
+        this.enableMiddleClickPin = settings.enableMiddleClickPin;
+        this.enableDoubleClickClose = settings.enableMiddleClickPin; // 同步
+        await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.ENABLE_MIDDLE_CLICK_PIN, settings.enableMiddleClickPin, this.pluginName);
+        await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.ENABLE_DOUBLE_CLICK_CLOSE, settings.enableMiddleClickPin, this.pluginName);
+      }
+      // 兼容：若旧版本面板仍传入 enableDoubleClickClose，则以其为准同步两端
+      if (settings?.enableDoubleClickClose !== undefined) {
+        this.enableMiddleClickPin = settings.enableDoubleClickClose;
+        this.enableDoubleClickClose = settings.enableDoubleClickClose;
+        await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.ENABLE_MIDDLE_CLICK_PIN, settings.enableDoubleClickClose, this.pluginName);
+        await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.ENABLE_DOUBLE_CLICK_CLOSE, settings.enableDoubleClickClose, this.pluginName);
+      }
       
       this.log("✅ 插件设置已注册");
     } catch (error) {
@@ -6116,7 +6370,8 @@ class OrcaTabsPlugin {
       homePageBlockId: this.homePageBlockId,
       enableWorkspaces: this.enableWorkspaces,
       debugMode: this.currentLogLevel === LogLevel.VERBOSE,
-      restoreFocusedTab: this.restoreFocusedTab
+      restoreFocusedTab: this.restoreFocusedTab,
+      enableMiddleClickPin: this.enableMiddleClickPin
     };
     
     // 每2秒检查一次设置变化
@@ -6187,6 +6442,22 @@ class OrcaTabsPlugin {
           this.error("保存聚焦标签页恢复设置失败:", err);
         });
         this.lastSettings.restoreFocusedTab = this.restoreFocusedTab;
+      }
+
+      // 新增：监听中键固定/双击关闭（单一设置）变化；兼容旧字段
+      const currentSwap = (currentSettings.enableMiddleClickPin !== undefined)
+        ? currentSettings.enableMiddleClickPin
+        : currentSettings.enableDoubleClickClose; // 旧字段
+
+      if (currentSwap !== undefined && currentSwap !== this.lastSettings.enableMiddleClickPin) {
+        const newValue = !!currentSwap;
+        this.enableMiddleClickPin = currentSettings.enableMiddleClickPin;
+        this.enableDoubleClickClose = newValue; // 同步
+        this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.ENABLE_MIDDLE_CLICK_PIN, newValue, this.pluginName).catch(err => this.error("保存中键固定设置失败:", err));
+        this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.ENABLE_DOUBLE_CLICK_CLOSE, newValue, this.pluginName).catch(err => this.error("保存双击关闭设置失败:", err));
+        this.lastSettings.enableMiddleClickPin = newValue;
+        // 更新UI中可能存在的按钮状态（若仍存在）
+        this.updateFeatureToggleButton?.();
       }
     } catch (error) {
       this.error("检查设置变化失败:", error);
@@ -7073,32 +7344,19 @@ class OrcaTabsPlugin {
         try {
           this.log(`⏰ 长按触发，开始检查切换历史`);
           
-          // 获取所有切换历史记录（全局）
+          // 获取全局切换历史记录
           const allHistory = await this.tabStorageService.restoreRecentTabSwitchHistory();
-          const allRecentTabs: TabInfo[] = [];
+          const globalHistory = allHistory['global_tab_history'];
           
-          // 收集所有历史记录中的标签
-          Object.values(allHistory).forEach(history => {
-            if (history.recentTabs) {
-              allRecentTabs.push(...history.recentTabs);
-            }
-          });
+          this.log(`📋 全局切换历史记录: ${globalHistory ? globalHistory.recentTabs.length : 0} 个记录`);
           
-          this.log(`📋 收集到的历史记录: ${allRecentTabs.length} 个记录`);
-          
-          if (allRecentTabs.length === 0) {
-            this.log(`⚠️ 没有切换历史记录，不显示悬浮列表`);
+          if (!globalHistory || globalHistory.recentTabs.length === 0) {
+            this.log(`⚠️ 没有全局切换历史记录，不显示悬浮列表`);
             return;
           }
           
-          // 去重：基于blockId去重，保留最新的记录
-          const uniqueTabs = new Map<string, TabInfo>();
-          allRecentTabs.forEach(tab => {
-            uniqueTabs.set(tab.blockId, tab);
-          });
-          
-          // 转换为数组并按正序排列（最新的在后面）
-          const deduplicatedTabs = Array.from(uniqueTabs.values());
+          // 使用全局历史记录
+          const deduplicatedTabs = globalHistory.recentTabs;
           
           this.log(`📋 去重后的历史记录: ${deduplicatedTabs.length} 个记录`);
           
@@ -7133,6 +7391,8 @@ class OrcaTabsPlugin {
               if (existingTab) {
                 // 如果标签已存在，直接跳转到该标签
                 this.log(`🔄 标签已存在，跳转到: ${clickedTab.title}`);
+                // 更新全局历史记录，将点击的标签移到最新位置
+                this.recordTabSwitchHistory(tab.blockId, clickedTab);
                 this.switchToTab(clickedTab);
               } else {
                 // 如果标签不存在，替换当前标签页
@@ -7316,6 +7576,8 @@ class OrcaTabsPlugin {
               if (existingTab) {
                 // 如果标签已存在，直接跳转到该标签
                 this.log(`🔄 标签已存在，跳转到: ${clickedTab.title}`);
+                // 更新全局历史记录，将点击的标签移到最新位置
+                this.recordTabSwitchHistory(tab.blockId, clickedTab);
                 this.switchToTab(clickedTab);
               } else {
                 // 如果标签不存在，替换当前标签页
