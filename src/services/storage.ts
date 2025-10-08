@@ -94,9 +94,9 @@ export class OrcaStorageService {
       this.log(`💾 已保存插件数据 ${key}:`, data);
       return true;
     } catch (error) {
-      // 错误处理 - 记录错误并尝试降级到localStorage
-      this.warn(`无法保存插件数据 ${key}，尝试降级到localStorage:`, error);
-      return this.saveToLocalStorage(key, data);
+      // 错误处理 - 记录错误
+      this.error(`无法保存插件数据 ${key}:`, error);
+      return false;
     }
   }
 
@@ -153,9 +153,9 @@ export class OrcaStorageService {
       this.log(`📂 已读取插件数据 ${key}:`, parsedResult);
       return parsedResult;
     } catch (error) {
-      // 错误处理 - 记录错误并尝试从localStorage读取
-      this.warn(`无法读取插件数据 ${key}，尝试从localStorage读取:`, error);
-      return this.getFromLocalStorage(key, defaultValue);
+      // 错误处理 - 记录错误
+      this.error(`无法读取插件数据 ${key}:`, error);
+      return defaultValue || null;
     }
   }
 
@@ -179,134 +179,12 @@ export class OrcaStorageService {
       this.log(`🗑️ 已删除插件数据 ${key}`);
       return true;
     } catch (error) {
-      // 错误处理 - 记录错误并尝试从localStorage删除
-      this.warn(`无法删除插件数据 ${key}，尝试从localStorage删除:`, error);
-      return this.removeFromLocalStorage(key);
-    }
-  }
-
-  // ==================== localStorage降级方法 ====================
-  /**
-   * 降级到localStorage保存
-   * 
-   * 当Orca API不可用时，使用localStorage作为备用存储方案。
-   * 确保插件在API不可用的情况下仍能正常工作。
-   * 
-   * @param key 存储键 - 要保存的数据键名
-   * @param data 要保存的数据 - 会被序列化为JSON字符串
-   * @returns boolean 保存是否成功
-   */
-  private saveToLocalStorage(key: string, data: any): boolean {
-    try {
-      // 获取localStorage键名 - 使用映射确保键名唯一性
-      const storageKey = this.getLocalStorageKey(key);
-      
-      // 保存到localStorage - 数据会被序列化为JSON字符串
-      localStorage.setItem(storageKey, JSON.stringify(data));
-      
-      // 记录成功日志
-      this.log(`💾 已降级保存到localStorage: ${storageKey}`);
-      return true;
-    } catch (error) {
-      // 错误处理 - 记录错误并返回失败状态
-      this.error(`无法保存到localStorage:`, error);
+      // 错误处理 - 记录错误
+      this.error(`无法删除插件数据 ${key}:`, error);
       return false;
     }
   }
 
-  /**
-   * 从localStorage读取数据
-   * 
-   * 从localStorage中读取数据并反序列化。
-   * 支持默认值，当数据不存在时返回指定的默认值。
-   * 
-   * @template T 返回数据的类型
-   * @param key 存储键 - 要读取的数据键名
-   * @param defaultValue 默认值 - 当数据不存在时返回的默认值
-   * @returns T | null 读取的数据或默认值或null
-   */
-  private getFromLocalStorage<T>(key: string, defaultValue?: T): T | null {
-    try {
-      // 获取localStorage键名
-      const storageKey = this.getLocalStorageKey(key);
-      
-      // 从localStorage读取数据
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        // 反序列化JSON数据
-        const result = JSON.parse(saved);
-        this.log(`📂 已从localStorage读取: ${storageKey}`);
-        return result;
-      }
-      
-      // 数据不存在，返回默认值
-      return defaultValue || null;
-    } catch (error) {
-      // 错误处理 - 记录错误并返回默认值
-      this.error(`无法从localStorage读取:`, error);
-      return defaultValue || null;
-    }
-  }
-
-  /**
-   * 从localStorage删除数据
-   * 
-   * 从localStorage中删除指定的数据。
-   * 
-   * @param key 存储键 - 要删除的数据键名
-   * @returns boolean 删除是否成功
-   */
-  private removeFromLocalStorage(key: string): boolean {
-    try {
-      // 获取localStorage键名
-      const storageKey = this.getLocalStorageKey(key);
-      
-      // 从localStorage删除数据
-      localStorage.removeItem(storageKey);
-      
-      // 记录成功日志
-      this.log(`🗑️ 已从localStorage删除: ${storageKey}`);
-      return true;
-    } catch (error) {
-      // 错误处理 - 记录错误并返回失败状态
-      this.error(`无法从localStorage删除:`, error);
-      return false;
-    }
-  }
-
-  // ==================== 工具方法 ====================
-  /**
-   * 获取localStorage键名
-   * 
-   * 将插件存储键映射为localStorage中使用的键名。
-   * 这确保了localStorage键名的唯一性和一致性。
-   * 
-   * 键名映射规则：
-   * - 使用预定义的映射表确保键名一致性
-   * - 添加'orca-'前缀避免与其他插件冲突
-   * - 添加'-api'后缀标识这是API降级存储
-   * - 未映射的键名使用默认格式
-   * 
-   * @param key 插件存储键 - 来自PLUGIN_STORAGE_KEYS的键名
-   * @returns string localStorage中使用的键名
-   */
-  private getLocalStorageKey(key: string): string {
-    // 键名映射表 - 将插件键名映射为localStorage键名
-    const keyMap: Record<string, string> = {
-      [PLUGIN_STORAGE_KEYS.FIRST_PANEL_TABS]: 'orca-first-panel-tabs-api',
-      [PLUGIN_STORAGE_KEYS.SECOND_PANEL_TABS]: 'orca-second-panel-tabs-api',
-      [PLUGIN_STORAGE_KEYS.CLOSED_TABS]: 'orca-closed-tabs-api',
-      [PLUGIN_STORAGE_KEYS.RECENTLY_CLOSED_TABS]: 'orca-recently-closed-tabs-api',
-      [PLUGIN_STORAGE_KEYS.SAVED_TAB_SETS]: 'orca-saved-tab-sets-api',
-      [PLUGIN_STORAGE_KEYS.FLOATING_WINDOW_VISIBLE]: 'orca-tabs-visible-api',
-      [PLUGIN_STORAGE_KEYS.TABS_POSITION]: 'orca-tabs-position-api',
-      [PLUGIN_STORAGE_KEYS.LAYOUT_MODE]: 'orca-tabs-layout-api',
-      [PLUGIN_STORAGE_KEYS.FIXED_TO_TOP]: 'orca-tabs-fixed-to-top-api',
-    };
-    
-    // 返回映射的键名或默认格式
-    return keyMap[key] || `orca-plugin-storage-${key}`;
-  }
 
   // ==================== 测试和调试方法 ====================
   /**

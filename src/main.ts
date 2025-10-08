@@ -2720,13 +2720,8 @@ class OrcaTabsPlugin {
     
     // 如果是固定到顶部模式，将标签页直接添加到顶部工具栏
     if (this.isFixedToTop) {
-      // 查找顶部工具栏
-      const headbar = document.querySelector('.headbar') || 
-                     document.querySelector('.toolbar') || 
-                     document.querySelector('.top-bar') ||
-                     document.querySelector('[class*="head"]') ||
-                     document.querySelector('[class*="toolbar"]') ||
-                     document.querySelector('[class*="bar"]') ||
+      // 查找顶部工具栏 - 使用精确的Orca侧边栏工具选择器
+      const headbar = document.querySelector('.orca-headbar-sidebar-tools') || 
                      document.body;
       
       this.log(`🔍 查找顶部工具栏:`, {
@@ -9468,17 +9463,6 @@ class OrcaTabsPlugin {
       }
     } catch (e) {
       this.error("恢复布局模式失败:", e);
-      // 使用默认配置
-      const defaultConfig = createDefaultLayoutConfig();
-      this.isVerticalMode = defaultConfig.isVerticalMode;
-      this.verticalWidth = defaultConfig.verticalWidth;
-      this.verticalPosition = defaultConfig.verticalPosition;
-      this.horizontalPosition = defaultConfig.horizontalPosition;
-      this.position = getPositionByMode(
-        this.isVerticalMode,
-        this.verticalPosition,
-        this.horizontalPosition
-      );
     }
   }
 
@@ -9502,7 +9486,6 @@ class OrcaTabsPlugin {
       }
     } catch (e) {
       this.error("恢复固定到顶部状态失败:", e);
-      this.isFixedToTop = false;
     }
   }
 
@@ -10595,6 +10578,7 @@ class OrcaTabsPlugin {
       }, 100);
     });
   }
+
 
   /**
    * 启动主动的面板状态监控
