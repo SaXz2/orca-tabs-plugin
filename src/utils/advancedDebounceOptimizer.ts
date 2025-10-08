@@ -5,6 +5,8 @@
  * 避免高性能操作阻塞和内存泄漏。
  */
 
+import { simpleWarn, simpleError } from './logUtils';
+
 export interface DebounceLayer {
   /** 层级名称 */
   name: string;
@@ -102,7 +104,7 @@ export class AdvancedDebounceOptimizer {
   ): Promise<T> | T {
     const layer = this.layers.get(layerId);
     if (!layer) {
-      console.warn(`Unknown layer: ${layerId}`);
+      simpleWarn(`Unknown layer: ${layerId}`);
       return fn(...args);
     }
     
@@ -206,7 +208,7 @@ export class AdvancedDebounceOptimizer {
         task.fn(...task.args);
         this.updateMetrics('executed');
       } catch (error) {
-        console.error(`Task ${task.id} execution failed:`, error);
+        simpleError(`Task ${task.id} execution failed:`, error);
       }
     });
     
@@ -319,7 +321,7 @@ export class AdvancedDebounceOptimizer {
       task.fn(...task.args);
       this.updateMetrics('executed');
     } catch (error) {
-      console.error(`Task ${task.id} execution failed:`, error);
+      simpleError(`Task ${task.id} execution failed:`, error);
     } finally {
       this.taskQueue.delete(task.id);
       this.activeTimers.delete(task.id);
@@ -372,7 +374,7 @@ export class AdvancedDebounceOptimizer {
         results[taskIndex] = result;
       } catch (error) {
         // 任务失败，不抛出错误
-        console.error(`Task ${taskIndex} failed:`, error);
+        simpleError(`Task ${taskIndex} failed:`, error);
       }
     };
     

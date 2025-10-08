@@ -5,6 +5,8 @@
  * 防止内存泄漏和资源无法正确释放。
  */
 
+import { simpleError, simpleVerbose } from './logUtils';
+
 export interface TrackedResource {
   /** 资源ID */
   id: string;
@@ -251,7 +253,7 @@ export class MemoryLeakProtector {
           try {
             cleanup();
           } catch (error) {
-            console.error('Batch cleanup error:', error);
+            simpleError('Batch cleanup error:', error);
           }
         });
       },
@@ -288,7 +290,7 @@ export class MemoryLeakProtector {
       this.notifyCleanupListeners(this.getMemoryStats());
       return true;
     } catch (error) {
-      console.error(`Cleanup failed for resource ${id}:`, error);
+      simpleError(`Cleanup failed for resource ${id}:`, error);
       return false;
     } finally {
       this.trackedResources.delete(id);
@@ -325,7 +327,7 @@ export class MemoryLeakProtector {
           resource.cleanup();
           resource.destroyed = true;
         } catch (error) {
-          console.error(`Cleanup failed for resource ${resource.id}:`, error);
+          simpleError(`Cleanup failed for resource ${resource.id}:`, error);
         }
       }
     });
@@ -509,7 +511,7 @@ Resources by Type:`;
       try {
         listener(stats);
       } catch (error) {
-        console.error('Cleanup listener error:', error);
+        simpleError('Cleanup listener error:', error);
       }
     });
   }
@@ -573,8 +575,6 @@ Resources by Type:`;
   }
   
   private log(message: string, ...args: any[]): void {
-    if (typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS) {
-      console.log(`[MemoryLeakProtector] ${message}`, ...args);
-    }
+    simpleVerbose(`[MemoryLeakProtector] ${message}`, ...args);
   }
 }

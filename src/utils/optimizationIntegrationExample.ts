@@ -11,6 +11,7 @@ import { MemoryLeakProtector } from './memoryLeakProtector';
 import { LazyLoadingOptimizer } from './lazyLoadingOptimizer';
 import { BatchProcessorOptimizer } from './batchProcessorOptimizer';
 import { PerformanceMonitorOptimizer } from './performanceMonitorOptimizer';
+import { simpleLog, simpleError, simpleVerbose } from './logUtils';
 
 /**
  * 优化集成示例类
@@ -65,10 +66,10 @@ export class OptimizationIntegrationExample {
         }
       });
       
-      console.log('✅ 性能优化系统初始化完成');
+      simpleLog('✅ 性能优化系统初始化完成');
       
     } catch (error) {
-      console.error('❌ 性能优化系统初始化失败:', error);
+      simpleError('❌ 性能优化系统初始化失败:', error);
       throw error;
     }
   }
@@ -126,7 +127,7 @@ export class OptimizationIntegrationExample {
       this.log(`⚡ 使用${priority}优先级执行标签页更新`);
       
     } catch (error) {
-      console.error('防抖执行失败:', error);
+      simpleError('防抖执行失败:', error);
     }
   }
   
@@ -276,7 +277,7 @@ export class OptimizationIntegrationExample {
    */
   getPerformanceReport(): string {
     const report = this.optimizerManager.generateOptimizationReport();
-    console.log('📊 性能优化报告:\n', report);
+    simpleLog('📊 性能优化报告:\n', report);
     return report;
   }
   
@@ -286,7 +287,7 @@ export class OptimizationIntegrationExample {
   private setupMutationObserverCallbacks(): void {
     // 在实际实现中，需要在OptimizedMutationObserver的构造函数中传递这些callback
     // 这里只是为了示例说明
-    console.log('MutationObserver callbacks会通过构造函数设置');
+    simpleVerbose('MutationObserver callbacks会通过构造函数设置');
   }
 
   /**
@@ -401,9 +402,7 @@ export class OptimizationIntegrationExample {
   }
   
   private log(message: string, ...args: any[]): void {
-    if (typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS) {
-      console.log(`[OptimizationExample] ${message}`, ...args);
-    }
+    simpleVerbose(`[OptimizationExample] ${message}`, ...args);
   }
 }
 

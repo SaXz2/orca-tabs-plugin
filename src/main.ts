@@ -183,8 +183,9 @@ import {
   type ThemeMode
 } from './utils/themeUtils';
 import { 
-  LogLevel,
-  DEFAULT_LOG_LEVEL,
+  LogLevel, 
+  DEFAULT_LOG_LEVEL, 
+  LogConfig,
   simpleLog,
   simpleError,
   simpleWarn
@@ -550,6 +551,8 @@ class OrcaTabsPlugin {
    */
   private setLogLevel(level: LogLevel): void {
     this.currentLogLevel = level;
+    // 同时更新全局日志配置，使所有日志工具函数也遵循这个级别
+    LogConfig.setLogLevel(level);
     this.log(`📊 日志级别已设置为: ${LogLevel[level]}`);
   }
   
@@ -5571,11 +5574,11 @@ class OrcaTabsPlugin {
       
       // 只在拖拽开始时添加全局监听器
       if (this.dragOverListener) {
-        console.log('🔄 添加全局拖拽监听器');
+        this.verboseLog('🔄 添加全局拖拽监听器');
         document.addEventListener('dragover', this.dragOverListener);
       }
       
-      console.log('🔄 拖拽开始，设置draggingTab:', tab.title);
+      this.verboseLog('🔄 拖拽开始，设置draggingTab:', tab.title);
       
       // 清除之前的防抖定时器
       if (this.swapDebounceTimer) {
@@ -5599,11 +5602,11 @@ class OrcaTabsPlugin {
 
     // 拖拽结束事件（改进版）
     tabElement.addEventListener('dragend', async (e) => {
-      console.log('🔄 拖拽结束，清除draggingTab');
+      this.verboseLog('🔄 拖拽结束，清除draggingTab');
       
       // 优化：拖拽结束时移除全局监听器
       if (this.dragOverListener) {
-        console.log('🔄 移除全局拖拽监听器');
+        this.verboseLog('🔄 移除全局拖拽监听器');
         document.removeEventListener('dragover', this.dragOverListener);
       }
       
@@ -12468,7 +12471,7 @@ class OrcaTabsPlugin {
 
       // 拖拽开始事件
       tabItem.addEventListener('dragstart', (e) => {
-        console.log('拖拽开始，索引:', index);
+        this.verboseLog('拖拽开始，索引:', index);
         draggedTabIndex = index;
         draggedTabElement = tabItem;
         

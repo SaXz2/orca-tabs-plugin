@@ -26,7 +26,7 @@ const tooltipCleanupMap: WeakMap<HTMLElement, () => void> = new WeakMap();
  */
 export function addTooltip(element: HTMLElement, config: TooltipConfig): void {
   if (!element || !config.text) {
-    console.warn('addTooltip: 无效的元素或配置');
+    // 静默跳过无效的tooltip配置
     return;
   }
 

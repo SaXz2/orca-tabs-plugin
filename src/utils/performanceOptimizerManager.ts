@@ -11,6 +11,7 @@ import { MemoryLeakProtector, MemoryStats } from './memoryLeakProtector';
 import { LazyLoadingOptimizer, LoadingConfig } from './lazyLoadingOptimizer';
 import { BatchProcessorOptimizer, BatchConfig } from './batchProcessorOptimizer';
 import { PerformanceMonitorOptimizer, PerformanceReport } from './performanceMonitorOptimizer';
+import { simpleVerbose } from './logUtils';
 
 export interface GlobalOptimizationConfig {
   /** MutationObserver配置 */
@@ -632,8 +633,6 @@ ${status.suggestions.map(s => `  - ${s}`).join('\n')}
   }
   
   private log(message: string, ...args: any[]): void {
-    if (typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS) {
-      console.log(`[PerformanceOptimizerManager] ${message}`, ...args);
-    }
+    simpleVerbose(`[PerformanceOptimizerManager] ${message}`, ...args);
   }
 }

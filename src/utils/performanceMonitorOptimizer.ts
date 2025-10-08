@@ -5,6 +5,8 @@
  * 帮助识别性能瓶颈并自动优化。
  */
 
+import { simpleError } from './logUtils';
+
 export interface PerformanceMetric {
   /** 指标名 */
   name: string;
@@ -257,7 +259,7 @@ export class PerformanceMonitorOptimizer {
       try {
         callback(report);
       } catch (error) {
-        console.error('Performance report callback error:', error);
+        simpleError('Performance report callback error:', error);
       }
     });
     

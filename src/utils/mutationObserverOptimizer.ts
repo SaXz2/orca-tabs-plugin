@@ -5,6 +5,8 @@
  * 包含智能观察模式、变化的批量处理和内存泄漏防护。
  */
 
+import { simpleVerbose } from './logUtils';
+
 export interface MutationObserverConfig {
   /** 是否启用批量处理 */
   enableBatch: boolean;
@@ -348,9 +350,7 @@ export class OptimizedMutationObserver {
   }
   
   private log(message: string): void {
-    if (typeof window !== 'undefined' && (window as any).DEBUG_ORCA_TABS) {
-      console.log(`[OptimizedMutationObserver] ${message}`);
-    }
+    simpleVerbose(`[OptimizedMutationObserver] ${message}`);
   }
   
   /**

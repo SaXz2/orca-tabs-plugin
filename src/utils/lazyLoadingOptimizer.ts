@@ -5,6 +5,8 @@
  * 减少初始加载时间和内存占用。
  */
 
+import { simpleError } from './logUtils';
+
 export interface LazyModule<T = any> {
   /** 模块ID */
   id: string;
@@ -109,7 +111,7 @@ export class LazyLoadingOptimizer {
     // 自动加载高优先级模块
     if (options.autoLoad !== false && module.priority >= 8) {
       this.loadModule(id).catch(error => {
-        console.error(`Auto-loading module ${id} failed:`, error);
+        simpleError(`Auto-loading module ${id} failed:`, error);
       });
     }
   }

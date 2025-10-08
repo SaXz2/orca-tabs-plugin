@@ -5,6 +5,7 @@
 import { TabInfo, TabPosition, HoverTabListConfig } from '../types';
 import { createStyledElement, addHoverEffect, safeRemoveElement } from './domUtils';
 import { createTabContainerStyle, createDialogStyle, createButtonStyle, createInputStyle, createSliderStyle, createContextMenuStyle, createMenuItemStyle, createSeparatorStyle } from './uiUtils';
+import { simpleVerbose } from './logUtils';
 
 /**
  * 创建标签容器
@@ -1098,27 +1099,27 @@ export function showHoverTabList(
   onClick: (tab: TabInfo) => void,
   isVerticalMode: boolean
 ): HTMLElement {
-  console.log('🎨 showHoverTabList 被调用', { tabs: tabs.length, position, config });
+  simpleVerbose('🎨 showHoverTabList 被调用', { tabs: tabs.length, position, config });
   
   // 移除现有的悬浮列表
   const existingContainer = document.querySelector('.hover-tab-list-container') as HTMLElement;
   if (existingContainer) {
-    console.log('🗑️ 移除现有的悬浮列表');
+    simpleVerbose('🗑️ 移除现有的悬浮列表');
     safeRemoveElement(existingContainer);
   }
   
   // 创建新容器
-  console.log('🏗️ 创建新容器');
+  simpleVerbose('🏗️ 创建新容器');
   const container = createHoverTabListContainer(config, position, isVerticalMode);
-  console.log('📦 容器创建完成', container);
+  simpleVerbose('📦 容器创建完成', container);
   
   document.body.appendChild(container);
-  console.log('📄 容器已添加到页面');
+  simpleVerbose('📄 容器已添加到页面');
   
   // 更新内容
-  console.log('🔄 更新内容');
+  simpleVerbose('🔄 更新内容');
   updateHoverTabList(container, tabs, config, onClick, isVerticalMode);
-  console.log('✅ 内容更新完成');
+  simpleVerbose('✅ 内容更新完成');
   
   return container;
 }

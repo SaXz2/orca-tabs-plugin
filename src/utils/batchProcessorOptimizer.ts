@@ -5,6 +5,8 @@
  * 减少重排重绘和提高渲染性能。
  */
 
+import { simpleError } from './logUtils';
+
 export interface BatchOperation<T = any> {
   /** 操作ID */
   id: string;
@@ -148,7 +150,7 @@ export class BatchProcessorOptimizer<T = any> {
         try {
           operation.callback(null);
         } catch (error) {
-          console.error(`Clear callback error for operation ${operation.id}:`, error);
+          simpleError(`Clear callback error for operation ${operation.id}:`, error);
         }
       }
     });
@@ -298,7 +300,7 @@ export class BatchProcessorOptimizer<T = any> {
           break;
       }
     } catch (error) {
-      console.error(`Processing ${type} operations failed:`, error);
+      simpleError(`Processing ${type} operations failed:`, error);
       
       // 执行失败回调
       operations.forEach(operation => {
@@ -306,7 +308,7 @@ export class BatchProcessorOptimizer<T = any> {
           try {
             operation.callback(error);
           } catch (callbackError) {
-            console.error(`Callback error for operation ${operation.id}:`, callbackError);
+            simpleError(`Callback error for operation ${operation.id}:`, callbackError);
           }
         }
       });
@@ -427,7 +429,7 @@ export class BatchProcessorOptimizer<T = any> {
           const animation = element.animate(keyframes, options);
           animations.push(animation);
         } catch (error) {
-          console.error(`Animation creation failed:`, error);
+          simpleError(`Animation creation failed:`, error);
         }
       }
     });
@@ -491,7 +493,7 @@ export class BatchProcessorOptimizer<T = any> {
           try {
             update();
           } catch (error) {
-            console.error('Generic operation failed:', error);
+            simpleError('Generic operation failed:', error);
           }
         });
         
