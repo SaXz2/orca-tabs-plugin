@@ -7362,7 +7362,7 @@ class Ua {
     const e = Date.now();
     try {
       if (e - this.lastUpdateTime < 50) {
-        this.verboseLog("⏭️ 跳过UI更新：距离上次更新仅 " + (e - this.lastUpdateTime) + "ms");
+        e - this.lastUpdateTime < 10 && this.verboseLog("⏭️ 跳过UI更新：距离上次更新仅 " + (e - this.lastUpdateTime) + "ms");
         return;
       }
       this.lastUpdateTime = e;
@@ -8568,11 +8568,7 @@ class Ua {
    * 按照用户思路：直接用索引访问panelTabsData数组
    */
   getCurrentPanelTabs() {
-    if (this.verboseLog("📋 [DEBUG] getCurrentPanelTabs 调用"), this.currentPanelIndex < 0 || this.currentPanelIndex >= this.getPanelIds().length)
-      return this.log(`⚠️ [DEBUG] 当前面板索引无效: ${this.currentPanelIndex}, 面板总数: ${this.getPanelIds().length}`), [];
-    this.currentPanelIndex >= this.panelTabsData.length && (this.log(`🔧 [DEBUG] 调整panelTabsData数组大小，当前: ${this.panelTabsData.length}, 需要: ${this.currentPanelIndex + 1}`), this.adjustPanelTabsDataSize());
-    const e = this.panelTabsData[this.currentPanelIndex] || [];
-    return this.verboseLog(`📋 [DEBUG] 获取面板 ${this.getPanelIds()[this.currentPanelIndex]} (索引: ${this.currentPanelIndex}) 的标签页数据: ${e.length} 个`), e;
+    return this.currentPanelIndex < 0 || this.currentPanelIndex >= this.getPanelIds().length ? (this.log(`⚠️ 当前面板索引无效: ${this.currentPanelIndex}, 面板总数: ${this.getPanelIds().length}`), []) : (this.currentPanelIndex >= this.panelTabsData.length && (this.log(`🔧 调整panelTabsData数组大小，当前: ${this.panelTabsData.length}, 需要: ${this.currentPanelIndex + 1}`), this.adjustPanelTabsDataSize()), this.panelTabsData[this.currentPanelIndex] || []);
   }
   /**
    * 设置当前面板的标签页数据 - 重构为简化的数组操作
@@ -10609,9 +10605,9 @@ class Ua {
         }
       }), c && (await this.updateCurrentPanelIndex(), l !== this.currentPanelIndex && (this.log(`🔄 面板切换: ${l} -> ${this.currentPanelIndex}`), await this.immediateUpdateTabsUI())), o && d - h > u ? (this.lastPanelCheckTime = d, this.log(`🔍 面板检查防抖：距离上次检查 ${d - h}ms`), setTimeout(async () => {
         await this.checkForNewPanels();
-      }, 100)) : o && this.verboseLog(`⏭️ 跳过面板检查：距离上次检查仅 ${d - h}ms`), n) {
+      }, 100)) : o && d - h < 100 && this.verboseLog(`⏭️ 跳过面板检查：距离上次检查仅 ${d - h}ms`), n) {
         const g = Date.now(), p = 300, b = g - this.lastBlockCheckTime;
-        b > p ? (this.verboseLog(`🔍 块检查防抖：距离上次检查 ${b}ms，执行检查`), this.lastBlockCheckTime = g, await this.checkCurrentPanelBlocks()) : this.verboseLog(`⏭️ 跳过块检查：距离上次检查仅 ${b}ms`);
+        b > p ? (this.lastBlockCheckTime = g, await this.checkCurrentPanelBlocks()) : b < 50 && this.verboseLog(`⏭️ 跳过块检查：距离上次检查仅 ${b}ms`);
       }
     }).observe(document.body, {
       childList: !0,

@@ -3441,7 +3441,10 @@ class OrcaTabsPlugin {
     try {
       // 限制更新频率（最小间隔50ms）
       if (now - this.lastUpdateTime < 50) {
-        this.verboseLog('⏭️ 跳过UI更新：距离上次更新仅 ' + (now - this.lastUpdateTime) + 'ms');
+        // 只在很短时间内跳过时才记录，避免日志过多
+        if (now - this.lastUpdateTime < 10) {
+          this.verboseLog('⏭️ 跳过UI更新：距离上次更新仅 ' + (now - this.lastUpdateTime) + 'ms');
+        }
         return;
       }
       
@@ -5895,23 +5898,19 @@ class OrcaTabsPlugin {
    * 按照用户思路：直接用索引访问panelTabsData数组
    */
   private getCurrentPanelTabs(): TabInfo[] {
-    this.verboseLog(`📋 [DEBUG] getCurrentPanelTabs 调用`);
-    
     // 检查当前面板索引是否有效
     if (this.currentPanelIndex < 0 || this.currentPanelIndex >= this.getPanelIds().length) {
-      this.log(`⚠️ [DEBUG] 当前面板索引无效: ${this.currentPanelIndex}, 面板总数: ${this.getPanelIds().length}`);
+      this.log(`⚠️ 当前面板索引无效: ${this.currentPanelIndex}, 面板总数: ${this.getPanelIds().length}`);
       return [];
     }
     
     // 确保panelTabsData数组有足够的大小
     if (this.currentPanelIndex >= this.panelTabsData.length) {
-      this.log(`🔧 [DEBUG] 调整panelTabsData数组大小，当前: ${this.panelTabsData.length}, 需要: ${this.currentPanelIndex + 1}`);
+      this.log(`🔧 调整panelTabsData数组大小，当前: ${this.panelTabsData.length}, 需要: ${this.currentPanelIndex + 1}`);
       this.adjustPanelTabsDataSize();
     }
     
     const tabs = this.panelTabsData[this.currentPanelIndex] || [];
-    this.verboseLog(`📋 [DEBUG] 获取面板 ${this.getPanelIds()[this.currentPanelIndex]} (索引: ${this.currentPanelIndex}) 的标签页数据: ${tabs.length} 个`);
-    
     return tabs;
   }
 
@@ -10234,7 +10233,8 @@ class OrcaTabsPlugin {
         setTimeout(async () => {
           await this.checkForNewPanels();
         }, 100);
-      } else if (shouldCheckNewPanels) {
+      } else if (shouldCheckNewPanels && (now - lastPanelCheck) < 100) {
+        // 只在很短时间内跳过时才记录，避免日志过多
         this.verboseLog(`⏭️ 跳过面板检查：距离上次检查仅 ${now - lastPanelCheck}ms`);
       }
 
@@ -10262,10 +10262,10 @@ class OrcaTabsPlugin {
         const blockCheckInterval = 300; // 300ms 防抖间隔
         const timeSinceLastCheck = now - this.lastBlockCheckTime;
         if (timeSinceLastCheck > blockCheckInterval) {
-          this.verboseLog(`🔍 块检查防抖：距离上次检查 ${timeSinceLastCheck}ms，执行检查`);
           this.lastBlockCheckTime = now;
           await this.checkCurrentPanelBlocks();
-        } else {
+        } else if (timeSinceLastCheck < 50) {
+          // 只在很短时间内跳过时才记录，避免日志过多
           this.verboseLog(`⏭️ 跳过块检查：距离上次检查仅 ${timeSinceLastCheck}ms`);
         }
       }
