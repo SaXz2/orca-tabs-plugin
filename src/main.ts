@@ -7245,7 +7245,19 @@ class OrcaTabsPlugin {
       // 如果替换的是激活标签，需要重新聚焦
       if (isReplacingActiveTab) {
         this.verboseLog(`🎯 重新聚焦到替换后的标签: ${newTab.title}`);
+        
+        // 设置导航标记，防止重复触发聚焦检测
+        this.isNavigating = true;
+        
+        // 等待 UI 完全更新后再切换
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
         await this.switchToTab(newTab);
+        
+        // 延迟重置导航标记
+        setTimeout(() => {
+          this.isNavigating = false;
+        }, 100);
       }
       
       // 记录切换历史
@@ -7254,6 +7266,8 @@ class OrcaTabsPlugin {
       this.verboseLog(`✅ 标签页替换完成`);
     } catch (error) {
       this.warn('替换标签页失败:', error);
+      // 确保即使出错也重置导航标记
+      this.isNavigating = false;
     }
   }
 
@@ -7374,30 +7388,34 @@ class OrcaTabsPlugin {
 
           // 显示悬浮标签列表
           this.verboseLog(`🎨 开始创建悬浮标签列表`);
+          
+          // 定义点击回调函数（长按）
+          const handleTabClickLongPress = (clickedTab: TabInfo) => {
+            this.verboseLog(`🖱️ 点击悬浮标签: ${clickedTab.title}`);
+            
+            // 检查点击的标签是否已经存在于当前标签栏中
+            const currentTabs = this.getCurrentPanelTabs();
+            const existingTab = currentTabs.find(tabItem => tabItem.blockId === clickedTab.blockId);
+            
+            if (existingTab) {
+              // 如果标签已存在，直接跳转到该标签
+              this.verboseLog(`🔄 标签已存在，跳转到: ${clickedTab.title}`);
+              // 更新全局历史记录，将点击的标签移到最新位置
+              this.recordTabSwitchHistory(tab.blockId, clickedTab);
+              this.switchToTab(clickedTab);
+            } else {
+              // 如果标签不存在，替换当前标签页
+              this.verboseLog(`🔄 标签不存在，替换当前标签: ${tab.title} -> ${clickedTab.title}`);
+              this.replaceCurrentTabWith(tab.blockId, clickedTab);
+            }
+            hideHoverTabList();
+          };
+          
           hoverTabListContainer = showHoverTabList(
             deduplicatedTabs,
             position,
             hoverConfig,
-            (clickedTab) => {
-              this.verboseLog(`🖱️ 点击悬浮标签: ${clickedTab.title}`);
-              
-              // 检查点击的标签是否已经存在于当前标签栏中
-              const currentTabs = this.getCurrentPanelTabs();
-              const existingTab = currentTabs.find(tabItem => tabItem.blockId === clickedTab.blockId);
-              
-              if (existingTab) {
-                // 如果标签已存在，直接跳转到该标签
-                this.verboseLog(`🔄 标签已存在，跳转到: ${clickedTab.title}`);
-                // 更新全局历史记录，将点击的标签移到最新位置
-                this.recordTabSwitchHistory(tab.blockId, clickedTab);
-                this.switchToTab(clickedTab);
-              } else {
-                // 如果标签不存在，替换当前标签页
-                this.verboseLog(`🔄 标签不存在，替换当前标签: ${tab.title} -> ${clickedTab.title}`);
-                this.replaceCurrentTabWith(tab.blockId, clickedTab);
-              }
-              hideHoverTabList();
-            },
+            handleTabClickLongPress,
             this.isVerticalMode
           );
           
@@ -7405,7 +7423,7 @@ class OrcaTabsPlugin {
 
           // 添加滚动事件监听
           if (hoverConfig.enableScroll && deduplicatedTabs.length > hoverConfig.maxDisplayCount) {
-            this.addScrollEvents(hoverTabListContainer, deduplicatedTabs, hoverConfig, scrollOffset);
+            this.addScrollEvents(hoverTabListContainer, deduplicatedTabs, hoverConfig, scrollOffset, handleTabClickLongPress);
           }
           
           // 添加全局点击监听，点击空白区域隐藏悬浮列表
@@ -7559,30 +7577,34 @@ class OrcaTabsPlugin {
 
           // 显示悬浮标签列表
           this.verboseLog(`🎨 开始创建悬浮标签列表`);
+          
+          // 定义点击回调函数（悬停）
+          const handleTabClickHover = (clickedTab: TabInfo) => {
+            this.verboseLog(`🖱️ 点击悬浮标签: ${clickedTab.title}`);
+            
+            // 检查点击的标签是否已经存在于当前标签栏中
+            const currentTabs = this.getCurrentPanelTabs();
+            const existingTab = currentTabs.find(tabItem => tabItem.blockId === clickedTab.blockId);
+            
+            if (existingTab) {
+              // 如果标签已存在，直接跳转到该标签
+              this.verboseLog(`🔄 标签已存在，跳转到: ${clickedTab.title}`);
+              // 更新全局历史记录，将点击的标签移到最新位置
+              this.recordTabSwitchHistory(tab.blockId, clickedTab);
+              this.switchToTab(clickedTab);
+            } else {
+              // 如果标签不存在，替换当前标签页
+              this.verboseLog(`🔄 标签不存在，替换当前标签: ${tab.title} -> ${clickedTab.title}`);
+              this.replaceCurrentTabWith(tab.blockId, clickedTab);
+            }
+            hideHoverTabList();
+          };
+          
           hoverTabListContainer = showHoverTabList(
             deduplicatedTabs,
             position,
             hoverConfig,
-            (clickedTab) => {
-              this.verboseLog(`🖱️ 点击悬浮标签: ${clickedTab.title}`);
-              
-              // 检查点击的标签是否已经存在于当前标签栏中
-              const currentTabs = this.getCurrentPanelTabs();
-              const existingTab = currentTabs.find(tabItem => tabItem.blockId === clickedTab.blockId);
-              
-              if (existingTab) {
-                // 如果标签已存在，直接跳转到该标签
-                this.verboseLog(`🔄 标签已存在，跳转到: ${clickedTab.title}`);
-                // 更新全局历史记录，将点击的标签移到最新位置
-                this.recordTabSwitchHistory(tab.blockId, clickedTab);
-                this.switchToTab(clickedTab);
-              } else {
-                // 如果标签不存在，替换当前标签页
-                this.verboseLog(`🔄 标签不存在，替换当前标签: ${tab.title} -> ${clickedTab.title}`);
-                this.replaceCurrentTabWith(tab.blockId, clickedTab);
-              }
-              hideHoverTabList();
-            },
+            handleTabClickHover,
             this.isVerticalMode
           );
           
@@ -7590,7 +7612,7 @@ class OrcaTabsPlugin {
 
           // 添加滚动事件监听
           if (hoverConfig.enableScroll && deduplicatedTabs.length > hoverConfig.maxDisplayCount) {
-            this.addScrollEvents(hoverTabListContainer, deduplicatedTabs, hoverConfig, scrollOffset);
+            this.addScrollEvents(hoverTabListContainer, deduplicatedTabs, hoverConfig, scrollOffset, handleTabClickHover);
           }
           
           // 添加全局点击监听，点击空白区域隐藏悬浮列表
@@ -7670,7 +7692,8 @@ class OrcaTabsPlugin {
     container: HTMLElement,
     tabs: TabInfo[],
     config: HoverTabListConfig,
-    scrollOffset: number
+    scrollOffset: number,
+    onClickCallback: (tab: TabInfo) => void
   ) {
     const scrollContainer = container.querySelector('.hover-tab-list-scroll') as HTMLElement;
     if (!scrollContainer) return;
@@ -7689,11 +7712,8 @@ class OrcaTabsPlugin {
       
       if (newOffset !== scrollOffset) {
         scrollOffset = newOffset;
-        updateHoverTabList(container, tabs, config, (clickedTab) => {
-          this.verboseLog(`🖱️ 点击悬浮标签切换到: ${clickedTab.title}`);
-          this.switchToTab(clickedTab);
-          hideHoverTabList();
-        }, this.isVerticalMode, scrollOffset);
+        // 使用传入的原始回调函数
+        updateHoverTabList(container, tabs, config, onClickCallback, this.isVerticalMode, scrollOffset);
       }
 
       setTimeout(() => {
@@ -7711,11 +7731,8 @@ class OrcaTabsPlugin {
         
         if (newOffset !== scrollOffset) {
           scrollOffset = newOffset;
-          updateHoverTabList(container, tabs, config, (clickedTab) => {
-            this.log(`🖱️ 点击悬浮标签切换到: ${clickedTab.title}`);
-            this.switchToTab(clickedTab);
-            hideHoverTabList();
-          }, this.isVerticalMode, scrollOffset);
+          // 使用传入的原始回调函数
+          updateHoverTabList(container, tabs, config, onClickCallback, this.isVerticalMode, scrollOffset);
         }
       }
     });
@@ -9977,7 +9994,7 @@ class OrcaTabsPlugin {
       // 标签页不存在 - 更新当前聚焦标签页的内容
       const focusedTabElement = this.tabContainer?.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
       if (!focusedTabElement) {
-        this.log(`⚠️ 未找到聚焦的标签元素，当前块: ${blockId}`);
+        this.verboseLog(`⚠️ 未找到聚焦的标签元素，当前块: ${blockId}`);
         return;
       }
 
