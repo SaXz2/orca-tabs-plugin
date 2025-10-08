@@ -1013,7 +1013,16 @@ export function createHoverTabItem(
   // 添加图标（如果有）
   if (tab.icon) {
     const icon = document.createElement('span');
-    icon.className = tab.icon; // 使用className而不是textContent
+    // 判断是emoji还是icon class
+    // emoji通常是单个字符或很短的字符串，不包含空格
+    // icon class通常是 "ti ti-xxx" 格式，包含空格
+    if (tab.icon.includes(' ') || tab.icon.startsWith('ti-')) {
+      // tabler icon class
+      icon.className = tab.icon;
+    } else {
+      // emoji或其他文本图标
+      icon.textContent = tab.icon;
+    }
     icon.style.cssText = `
       margin-right: 6px;
       font-size: 12px;

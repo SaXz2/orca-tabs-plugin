@@ -114,3 +114,15 @@ export const PLUGIN_STORAGE_KEYS = {
   /** 双击关闭标签页功能开关 - 存储是否启用双击关闭标签页功能 */
   ENABLE_DOUBLE_CLICK_CLOSE: 'enable-double-click-close',
 } as const;
+
+// ==================== 功能配置常量 ====================
+/**
+ * 功能配置常量
+ * 
+ * 定义插件功能相关的配置参数，如数量限制、时间间隔等。
+ * 这些常量用于控制插件的行为和性能。
+ */
+export const FEATURE_CONFIG = {
+  /** 全局切换历史记录最大数量 - 限制全局标签页切换历史记录的最大数量 */
+  GLOBAL_TAB_SWITCH_HISTORY_MAX_RECORDS: 10,
+} as const;

@@ -14,7 +14,7 @@
  */
 
 import { TabInfo, SavedTabSet, Workspace, TabPosition, RecentTabSwitchHistory } from '../types';
-import { PLUGIN_STORAGE_KEYS } from '../constants';
+import { PLUGIN_STORAGE_KEYS, FEATURE_CONFIG } from '../constants';
 import { OrcaStorageService } from './storage';
 import { 
   updatePositionConfig, 
@@ -472,7 +472,7 @@ export class TabStorageService {
   async saveRecentTabSwitchHistory(history: Record<string, RecentTabSwitchHistory>): Promise<void> {
     try {
       await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.RECENT_TAB_SWITCH_HISTORY, history, this.pluginName);
-      this.log(`💾 保存最近切换标签历史: ${Object.keys(history).length} 个标签的历史记录`);
+      this.verboseLog(`💾 保存最近切换标签历史: ${Object.keys(history).length} 个标签的历史记录`);
     } catch (e) {
       this.warn("无法保存最近切换标签历史:", e);
     }
@@ -489,7 +489,7 @@ export class TabStorageService {
         {}
       );
       if (saved && typeof saved === 'object') {
-        this.log(`📂 从API配置恢复了 ${Object.keys(saved).length} 个标签的切换历史`);
+        this.verboseLog(`📂 从API配置恢复了 ${Object.keys(saved).length} 个标签的切换历史`);
         return saved;
       } else {
         this.log(`📂 没有找到最近切换标签历史数据，返回空对象`);
@@ -517,7 +517,7 @@ export class TabStorageService {
           tabId: globalHistoryKey,
           recentTabs: [],
           lastUpdated: Date.now(),
-          maxRecords: 50 // 全局历史记录保存更多记录
+          maxRecords: FEATURE_CONFIG.GLOBAL_TAB_SWITCH_HISTORY_MAX_RECORDS // 全局历史记录最大数量限制
         };
       }
       
@@ -540,7 +540,7 @@ export class TabStorageService {
       // 保存更新后的历史记录
       await this.saveRecentTabSwitchHistory(allHistory);
       
-      this.log(`📝 更新全局切换历史: ${fromTabId} -> ${toTab.title} (历史记录数量: ${history.recentTabs.length})`);
+      this.verboseLog(`📝 更新全局切换历史: ${fromTabId} -> ${toTab.title} (历史记录数量: ${history.recentTabs.length})`);
     } catch (e) {
       this.warn(`更新全局切换历史失败:`, e);
     }
@@ -555,10 +555,10 @@ export class TabStorageService {
       const history = allHistory[tabId];
       
       if (history && history.recentTabs) {
-        this.log(`📖 获取标签 ${tabId} 的切换历史: ${history.recentTabs.length} 个记录`);
+        this.verboseLog(`📖 获取标签 ${tabId} 的切换历史: ${history.recentTabs.length} 个记录`);
         return history.recentTabs;
       } else {
-        this.log(`📖 标签 ${tabId} 没有切换历史记录，存储中的所有历史ID: ${Object.keys(allHistory).join(', ')}`);
+        this.verboseLog(`📖 标签 ${tabId} 没有切换历史记录，存储中的所有历史ID: ${Object.keys(allHistory).join(', ')}`);
         return [];
       }
     } catch (e) {
@@ -580,6 +580,33 @@ export class TabStorageService {
       this.log(`🗑️ 已删除API配置缓存: 标签页数据、已关闭标签列表和切换历史`);
     } catch (e) {
       this.warn("删除API配置缓存失败:", e);
+    }
+  }
+
+  /**
+   * 清理历史记录，确保符合新的数量限制
+   */
+  async cleanupHistoryRecords(): Promise<void> {
+    try {
+      const allHistory = await this.restoreRecentTabSwitchHistory();
+      let cleanedCount = 0;
+      
+      for (const [key, history] of Object.entries(allHistory)) {
+        if (history.recentTabs.length > FEATURE_CONFIG.GLOBAL_TAB_SWITCH_HISTORY_MAX_RECORDS) {
+          const originalCount = history.recentTabs.length;
+          history.recentTabs = history.recentTabs.slice(0, FEATURE_CONFIG.GLOBAL_TAB_SWITCH_HISTORY_MAX_RECORDS);
+          history.maxRecords = FEATURE_CONFIG.GLOBAL_TAB_SWITCH_HISTORY_MAX_RECORDS;
+          cleanedCount += (originalCount - history.recentTabs.length);
+          this.log(`🧹 清理历史记录 ${key}: ${originalCount} -> ${history.recentTabs.length}`);
+        }
+      }
+      
+      if (cleanedCount > 0) {
+        await this.saveRecentTabSwitchHistory(allHistory);
+        this.log(`✅ 历史记录清理完成，共清理了 ${cleanedCount} 条记录`);
+      }
+    } catch (e) {
+      this.warn("清理历史记录失败:", e);
     }
   }
 
@@ -608,7 +635,7 @@ export class TabStorageService {
       if (allHistory[tabId]) {
         delete allHistory[tabId];
         await this.saveRecentTabSwitchHistory(allHistory);
-        this.log(`🗑️ 删除标签 ${tabId} 的切换历史记录`);
+        this.verboseLog(`🗑️ 删除标签 ${tabId} 的切换历史记录`);
       } else {
         this.verboseLog(`📖 标签 ${tabId} 没有切换历史记录，无需删除`);
       }
