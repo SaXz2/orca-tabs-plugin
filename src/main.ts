@@ -2780,6 +2780,11 @@ class OrcaTabsPlugin {
     
     // 添加事件监听，只阻止标签栏内部的mousedown事件冒泡
     this.tabContainer.addEventListener('mousedown', (e) => {
+      // 添加空值检查，防止 e.target 为 undefined
+      if (!e || !e.target) {
+        return;
+      }
+      
       const target = e.target as HTMLElement;
       // 只阻止标签栏内部元素的mousedown事件，不影响侧边栏
       if (target.closest('.orca-tabs-plugin .orca-tab, .new-tab-button, .drag-handle') && 
@@ -2790,6 +2795,11 @@ class OrcaTabsPlugin {
     
     
     this.tabContainer.addEventListener('click', (e) => {
+      // 添加空值检查，防止 e.target 为 undefined
+      if (!e || !e.target) {
+        return;
+      }
+      
       // 只阻止标签栏内部的点击事件冒泡，不影响侧边栏
       const target = e.target as HTMLElement;
       if (target.closest('.orca-tabs-plugin .orca-tab, .new-tab-button, .drag-handle') && 
@@ -4484,6 +4494,11 @@ class OrcaTabsPlugin {
 
     // 点击其他地方关闭菜单
     const closeMenu = (e: MouseEvent) => {
+      // 添加空值检查，防止 e.target 为 undefined
+      if (!e || !e.target) {
+        return;
+      }
+      
       if (!menu.contains(e.target as Node)) {
         menu.remove();
         document.removeEventListener('click', closeMenu);
@@ -6466,6 +6481,9 @@ class OrcaTabsPlugin {
    */
   private registerBlockMenuCommands() {
     try {
+      // 先尝试注销已存在的命令，避免重复注册错误
+      this.unregisterBlockMenuCommands();
+      
       // 注册"在新标签页打开"命令
       orca.blockMenuCommands.registerBlockMenuCommand("orca-tabs.openInNewTab", {
         worksOnMultipleBlocks: false,
@@ -6522,6 +6540,28 @@ class OrcaTabsPlugin {
       this.log("✅ 已注册块菜单命令: 添加到已有标签组");
     } catch (error) {
       this.error("注册块菜单命令失败:", error);
+    }
+  }
+
+  /**
+   * 注销块菜单命令
+   */
+  public unregisterBlockMenuCommands() {
+    try {
+      // 注销"在新标签页打开"命令
+      if (orca.blockMenuCommands.unregisterBlockMenuCommand) {
+        orca.blockMenuCommands.unregisterBlockMenuCommand("orca-tabs.openInNewTab");
+      }
+      
+      // 注销"添加到已有标签组"命令
+      if (orca.blockMenuCommands.unregisterBlockMenuCommand) {
+        orca.blockMenuCommands.unregisterBlockMenuCommand("orca-tabs.addToTabGroup");
+      }
+      
+      this.log("✅ 已注销块菜单命令");
+    } catch (error) {
+      // 注销失败不记录错误，因为命令可能本来就不存在
+      this.log("ℹ️ 注销块菜单命令时未发现已注册的命令");
     }
   }
 
@@ -7484,12 +7524,22 @@ class OrcaTabsPlugin {
 
     // 监听悬浮列表的鼠标事件
     document.addEventListener('mouseenter', (e) => {
+      // 添加空值检查，防止 e.target 为 undefined
+      if (!e || !e.target) {
+        return;
+      }
+      
       if (this.safeClosest(e.target, '.hover-tab-list-container')) {
         handleHoverListMouseEnter();
       }
     });
 
     document.addEventListener('mouseleave', (e) => {
+      // 添加空值检查，防止 e.target 为 undefined
+      if (!e || !e.target) {
+        return;
+      }
+      
       if (this.safeClosest(e.target, '.hover-tab-list-container')) {
         handleHoverListMouseLeave();
       }
@@ -7673,12 +7723,22 @@ class OrcaTabsPlugin {
 
     // 监听悬浮列表的鼠标事件
     document.addEventListener('mouseenter', (e) => {
+      // 添加空值检查，防止 e.target 为 undefined
+      if (!e || !e.target) {
+        return;
+      }
+      
       if (this.safeClosest(e.target, '.hover-tab-list-container')) {
         handleHoverListMouseEnter();
       }
     });
 
     document.addEventListener('mouseleave', (e) => {
+      // 添加空值检查，防止 e.target 为 undefined
+      if (!e || !e.target) {
+        return;
+      }
+      
       if (this.safeClosest(e.target, '.hover-tab-list-container')) {
         handleHoverListMouseLeave();
       }
@@ -8626,6 +8686,11 @@ class OrcaTabsPlugin {
 
     // 点击外部关闭
     const closeOnOutsideClick = (e: MouseEvent) => {
+      // 添加空值检查，防止 e.target 为 undefined
+      if (!e || !e.target) {
+        return;
+      }
+      
       if (!inputContainer.contains(e.target as Node)) {
         cancelRename();
         document.removeEventListener('click', closeOnOutsideClick);
@@ -8980,6 +9045,11 @@ class OrcaTabsPlugin {
 
     // 点击其他地方关闭菜单
     const closeMenu = (event: MouseEvent) => {
+      // 添加空值检查，防止 event.target 为 undefined
+      if (!event || !event.target) {
+        return;
+      }
+      
       if (!menu.contains(event.target as Node)) {
         menu.remove();
         document.removeEventListener('click', closeMenu);
@@ -10322,6 +10392,11 @@ class OrcaTabsPlugin {
     let lastCheckedBlockId: string | null = null;
     
     const handleFocusChange = async (e: Event) => {
+      // 添加空值检查，防止 e.target 为 undefined
+      if (!e || !e.target) {
+        return;
+      }
+      
       const target = e.target as Element;
       
       // 步骤0: 提前过滤 - 只处理可能相关的点击
@@ -10702,6 +10777,11 @@ class OrcaTabsPlugin {
    * 处理点击事件
    */
   private async handleClickEvent(e: MouseEvent) {
+    // 添加空值检查，防止 e.target 为 undefined
+    if (!e || !e.target) {
+      return;
+    }
+    
     const target = e.target as HTMLElement;
     
     // 检查是否按住 Ctrl 键（Windows/Linux）或 Cmd 键（Mac）点击
@@ -10770,6 +10850,11 @@ class OrcaTabsPlugin {
    * 处理右键菜单事件
    */
   private async handleContextMenuEvent(e: MouseEvent) {
+    // 添加空值检查，防止 e.target 为 undefined
+    if (!e || !e.target) {
+      return;
+    }
+    
     // 右键菜单事件处理已移除
   }
 
@@ -11370,6 +11455,11 @@ class OrcaTabsPlugin {
 
     // 点击外部关闭菜单
     const closeMenu = (e: MouseEvent) => {
+      // 添加空值检查，防止 e.target 为 undefined
+      if (!e || !e.target) {
+        return;
+      }
+      
       if (!menu.contains(e.target as Node)) {
         menu.remove();
         document.removeEventListener('click', closeMenu);
@@ -11664,6 +11754,11 @@ class OrcaTabsPlugin {
 
     // 点击外部关闭菜单
     const closeMenu = (e: MouseEvent) => {
+      // 添加空值检查，防止 e.target 为 undefined
+      if (!e || !e.target) {
+        return;
+      }
+      
       if (!menu.contains(e.target as Node)) {
         menu.remove();
         document.removeEventListener('click', closeMenu);
@@ -11978,6 +12073,11 @@ class OrcaTabsPlugin {
 
     // 点击外部关闭对话框
     const closeDialog = (e: MouseEvent) => {
+      // 添加空值检查，防止 e.target 为 undefined
+      if (!e || !e.target) {
+        return;
+      }
+      
       if (!dialog.contains(e.target as Node)) {
         dialog.remove();
         document.removeEventListener('click', closeDialog);
@@ -12206,6 +12306,11 @@ class OrcaTabsPlugin {
 
     // 点击外部关闭对话框
     const closeDialog = (e: MouseEvent) => {
+      // 添加空值检查，防止 e.target 为 undefined
+      if (!e || !e.target) {
+        return;
+      }
+      
       if (!dialog.contains(e.target as Node)) {
         dialog.remove();
         document.removeEventListener('click', closeDialog);
@@ -12846,6 +12951,11 @@ class OrcaTabsPlugin {
 
       // 点击外部关闭对话框
       const handleClickOutside = (e: MouseEvent) => {
+        // 添加空值检查，防止 e.target 为 undefined
+        if (!e || !e.target) {
+          return;
+        }
+        
         if (!dialog.contains(e.target as Node)) {
           dialog.remove();
           document.removeEventListener('click', handleClickOutside);
@@ -13341,6 +13451,11 @@ class OrcaTabsPlugin {
 
     // 点击外部关闭菜单
     const handleClickOutside = (e: MouseEvent) => {
+      // 添加空值检查，防止 e.target 为 undefined
+      if (!e || !e.target) {
+        return;
+      }
+      
       if (!menu.contains(e.target as Node)) {
         menu.remove();
         document.removeEventListener('click', handleClickOutside);
@@ -14077,6 +14192,11 @@ class OrcaTabsPlugin {
 
     // 点击外部关闭对话框
     const closeDialog = (e: MouseEvent) => {
+      // 添加空值检查，防止 e.target 为 undefined
+      if (!e || !e.target) {
+        return;
+      }
+      
       if (!dialog.contains(e.target as Node)) {
         dialog.remove();
         document.removeEventListener('click', closeDialog);
@@ -14628,6 +14748,11 @@ class OrcaTabsPlugin {
 
     // 点击外部关闭对话框
     const closeDialog = (e: MouseEvent) => {
+      // 添加空值检查，防止 e.target 为 undefined
+      if (!e || !e.target) {
+        return;
+      }
+      
       if (!dialog.contains(e.target as Node)) {
         dialog.remove();
         document.removeEventListener('click', closeDialog);
@@ -14891,6 +15016,13 @@ export async function load(_name: string) {
   }
 
   // 注册重置缓存命令
+  try {
+    // 先尝试注销已存在的命令，避免重复注册错误
+    orca.commands.unregisterCommand(`${pluginName}.resetCache`);
+  } catch (error) {
+    // 命令可能不存在，忽略错误
+  }
+  
   orca.commands.registerCommand(
     `${pluginName}.resetCache`,
     async () => {
@@ -14903,6 +15035,13 @@ export async function load(_name: string) {
   );
 
   // 注册切换块类型图标命令
+  try {
+    // 先尝试注销已存在的命令，避免重复注册错误
+    orca.commands.unregisterCommand(`${pluginName}.toggleBlockIcons`);
+  } catch (error) {
+    // 命令可能不存在，忽略错误
+  }
+  
   orca.commands.registerCommand(
     `${pluginName}.toggleBlockIcons`,
     async () => {
@@ -14922,6 +15061,9 @@ export async function load(_name: string) {
 export async function unload() {
   // Clean up any resources used by the plugin here.
   if (tabsPlugin) {
+    // 注销块菜单命令
+    tabsPlugin.unregisterBlockMenuCommands();
+    
     // 注销顶部工具栏按钮
     tabsPlugin.unregisterHeadbarButton();
     
@@ -14932,7 +15074,17 @@ export async function unload() {
     tabsPlugin = null;
   }
   
-  // 注销重置缓存命令
-  orca.commands.unregisterCommand(`${pluginName}.resetCache`);
+  // 注销所有命令
+  try {
+    orca.commands.unregisterCommand(`${pluginName}.resetCache`);
+  } catch (error) {
+    // 命令可能不存在，忽略错误
+  }
+  
+  try {
+    orca.commands.unregisterCommand(`${pluginName}.toggleBlockIcons`);
+  } catch (error) {
+    // 命令可能不存在，忽略错误
+  }
 }
 
