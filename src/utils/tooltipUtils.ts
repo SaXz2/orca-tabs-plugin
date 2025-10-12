@@ -168,7 +168,7 @@ export function addTooltip(element: HTMLElement, config: TooltipConfig): void {
       tooltip.style.left = `${left}px`;
       tooltip.style.top = `${top}px`;
       tooltip.style.visibility = 'visible';
-    }, config.delay || 300) as unknown as number;
+    }, config.delay || 500) as unknown as number; // 性能优化：增加延迟到500ms
   };
 
   // 隐藏 tooltip（并在短延迟后从 DOM 移除，防止遗留）

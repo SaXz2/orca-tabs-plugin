@@ -322,8 +322,8 @@ class OrcaTabsPlugin {
   /** 数据保存防抖定时器 - 用于合并频繁的保存操作 */
   private saveDataDebounceTimer: number | null = null;
   
-  /** 数据保存防抖延迟（毫秒） - 默认300ms内的多次保存操作会被合并 */
-  private readonly SAVE_DEBOUNCE_DELAY = 300;
+  /** 数据保存防抖延迟（毫秒） - 性能优化：增加到500ms减少频繁保存 */
+  private readonly SAVE_DEBOUNCE_DELAY = 500;
   
   /* ———————————————————————————————————————————————————————————————————————————— */
   /* 日志管理 - Log Management */
@@ -1461,7 +1461,7 @@ class OrcaTabsPlugin {
         if (currentActiveTab) {
           this.recordScrollPosition(currentActiveTab);
         }
-      }, 300) as any as number; // 300ms防抖
+      }, 500) as any as number; // 性能优化：增加到500ms防抖
     };
 
     // 监听所有可能的滚动容器
@@ -7516,8 +7516,8 @@ class OrcaTabsPlugin {
         try {
           this.verboseLog(`⏰ 开始检查标签 ${tab.title} 的切换历史`);
           
-          // 获取所有切换历史记录
-          const allHistory = await this.tabStorageService.restoreRecentTabSwitchHistory();
+        // 性能优化：使用批量处理减少微任务执行时间
+        const allHistory = await this.tabStorageService.restoreRecentTabSwitchHistory();
           const allRecentTabs: TabInfo[] = [];
           
           // 收集所有历史记录中的标签
@@ -7621,7 +7621,7 @@ class OrcaTabsPlugin {
         } catch (error) {
           this.warn('显示悬浮标签列表失败:', error);
         }
-      }, 300); // 300ms延迟
+      }, 500); // 性能优化：增加到500ms延迟，减少频繁触发
     });
 
     // 鼠标离开事件

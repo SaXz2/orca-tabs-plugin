@@ -2929,7 +2929,7 @@ function D(n, t) {
         }
       }
       u < b ? u = b : u + d.width > p - b && (u = p - d.width - b), h < b ? h = b : h + d.height > m - b && (h = m - d.height - b), d.width > p - 2 * b && (u = b, e.style.maxWidth = `${p - 2 * b}px`), e.style.left = `${u}px`, e.style.top = `${h}px`, e.style.visibility = "visible";
-    }, t.delay || 300);
+    }, t.delay || 500);
   }, o = () => {
     a && (clearTimeout(a), a = null), i = setTimeout(() => {
       e && (e.parentNode && e.parentNode.removeChild(e), e = null);
@@ -3421,8 +3421,8 @@ class Wa {
     x(this, "lastBlockCheckTime", 0);
     /** 数据保存防抖定时器 - 用于合并频繁的保存操作 */
     x(this, "saveDataDebounceTimer", null);
-    /** 数据保存防抖延迟（毫秒） - 默认300ms内的多次保存操作会被合并 */
-    x(this, "SAVE_DEBOUNCE_DELAY", 300);
+    /** 数据保存防抖延迟（毫秒） - 性能优化：增加到500ms减少频繁保存 */
+    x(this, "SAVE_DEBOUNCE_DELAY", 500);
     /* ———————————————————————————————————————————————————————————————————————————— */
     /* 日志管理 - Log Management */
     /* ———————————————————————————————————————————————————————————————————————————— */
@@ -4034,7 +4034,7 @@ class Wa {
       t && clearTimeout(t), t = setTimeout(() => {
         const i = this.getCurrentActiveTab();
         i && this.recordScrollPosition(i);
-      }, 300);
+      }, 500);
     }, a = document.querySelectorAll(".orca-panel-content, .orca-editor-content, .scroll-container, .orca-scroll-container, .orca-panel, body, html");
     a.forEach((i) => {
       i.addEventListener("scroll", e, { passive: !0 });
@@ -7298,7 +7298,7 @@ class Wa {
         } catch (d) {
           this.warn("显示悬浮标签列表失败:", d);
         }
-      }, 300);
+      }, 500);
     }), t.addEventListener("mouseleave", () => {
       a && (clearTimeout(a), a = null), a = window.setTimeout(() => {
         B(), i = null, r = 0;
