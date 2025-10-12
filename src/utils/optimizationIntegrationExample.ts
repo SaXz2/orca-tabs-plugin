@@ -10,7 +10,8 @@ import { AdvancedDebounceOptimizer } from './advancedDebounceOptimizer';
 import { MemoryLeakProtector } from './memoryLeakProtector';
 import { LazyLoadingOptimizer } from './lazyLoadingOptimizer';
 import { BatchProcessorOptimizer } from './batchProcessorOptimizer';
-import { PerformanceMonitorOptimizer } from './performanceMonitorOptimizer';
+// 性能监控已禁用
+// import { PerformanceMonitorOptimizer } from './performanceMonitorOptimizer';
 import { simpleLog, simpleError, simpleVerbose } from './logUtils';
 
 /**
@@ -228,26 +229,9 @@ export class OptimizationIntegrationExample {
    * 集成性能监控系统
    */
   async setupPerformanceMonitoring(): Promise<void> {
-    // 自定义性能阈值
-    const monitor = PerformanceMonitorOptimizer.getInstance();
-    
-    // 设置标签页相关的性能阈值
-    monitor.setThreshold('tab_update_duration', 50, 100, 20); // 标签页更新耗时
-    monitor.setThreshold('dom_mutations', 10, 50, 5); // DOM变化次数
-    monitor.setThreshold('memory_per_tab', 1024 * 1024, 5 * 1024 * 1024, 512 * 1024); // 每标签内存使用
-    
-    // 监听性能报告
-    monitor.onReportChange((report) => {
-      this.handlePerformanceReport(report);
-    });
-    
-    // 开始自定义测量
-    const startMeasure = this.optimizerManager.startPerformanceMeasurement('tab_plugin_operation');
-    
-    if (startMeasure) {
-      // 在适当的地方调用 startMeasure() 来记录耗时
-      this.log('📊 性能监控已启动');
-    }
+    // 性能监控已禁用
+    this.log('📊 性能监控已禁用');
+    return;
   }
   
   /**

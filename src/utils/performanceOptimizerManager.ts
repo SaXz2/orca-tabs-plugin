@@ -10,7 +10,8 @@ import { AdvancedDebounceOptimizer, DebounceLayer } from './advancedDebounceOpti
 import { MemoryLeakProtector, MemoryStats } from './memoryLeakProtector';
 import { LazyLoadingOptimizer, LoadingConfig } from './lazyLoadingOptimizer';
 import { BatchProcessorOptimizer, BatchConfig } from './batchProcessorOptimizer';
-import { PerformanceMonitorOptimizer, PerformanceReport } from './performanceMonitorOptimizer';
+// 性能监控已禁用
+// import { PerformanceMonitorOptimizer, PerformanceReport } from './performanceMonitorOptimizer';
 import { simpleVerbose } from './logUtils';
 
 export interface GlobalOptimizationConfig {
@@ -64,7 +65,8 @@ export class PerformanceOptimizerManager {
   private memoryLeakProtector: MemoryLeakProtector | null = null;
   private lazyLoadingOptimizer: LazyLoadingOptimizer | null = null;
   private batchProcessor: BatchProcessorOptimizer | null = null;
-  private performanceMonitor: PerformanceMonitorOptimizer | null = null;
+  // 性能监控已禁用
+  // private performanceMonitor: PerformanceMonitorOptimizer | null = null;
   
   private config: GlobalOptimizationConfig;
   private isInitialized = false;
@@ -152,20 +154,20 @@ export class PerformanceOptimizerManager {
         this.batchProcessor = new BatchProcessorOptimizer(this.config.batchProcessing);
       }
       
-      // 初始化性能监控器
-      if (this.config.performanceMonitoring.enableMonitoring) {
-        this.performanceMonitor = PerformanceMonitorOptimizer.getInstance();
-        this.performanceMonitor.updateConfig({
-          reportInterval: this.config.performanceMonitoring.reportInterval,
-          enableAutoOptimization: this.config.performanceMonitoring.enableAutoOptimization
-        });
-        this.performanceMonitor.startMonitoring();
-        
-        // 监听性能报告
-        this.performanceMonitor.onReportChange((report) => {
-          this.handlePerformanceReport(report);
-        });
-      }
+      // 性能监控已禁用
+      // if (this.config.performanceMonitoring.enableMonitoring) {
+      //   this.performanceMonitor = PerformanceMonitorOptimizer.getInstance();
+      //   this.performanceMonitor.updateConfig({
+      //     reportInterval: this.config.performanceMonitoring.reportInterval,
+      //     enableAutoOptimization: this.config.performanceMonitoring.enableAutoOptimization
+      //   });
+      //   this.performanceMonitor.startMonitoring();
+      //   
+      //   // 监听性能报告
+      //   this.performanceMonitor.onReportChange((report) => {
+      //     this.handlePerformanceReport(report);
+      //   });
+      // }
       
       // 设置全局清理
       this.setupGlobalCleanup();
@@ -296,7 +298,7 @@ export class PerformanceOptimizerManager {
   }
   
   /**
-   * 记录性能指标
+   * 记录性能指标（已禁用）
    */
   recordMetric(
     name: string,
@@ -304,18 +306,15 @@ export class PerformanceOptimizerManager {
     unit?: string,
     type?: 'duration' | 'count' | 'size' | 'rate' | 'custom'
   ): void {
-    if (this.performanceMonitor) {
-      this.performanceMonitor.recordMetric(name, value, unit, type);
-    }
+    // 性能监控已禁用
+    return;
   }
   
   /**
-   * 开始性能测量
+   * 开始性能测量（已禁用）
    */
   startPerformanceMeasurement(name: string): (() => number) | null {
-    if (this.performanceMonitor) {
-      return this.performanceMonitor.startMeasurement(name);
-    }
+    // 性能监控已禁用
     return null;
   }
   
@@ -349,7 +348,7 @@ export class PerformanceOptimizerManager {
       memoryLeakProtection: this.memoryLeakProtector !== null,
       lazyLoading: this.lazyLoadingOptimizer !== null,
       batchProcessing: this.batchProcessor !== null,
-      performanceMonitoring: this.performanceMonitor !== null
+      performanceMonitoring: false // 已禁用
     };
     
     const enabled = Object.values(components).some(enabled => enabled);
@@ -365,12 +364,10 @@ export class PerformanceOptimizerManager {
   }
   
   /**
-   * 获取性能报告
+   * 获取性能报告（已禁用）
    */
-  getPerformanceReport(): PerformanceReport | null {
-    if (this.performanceMonitor) {
-      return this.performanceMonitor.generateReport();
-    }
+  getPerformanceReport(): null {
+    // 性能监控已禁用
     return null;
   }
   
@@ -388,9 +385,10 @@ export class PerformanceOptimizerManager {
    * 触发优化
    */
   triggerOptimization(): void {
-    if (this.performanceMonitor) {
-      this.performanceMonitor.triggerOptimization();
-    }
+    // 性能监控已禁用
+    // if (this.performanceMonitor) {
+    //   this.performanceMonitor.triggerOptimization();
+    // }
     
     // 清理内存
     if (this.memoryLeakProtector) {
@@ -412,7 +410,6 @@ export class PerformanceOptimizerManager {
    */
   generateOptimizationReport(): string {
     const status = this.getOptimizationStatus();
-    const performanceReport = this.getPerformanceReport();
     const memoryStats = this.getMemoryStats();
     
     let report = `
@@ -431,14 +428,6 @@ export class PerformanceOptimizerManager {
 优化建议:
 ${status.suggestions.map(s => `  - ${s}`).join('\n')}
 `;
-    
-    if (performanceReport) {
-      report += `
-性能指标:
-  健康分数: ${performanceReport.healthScore}/ 100
-  当前问题数: ${performanceReport.issues.length}
-`;
-    }
     
     if (memoryStats) {
       report += `
@@ -473,9 +462,10 @@ ${status.suggestions.map(s => `  - ${s}`).join('\n')}
       this.batchProcessor.destroy();
     }
     
-    if (this.performanceMonitor) {
-      this.performanceMonitor.destroy();
-    }
+    // 性能监控已禁用
+    // if (this.performanceMonitor) {
+    //   this.performanceMonitor.destroy();
+    // }
     
     this.isInitialized = false;
     this.initializationPromise = null;
@@ -491,25 +481,11 @@ ${status.suggestions.map(s => `  - ${s}`).join('\n')}
   }
   
   /**
-   * 处理性能报告
+   * 处理性能报告（已禁用）
    */
-  private handlePerformanceReport(report: PerformanceReport): void {
-    this.log('收到性能报告:', report);
-    
-    // 自动优化
-    if (this.config.performanceMonitoring.enableAutoOptimization) {
-      if (report.healthScore < 50) {
-        this.log('性能评分过低，触发自动优化');
-        this.triggerOptimization();
-      }
-    }
-    
-    // 处理关键问题
-    const criticalIssues = report.issues.filter(issue => issue.impact === 'critical');
-    if (criticalIssues.length > 0) {
-      this.log('检测到关键性能问题:', criticalIssues);
-      this.triggerOptimization();
-    }
+  private handlePerformanceReport(report: any): void {
+    // 性能监控已禁用
+    return;
   }
   
   /**
@@ -519,13 +495,12 @@ ${status.suggestions.map(s => `  - ${s}`).join('\n')}
     const enabledComponents = Object.values(this.getOptimizationStatus().components)
       .filter(enabled => enabled).length;
     
-    const report = this.getPerformanceReport();
-    
-    if (enabledComponents >= 5 && report && report.healthScore >= 80) {
+    // 性能监控已禁用，基于组件数量判断
+    if (enabledComponents >= 4) {
       return 'excellent';
-    } else if (enabledComponents >= 4 && report && report.healthScore >= 60) {
+    } else if (enabledComponents >= 3) {
       return 'good';
-    } else if (enabledComponents >= 3 && report && report.healthScore >= 40) {
+    } else if (enabledComponents >= 2) {
       return 'warning';
     } else {
       return 'critical';
@@ -538,7 +513,8 @@ ${status.suggestions.map(s => `  - ${s}`).join('\n')}
   private generateOptimizationSuggestions(): string[] {
     const suggestions: string[] = [];
     const status = this.getOptimizationStatus();
-    const performanceReport = this.getPerformanceReport();
+    // 性能监控已禁用
+    // const performanceReport = this.getPerformanceReport();
     
     if (!status.components.mutationObserver) {
       suggestions.push('启用MutationObserver优化以减少DOM监听开销');
@@ -564,11 +540,12 @@ ${status.suggestions.map(s => `  - ${s}`).join('\n')}
       suggestions.push('启用性能监控以实时追踪性能指标');
     }
     
-    if (performanceReport) {
-      performanceReport.recommendations.forEach(rec => {
-        suggestions.push(`[${rec.priority}] ${rec.description}`);
-      });
-    }
+    // 性能监控已禁用
+    // if (performanceReport) {
+    //   performanceReport.recommendations.forEach(rec => {
+    //     suggestions.push(`[${rec.priority}] ${rec.description}`);
+    //   });
+    // }
     
     return suggestions;
   }

@@ -172,8 +172,8 @@ import { AdvancedDebounceOptimizer } from './utils/advancedDebounceOptimizer';
 import { MemoryLeakProtector } from './utils/memoryLeakProtector';
 // 批量处理器优化器 - DOM操作批量处理
 import { BatchProcessorOptimizer } from './utils/batchProcessorOptimizer';
-// 性能监控优化器 - 性能监控和分析
-import { PerformanceMonitorOptimizer, type PerformanceMetric, type PerformanceReport } from './utils/performanceMonitorOptimizer';
+// 性能监控优化器 - 性能监控和分析（已禁用）
+// import { PerformanceMonitorOptimizer, type PerformanceMetric, type PerformanceReport } from './utils/performanceMonitorOptimizer';
 import { 
   isDarkMode, 
   getCurrentThemeMode, 
@@ -370,11 +370,11 @@ class OrcaTabsPlugin {
     try {
       this.log('🚀 初始化性能优化器...');
       
-      // 初始化性能优化管理器
-      this.performanceOptimizer = PerformanceOptimizerManager.getInstance();
-      this.performanceMonitor = PerformanceMonitorOptimizer.getInstance();
+      // 性能优化管理器已禁用以提升性能
+      // this.performanceOptimizer = PerformanceOptimizerManager.getInstance();
+      // this.performanceMonitor = PerformanceMonitorOptimizer.getInstance();
       
-      this.log('✅ 性能优化器初始化完成');
+      this.log('✅ 性能优化器已禁用');
     } catch (error) {
       this.error('❌ 性能优化器初始化失败:', error);
     }
@@ -382,93 +382,49 @@ class OrcaTabsPlugin {
 
 
   /**
-   * 确保性能监控实例可用
+   * 确保性能监控实例可用（已禁用）
    */
-  private ensurePerformanceMonitorInstance(): PerformanceMonitorOptimizer | null {
-    if (this.performanceMonitor) {
-      return this.performanceMonitor;
-    }
-    try {
-      this.performanceMonitor = PerformanceMonitorOptimizer.getInstance();
-      return this.performanceMonitor;
-    } catch (error) {
-      this.verboseLog('[Performance] monitor unavailable', error);
-      return null;
-    }
+  private ensurePerformanceMonitorInstance(): null {
+    // 性能监控已禁用以提升性能
+    return null;
   }
 
   /**
-   * 启动性能计时
+   * 启动性能计时（已禁用）
    */
   private startPerformanceMeasurement(name: string): (() => number) | null {
-    const monitor = this.ensurePerformanceMonitorInstance();
-    if (!monitor) {
-      return null;
-    }
-    try {
-      return monitor.startMeasurement(name);
-    } catch (error) {
-      this.verboseLog(`[Performance] unable to start measurement: ${name}`, error);
-      return null;
-    }
+    // 性能监控已禁用以提升性能
+    return null;
   }
 
   /**
-   * 记录计数型指标
+   * 记录计数型指标（已禁用）
    */
   private recordPerformanceCountMetric(name: string): void {
-    const monitor = this.ensurePerformanceMonitorInstance();
-    if (!monitor) {
-      return;
-    }
-    const nextCount = (this.performanceCounters[name] ?? 0) + 1;
-    this.performanceCounters[name] = nextCount;
-    monitor.recordMetric(name, nextCount, 'count', 'count');
+    // 性能监控已禁用以提升性能
+    return;
   }
 
   /**
    * 延迟输出性能基线报告
    */
   private schedulePerformanceBaselineReport(scenario: string, delayMs: number = 12000): void {
-    const monitor = this.ensurePerformanceMonitorInstance();
-    if (!monitor) {
-      return;
-    }
-    if (typeof window === 'undefined') {
-      return;
-    }
-    if (this.performanceBaselineTimer !== null) {
-      window.clearTimeout(this.performanceBaselineTimer);
-    }
-    this.performanceBaselineTimer = window.setTimeout(() => {
-      this.emitPerformanceBaselineReport(scenario);
-    }, delayMs);
+    // 性能监控已禁用以提升性能
+    return;
   }
 
   /**
-   * 输出性能基线报告
+   * 输出性能基线报告（已禁用）
    */
   private emitPerformanceBaselineReport(scenario: string): void {
-    if (typeof window !== 'undefined' && this.performanceBaselineTimer !== null) {
-      window.clearTimeout(this.performanceBaselineTimer);
-    }
-    this.performanceBaselineTimer = null;
-    const report = this.performanceOptimizer?.getPerformanceReport()
-      ?? this.ensurePerformanceMonitorInstance()?.generateReport();
-    if (!report) {
-      this.verboseLog(`[Performance] baseline unavailable for scenario: ${scenario}`);
-      return;
-    }
-    this.lastBaselineReport = report;
-    this.lastBaselineScenario = scenario;
-    const summary = this.formatPerformanceBaselineReport(report, scenario);
-    this.log(summary);
+    // 性能监控已禁用以提升性能
+    return;
   }
 
   /**
-   * 构建性能基线日志
+   * 构建性能基线日志（已禁用）
    */
-  private formatPerformanceBaselineReport(report: PerformanceReport, scenario: string): string {
+  private formatPerformanceBaselineReport(report: any, scenario: string): string {
     const metricMap = this.getLatestMetricMap(report.metrics);
     const initMetric = metricMap.get(this.performanceMetricKeys.initTotal);
     const tabMetric = metricMap.get(this.performanceMetricKeys.tabInteraction);
@@ -479,7 +435,7 @@ class OrcaTabsPlugin {
     const initText = initMetric
       ? `${initMetric.value.toFixed(1)}${initMetric.unit}`
       : (this.lastInitDurationMs !== null ? `${this.lastInitDurationMs.toFixed(1)}ms` : 'n/a');
-    const tabText = tabMetric ? `${tabMetric.value.toFixed(0)}` : `${this.performanceCounters[this.performanceMetricKeys.tabInteraction] ?? 0}`;
+    const tabText = tabMetric ? `${tabMetric.value.toFixed(0)}` : '0';
     const domText = domMetric ? `${domMetric.value.toFixed(0)}` : '0';
     const fpsText = fpsMetric ? `${fpsMetric.value.toFixed(0)}fps` : 'n/a';
     const heapText = heapMetric ? this.formatBytes(heapMetric.value) : 'n/a';
@@ -497,8 +453,8 @@ class OrcaTabsPlugin {
 
   }
 
-  private getLatestMetricMap(metrics: PerformanceMetric[]): Map<string, PerformanceMetric> {
-    const metricMap = new Map<string, PerformanceMetric>();
+  private getLatestMetricMap(metrics: any[]): Map<string, any> {
+    const metricMap = new Map<string, any>();
     for (const metric of metrics) {
       const previous = metricMap.get(metric.name);
       if (!previous || previous.timestamp <= metric.timestamp) {
@@ -663,6 +619,9 @@ class OrcaTabsPlugin {
   /** 更新防抖计时器 - 防止频繁更新UI的防抖机制 */
   private updateDebounceTimer: number | null = null;
   
+  /** 面板索引更新防抖计时器 - 防止频繁更新面板索引 */
+  private panelIndexUpdateTimer: number | null = null;
+  
   /** 上次更新时间 - 记录最后一次UI更新的时间戳 */
   private lastUpdateTime: number = 0;
   
@@ -767,16 +726,16 @@ class OrcaTabsPlugin {
   /** 批量处理器实例 - 用于批量DOM操作 */
   private batchProcessor: BatchProcessorOptimizer | null = null;
   
-  /** 性能监控器实例 - 用于监控性能指标 */
-  private performanceMonitor: PerformanceMonitorOptimizer | null = null;
-  /** 性能指标计数缓存 - 记录自定义指标的累计值 */
-  private performanceCounters: Record<string, number> = {};
+  /** 性能监控器实例 - 用于监控性能指标（已禁用） */
+  // private performanceMonitor: PerformanceMonitorOptimizer | null = null;
+  /** 性能指标计数缓存 - 记录自定义指标的累计值（已禁用） */
+  // private performanceCounters: Record<string, number> = {};
   /** 性能基线定时器ID - 控制基线采集任务 */
   private performanceBaselineTimer: number | null = null;
   /** 最近一次性能基线场景 */
   private lastBaselineScenario: string | null = null;
-  /** 最近一次性能基线报告 */
-  private lastBaselineReport: PerformanceReport | null = null;
+  /** 最近一次性能基线报告（已禁用） */
+  // private lastBaselineReport: PerformanceReport | null = null;
   /** 上一次插件初始化耗时（毫秒） */
   private lastInitDurationMs: number | null = null;
   /** 性能指标名称常量 */
@@ -932,7 +891,8 @@ class OrcaTabsPlugin {
     // 恢复功能开关设置
     await this.restoreFeatureToggleSettings();
     
-    const stopInitMeasurement = this.startPerformanceMeasurement(this.performanceMetricKeys.initTotal);
+    // 性能监控已禁用
+    // const stopInitMeasurement = this.startPerformanceMeasurement(this.performanceMetricKeys.initTotal);
     
     // ==================== 样式初始化 ====================
     // 添加对话框样式 - 为所有对话框组件添加基础样式
@@ -1172,60 +1132,29 @@ class OrcaTabsPlugin {
     // 设置设置检查监听器
     this.setupSettingsChecker();
     
-    if (stopInitMeasurement) {
-      this.lastInitDurationMs = stopInitMeasurement();
-    }
+    // 性能监控已禁用
+    // if (stopInitMeasurement) {
+    //   this.lastInitDurationMs = stopInitMeasurement();
+    // }
     this.schedulePerformanceBaselineReport('startup');
     
     // 标记初始化完成
     this.isInitialized = true;
     this.log("✅ 插件初始化完成");
     
-    // ==================== 延迟初始化性能优化器 ====================
-    // 将性能优化管理器的初始化延迟到空闲时间，避免阻塞主线程
-    requestIdleCallback(async () => {
-      if (this.performanceOptimizer) {
-        try {
-          await this.performanceOptimizer.initialize({
-            mutationObserver: {
-              enableBatch: true,
-              batchDelay: 16,
-              maxBatchSize: 50,
-              enableSmartFilter: true,
-              coolingPeriod: 100
-            },
-            debounce: [
-              { name: 'immediate', delay: 0, priority: 10, cancelable: false },
-              { name: 'high', delay: 8, priority: 8, cancelable: true, maxWait: 100 },
-              { name: 'normal', delay: 16, priority: 5, cancelable: true, maxWait: 200 },
-              { name: 'low', delay: 32, priority: 3, cancelable: true, maxWait: 500 }
-            ],
-            memoryLeak: {
-              autoCleanupInterval: 30000,
-              enableAutoCleanup: true
-            },
-            lazyLoading: {
-              enableCache: true,
-              maxConcurrency: 3,
-              preloadStrategy: 'idle'
-            },
-            batchProcessing: {
-              maxBatchSize: 50,
-              maxWaitTime: 16,
-              enableVirtualization: true
-            },
-            performanceMonitoring: {
-              enableMonitoring: true,
-              enableAutoOptimization: true,
-              reportInterval: 30000
-            }
-          });
-          this.log('✅ 性能优化管理器延迟初始化完成');
-        } catch (error) {
-          this.error('❌ 性能优化管理器延迟初始化失败:', error);
-        }
-      }
-    }, { timeout: 2000 });
+    // 性能优化管理器已禁用以提升性能
+    // requestIdleCallback(async () => {
+    //   if (this.performanceOptimizer) {
+    //     try {
+    //       await this.performanceOptimizer.initialize({
+    //         // ... 配置已禁用
+    //       });
+    //       this.log('✅ 性能优化管理器延迟初始化完成');
+    //     } catch (error) {
+    //       this.error('❌ 性能优化管理器延迟初始化失败:', error);
+    //     }
+    //   }
+    // }, { timeout: 2000 });
   }
 
 
@@ -3452,14 +3381,15 @@ class OrcaTabsPlugin {
     const now = Date.now();
     
     try {
-      // 限制更新频率（最小间隔50ms）
-      if (now - this.lastUpdateTime < 50) {
-        // 只在很短时间内跳过时才记录，避免日志过多
-        if (now - this.lastUpdateTime < 10) {
-          this.verboseLog('⏭️ 跳过UI更新：距离上次更新仅 ' + (now - this.lastUpdateTime) + 'ms');
+        // 优化：大幅增加更新间隔，减少频繁更新
+        const minUpdateInterval = 200; // 从100ms增加到200ms
+        if (now - this.lastUpdateTime < minUpdateInterval) {
+          // 只在很短时间内跳过时才记录，避免日志过多
+          if (now - this.lastUpdateTime < 50) {
+            this.verboseLog('⏭️ 跳过UI更新：距离上次更新仅 ' + (now - this.lastUpdateTime) + 'ms');
+          }
+          return;
         }
-        return;
-      }
       
       this.lastUpdateTime = now;
 
@@ -3473,8 +3403,11 @@ class OrcaTabsPlugin {
       .map(el => el.getAttribute('data-tab-id'))
       .filter(id => id !== null) as string[];
     
-    // 优化：使用选择性删除而不是innerHTML = ''，减少强制重排
-    // 只删除标签元素，保留其他元素
+    // 获取当前标签数据
+    const currentTabs = this.getCurrentPanelTabs();
+    
+    // 临时回退到稳定的全量重建方式，避免增量更新引入的bug
+    // TODO: 后续优化增量更新逻辑
     const tabsToRemove = this.tabContainer.querySelectorAll('.orca-tab');
     tabsToRemove.forEach(tab => tab.remove());
     
@@ -3513,7 +3446,7 @@ class OrcaTabsPlugin {
       // 【修复BUG】重新获取排序后的标签数组，因为 sortTabsByPinStatus 会创建新数组
       targetTabs = this.panelTabsData[targetPanelIndex] || [];
       
-      // 优化：使用DocumentFragment批量添加标签，减少DOM重排次数
+      // 恢复稳定的标签创建逻辑
       const fragment = document.createDocumentFragment();
       targetTabs.forEach((tab, index) => {
         const tabElement = this.createTabElement(tab);
@@ -5369,6 +5302,7 @@ class OrcaTabsPlugin {
   }
   
 
+
   /**
    * 创建标签元素
    */
@@ -6029,7 +5963,8 @@ class OrcaTabsPlugin {
 
   async switchToTab(tab: TabInfo) {
     try {
-      this.recordPerformanceCountMetric(this.performanceMetricKeys.tabInteraction);
+      // 性能监控已禁用
+      // this.recordPerformanceCountMetric(this.performanceMetricKeys.tabInteraction);
       this.verboseLog(`🔄 开始切换标签: ${tab.title} (ID: ${tab.blockId})`);
       
       // 设置标记，防止在切换过程中错误替换标签
@@ -7565,7 +7500,7 @@ class OrcaTabsPlugin {
       maxWidth: 150
     };
 
-    // 鼠标进入事件
+    // 鼠标进入事件 - 性能优化：增加防抖延迟
     tabElement.addEventListener('mouseenter', async () => {
       const tabHistoryId = tabElement.getAttribute('data-tab-history-id');
       this.verboseLog(`🖱️ 鼠标进入标签: ${tab.title} (标签历史ID: ${tabHistoryId})`);
@@ -7576,7 +7511,7 @@ class OrcaTabsPlugin {
         hoverTimeout = null;
       }
 
-      // 延迟显示，避免快速移动时频繁显示
+      // 性能优化：增加延迟时间，减少频繁触发
       hoverTimeout = window.setTimeout(async () => {
         try {
           this.verboseLog(`⏰ 开始检查标签 ${tab.title} 的切换历史`);
@@ -10165,6 +10100,7 @@ class OrcaTabsPlugin {
    * 这是修复搜索打开页面问题的关键部分
    */
   observeChanges() {
+    // 使用优化的MutationObserver配置
     const observer = new MutationObserver(async (mutations) => {
       let shouldCheckNewBlocks = false;
       let shouldCheckNewPanels = false;
@@ -10175,7 +10111,10 @@ class OrcaTabsPlugin {
       // 防抖：避免频繁的面板发现调用
       const now = Date.now();
       const lastPanelCheck = this.lastPanelCheckTime || 0;
-      const panelCheckInterval = 1000; // 1秒内最多检查一次面板
+      const panelCheckInterval = 1000; // 恢复到1秒，平衡性能和响应性
+      
+      // 临时移除过于严格的过滤，恢复原有逻辑
+      // TODO: 后续优化过滤逻辑
       
       mutations.forEach((mutation) => {
         if (mutation.type === 'childList') {
@@ -10261,6 +10200,7 @@ class OrcaTabsPlugin {
                 await this.checkCurrentPanelBlocks();
               }, 50);
               
+              // 保留一个较长的延迟检查，用于处理异步加载的内容
               setTimeout(async () => {
                 await this.checkCurrentPanelBlocks();
               }, 200);
@@ -10361,11 +10301,15 @@ class OrcaTabsPlugin {
       }
     });
 
+    // 优化MutationObserver配置，减少监听范围
     observer.observe(document.body, {
       childList: true,
       subtree: true,
+      // 只监听属性变化中的class变化，减少不必要的回调
       attributes: true,
-      attributeFilter: ['class']
+      attributeFilter: ['class'],
+      // 不监听文本内容变化，减少触发频率
+      characterData: false
     });
     
     // ==================== 聚焦变化检测系统 ====================
@@ -10636,29 +10580,41 @@ class OrcaTabsPlugin {
    * 更新当前面板索引
    */
   async updateCurrentPanelIndex() {
-    const activePanel = document.querySelector('.orca-panel.active');
-    if (activePanel) {
-      const panelId = activePanel.getAttribute('data-panel-id');
-      if (panelId && !panelId.startsWith('_')) { // 排除特殊面板
-        const index = this.getPanelIds().indexOf(panelId);
-        if (index !== -1) {
-          // 修复: 记录面板索引变化
-          const oldIndex = this.currentPanelIndex;
-          this.currentPanelIndex = index;
-          this.currentPanelId = panelId;
-          
-          this.log(`🔄 面板索引更新: ${oldIndex} -> ${index} (面板ID: ${panelId})`);
-          
-          // 确保每个面板有独立的标签页数据
-          if (!this.panelTabsData[index] || this.panelTabsData[index].length === 0) {
-            this.log(`🔍 面板 ${panelId} 没有数据，开始扫描`);
-            await this.scanPanelTabsByIndex(index, panelId || '');
+    // 防抖处理，避免频繁调用
+    if (this.panelIndexUpdateTimer) {
+      clearTimeout(this.panelIndexUpdateTimer);
+    }
+    
+    this.panelIndexUpdateTimer = setTimeout(async () => {
+      const activePanel = document.querySelector('.orca-panel.active');
+      if (activePanel) {
+        const panelId = activePanel.getAttribute('data-panel-id');
+        if (panelId && !panelId.startsWith('_')) { // 排除特殊面板
+          // 检查是否与当前面板相同，避免重复处理
+          if (this.currentPanelId === panelId) {
+            return; // 面板没有变化，跳过
           }
           
-          this.debouncedUpdateTabsUI();
+          const index = this.getPanelIds().indexOf(panelId);
+          if (index !== -1) {
+            // 修复: 记录面板索引变化
+            const oldIndex = this.currentPanelIndex;
+            this.currentPanelIndex = index;
+            this.currentPanelId = panelId;
+            
+            this.log(`🔄 面板索引更新: ${oldIndex} -> ${index} (面板ID: ${panelId})`);
+            
+            // 确保每个面板有独立的标签页数据
+            if (!this.panelTabsData[index] || this.panelTabsData[index].length === 0) {
+              this.log(`🔍 面板 ${panelId} 没有数据，开始扫描`);
+              await this.scanPanelTabsByIndex(index, panelId || '');
+            }
+            
+            this.debouncedUpdateTabsUI();
+          }
         }
       }
-    }
+    }, 150) as any as number; // 150ms防抖
   }
 
   /**
@@ -14891,7 +14847,7 @@ class OrcaTabsPlugin {
       }
       this.performanceBaselineTimer = null;
       this.lastBaselineScenario = null;
-      this.lastBaselineReport = null;
+      // this.lastBaselineReport = null; // 已禁用
       this.log('🗑️ 开始销毁插件...');
       
       // 立即保存数据（不等待防抖）
