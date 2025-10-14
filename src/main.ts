@@ -95,12 +95,15 @@ import {
 } from './utils/uiCreationUtils';
 
 // Tooltip 工具函数
-import { 
+import {
   addTooltip,
   createButtonTooltip,
   createStatusTooltip,
   createTabTooltip as createCustomTabTooltip,
-  initializeTooltips
+  initializeTooltips,
+  cleanupAllTooltips,
+  startTooltipCleanupTimer,
+  setupPageUnloadCleanup
 } from './utils/tooltipUtils';
 
 // 数据处理工具函数
@@ -1123,7 +1126,11 @@ class OrcaTabsPlugin {
           initializeTooltips();
           // 为用户工具栏按钮添加 tooltip
           this.initializeHeadbarUserToolsTooltips();
-          this.log('✅ Tooltips 初始化完成');
+          // 启动 tooltip 清理定时器，防止 tooltip 元素泄漏
+          startTooltipCleanupTimer();
+          // 设置页面卸载时的清理机制
+          setupPageUnloadCleanup();
+          this.log('✅ Tooltips 初始化完成，清理定时器和页面卸载清理已启动');
         } catch (error) {
           this.log('⚠️ Tooltips 初始化失败:', error);
         }
@@ -15028,6 +15035,13 @@ export async function unload() {
     
     tabsPlugin.destroy();
     tabsPlugin = null;
+  }
+  
+  // 清理所有遗留的 tooltip 元素
+  try {
+    cleanupAllTooltips();
+  } catch (error) {
+    console.warn('清理 tooltip 时出错:', error);
   }
   
   // 注销所有命令

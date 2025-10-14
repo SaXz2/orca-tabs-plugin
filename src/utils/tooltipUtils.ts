@@ -171,19 +171,31 @@ export function addTooltip(element: HTMLElement, config: TooltipConfig): void {
     }, config.delay || 500) as unknown as number; // 性能优化：增加延迟到500ms
   };
 
-  // 隐藏 tooltip（并在短延迟后从 DOM 移除，防止遗留）
+  // 隐藏 tooltip（立即从 DOM 移除，防止遗留）
   const hideTooltip = () => {
     if (showTimeout) {
       clearTimeout(showTimeout);
       showTimeout = null;
     }
 
-    hideTimeout = setTimeout(() => {
-      if (tooltip) {
-        if (tooltip.parentNode) tooltip.parentNode.removeChild(tooltip);
-        tooltip = null;
+    if (hideTimeout) {
+      clearTimeout(hideTimeout);
+      hideTimeout = null;
+    }
+
+    // 立即清理 tooltip，不使用延迟
+    if (tooltip) {
+      try {
+        if (tooltip.parentNode) {
+          tooltip.parentNode.removeChild(tooltip);
+        }
+      } catch (error) {
+        // 如果移除失败，尝试其他方法
+        console.warn('Tooltip removal failed, trying alternative method:', error);
+        tooltip.remove?.();
       }
-    }, 0) as unknown as number;
+      tooltip = null;
+    }
   };
 
   // 绑定事件
@@ -198,8 +210,18 @@ export function addTooltip(element: HTMLElement, config: TooltipConfig): void {
     element.removeEventListener('mouseenter', showTooltip);
     element.removeEventListener('mouseleave', hideTooltip);
     element.removeEventListener('mousedown', hideTooltip);
-    if (tooltip && tooltip.parentNode) {
-      tooltip.parentNode.removeChild(tooltip);
+    
+    // 更健壮的 tooltip 清理
+    if (tooltip) {
+      try {
+        if (tooltip.parentNode) {
+          tooltip.parentNode.removeChild(tooltip);
+        }
+      } catch (error) {
+        console.warn('Tooltip cleanup failed, trying alternative method:', error);
+        tooltip.remove?.();
+      }
+      tooltip = null;
     }
   };
   tooltipCleanupMap.set(element, cleanup);
@@ -309,6 +331,55 @@ export function initializeTooltips(): void {
   });
 }
 
+/**
+ * 清理所有遗留的 tooltip 元素
+ * 这是一个安全措施，用于清理可能遗留的 orca-tooltip 元素
+ */
+export function cleanupAllTooltips(): void {
+  const tooltips = document.querySelectorAll('.orca-tooltip');
+  tooltips.forEach(tooltip => {
+    if (tooltip.parentNode) {
+      tooltip.parentNode.removeChild(tooltip);
+    }
+  });
+  
+  // 同时清理其他可能的 tooltip 类名
+  const otherTooltips = document.querySelectorAll('.tooltip');
+  otherTooltips.forEach(tooltip => {
+    if (tooltip.parentNode) {
+      tooltip.parentNode.removeChild(tooltip);
+    }
+  });
+}
+
+/**
+ * 定期清理遗留的 tooltip 元素
+ * 每30秒检查一次，清理可能遗留的 tooltip
+ */
+export function startTooltipCleanupTimer(): void {
+  setInterval(() => {
+    cleanupAllTooltips();
+  }, 30000); // 30秒清理一次
+}
+
+/**
+ * 设置页面卸载时的清理机制
+ * 确保在页面关闭或刷新时清理所有 tooltip
+ */
+export function setupPageUnloadCleanup(): void {
+  // 页面卸载时清理
+  window.addEventListener('beforeunload', () => {
+    cleanupAllTooltips();
+  });
+  
+  // 页面隐藏时清理（移动端或标签页切换）
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      cleanupAllTooltips();
+    }
+  });
+}
+
 // 将函数暴露到全局，供调试工具使用
 if (typeof window !== 'undefined') {
   (window as any).addTooltip = addTooltip;
@@ -316,4 +387,7 @@ if (typeof window !== 'undefined') {
   (window as any).createButtonTooltip = createButtonTooltip;
   (window as any).createTabTooltip = createTabTooltip;
   (window as any).createStatusTooltip = createStatusTooltip;
+  (window as any).cleanupAllTooltips = cleanupAllTooltips;
+  (window as any).startTooltipCleanupTimer = startTooltipCleanupTimer;
+  (window as any).setupPageUnloadCleanup = setupPageUnloadCleanup;
 }
