@@ -316,7 +316,7 @@ export function getBlockTypeIcon(blockType: string): string {
     'link': 'ti ti-link',         // 链接
     'list': 'ti ti-list',         // 列表
     'quote': 'ti ti-quote',       // 引用
-    'text': 'ti ti-file-text',    // 普通文本
+    'text': 'ti ti-cube',    // 普通文本
     'block': 'ti ti-square',      // 块
     'task': 'ti ti-checkbox',     // 任务
     'math': 'ti ti-math',         // 数学公式
@@ -325,7 +325,7 @@ export function getBlockTypeIcon(blockType: string): string {
     'idea': 'ti ti-bulb',         // 想法
     'question': 'ti ti-help-circle',     // 问题
     'answer': 'ti ti-message-circle',    // 答案
-    'summary': 'ti ti-file-text',        // 总结
+    'summary': 'ti ti-cube',        // 总结
     'reference': 'ti ti-book',           // 参考
     'example': 'ti ti-code',             // 示例
     'warning': 'ti ti-alert-triangle',   // 警告
@@ -351,7 +351,7 @@ export function getBlockTypeIcon(blockType: string): string {
     'database': 'ti ti-database',        // 数据库
     'api': 'ti ti-plug',                 // API
     'config': 'ti ti-settings',          // 配置
-    'log': 'ti ti-file-text',            // 日志
+    'log': 'ti ti-cube',            // 日志
     'error': 'ti ti-alert-triangle',     // 错误
     'success': 'ti ti-check-circle',     // 成功
     'progress': 'ti ti-progress',        // 进度
@@ -496,9 +496,9 @@ function getSmartIcon(blockType: string): string | null {
     'report': 'ti ti-file',
     'article': 'ti ti-file',
     'post': 'ti ti-file',
-    'page': 'ti ti-file-text',
-    'web': 'ti ti-file-text',
-    'site': 'ti ti-file-text',
+    'page': 'ti ti-cube',
+    'web': 'ti ti-cube',
+    'site': 'ti ti-cube',
     'url': 'ti ti-link',
     'link': 'ti ti-link',
     'href': 'ti ti-link',

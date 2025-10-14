@@ -2253,7 +2253,7 @@ class OrcaTabsPlugin {
     return {
       'journal': '📅',      // 日期块 - 保持emoji
       'alias': 'ti ti-tag',       // 别名块
-      'page': 'ti ti-file-text',         // 页面
+      'page': 'ti ti-cube',         // 页面
       'tag': 'ti ti-tag',         // 标签
       'heading': 'ti ti-heading',      // 标题
       'code': 'ti ti-code',         // 代码
@@ -2268,7 +2268,7 @@ class OrcaTabsPlugin {
       'idea': 'ti ti-bulb',         // 想法
       'question': 'ti ti-help-circle',     // 问题
       'answer': 'ti ti-message-circle',       // 答案
-      'summary': 'ti ti-file-text',      // 总结
+      'summary': 'ti ti-cube',      // 总结
       'reference': 'ti ti-book',    // 参考
       'example': 'ti ti-code',      // 示例
       'warning': 'ti ti-alert-triangle',      // 警告
@@ -14318,7 +14318,7 @@ class OrcaTabsPlugin {
       { name: '音乐', value: 'ti ti-music', icon: '🎵' },
       { name: '视频', value: 'ti ti-video', icon: '🎬' },
       { name: '图片', value: 'ti ti-photo', icon: '🖼️' },
-      { name: '文档', value: 'ti ti-file-text', icon: '📄' },
+      { name: '文档', value: 'ti ti-cube', icon: '📄' },
       { name: '收藏', value: 'ti ti-star', icon: '⭐' },
       { name: '重要', value: 'ti ti-flag', icon: '🚩' },
       { name: '完成', value: 'ti ti-check', icon: '✅' },
