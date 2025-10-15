@@ -6931,47 +6931,17 @@ class OrcaTabsPlugin {
         const targetDate = this.extractDateFromTitle(tab.title);
         
         if (targetDate) {
-          // 优先使用相对日期命令
-          if (tab.title.includes('今天') || tab.title.includes('Today')) {
-            try {
-              await orca.commands.invokeCommand('core.goToday');
-              this.verboseLog(`✅ [safeNavigate] 使用命令导航到今天`);
-              return;
-            } catch (e) {
-              this.verboseLog(`⚠️ [safeNavigate] 命令失败，回退到日期导航`);
-            }
-          } else if (tab.title.includes('昨天') || tab.title.includes('Yesterday')) {
-            try {
-              await orca.commands.invokeCommand('core.goYesterday');
-              this.verboseLog(`✅ [safeNavigate] 使用命令导航到昨天`);
-              return;
-            } catch (e) {
-              this.verboseLog(`⚠️ [safeNavigate] 命令失败，回退到日期导航`);
-            }
-          } else if (tab.title.includes('明天') || tab.title.includes('Tomorrow')) {
-            try {
-              await orca.commands.invokeCommand('core.goTomorrow');
-              this.verboseLog(`✅ [safeNavigate] 使用命令导航到明天`);
-              return;
-            } catch (e) {
-              this.verboseLog(`⚠️ [safeNavigate] 命令失败，回退到日期导航`);
-            }
-          }
-          
-          // 使用日期导航
+          // 统一使用 journal 导航（最稳定的方式）
           try {
-            const journalDate = {
-              t: 2, // 2 for full/absolute date
-              v: targetDate.getTime() // 使用时间戳
-            };
-            await orca.nav.goTo("journal", { date: journalDate }, panelId);
-            this.verboseLog(`✅ [safeNavigate] 使用 journal 导航成功: ${targetDate.toISOString().split('T')[0]}`);
+            // 使用 Date 对象进行 journal 导航
+            await orca.nav.goTo("journal", { date: targetDate }, panelId);
+            this.verboseLog(`✅ [safeNavigate] 使用 journal 导航成功: ${targetDate.toLocaleDateString()}`);
             return;
           } catch (e) {
             this.warn(`⚠️ [safeNavigate] journal 导航失败，回退到块导航:`, e);
           }
         } else {
-          this.verboseLog(`⚠️ [safeNavigate] 无法从标题提取日期，回退到块导航`);
+          this.verboseLog(`⚠️ [safeNavigate] 无法从标题提取日期: "${tab.title}"，回退到块导航`);
         }
       }
       
@@ -6994,37 +6964,41 @@ class OrcaTabsPlugin {
   
   /**
    * 从标题中提取日期
+   * 支持多种日期格式，确保兼容性
    */
   private extractDateFromTitle(title: string): Date | null {
     try {
-      // 处理相对日期
+      // 处理相对日期（今天、昨天、明天）
       if (title.includes('今天') || title.includes('Today')) {
-        return new Date();
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate());
       } else if (title.includes('昨天') || title.includes('Yesterday')) {
-        const date = new Date();
-        date.setDate(date.getDate() - 1);
-        return date;
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
       } else if (title.includes('明天') || title.includes('Tomorrow')) {
-        const date = new Date();
-        date.setDate(date.getDate() + 1);
-        return date;
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
       }
 
-      // 处理标准日期格式
-      // 匹配 yyyy-MM-dd 格式
-      const isoMatch = title.match(/(\d{4}-\d{2}-\d{2})/);
+      // 格式1: yyyy-MM-dd (ISO格式，最常用)
+      // 例如: "2025-01-15" 或 "2025-1-5"
+      const isoMatch = title.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
       if (isoMatch) {
-        const date = new Date(isoMatch[1] + 'T00:00:00.000Z');
+        const year = parseInt(isoMatch[1]);
+        const month = parseInt(isoMatch[2]) - 1;
+        const day = parseInt(isoMatch[3]);
+        const date = new Date(year, month, day);
         if (!isNaN(date.getTime())) {
           return date;
         }
       }
 
-      // 匹配 yyyy年MM月dd日 格式
+      // 格式2: yyyy年MM月dd日 (中文格式)
+      // 例如: "2025年1月15日" 或 "2025年01月15日"
       const cnMatch = title.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
       if (cnMatch) {
         const year = parseInt(cnMatch[1]);
-        const month = parseInt(cnMatch[2]) - 1; // 月份从0开始
+        const month = parseInt(cnMatch[2]) - 1;
         const day = parseInt(cnMatch[3]);
         const date = new Date(year, month, day);
         if (!isNaN(date.getTime())) {
@@ -7032,12 +7006,69 @@ class OrcaTabsPlugin {
         }
       }
 
-      // 匹配 MM/dd/yyyy 格式
+      // 格式3: MM/dd/yyyy (美式格式)
+      // 例如: "1/15/2025" 或 "01/15/2025"
       const usMatch = title.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
       if (usMatch) {
         const month = parseInt(usMatch[1]) - 1;
         const day = parseInt(usMatch[2]);
         const year = parseInt(usMatch[3]);
+        const date = new Date(year, month, day);
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      }
+
+      // 格式4: dd/MM/yyyy (欧式格式)
+      // 例如: "15/01/2025"
+      const euMatch = title.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (euMatch) {
+        const day = parseInt(euMatch[1]);
+        const month = parseInt(euMatch[2]) - 1;
+        const year = parseInt(euMatch[3]);
+        // 尝试欧式格式（如果美式格式已经匹配过，这里会被跳过）
+        if (!usMatch) {
+          const date = new Date(year, month, day);
+          if (!isNaN(date.getTime())) {
+            return date;
+          }
+        }
+      }
+
+      // 格式5: yyyy.MM.dd (点分隔格式)
+      // 例如: "2025.01.15"
+      const dotMatch = title.match(/(\d{4})\.(\d{1,2})\.(\d{1,2})/);
+      if (dotMatch) {
+        const year = parseInt(dotMatch[1]);
+        const month = parseInt(dotMatch[2]) - 1;
+        const day = parseInt(dotMatch[3]);
+        const date = new Date(year, month, day);
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      }
+
+      // 格式6: yyyyMMdd (紧凑格式)
+      // 例如: "20250115"
+      const compactMatch = title.match(/(\d{4})(\d{2})(\d{2})/);
+      if (compactMatch) {
+        const year = parseInt(compactMatch[1]);
+        const month = parseInt(compactMatch[2]) - 1;
+        const day = parseInt(compactMatch[3]);
+        const date = new Date(year, month, day);
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      }
+
+      // 格式7: MM月dd日 (简短中文格式，使用当前年份)
+      // 例如: "1月15日"
+      const shortCnMatch = title.match(/(\d{1,2})月(\d{1,2})日/);
+      if (shortCnMatch) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = parseInt(shortCnMatch[1]) - 1;
+        const day = parseInt(shortCnMatch[2]);
         const date = new Date(year, month, day);
         if (!isNaN(date.getTime())) {
           return date;
