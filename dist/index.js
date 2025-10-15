@@ -5415,27 +5415,31 @@ class Oa {
               } catch {
               }
             v.style.cssText = `
-            display: flex;
-            align-items: center;
-            padding: 4px 8px;
-            background: ${T};
-            border-radius: var(--orca-radius-md);
-            border: 1px solid ${g};
-            font-size: 12px;
-            height: 24px;
-            min-width: auto;
-            white-space: nowrap;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            color: ${S};
-            font-weight: ${C};
-            backdrop-filter: blur(2px);
-            -webkit-backdrop-filter: blur(2px);
-            -webkit-app-region: no-drag;
-            app-region: no-drag;
-            pointer-events: auto;
-          `, y.color && v.style.setProperty("--tab-color", y.color);
+             display: flex;
+             align-items: center;
+             padding: 2px 8px;
+             background: ${T};
+             border-radius: var(--orca-radius-md);
+             border: 1px solid ${g};
+             font-size: 12px;
+             height: 24px;
+             max-height: 24px;
+             line-height: 20px;
+             max-width: ${this.horizontalTabMaxWidth || 130}px;
+             min-width: ${this.horizontalTabMinWidth || 80}px;
+             white-space: nowrap;
+             cursor: pointer;
+             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+             color: ${S};
+             font-weight: ${C};
+             backdrop-filter: blur(2px);
+             -webkit-backdrop-filter: blur(2px);
+             -webkit-app-region: no-drag;
+             app-region: no-drag;
+             pointer-events: auto;
+             will-change: transform, margin, opacity, max-width, min-width;
+           `, y.color && v.style.setProperty("--tab-color", y.color);
           }
         });
         const b = this.tabContainer.querySelector(".new-tab-button");

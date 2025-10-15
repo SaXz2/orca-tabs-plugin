@@ -3533,29 +3533,33 @@ class OrcaTabsPlugin {
             }
           }
           
-          // 只设置基础样式，不覆盖聚焦和悬浮样式
-          (tabElement as HTMLElement).style.cssText = `
-            display: flex;
-            align-items: center;
-            padding: 4px 8px;
-            background: ${tabBackgroundColor};
-            border-radius: var(--orca-radius-md);
-            border: 1px solid ${borderColor};
-            font-size: 12px;
-            height: 24px;
-            min-width: auto;
-            white-space: nowrap;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            color: ${tabTextColor};
-            font-weight: ${fontWeight};
-            backdrop-filter: blur(2px);
-            -webkit-backdrop-filter: blur(2px);
-            -webkit-app-region: no-drag;
-            app-region: no-drag;
-            pointer-events: auto;
-          `;
+           // 只设置基础样式，不覆盖聚焦和悬浮样式
+           (tabElement as HTMLElement).style.cssText = `
+             display: flex;
+             align-items: center;
+             padding: 2px 8px;
+             background: ${tabBackgroundColor};
+             border-radius: var(--orca-radius-md);
+             border: 1px solid ${borderColor};
+             font-size: 12px;
+             height: 24px;
+             max-height: 24px;
+             line-height: 20px;
+             max-width: ${this.horizontalTabMaxWidth || 130}px;
+             min-width: ${this.horizontalTabMinWidth || 80}px;
+             white-space: nowrap;
+             cursor: pointer;
+             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+             color: ${tabTextColor};
+             font-weight: ${fontWeight};
+             backdrop-filter: blur(2px);
+             -webkit-backdrop-filter: blur(2px);
+             -webkit-app-region: no-drag;
+             app-region: no-drag;
+             pointer-events: auto;
+             will-change: transform, margin, opacity, max-width, min-width;
+           `;
           
           // 确保CSS变量正确设置，让CSS规则能够生效
           if (tabInfo.color) {
