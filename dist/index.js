@@ -3213,7 +3213,7 @@ function Aa(n, t, e, a) {
   c.textContent = "最大宽度 (80px - 200px)", c.style.cssText = `
     font-size: 14px;
     margin-bottom: 8px;
-    color: #333;
+    color: var(--orca-color-text-1);
   `;
   const l = document.createElement("input");
   l.type = "range", l.min = "80", l.max = "200", l.value = n.toString(), l.style.cssText = lt();
@@ -3222,7 +3222,7 @@ function Aa(n, t, e, a) {
     text-align: center;
     margin-top: 10px;
     font-size: 14px;
-    color: #666;
+    color: var(--orca-color-text-1);
   `, d.textContent = `最大宽度: ${n}px`;
   const u = document.createElement("div");
   u.className = "dialog-slider-container", u.style.cssText = `
@@ -3233,7 +3233,7 @@ function Aa(n, t, e, a) {
   h.textContent = "最小宽度 (60px - 150px)", h.style.cssText = `
     font-size: 14px;
     margin-bottom: 8px;
-    color: #333;
+    color: var(--orca-color-text-1);
   `;
   const g = document.createElement("input");
   g.type = "range", g.min = "60", g.max = "150", g.value = t.toString(), g.style.cssText = lt();
@@ -3242,7 +3242,7 @@ function Aa(n, t, e, a) {
     text-align: center;
     margin-top: 10px;
     font-size: 14px;
-    color: #666;
+    color: var(--orca-color-text-1);
   `, p.textContent = `最小宽度: ${t}px`;
   let m = null;
   const b = (y, T) => {
