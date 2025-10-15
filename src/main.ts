@@ -7332,6 +7332,12 @@ class OrcaTabsPlugin {
       longPressTimeout = window.setTimeout(async () => {
         if (!isLongPressing) return;
         
+        // 如果标签被置顶，不显示长按列表
+        if (tab.isPinned) {
+          this.verboseLog(`📌 标签 ${tab.title} 已置顶，不显示长按列表`);
+          return;
+        }
+        
         // 设置标记，防止触发点击事件
         tabElement.setAttribute('data-long-pressed', 'true');
         
@@ -7356,8 +7362,17 @@ class OrcaTabsPlugin {
           
           this.verboseLog(`📋 去重后的历史记录: ${deduplicatedTabs.length} 个记录`);
           
-          if (deduplicatedTabs.length === 0) {
-            this.verboseLog(`⚠️ 去重后没有历史记录，不显示悬浮列表`);
+          // 获取当前面板已打开的标签页
+          const currentTabs = this.getCurrentPanelTabs();
+          const openedBlockIds = new Set(currentTabs.map(t => t.blockId));
+          
+          // 过滤掉已经打开的标签页
+          const filteredTabs = deduplicatedTabs.filter(t => !openedBlockIds.has(t.blockId));
+          
+          this.verboseLog(`📋 过滤后的历史记录: ${filteredTabs.length} 个记录（已过滤 ${deduplicatedTabs.length - filteredTabs.length} 个已打开的标签）`);
+          
+          if (filteredTabs.length === 0) {
+            this.verboseLog(`⚠️ 过滤后没有可显示的历史记录，不显示悬浮列表`);
             return;
           }
 
@@ -7397,7 +7412,7 @@ class OrcaTabsPlugin {
           };
           
           hoverTabListContainer = showHoverTabList(
-            deduplicatedTabs,
+            filteredTabs,
             position,
             hoverConfig,
             handleTabClickLongPress,
@@ -7407,8 +7422,8 @@ class OrcaTabsPlugin {
           this.verboseLog(`✅ 悬浮标签列表创建完成`);
 
           // 添加滚动事件监听
-          if (hoverConfig.enableScroll && deduplicatedTabs.length > hoverConfig.maxDisplayCount) {
-            this.addScrollEvents(hoverTabListContainer, deduplicatedTabs, hoverConfig, scrollOffset, handleTabClickLongPress);
+          if (hoverConfig.enableScroll && filteredTabs.length > hoverConfig.maxDisplayCount) {
+            this.addScrollEvents(hoverTabListContainer, filteredTabs, hoverConfig, scrollOffset, handleTabClickLongPress);
           }
           
           // 添加全局点击监听，点击空白区域隐藏悬浮列表
@@ -7428,7 +7443,7 @@ class OrcaTabsPlugin {
             document.addEventListener('click', handleGlobalClick);
           }, 100);
 
-          this.verboseLog(`显示标签 ${tab.title} 的悬浮列表: ${deduplicatedTabs.length} 个历史标签`);
+          this.verboseLog(`显示标签 ${tab.title} 的悬浮列表: ${filteredTabs.length} 个历史标签`);
         } catch (error) {
           this.warn('显示悬浮标签列表失败:', error);
         }
@@ -7555,8 +7570,17 @@ class OrcaTabsPlugin {
           
           this.verboseLog(`📋 去重后的历史记录: ${deduplicatedTabs.length} 个记录`);
           
-          if (deduplicatedTabs.length === 0) {
-            this.verboseLog(`⚠️ 去重后没有历史记录，不显示悬浮列表`);
+          // 获取当前面板已打开的标签页
+          const currentTabs = this.getCurrentPanelTabs();
+          const openedBlockIds = new Set(currentTabs.map(t => t.blockId));
+          
+          // 过滤掉已经打开的标签页
+          const filteredTabs = deduplicatedTabs.filter(t => !openedBlockIds.has(t.blockId));
+          
+          this.verboseLog(`📋 过滤后的历史记录: ${filteredTabs.length} 个记录（已过滤 ${deduplicatedTabs.length - filteredTabs.length} 个已打开的标签）`);
+          
+          if (filteredTabs.length === 0) {
+            this.verboseLog(`⚠️ 过滤后没有可显示的历史记录，不显示悬浮列表`);
             return;
           }
 
@@ -7596,7 +7620,7 @@ class OrcaTabsPlugin {
           };
           
           hoverTabListContainer = showHoverTabList(
-            deduplicatedTabs,
+            filteredTabs,
             position,
             hoverConfig,
             handleTabClickHover,
@@ -7606,8 +7630,8 @@ class OrcaTabsPlugin {
           this.verboseLog(`✅ 悬浮标签列表创建完成`);
 
           // 添加滚动事件监听
-          if (hoverConfig.enableScroll && deduplicatedTabs.length > hoverConfig.maxDisplayCount) {
-            this.addScrollEvents(hoverTabListContainer, deduplicatedTabs, hoverConfig, scrollOffset, handleTabClickHover);
+          if (hoverConfig.enableScroll && filteredTabs.length > hoverConfig.maxDisplayCount) {
+            this.addScrollEvents(hoverTabListContainer, filteredTabs, hoverConfig, scrollOffset, handleTabClickHover);
           }
           
           // 添加全局点击监听，点击空白区域隐藏悬浮列表
@@ -7627,7 +7651,7 @@ class OrcaTabsPlugin {
             document.addEventListener('click', handleGlobalClick);
           }, 100);
 
-          this.verboseLog(`显示标签 ${tab.title} 的悬浮列表: ${deduplicatedTabs.length} 个历史标签`);
+          this.verboseLog(`显示标签 ${tab.title} 的悬浮列表: ${filteredTabs.length} 个历史标签`);
         } catch (error) {
           this.warn('显示悬浮标签列表失败:', error);
         }
