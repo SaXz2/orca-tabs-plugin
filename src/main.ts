@@ -14966,6 +14966,18 @@ export async function load(_name: string) {
 
   setupL10N(orca.state.locale, { "zh-CN": zhCN });
 
+  // ==================== 注意事项 ====================
+  // 根据 Orca API 文档，编辑器命令应该通过 orca.commands API 调用：
+  // - orca.commands.invokeEditorCommand(id, cursor, ...args)
+  // - orca.commands.invokeTopEditorCommand(id, cursor, ...args)
+  // - orca.commands.invokeGroup(callback, options)
+  // 
+  // viewState.editor 对象不提供这些方法，这是 Orca 内部使用的对象。
+  // 插件不应该直接操作 viewState.editor，而应该使用 orca.commands API。
+  // 
+  // 如果 Orca 内部代码报错，说明这是 Orca 自身的问题，不是插件需要修复的。
+  // ==========================================
+
   // 初始化标签页插件
   tabsPlugin = new OrcaTabsPlugin(pluginName);
   
@@ -15036,7 +15048,7 @@ export async function unload() {
     tabsPlugin.destroy();
     tabsPlugin = null;
   }
-  
+
   // 清理所有遗留的 tooltip 元素
   try {
     cleanupAllTooltips();
