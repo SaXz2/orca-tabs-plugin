@@ -801,7 +801,7 @@ function createHorizontalWidthDialog(
   maxWidthLabel.style.cssText = `
     font-size: 14px;
     margin-bottom: 8px;
-    color: #333;
+    color: var(--orca-color-text-1);
   `;
   
   // 最大宽度滑块
@@ -819,7 +819,7 @@ function createHorizontalWidthDialog(
     text-align: center;
     margin-top: 10px;
     font-size: 14px;
-    color: #666;
+    color: var(--orca-color-text-1);
   `;
   maxWidthDisplay.textContent = `最大宽度: ${maxWidth}px`;
   
@@ -837,7 +837,7 @@ function createHorizontalWidthDialog(
   minWidthLabel.style.cssText = `
     font-size: 14px;
     margin-bottom: 8px;
-    color: #333;
+    color: var(--orca-color-text-1);
   `;
   
   // 最小宽度滑块
@@ -855,7 +855,7 @@ function createHorizontalWidthDialog(
     text-align: center;
     margin-top: 10px;
     font-size: 14px;
-    color: #666;
+    color: var(--orca-color-text-1);
   `;
   minWidthDisplay.textContent = `最小宽度: ${minWidth}px`;
   
