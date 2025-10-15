@@ -858,6 +858,12 @@ class OrcaTabsPlugin {
   /** 是否正在导航中 - 用于避免导航时触发重复的聚焦检测 */
   private isNavigating: boolean = false;
   
+  /** 最近导航到的块ID - 用于防止导航后立即重复创建标签页 */
+  private lastNavigatedBlockId: string | null = null;
+  
+  /** 最近导航的时间戳 - 用于判断导航是否刚刚完成 */
+  private lastNavigationTime: number = 0;
+  
   // ==================== 快捷键相关 ====================
   /** 当前鼠标悬停的块ID - 用于快捷键操作的目标块 */
   private hoveredBlockId: string | null = null;
@@ -6028,26 +6034,25 @@ class OrcaTabsPlugin {
       // 使用更安全的导航方式
       try {
         /**
-         * 统一使用块导航方式（修复日期类型标签页切换问题）
+         * 智能导航方式（修复日期类型标签页重复问题）
          * 
          * 问题背景：
-         * - 日期类型标签页使用 orca.nav.goTo("journal", ...) 导航
+         * - 日期类型标签页如果使用 orca.nav.goTo("block", ...) 会创建新的日期块实例
          * - 普通块使用 orca.nav.goTo("block", ...) 导航
-         * - journal 导航可能不会触发聚焦变化事件，导致标签页不同步
+         * - 需要根据块类型选择正确的导航方式
          * 
          * 修复方案：
-         * - 统一使用块导航方式，确保所有标签页都能正确触发聚焦变化
-         * - 移除复杂的日期提取和处理逻辑，简化代码
-         * - 保持与普通块标签页一致的行为
+         * - 日期块使用 orca.nav.goTo("journal", ...) 导航，复用现有日期页
+         * - 普通块使用 orca.nav.goTo("block", ...) 导航
+         * - 通过 TabInfo 中的 isJournal 或 blockType 字段判断块类型
          * 
          * 避坑点：
-         * 1. 不要使用 orca.nav.goTo("journal", ...) 导航日期块
-         * 2. 不要依赖日期提取逻辑，直接使用块ID导航
-         * 3. 确保所有标签页使用相同的导航方式
-         * 4. 避免复杂的条件判断，保持代码简洁
+         * 1. 日期块必须使用 journal 导航，否则会创建重复实例
+         * 2. 需要从标题中正确提取日期信息
+         * 3. 确保日期格式解析支持多种格式（中文、英文、ISO等）
          */
         this.verboseLog(`🚀 尝试使用安全导航到块 ${tab.blockId}`);
-        await this.safeNavigate(tab.blockId, targetPanelId);
+        await this.safeNavigate(tab.blockId, targetPanelId, tab);
         this.verboseLog(`✅ 安全导航成功`);
       } catch (navError) {
         this.warn("导航失败，尝试备用方法:", navError);
@@ -6149,7 +6154,7 @@ class OrcaTabsPlugin {
       
       // 导航到目标标签页（在当前面板中打开）
       if (this.currentPanelId || '') {
-        await this.safeNavigate(targetTab.blockId, this.currentPanelId || '');
+        await this.safeNavigate(targetTab.blockId, this.currentPanelId || '', targetTab);
       }
     } else {
       this.log("没有可切换的相邻标签页");
@@ -6613,7 +6618,7 @@ class OrcaTabsPlugin {
       }
       
       // 导航到目标块
-      await this.safeNavigate(newBlockId, this.currentPanelId || '');
+      await this.safeNavigate(newBlockId, this.currentPanelId || '', tabInfo);
       this.log(`🔄 导航到块: ${newBlockId}`);
       
       // 成功提示已移除
@@ -6890,7 +6895,7 @@ class OrcaTabsPlugin {
       if (navigate) {
         this.verboseLog(`📋 [DEBUG] 开始导航到块 ${blockId}`);
         // 使用统一的安全导航方法
-        await this.safeNavigate(blockId, this.currentPanelId || '');
+        await this.safeNavigate(blockId, this.currentPanelId || '', tabInfo);
       } else {
         this.verboseLog(`📋 [DEBUG] 跳过导航（后台打开模式）`);
       }
@@ -6908,23 +6913,141 @@ class OrcaTabsPlugin {
    * 统一的导航方法，确保所有导航都设置 isNavigating 标志
    * @param blockId 要导航到的块ID
    * @param panelId 目标面板ID
+   * @param tab 可选的标签信息，用于判断是否为日期块
    */
-  private async safeNavigate(blockId: string, panelId: string): Promise<void> {
+  private async safeNavigate(blockId: string, panelId: string, tab?: TabInfo): Promise<void> {
     this.isNavigating = true;
+    this.lastNavigatedBlockId = blockId;
+    this.lastNavigationTime = Date.now();
     this.verboseLog(`🚀 [safeNavigate] 开始导航到块 ${blockId}，设置 isNavigating = true`);
     
     try {
+      // 【修复BUG】判断是否为日期块，使用正确的导航方式
+      if (tab && (tab.isJournal || tab.blockType === 'journal')) {
+        // 日期块：使用 journal 导航，避免创建重复的日期块实例
+        this.verboseLog(`📅 [safeNavigate] 检测到日期块，使用 journal 导航: ${tab.title}`);
+        
+        // 从标题中提取日期
+        const targetDate = this.extractDateFromTitle(tab.title);
+        
+        if (targetDate) {
+          // 优先使用相对日期命令
+          if (tab.title.includes('今天') || tab.title.includes('Today')) {
+            try {
+              await orca.commands.invokeCommand('core.goToday');
+              this.verboseLog(`✅ [safeNavigate] 使用命令导航到今天`);
+              return;
+            } catch (e) {
+              this.verboseLog(`⚠️ [safeNavigate] 命令失败，回退到日期导航`);
+            }
+          } else if (tab.title.includes('昨天') || tab.title.includes('Yesterday')) {
+            try {
+              await orca.commands.invokeCommand('core.goYesterday');
+              this.verboseLog(`✅ [safeNavigate] 使用命令导航到昨天`);
+              return;
+            } catch (e) {
+              this.verboseLog(`⚠️ [safeNavigate] 命令失败，回退到日期导航`);
+            }
+          } else if (tab.title.includes('明天') || tab.title.includes('Tomorrow')) {
+            try {
+              await orca.commands.invokeCommand('core.goTomorrow');
+              this.verboseLog(`✅ [safeNavigate] 使用命令导航到明天`);
+              return;
+            } catch (e) {
+              this.verboseLog(`⚠️ [safeNavigate] 命令失败，回退到日期导航`);
+            }
+          }
+          
+          // 使用日期导航
+          try {
+            const journalDate = {
+              t: 2, // 2 for full/absolute date
+              v: targetDate.getTime() // 使用时间戳
+            };
+            await orca.nav.goTo("journal", { date: journalDate }, panelId);
+            this.verboseLog(`✅ [safeNavigate] 使用 journal 导航成功: ${targetDate.toISOString().split('T')[0]}`);
+            return;
+          } catch (e) {
+            this.warn(`⚠️ [safeNavigate] journal 导航失败，回退到块导航:`, e);
+          }
+        } else {
+          this.verboseLog(`⚠️ [safeNavigate] 无法从标题提取日期，回退到块导航`);
+        }
+      }
+      
+      // 普通块或日期导航失败时：使用块导航
       await orca.nav.goTo("block", { blockId: parseInt(blockId) }, panelId);
-      this.verboseLog(`✅ [safeNavigate] 导航成功`);
+      this.verboseLog(`✅ [safeNavigate] 使用 block 导航成功`);
     } catch (error) {
       this.error(`❌ [safeNavigate] 导航失败:`, error);
       throw error;
     } finally {
       // 导航完成后重新启用聚焦检测
+      // 【修复BUG】增加延迟时间到500ms，确保DOM完全稳定且聚焦事件完全处理完毕
+      // 这是为了防止日期标签页点击后创建重复标签页的问题
       setTimeout(() => {
         this.isNavigating = false;
         this.verboseLog(`🏁 [safeNavigate] 设置 isNavigating = false`);
-      }, 150); // 稍微增加延迟，确保DOM完全稳定
+      }, 500);
+    }
+  }
+  
+  /**
+   * 从标题中提取日期
+   */
+  private extractDateFromTitle(title: string): Date | null {
+    try {
+      // 处理相对日期
+      if (title.includes('今天') || title.includes('Today')) {
+        return new Date();
+      } else if (title.includes('昨天') || title.includes('Yesterday')) {
+        const date = new Date();
+        date.setDate(date.getDate() - 1);
+        return date;
+      } else if (title.includes('明天') || title.includes('Tomorrow')) {
+        const date = new Date();
+        date.setDate(date.getDate() + 1);
+        return date;
+      }
+
+      // 处理标准日期格式
+      // 匹配 yyyy-MM-dd 格式
+      const isoMatch = title.match(/(\d{4}-\d{2}-\d{2})/);
+      if (isoMatch) {
+        const date = new Date(isoMatch[1] + 'T00:00:00.000Z');
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      }
+
+      // 匹配 yyyy年MM月dd日 格式
+      const cnMatch = title.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+      if (cnMatch) {
+        const year = parseInt(cnMatch[1]);
+        const month = parseInt(cnMatch[2]) - 1; // 月份从0开始
+        const day = parseInt(cnMatch[3]);
+        const date = new Date(year, month, day);
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      }
+
+      // 匹配 MM/dd/yyyy 格式
+      const usMatch = title.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (usMatch) {
+        const month = parseInt(usMatch[1]) - 1;
+        const day = parseInt(usMatch[2]);
+        const year = parseInt(usMatch[3]);
+        const date = new Date(year, month, day);
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      }
+
+      return null;
+    } catch (e) {
+      this.warn('从标题提取日期失败:', e);
+      return null;
     }
   }
 
@@ -9726,6 +9849,15 @@ class OrcaTabsPlugin {
       return;
     }
     
+    // 【修复BUG】检查是否是刚刚导航过来的块
+    // 如果是在导航后1秒内检测到的新块，且我们刚导航到了某个标签，则跳过
+    // 这是为了防止点击日期标签页后，Orca创建了新的日期块导致重复标签页
+    const timeSinceNavigation = Date.now() - this.lastNavigationTime;
+    if (this.lastNavigatedBlockId && timeSinceNavigation < 1000) {
+      this.verboseLog(`⏭️ [DEBUG] 检测到导航后 ${timeSinceNavigation}ms 内的新块 ${blockId}，我们刚导航到 ${this.lastNavigatedBlockId}，跳过处理（防止重复标签页）`);
+      return;
+    }
+    
     // 【修复】验证是否应该处理这个面板的变化
     // 关键判断：只有当新块出现在当前用户正在使用的面板中时，才应该更新标签页
     
@@ -10027,6 +10159,20 @@ class OrcaTabsPlugin {
         this.updateFocusState(blockId, existingTab.title);
         await this.immediateUpdateTabsUI();
         return;
+      }
+
+      // 【修复BUG】检查是否是刚刚导航过来的块
+      // 如果是在导航后1秒内检测到的新块，且该块是我们刚导航的目标块，则跳过
+      // 这是为了防止点击日期标签页后，Orca创建了新的日期块导致重复标签页
+      const timeSinceNavigation = Date.now() - this.lastNavigationTime;
+      if (this.lastNavigatedBlockId && timeSinceNavigation < 1000) {
+        // 检查当前标签页中是否有目标块ID的标签
+        const navigatedTab = currentTabs.find(tab => tab.blockId === this.lastNavigatedBlockId);
+        if (navigatedTab) {
+          this.verboseLog(`⏭️ 检测到导航后的新块 ${blockId}，但我们刚导航到 ${this.lastNavigatedBlockId}，跳过处理（防止重复标签页）`);
+          this.verboseLog(`⏭️ 时间差: ${timeSinceNavigation}ms`);
+          return;
+        }
       }
 
       // 标签页不存在 - 更新当前聚焦标签页的内容
@@ -13576,7 +13722,7 @@ class OrcaTabsPlugin {
             this.log(`🎯 工作区中没有记录最后激活标签页，导航到第一个标签页: ${targetTab.title}`);
           }
           
-          await this.safeNavigate(targetTab.blockId, this.currentPanelId || '');
+          await this.safeNavigate(targetTab.blockId, this.currentPanelId || '', targetTab);
         }
       }, 100); // 延迟100ms确保UI更新完成
 
