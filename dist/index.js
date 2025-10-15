@@ -7334,55 +7334,65 @@ class Oa {
     t.addEventListener("mousedown", (l) => {
       if (l.button !== 0) return;
       const d = l.target;
-      d.classList.contains("drag-handle") || d.closest && d.closest(".drag-handle") || (o = !0, this.verboseLog(`🖱️ 开始长按标签: ${e.title}`), a = window.setTimeout(async () => {
-        if (o) {
-          if (e.isPinned) {
-            this.verboseLog(`📌 标签 ${e.title} 已置顶，不显示长按列表`);
-            return;
-          }
-          t.setAttribute("data-long-pressed", "true");
-          try {
-            this.verboseLog("⏰ 长按触发，开始检查切换历史");
-            const h = (await this.tabStorageService.restoreRecentTabSwitchHistory()).global_tab_history;
-            if (this.verboseLog(`📋 全局切换历史记录: ${h ? h.recentTabs.length : 0} 个记录`), !h || h.recentTabs.length === 0) {
-              this.verboseLog("⚠️ 没有全局切换历史记录，不显示悬浮列表");
-              return;
-            }
-            const g = h.recentTabs;
-            this.verboseLog(`📋 去重后的历史记录: ${g.length} 个记录`);
-            const b = this.getCurrentPanelTabs(), m = new Set(b.map((T) => T.blockId)), p = g.filter((T) => !m.has(T.blockId));
-            if (this.verboseLog(`📋 过滤后的历史记录: ${p.length} 个记录（已过滤 ${g.length - p.length} 个已打开的标签）`), p.length === 0) {
-              this.verboseLog("⚠️ 过滤后没有可显示的历史记录，不显示悬浮列表");
-              return;
-            }
-            const f = t.getBoundingClientRect(), y = {
-              x: f.left,
-              y: f.bottom + 4
-              // 在标签下方显示
-            };
-            this.verboseLog(`📍 计算悬浮位置: x=${y.x}, y=${y.y}`), this.verboseLog(`📊 标签尺寸: width=${f.width}, height=${f.height}`), this.verboseLog("🎨 开始创建悬浮标签列表");
-            const w = (T) => {
-              this.verboseLog(`🖱️ 点击悬浮标签: ${T.title}`), this.getCurrentPanelTabs().find((D) => D.blockId === T.blockId) ? (this.verboseLog(`🔄 标签已存在，跳转到: ${T.title}`), this.recordTabSwitchHistory(e.blockId, T), this.switchToTab(T)) : (this.verboseLog(`🔄 标签不存在，替换当前标签: ${e.title} -> ${T.title}`), this.replaceCurrentTabWith(e.blockId, T)), A();
-            };
-            i = wt(
-              p,
-              y,
-              c,
-              w,
-              this.isVerticalMode
-            ), this.verboseLog("✅ 悬浮标签列表创建完成"), c.enableScroll && p.length > c.maxDisplayCount && this.addScrollEvents(i, p, c, r, w);
-            const x = (T) => {
-              const S = T.target;
-              this.safeClosest(S, ".hover-tab-list-container") || (A(), i = null, r = 0, document.removeEventListener("click", x));
-            };
-            setTimeout(() => {
-              document.addEventListener("click", x);
-            }, 100), this.verboseLog(`显示标签 ${e.title} 的悬浮列表: ${p.length} 个历史标签`);
-          } catch (u) {
-            this.warn("显示悬浮标签列表失败:", u);
-          }
+      if (!(d.classList.contains("drag-handle") || d.closest && d.closest(".drag-handle"))) {
+        if (t.hasAttribute("data-renaming")) {
+          this.verboseLog(`✏️ 标签 ${e.title} 正在重命名，不启用长按切换列表`);
+          return;
         }
-      }, 500));
+        o = !0, this.verboseLog(`🖱️ 开始长按标签: ${e.title}`), a = window.setTimeout(async () => {
+          if (o) {
+            if (e.isPinned) {
+              this.verboseLog(`📌 标签 ${e.title} 已置顶，不显示长按列表`);
+              return;
+            }
+            if (t.hasAttribute("data-renaming")) {
+              this.verboseLog(`✏️ 标签 ${e.title} 正在重命名，取消长按切换列表`);
+              return;
+            }
+            t.setAttribute("data-long-pressed", "true");
+            try {
+              this.verboseLog("⏰ 长按触发，开始检查切换历史");
+              const h = (await this.tabStorageService.restoreRecentTabSwitchHistory()).global_tab_history;
+              if (this.verboseLog(`📋 全局切换历史记录: ${h ? h.recentTabs.length : 0} 个记录`), !h || h.recentTabs.length === 0) {
+                this.verboseLog("⚠️ 没有全局切换历史记录，不显示悬浮列表");
+                return;
+              }
+              const g = h.recentTabs;
+              this.verboseLog(`📋 去重后的历史记录: ${g.length} 个记录`);
+              const b = this.getCurrentPanelTabs(), m = new Set(b.map((T) => T.blockId)), p = g.filter((T) => !m.has(T.blockId));
+              if (this.verboseLog(`📋 过滤后的历史记录: ${p.length} 个记录（已过滤 ${g.length - p.length} 个已打开的标签）`), p.length === 0) {
+                this.verboseLog("⚠️ 过滤后没有可显示的历史记录，不显示悬浮列表");
+                return;
+              }
+              const f = t.getBoundingClientRect(), y = {
+                x: f.left,
+                y: f.bottom + 4
+                // 在标签下方显示
+              };
+              this.verboseLog(`📍 计算悬浮位置: x=${y.x}, y=${y.y}`), this.verboseLog(`📊 标签尺寸: width=${f.width}, height=${f.height}`), this.verboseLog("🎨 开始创建悬浮标签列表");
+              const w = (T) => {
+                this.verboseLog(`🖱️ 点击悬浮标签: ${T.title}`), this.getCurrentPanelTabs().find((D) => D.blockId === T.blockId) ? (this.verboseLog(`🔄 标签已存在，跳转到: ${T.title}`), this.recordTabSwitchHistory(e.blockId, T), this.switchToTab(T)) : (this.verboseLog(`🔄 标签不存在，替换当前标签: ${e.title} -> ${T.title}`), this.replaceCurrentTabWith(e.blockId, T)), A();
+              };
+              i = wt(
+                p,
+                y,
+                c,
+                w,
+                this.isVerticalMode
+              ), this.verboseLog("✅ 悬浮标签列表创建完成"), c.enableScroll && p.length > c.maxDisplayCount && this.addScrollEvents(i, p, c, r, w);
+              const x = (T) => {
+                const S = T.target;
+                this.safeClosest(S, ".hover-tab-list-container") || (A(), i = null, r = 0, document.removeEventListener("click", x));
+              };
+              setTimeout(() => {
+                document.addEventListener("click", x);
+              }, 100), this.verboseLog(`显示标签 ${e.title} 的悬浮列表: ${p.length} 个历史标签`);
+            } catch (u) {
+              this.warn("显示悬浮标签列表失败:", u);
+            }
+          }
+        }, 500);
+      }
     }), t.addEventListener("mouseup", () => {
       a && (clearTimeout(a), a = null), o = !1;
     }), t.addEventListener("mouseleave", () => {
@@ -7717,7 +7727,7 @@ class Oa {
     const a = e.querySelector(".inline-rename-input");
     a && a.remove();
     const i = e.textContent, r = e.style.cssText, o = e.draggable;
-    e.draggable = !1;
+    e.draggable = !1, e.setAttribute("data-renaming", "true");
     const c = document.createElement("input");
     c.type = "text", c.value = t.title, c.className = "inline-rename-input";
     let s = "var(--orca-color-text-1)", l = "";
@@ -7738,12 +7748,12 @@ class Oa {
     const d = async () => {
       const h = c.value.trim();
       if (h && h !== t.title) {
-        await this.updateTabTitle(t, h), e.draggable = o;
+        await this.updateTabTitle(t, h), e.draggable = o, e.removeAttribute("data-renaming");
         return;
       }
-      e.textContent = i, e.style.cssText = r, e.draggable = o;
+      e.textContent = i, e.style.cssText = r, e.draggable = o, e.removeAttribute("data-renaming");
     }, u = () => {
-      e.textContent = i, e.style.cssText = r, e.draggable = o;
+      e.textContent = i, e.style.cssText = r, e.draggable = o, e.removeAttribute("data-renaming");
     };
     c.addEventListener("blur", d), c.addEventListener("keydown", (h) => {
       h.key === "Enter" ? (h.preventDefault(), d()) : h.key === "Escape" && (h.preventDefault(), u());

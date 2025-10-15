@@ -7448,6 +7448,12 @@ class OrcaTabsPlugin {
         return;
       }
       
+      // 检查标签是否正在重命名，如果是则不处理长按
+      if (tabElement.hasAttribute('data-renaming')) {
+        this.verboseLog(`✏️ 标签 ${tab.title} 正在重命名，不启用长按切换列表`);
+        return;
+      }
+      
       isLongPressing = true;
       this.verboseLog(`🖱️ 开始长按标签: ${tab.title}`);
       
@@ -7458,6 +7464,12 @@ class OrcaTabsPlugin {
         // 如果标签被置顶，不显示长按列表
         if (tab.isPinned) {
           this.verboseLog(`📌 标签 ${tab.title} 已置顶，不显示长按列表`);
+          return;
+        }
+        
+        // 再次检查是否正在重命名（防止在延迟期间开始重命名）
+        if (tabElement.hasAttribute('data-renaming')) {
+          this.verboseLog(`✏️ 标签 ${tab.title} 正在重命名，取消长按切换列表`);
           return;
         }
         
@@ -8445,6 +8457,9 @@ class OrcaTabsPlugin {
     
     // 禁用拖拽功能，防止重命名时触发拖拽移动
     tabElement.draggable = false;
+    
+    // 设置重命名标记，禁用长按切换列表功能
+    tabElement.setAttribute('data-renaming', 'true');
 
     // 创建输入框
     const input = document.createElement('input');
@@ -8494,6 +8509,8 @@ class OrcaTabsPlugin {
         await this.updateTabTitle(tab, newTitle);
         // 恢复拖拽功能
         tabElement.draggable = originalDraggable;
+        // 移除重命名标记
+        tabElement.removeAttribute('data-renaming');
         // 重命名后，让UI更新来显示新标题
         return; // 不恢复原始内容，让UI更新显示新标题
       }
@@ -8501,6 +8518,8 @@ class OrcaTabsPlugin {
       tabElement.textContent = originalContent;
       tabElement.style.cssText = originalStyle;
       tabElement.draggable = originalDraggable;
+      // 移除重命名标记
+      tabElement.removeAttribute('data-renaming');
     };
 
     // 取消重命名
@@ -8509,6 +8528,8 @@ class OrcaTabsPlugin {
       tabElement.textContent = originalContent;
       tabElement.style.cssText = originalStyle;
       tabElement.draggable = originalDraggable;
+      // 移除重命名标记
+      tabElement.removeAttribute('data-renaming');
     };
 
     // 添加事件监听器
