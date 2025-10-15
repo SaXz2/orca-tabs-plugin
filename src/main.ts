@@ -3550,7 +3550,6 @@ class OrcaTabsPlugin {
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             color: ${tabTextColor};
             font-weight: ${fontWeight};
-            max-width: 100px;
             backdrop-filter: blur(2px);
             -webkit-backdrop-filter: blur(2px);
             -webkit-app-region: no-drag;
@@ -8323,7 +8322,6 @@ class OrcaTabsPlugin {
       font-weight: 600;
       outline: none;
       width: 100%;
-      max-width: 100px;
       box-sizing: border-box;
       -webkit-app-region: no-drag;
       app-region: no-drag;

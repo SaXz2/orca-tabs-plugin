@@ -45,6 +45,21 @@ export function addTooltip(element: HTMLElement, config: TooltipConfig): void {
     }
 
     showTimeout = setTimeout(() => {
+      // 检查元素是否仍然在 DOM 中且可见
+      if (!element.isConnected || !document.body.contains(element)) {
+        return;
+      }
+
+      // 获取元素位置
+      const rect = element.getBoundingClientRect();
+      
+      // 验证 rect 是否有效（防止元素不在视口或已被移除）
+      if (!rect || rect.width === 0 || rect.height === 0 || 
+          (rect.top === 0 && rect.left === 0 && rect.bottom === 0 && rect.right === 0)) {
+        // 元素无效或不可见，不显示 tooltip
+        return;
+      }
+
       // 创建并插入
       if (!tooltip) {
         tooltip = document.createElement('div');
@@ -64,10 +79,21 @@ export function addTooltip(element: HTMLElement, config: TooltipConfig): void {
         document.body.appendChild(tooltip);
       }
 
-      const rect = element.getBoundingClientRect();
       tooltip.style.opacity = '1';
       tooltip.style.visibility = 'hidden';
-      const tooltipRect = tooltip.getBoundingClientRect();
+      
+      // 等待一帧确保 tooltip 已渲染
+      requestAnimationFrame(() => {
+        if (!tooltip || !tooltip.parentNode) return;
+        
+        const tooltipRect = tooltip.getBoundingClientRect();
+        
+        // 验证 tooltipRect 是否有效
+        if (!tooltipRect || tooltipRect.width === 0 || tooltipRect.height === 0) {
+          // tooltip 未正确渲染，隐藏并清理
+          hideTooltip();
+          return;
+        }
       
       let left = 0;
       let top = 0;
@@ -144,30 +170,42 @@ export function addTooltip(element: HTMLElement, config: TooltipConfig): void {
         }
       }
 
-      // 最终边界检查和调整
-      // 水平边界检查
-      if (left < margin) {
-        left = margin;
-      } else if (left + tooltipRect.width > viewportWidth - margin) {
-        left = viewportWidth - tooltipRect.width - margin;
-      }
+        // 最终边界检查和调整
+        // 水平边界检查
+        if (left < margin) {
+          left = margin;
+        } else if (left + tooltipRect.width > viewportWidth - margin) {
+          left = viewportWidth - tooltipRect.width - margin;
+        }
 
-      // 垂直边界检查
-      if (top < margin) {
-        top = margin;
-      } else if (top + tooltipRect.height > viewportHeight - margin) {
-        top = viewportHeight - tooltipRect.height - margin;
-      }
+        // 垂直边界检查
+        if (top < margin) {
+          top = margin;
+        } else if (top + tooltipRect.height > viewportHeight - margin) {
+          top = viewportHeight - tooltipRect.height - margin;
+        }
 
-      // 如果 tooltip 太宽，尝试调整位置
-      if (tooltipRect.width > viewportWidth - 2 * margin) {
-        left = margin;
-        tooltip.style.maxWidth = `${viewportWidth - 2 * margin}px`;
-      }
+        // 如果 tooltip 太宽，尝试调整位置
+        if (tooltipRect.width > viewportWidth - 2 * margin) {
+          left = margin;
+          tooltip.style.maxWidth = `${viewportWidth - 2 * margin}px`;
+        }
 
-      tooltip.style.left = `${left}px`;
-      tooltip.style.top = `${top}px`;
-      tooltip.style.visibility = 'visible';
+        // 最终安全检查：确保位置值有效
+        if (isNaN(left) || isNaN(top) || !isFinite(left) || !isFinite(top)) {
+          console.warn('[Tooltip] Invalid position calculated, hiding tooltip');
+          hideTooltip();
+          return;
+        }
+
+        // 确保位置值不为负数（额外的安全检查）
+        left = Math.max(0, left);
+        top = Math.max(0, top);
+
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${top}px`;
+        tooltip.style.visibility = 'visible';
+      });
     }, config.delay || 500) as unknown as number; // 性能优化：增加延迟到500ms
   };
 
@@ -198,10 +236,27 @@ export function addTooltip(element: HTMLElement, config: TooltipConfig): void {
     }
   };
 
+  // 鼠标移动监听器：如果鼠标移动太快，隐藏 tooltip
+  const handleMouseMove = (e: MouseEvent) => {
+    if (tooltip && tooltip.parentNode) {
+      const rect = element.getBoundingClientRect();
+      const isOutside = 
+        e.clientX < rect.left - 10 ||
+        e.clientX > rect.right + 10 ||
+        e.clientY < rect.top - 10 ||
+        e.clientY > rect.bottom + 10;
+      
+      if (isOutside) {
+        hideTooltip();
+      }
+    }
+  };
+
   // 绑定事件
   element.addEventListener('mouseenter', showTooltip);
   element.addEventListener('mouseleave', hideTooltip);
   element.addEventListener('mousedown', hideTooltip);
+  element.addEventListener('mousemove', handleMouseMove);
 
   // 存储清理函数（通过 WeakMap）
   const cleanup = () => {
@@ -210,6 +265,7 @@ export function addTooltip(element: HTMLElement, config: TooltipConfig): void {
     element.removeEventListener('mouseenter', showTooltip);
     element.removeEventListener('mouseleave', hideTooltip);
     element.removeEventListener('mousedown', hideTooltip);
+    element.removeEventListener('mousemove', handleMouseMove);
     
     // 更健壮的 tooltip 清理
     if (tooltip) {
@@ -336,18 +392,55 @@ export function initializeTooltips(): void {
  * 这是一个安全措施，用于清理可能遗留的 orca-tooltip 元素
  */
 export function cleanupAllTooltips(): void {
+  // 清理 orca-tooltip 元素
   const tooltips = document.querySelectorAll('.orca-tooltip');
   tooltips.forEach(tooltip => {
-    if (tooltip.parentNode) {
-      tooltip.parentNode.removeChild(tooltip);
+    try {
+      if (tooltip.parentNode) {
+        tooltip.parentNode.removeChild(tooltip);
+      } else {
+        tooltip.remove?.();
+      }
+    } catch (error) {
+      console.warn('Failed to remove tooltip:', error);
     }
   });
   
   // 同时清理其他可能的 tooltip 类名
   const otherTooltips = document.querySelectorAll('.tooltip');
   otherTooltips.forEach(tooltip => {
-    if (tooltip.parentNode) {
-      tooltip.parentNode.removeChild(tooltip);
+    try {
+      if (tooltip.parentNode) {
+        tooltip.parentNode.removeChild(tooltip);
+      } else {
+        tooltip.remove?.();
+      }
+    } catch (error) {
+      console.warn('Failed to remove tooltip:', error);
+    }
+  });
+  
+  // 清理可能跑到左上角的 tooltip（position: absolute 且 left/top 接近 0）
+  const suspiciousTooltips = document.querySelectorAll('[style*="position: absolute"]');
+  suspiciousTooltips.forEach(el => {
+    const style = window.getComputedStyle(el);
+    const left = parseFloat(style.left);
+    const top = parseFloat(style.top);
+    const zIndex = parseInt(style.zIndex);
+    
+    // 如果是高 z-index 的绝对定位元素，且位置在左上角附近，可能是遗留的 tooltip
+    if (zIndex >= 10000 && left < 20 && top < 20 && 
+        (el.classList.contains('orca-tooltip') || el.classList.contains('tooltip'))) {
+      try {
+        if (el.parentNode) {
+          el.parentNode.removeChild(el);
+        } else {
+          el.remove?.();
+        }
+        console.log('[Tooltip] Cleaned up suspicious tooltip at top-left corner');
+      } catch (error) {
+        console.warn('Failed to remove suspicious tooltip:', error);
+      }
     }
   });
 }
