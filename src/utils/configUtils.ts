@@ -16,6 +16,7 @@ export interface LayoutConfig {
   showInHeadbar: boolean;
   horizontalTabMaxWidth: number;
   horizontalTabMinWidth: number;
+  enableEdgeHide: boolean;
 }
 
 export interface PositionConfig {
@@ -37,7 +38,8 @@ export function createDefaultLayoutConfig(): LayoutConfig {
     showBlockTypeIcons: true,
     showInHeadbar: true,
     horizontalTabMaxWidth: 130,
-    horizontalTabMinWidth: 80
+    horizontalTabMinWidth: 80,
+    enableEdgeHide: false
   };
 }
 
@@ -80,7 +82,8 @@ export function mergeLayoutConfig(saved: Partial<LayoutConfig>): LayoutConfig {
     showBlockTypeIcons: saved.showBlockTypeIcons ?? defaultConfig.showBlockTypeIcons,
     showInHeadbar: saved.showInHeadbar ?? defaultConfig.showInHeadbar,
     horizontalTabMaxWidth: saved.horizontalTabMaxWidth ?? defaultConfig.horizontalTabMaxWidth,
-    horizontalTabMinWidth: saved.horizontalTabMinWidth ?? defaultConfig.horizontalTabMinWidth
+    horizontalTabMinWidth: saved.horizontalTabMinWidth ?? defaultConfig.horizontalTabMinWidth,
+    enableEdgeHide: saved.enableEdgeHide ?? defaultConfig.enableEdgeHide
   };
 }
 

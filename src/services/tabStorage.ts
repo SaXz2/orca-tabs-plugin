@@ -346,7 +346,8 @@ export class TabStorageService {
         showBlockTypeIcons: false,
         showInHeadbar: false,
         horizontalTabMaxWidth: 130,
-        horizontalTabMinWidth: 80
+        horizontalTabMinWidth: 80,
+        enableEdgeHide: false
       });
       
       this.log(`💾 位置已保存: ${generatePositionLogMessage(position, isVerticalMode)}`);
@@ -371,10 +372,11 @@ export class TabStorageService {
     showInHeadbar: boolean;
     horizontalTabMaxWidth: number;
     horizontalTabMinWidth: number;
+    enableEdgeHide: boolean;
   }): Promise<void> {
     try {
       await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.LAYOUT_MODE, layoutData, this.pluginName);
-      this.log(`💾 布局模式已保存: ${layoutData.isVerticalMode ? '垂直' : '水平'}, 垂直宽度: ${layoutData.verticalWidth}px, 垂直位置: (${layoutData.verticalPosition.x}, ${layoutData.verticalPosition.y}), 水平位置: (${layoutData.horizontalPosition.x}, ${layoutData.horizontalPosition.y})`);
+      this.log(`💾 布局模式已保存: ${layoutData.isVerticalMode ? '垂直' : '水平'}, 垂直宽度: ${layoutData.verticalWidth}px, 垂直位置: (${layoutData.verticalPosition.x}, ${layoutData.verticalPosition.y}), 水平位置: (${layoutData.horizontalPosition.x}, ${layoutData.horizontalPosition.y}), 贴边隐藏: ${layoutData.enableEdgeHide ? '启用' : '禁用'}`);
     } catch (e) {
       this.error("保存布局模式失败:", e);
     }

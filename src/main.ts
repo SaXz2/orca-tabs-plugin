@@ -36,7 +36,7 @@ import zhCN from "./translations/zhCN";
 
 // ==================== 本地模块导入 ====================
 // 常量定义 - 包含应用配置常量和存储键定义
-import { AppKeys, PropType, PLUGIN_STORAGE_KEYS } from './constants';
+import { AppKeys, PropType, PLUGIN_STORAGE_KEYS, FEATURE_CONFIG } from './constants';
 // 类型定义 - 包含所有TypeScript接口和类型
 import { TabInfo, TabPosition, PanelTabsData, SavedTabSet, Workspace, HoverTabListConfig } from './types';
 // 存储服务 - 提供统一的数据存储接口，支持Orca API和localStorage降级
@@ -679,6 +679,25 @@ class OrcaTabsPlugin {
   
   /** 侧边栏防抖计时器 - 防止频繁响应侧边栏状态变化 */
   private sidebarDebounceTimer: number | null = null;
+  
+  // ==================== 贴边隐藏 ====================
+  /** 贴边隐藏功能是否启用 - 控制是否启用贴边隐藏功能 */
+  private enableEdgeHide: boolean = false;
+  
+  /** 当前贴边的方向 - 检测到容器靠近哪个边缘（null表示不靠近任何边缘） */
+  private currentEdgeSide: 'left' | 'right' | 'top' | 'bottom' | null = null;
+  
+  /** 贴边隐藏是否展开 - 标识贴边隐藏状态下容器是否处于展开状态 */
+  private isEdgeHideExpanded: boolean = false;
+  
+  /** 贴边隐藏展开延迟定时器 - 用于延迟展开贴边隐藏的容器 */
+  private edgeHideExpandTimer: number | null = null;
+  
+  /** 贴边隐藏收起延迟定时器 - 用于延迟收起贴边隐藏的容器 */
+  private edgeHideCollapseTimer: number | null = null;
+  
+  /** 贴边隐藏触发区域元素 - 透明的触发区域，用于鼠标悬停检测 */
+  private edgeHideTriggerElement: HTMLDivElement | null = null;
   
   // ==================== 窗口可见性 ====================
   /** 浮窗是否可见 - 控制标签页容器的显示/隐藏状态 */
@@ -2631,6 +2650,12 @@ class OrcaTabsPlugin {
     if (this.cycleSwitcher) {
       this.cycleSwitcher.remove();
     }
+    
+    // 清理触发区域
+    if (this.edgeHideTriggerElement) {
+      this.edgeHideTriggerElement.remove();
+      this.edgeHideTriggerElement = null;
+    }
 
 
     // 不再创建循环切换器，因为标签页会自动切换
@@ -2718,6 +2743,14 @@ class OrcaTabsPlugin {
     } else {
       // 正常模式：添加到body
       document.body.appendChild(this.tabContainer);
+      
+      // 如果启用贴边隐藏，检测当前位置（会自动创建触发区域）
+      if (this.enableEdgeHide) {
+        // 初始化时检测是否靠近边缘，但不立即应用隐藏（等待下一帧以确保DOM已就绪）
+        requestAnimationFrame(() => {
+          this.applyEdgeHideStyle();
+        });
+      }
     }
     
     // 添加事件监听，只阻止标签栏内部的mousedown事件冒泡
@@ -2814,7 +2847,7 @@ class OrcaTabsPlugin {
     style.textContent = `
       /* CSS变量定义 - 支持主题自动切换 */
       :root {
-        --orca-tab-bg: color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 10%));
+        --orca-tab-bg: color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 18%));
         --orca-tab-border: rgba(0, 0, 0, 0.1);
         --orca-tab-hover-border: var(--orca-color-primary-3);
         --orca-tab-active-border: rgba(0, 0, 0, 0.3);
@@ -2825,7 +2858,7 @@ class OrcaTabsPlugin {
       /* 暗色模式的CSS变量 */
       :root[data-theme="dark"],
       .dark {
-        --orca-tab-bg: color-mix(in srgb, var(--orca-color-bg-1), rgb(0 0 0 / 40%));
+        --orca-tab-bg: color-mix(in srgb, var(--orca-color-bg-1), rgb(255 255 255 / 12%));
         --orca-tab-border: rgba(255, 255, 255, 0.2);
         --orca-tab-hover-border: var(--orca-color-primary-3);
         --orca-tab-active-border: rgba(255, 255, 255, 0.4);
@@ -3597,6 +3630,14 @@ class OrcaTabsPlugin {
       
       this.log(`📌 固定到顶部模式样式已应用，标签页数量: ${tabs.length}`);
     }
+    
+    // 如果启用了贴边隐藏，重新应用尺寸约束
+    if (this.enableEdgeHide && this.currentEdgeSide && !this.isFixedToTop) {
+      // 延迟一帧以确保DOM更新完成
+      requestAnimationFrame(() => {
+        this.applyEdgeConstraints();
+      });
+    }
     } catch (error) {
       this.error("更新UI时发生错误:", error);
     } finally {
@@ -4347,6 +4388,22 @@ class OrcaTabsPlugin {
       );
     }
 
+    // 在非固定到顶部模式下添加贴边隐藏选项
+    if (!this.isFixedToTop) {
+      menuItems.push(
+        {
+          text: '---',
+          action: () => {},
+          separator: true
+        },
+        {
+          text: this.enableEdgeHide ? '关闭贴边隐藏' : '开启贴边隐藏',
+          action: () => this.toggleEdgeHide(),
+          icon: this.enableEdgeHide ? '👁' : '👁‍🗨'
+        }
+      );
+    }
+
     // 只有在非固定到顶部模式下才添加侧边栏对齐选项
     if (!this.isFixedToTop) {
       menuItems.push(
@@ -4533,6 +4590,339 @@ class OrcaTabsPlugin {
     } catch (error) {
       this.error("切换侧边栏对齐失败:", error);
     }
+  }
+
+  /**
+   * 切换贴边隐藏功能
+   */
+  async toggleEdgeHide() {
+    try {
+      this.enableEdgeHide = !this.enableEdgeHide;
+      this.log(`🔄 贴边隐藏功能已${this.enableEdgeHide ? '启用' : '禁用'}`);
+      
+      // 保存配置
+      await this.saveLayoutMode();
+      
+      // 重新创建UI
+      await this.createTabsUI();
+    } catch (error) {
+      this.error("切换贴边隐藏失败:", error);
+    }
+  }
+
+  /**
+   * 检测容器是否靠近屏幕边缘
+   */
+  private detectEdgeProximity(): 'left' | 'right' | 'top' | 'bottom' | null {
+    if (!this.tabContainer) return null;
+    
+    const rect = this.tabContainer.getBoundingClientRect();
+    const threshold = FEATURE_CONFIG.EDGE_DETECTION_DISTANCE;
+    
+    // 检测是否靠近左边缘
+    if (rect.left <= threshold) {
+      return 'left';
+    }
+    
+    // 检测是否靠近右边缘
+    if (window.innerWidth - rect.right <= threshold) {
+      return 'right';
+    }
+    
+    // 检测是否靠近顶部边缘
+    if (rect.top <= threshold) {
+      return 'top';
+    }
+    
+    // 检测是否靠近底部边缘
+    if (window.innerHeight - rect.bottom <= threshold) {
+      return 'bottom';
+    }
+    
+    return null;
+  }
+
+  /**
+   * 应用贴边隐藏样式
+   */
+  private applyEdgeHideStyle() {
+    if (!this.tabContainer) return;
+    
+    // 检测当前靠近哪个边缘
+    const detectedEdge = this.detectEdgeProximity();
+    
+    // 只有在检测到边缘变化时才更新
+    if (detectedEdge !== this.currentEdgeSide) {
+      this.currentEdgeSide = detectedEdge;
+      
+      if (!this.currentEdgeSide) {
+        // 不靠近任何边缘，恢复正常显示
+        this.tabContainer.style.transform = 'none';
+        this.tabContainer.style.maxHeight = '';
+        this.isEdgeHideExpanded = true;
+        
+        // 清理触发区域
+        if (this.edgeHideTriggerElement) {
+          this.edgeHideTriggerElement.remove();
+          this.edgeHideTriggerElement = null;
+        }
+        
+        this.verboseLog('📍 远离边缘，恢复正常显示');
+        return;
+      }
+      
+      // 根据贴边方向设置最大高度/宽度限制
+      this.applyEdgeConstraints();
+      
+      // 靠近边缘，自动隐藏（只露出很小的视觉提示）
+      const hintSize = FEATURE_CONFIG.EDGE_HINT_SIZE;
+      
+      switch (this.currentEdgeSide) {
+        case 'left':
+          {
+            const containerWidth = this.isVerticalMode ? this.verticalWidth : this.tabContainer.offsetWidth;
+            this.tabContainer.style.transform = `translateX(-${containerWidth - hintSize}px)`;
+          }
+          break;
+        case 'right':
+          {
+            const containerWidth = this.isVerticalMode ? this.verticalWidth : this.tabContainer.offsetWidth;
+            this.tabContainer.style.transform = `translateX(${containerWidth - hintSize}px)`;
+          }
+          break;
+        case 'top':
+          {
+            const containerHeight = this.tabContainer.offsetHeight;
+            this.tabContainer.style.transform = `translateY(-${containerHeight - hintSize}px)`;
+          }
+          break;
+        case 'bottom':
+          {
+            const containerHeight = this.tabContainer.offsetHeight;
+            this.tabContainer.style.transform = `translateY(${containerHeight - hintSize}px)`;
+          }
+          break;
+      }
+      
+      this.isEdgeHideExpanded = false;
+      this.verboseLog(`🧲 检测到靠近${this.currentEdgeSide}边缘，自动隐藏`);
+      
+      // 创建/更新触发区域
+      this.attachEdgeHideEvents();
+    }
+  }
+
+  /**
+   * 根据贴边方向应用容器尺寸限制
+   */
+  private applyEdgeConstraints() {
+    if (!this.tabContainer || !this.currentEdgeSide) return;
+    
+    const rect = this.tabContainer.getBoundingClientRect();
+    const margin = 20; // 留边距
+    
+    switch (this.currentEdgeSide) {
+      case 'top':
+        // 贴顶部时，限制最大高度为从当前位置到屏幕底部
+        {
+          const availableHeight = window.innerHeight - rect.top - margin;
+          this.tabContainer.style.maxHeight = `${Math.max(100, availableHeight)}px`;
+          this.verboseLog(`📏 顶部贴边：可用高度 ${availableHeight}px`);
+        }
+        break;
+      case 'bottom':
+        // 贴底部时，限制最大高度为容器顶部到屏幕顶部的距离
+        // 这样即使添加新标签，容器也只会向上扩展，不会超出屏幕顶部
+        {
+          const availableHeight = rect.top + rect.height - margin;
+          this.tabContainer.style.maxHeight = `${Math.max(100, availableHeight)}px`;
+          this.verboseLog(`📏 底部贴边：容器top=${rect.top}, height=${rect.height}, 限制高度=${availableHeight}px`);
+        }
+        break;
+      case 'left':
+      case 'right':
+        // 左右贴边时，限制最大高度为屏幕高度的80%
+        {
+          const availableHeight = window.innerHeight * 0.8;
+          this.tabContainer.style.maxHeight = `${availableHeight}px`;
+          this.verboseLog(`📏 ${this.currentEdgeSide}侧贴边：限制高度 ${availableHeight}px`);
+        }
+        break;
+    }
+  }
+
+  /**
+   * 附加贴边隐藏事件监听 - 创建透明触发区域用于展开/收起
+   */
+  private attachEdgeHideEvents() {
+    if (!this.tabContainer || !this.currentEdgeSide) return;
+    
+    // 移除旧的触发区域
+    if (this.edgeHideTriggerElement) {
+      this.edgeHideTriggerElement.remove();
+      this.edgeHideTriggerElement = null;
+    }
+    
+    // 创建透明的触发区域
+    this.edgeHideTriggerElement = document.createElement('div');
+    this.edgeHideTriggerElement.style.cssText = `
+      position: fixed;
+      z-index: 299;
+      background: transparent;
+      pointer-events: auto;
+    `;
+    
+    // 根据贴边方向设置触发区域的位置和大小
+    const triggerSize = FEATURE_CONFIG.EDGE_TRIGGER_ZONE_SIZE;
+    const rect = this.tabContainer.getBoundingClientRect();
+    
+    switch (this.currentEdgeSide) {
+      case 'left':
+        this.edgeHideTriggerElement.style.left = '0';
+        this.edgeHideTriggerElement.style.top = `${rect.top}px`;
+        this.edgeHideTriggerElement.style.width = `${triggerSize}px`;
+        this.edgeHideTriggerElement.style.height = `${rect.height}px`;
+        break;
+      case 'right':
+        this.edgeHideTriggerElement.style.right = '0';
+        this.edgeHideTriggerElement.style.top = `${rect.top}px`;
+        this.edgeHideTriggerElement.style.width = `${triggerSize}px`;
+        this.edgeHideTriggerElement.style.height = `${rect.height}px`;
+        break;
+      case 'top':
+        this.edgeHideTriggerElement.style.left = `${rect.left}px`;
+        this.edgeHideTriggerElement.style.top = '0';
+        this.edgeHideTriggerElement.style.width = `${rect.width}px`;
+        this.edgeHideTriggerElement.style.height = `${triggerSize}px`;
+        break;
+      case 'bottom':
+        this.edgeHideTriggerElement.style.left = `${rect.left}px`;
+        this.edgeHideTriggerElement.style.bottom = '0';
+        this.edgeHideTriggerElement.style.width = `${rect.width}px`;
+        this.edgeHideTriggerElement.style.height = `${triggerSize}px`;
+        break;
+    }
+    
+    // 监听鼠标进入/离开触发区域
+    this.edgeHideTriggerElement.addEventListener('mouseenter', () => {
+      this.handleEdgeHideMouseEnter();
+    });
+    
+    this.edgeHideTriggerElement.addEventListener('mouseleave', () => {
+      this.handleEdgeHideMouseLeave();
+    });
+    
+    // 容器本身也需要监听，防止鼠标在容器上时收起
+    this.tabContainer.addEventListener('mouseenter', () => {
+      if (this.edgeHideCollapseTimer) {
+        clearTimeout(this.edgeHideCollapseTimer);
+        this.edgeHideCollapseTimer = null;
+      }
+    });
+    
+    this.tabContainer.addEventListener('mouseleave', () => {
+      this.handleEdgeHideMouseLeave();
+    });
+    
+    // 添加到DOM
+    document.body.appendChild(this.edgeHideTriggerElement);
+    
+    this.verboseLog(`🎯 创建触发区域: ${this.currentEdgeSide}侧, 大小: ${triggerSize}px`);
+  }
+
+  /**
+   * 处理贴边隐藏的鼠标进入事件
+   */
+  private handleEdgeHideMouseEnter() {
+    // 清除收起定时器
+    if (this.edgeHideCollapseTimer) {
+      clearTimeout(this.edgeHideCollapseTimer);
+      this.edgeHideCollapseTimer = null;
+    }
+    
+    // 如果已经展开，直接返回
+    if (this.isEdgeHideExpanded) return;
+    
+    // 设置展开定时器
+    this.edgeHideExpandTimer = window.setTimeout(() => {
+      this.expandEdgeHide();
+    }, FEATURE_CONFIG.EDGE_HIDE_EXPAND_DELAY);
+  }
+
+  /**
+   * 处理贴边隐藏的鼠标离开事件
+   */
+  private handleEdgeHideMouseLeave() {
+    // 清除展开定时器
+    if (this.edgeHideExpandTimer) {
+      clearTimeout(this.edgeHideExpandTimer);
+      this.edgeHideExpandTimer = null;
+    }
+    
+    // 如果未展开，直接返回
+    if (!this.isEdgeHideExpanded) return;
+    
+    // 设置收起定时器
+    this.edgeHideCollapseTimer = window.setTimeout(() => {
+      this.collapseEdgeHide();
+    }, FEATURE_CONFIG.EDGE_HIDE_COLLAPSE_DELAY);
+  }
+
+  /**
+   * 展开贴边隐藏的容器
+   */
+  private expandEdgeHide() {
+    if (!this.tabContainer || this.isEdgeHideExpanded) return;
+    
+    // 应用尺寸限制
+    this.applyEdgeConstraints();
+    
+    // 展开容器
+    this.tabContainer.style.transform = 'translateX(0)';
+    this.isEdgeHideExpanded = true;
+    
+    this.verboseLog('📂 贴边隐藏容器已展开');
+  }
+
+  /**
+   * 收起贴边隐藏的容器
+   */
+  private collapseEdgeHide() {
+    if (!this.tabContainer || !this.isEdgeHideExpanded || !this.currentEdgeSide) return;
+    
+    const hintSize = FEATURE_CONFIG.EDGE_HINT_SIZE;
+    
+    // 根据当前贴边方向收起容器（只露出很小的视觉提示）
+    switch (this.currentEdgeSide) {
+      case 'left':
+        {
+          const containerWidth = this.isVerticalMode ? this.verticalWidth : this.tabContainer.offsetWidth;
+          this.tabContainer.style.transform = `translateX(-${containerWidth - hintSize}px)`;
+        }
+        break;
+      case 'right':
+        {
+          const containerWidth = this.isVerticalMode ? this.verticalWidth : this.tabContainer.offsetWidth;
+          this.tabContainer.style.transform = `translateX(${containerWidth - hintSize}px)`;
+        }
+        break;
+      case 'top':
+        {
+          const containerHeight = this.tabContainer.offsetHeight;
+          this.tabContainer.style.transform = `translateY(-${containerHeight - hintSize}px)`;
+        }
+        break;
+      case 'bottom':
+        {
+          const containerHeight = this.tabContainer.offsetHeight;
+          this.tabContainer.style.transform = `translateY(${containerHeight - hintSize}px)`;
+        }
+        break;
+    }
+    
+    this.isEdgeHideExpanded = false;
+    
+    this.verboseLog('📁 贴边隐藏容器已收起');
   }
 
   /**
@@ -4859,6 +5249,13 @@ class OrcaTabsPlugin {
           this.tabContainer.remove();
           this.tabContainer = null;
         }
+        
+        // 清理触发区域
+        if (this.edgeHideTriggerElement) {
+          this.edgeHideTriggerElement.remove();
+          this.edgeHideTriggerElement = null;
+        }
+        
         if (this.resizeHandle) {
           this.resizeHandle.remove();
           this.resizeHandle = null;
@@ -7185,39 +7582,63 @@ class OrcaTabsPlugin {
     try {
       let current: HTMLElement | null = element;
       
-      // 向上遍历DOM树，但限制层数避免过度查找
-      let depth = 0;
-      const maxDepth = 5;
-      
-      while (current && current !== document.body && depth < maxDepth) {
+      // 向上遍历DOM树
+      while (current && current !== document.body) {
         const classList = current.classList;
         
-        // 【严格检查】只识别明确的块引用元素
-        // 排除笔记内容中的普通元素
+        // 检查是否是块引用元素（支持多种class名称）
         if (
           classList.contains('orca-inline-r-content') ||
           classList.contains('orca-ref') ||
-          classList.contains('orca-fragment-r') ||
-          classList.contains('orca-block-reference')
+            classList.contains('block-ref') || 
+            classList.contains('block-reference') ||
+            classList.contains('orca-fragment-r') ||
+            classList.contains('fragment-r') ||
+            classList.contains('orca-block-reference') ||
+          (current.tagName.toLowerCase() === 'a' && current.getAttribute('href')?.startsWith('#'))
         ) {
-          // 尝试从块引用专用属性中获取块ID
+          // 尝试从各种可能的属性中获取块ID
           const blockId = 
-            current.getAttribute('data-fragment-v') ||
-            current.getAttribute('data-v') ||
+            current.getAttribute('data-block-id') ||
             current.getAttribute('data-ref-id') ||
-            current.getAttribute('data-target-block-id');
+            current.getAttribute('data-blockid') ||
+                          current.getAttribute('data-target-block-id') ||
+                          current.getAttribute('data-fragment-v') ||
+                          current.getAttribute('data-v') ||
+                          current.getAttribute('href')?.replace('#', '') ||
+                          current.getAttribute('data-id');
           
           // 验证块ID是否有效（应该是数字）
           if (blockId && !isNaN(parseInt(blockId))) {
+            this.log(`🔗 从元素中提取到块引用ID: ${blockId}`);
             return blockId;
           }
         }
         
+        // 检查data属性中是否包含块ID
+        const dataset = current.dataset;
+        for (const [key, value] of Object.entries(dataset)) {
+          if ((key.toLowerCase().includes('block') || key.toLowerCase().includes('ref')) && 
+              value && !isNaN(parseInt(value))) {
+            this.log(`🔗 从data属性 ${key} 中提取到块引用ID: ${value}`);
+            return value;
+          }
+        }
+        
         current = current.parentElement;
-        depth++;
       }
       
-      // 没有找到块引用
+      // 尝试从文本内容中解析块ID（作为后备方案）
+      if (element.textContent) {
+        const text = element.textContent.trim();
+        const match = text.match(/\[\[(?:块)?(\d+)\]\]/) || text.match(/block[:\s]*(\d+)/i);
+        if (match && match[1]) {
+          this.log(`🔗 从文本内容中解析到块引用ID: ${match[1]}`);
+          return match[1];
+        }
+      }
+      
+      this.log("🔗 未能从元素中提取块引用ID");
       return null;
     } catch (error) {
       this.error("获取块引用ID时出错:", error);
@@ -9464,6 +9885,14 @@ class OrcaTabsPlugin {
         dragHandle.classList.remove('dragging');
       }
       this.tabContainer.style.cursor = 'default';
+      
+      // 如果启用了贴边隐藏，在拖拽结束后重新检测贴边状态
+      if (this.enableEdgeHide && !this.isFixedToTop) {
+        // 延迟一帧以确保位置已更新
+        requestAnimationFrame(() => {
+          this.applyEdgeHideStyle();
+        });
+      }
       // 移除可能影响其他元素点击的样式和属性
       this.tabContainer.style.userSelect = '';
       this.tabContainer.style.pointerEvents = 'auto';
@@ -9519,7 +9948,8 @@ class OrcaTabsPlugin {
       showBlockTypeIcons: this.showBlockTypeIcons,
       showInHeadbar: this.showInHeadbar,
       horizontalTabMaxWidth: this.horizontalTabMaxWidth,
-      horizontalTabMinWidth: this.horizontalTabMinWidth
+      horizontalTabMinWidth: this.horizontalTabMinWidth,
+      enableEdgeHide: this.enableEdgeHide
     });
   }
 
@@ -9645,6 +10075,7 @@ class OrcaTabsPlugin {
         this.showInHeadbar = config.showInHeadbar;
         this.horizontalTabMaxWidth = config.horizontalTabMaxWidth;
         this.horizontalTabMinWidth = config.horizontalTabMinWidth;
+        this.enableEdgeHide = config.enableEdgeHide;
         
         this.log(`📐 布局模式已恢复: ${generateLayoutLogMessage(config)}, 当前位置: (${this.position.x}, ${this.position.y})`);
         
@@ -9662,6 +10093,7 @@ class OrcaTabsPlugin {
         this.horizontalPosition = defaultConfig.horizontalPosition;
         this.horizontalTabMaxWidth = defaultConfig.horizontalTabMaxWidth;
         this.horizontalTabMinWidth = defaultConfig.horizontalTabMinWidth;
+        this.enableEdgeHide = defaultConfig.enableEdgeHide;
         this.position = getPositionByMode(
           this.isVerticalMode,
           this.verticalPosition,
@@ -10201,13 +10633,6 @@ class OrcaTabsPlugin {
           this.verboseLog(`⏭️ 时间差: ${timeSinceNavigation}ms`);
           return;
         }
-      }
-
-      // 【关键修复】检查 restoreFocusedTab 设置
-      // 如果该设置关闭，则不应该自动创建或替换标签页
-      if (!this.restoreFocusedTab) {
-        this.verboseLog(`⏭️ "刷新后恢复聚焦标签页"已关闭，跳过自动创建/替换标签页`);
-        return;
       }
       
       // 标签页不存在 - 更新当前聚焦标签页的内容
@@ -15082,6 +15507,12 @@ class OrcaTabsPlugin {
       if (this.cycleSwitcher) {
         this.cycleSwitcher.remove();
         this.cycleSwitcher = null;
+      }
+      
+      // 清理触发区域
+      if (this.edgeHideTriggerElement) {
+        this.edgeHideTriggerElement.remove();
+        this.edgeHideTriggerElement = null;
       }
       
       // 清理拖拽样式

@@ -490,7 +490,9 @@ export function createTabContainerStyle(
   isVerticalMode: boolean,
   position: { x: number; y: number },
   backgroundColor: string,
-  verticalWidth?: number
+  verticalWidth?: number,
+  enableEdgeHide?: boolean,
+  edgePosition?: 'left' | 'right'
 ): string {
   return isVerticalMode ? `
     position: fixed;
@@ -518,6 +520,7 @@ export function createTabContainerStyle(
     align-items: stretch;
     overflow-y: auto;
     overflow-x: hidden;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   ` : `
     position: fixed;
     top: ${position.y}px;

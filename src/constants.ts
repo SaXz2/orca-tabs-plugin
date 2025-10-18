@@ -113,6 +113,9 @@ export const PLUGIN_STORAGE_KEYS = {
   
   /** 双击关闭标签页功能开关 - 存储是否启用双击关闭标签页功能 */
   ENABLE_DOUBLE_CLICK_CLOSE: 'enable-double-click-close',
+  
+  /** 贴边隐藏功能开关 - 存储是否启用贴边隐藏功能 */
+  ENABLE_EDGE_HIDE: 'enable-edge-hide',
 } as const;
 
 // ==================== 功能配置常量 ====================
@@ -125,4 +128,19 @@ export const PLUGIN_STORAGE_KEYS = {
 export const FEATURE_CONFIG = {
   /** 全局切换历史记录最大数量 - 限制全局标签页切换历史记录的最大数量 */
   GLOBAL_TAB_SWITCH_HISTORY_MAX_RECORDS: 10,
+  
+  /** 触发区域宽度 - 鼠标进入这个宽度的边缘区域时会展开容器（像素） */
+  EDGE_TRIGGER_ZONE_SIZE: 35,
+  
+  /** 隐藏时露出的边缘提示宽度 - 容器隐藏时露出的视觉提示宽度（像素） */
+  EDGE_HINT_SIZE: 5,
+  
+  /** 贴边检测距离 - 距离屏幕边缘多少像素时触发贴边隐藏 */
+  EDGE_DETECTION_DISTANCE: 15,
+  
+  /** 贴边隐藏展开延迟 - 鼠标悬停后展开的延迟时间（毫秒） */
+  EDGE_HIDE_EXPAND_DELAY: 1,
+  
+  /** 贴边隐藏收起延迟 - 鼠标离开后收起的延迟时间（毫秒） */
+  EDGE_HIDE_COLLAPSE_DELAY: 100,
 } as const;
