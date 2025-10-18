@@ -8628,6 +8628,10 @@ class Oa {
         this.verboseLog(`⏭️ 检测到导航后的新块 ${n}，但我们刚导航到 ${this.lastNavigatedBlockId}，跳过处理（防止重复标签页）`), this.verboseLog(`⏭️ 时间差: ${s}ms`);
         return;
       }
+      if (!this.restoreFocusedTab) {
+        this.verboseLog('⏭️ "刷新后恢复聚焦标签页"已关闭，跳过自动创建/替换标签页');
+        return;
+      }
       const l = (b = this.tabContainer) == null ? void 0 : b.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
       if (!l) {
         this.verboseLog(`⚠️ 未找到聚焦的标签元素，当前块: ${n}`);

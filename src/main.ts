@@ -10203,6 +10203,13 @@ class OrcaTabsPlugin {
         }
       }
 
+      // 【关键修复】检查 restoreFocusedTab 设置
+      // 如果该设置关闭，则不应该自动创建或替换标签页
+      if (!this.restoreFocusedTab) {
+        this.verboseLog(`⏭️ "刷新后恢复聚焦标签页"已关闭，跳过自动创建/替换标签页`);
+        return;
+      }
+      
       // 标签页不存在 - 更新当前聚焦标签页的内容
       const focusedTabElement = this.tabContainer?.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
       if (!focusedTabElement) {
