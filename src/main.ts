@@ -7185,63 +7185,39 @@ class OrcaTabsPlugin {
     try {
       let current: HTMLElement | null = element;
       
-      // 向上遍历DOM树
-      while (current && current !== document.body) {
+      // 向上遍历DOM树，但限制层数避免过度查找
+      let depth = 0;
+      const maxDepth = 5;
+      
+      while (current && current !== document.body && depth < maxDepth) {
         const classList = current.classList;
         
-        // 检查是否是块引用元素（支持多种class名称）
+        // 【严格检查】只识别明确的块引用元素
+        // 排除笔记内容中的普通元素
         if (
           classList.contains('orca-inline-r-content') ||
           classList.contains('orca-ref') ||
-            classList.contains('block-ref') || 
-            classList.contains('block-reference') ||
-            classList.contains('orca-fragment-r') ||
-            classList.contains('fragment-r') ||
-            classList.contains('orca-block-reference') ||
-          (current.tagName.toLowerCase() === 'a' && current.getAttribute('href')?.startsWith('#'))
+          classList.contains('orca-fragment-r') ||
+          classList.contains('orca-block-reference')
         ) {
-          // 尝试从各种可能的属性中获取块ID
+          // 尝试从块引用专用属性中获取块ID
           const blockId = 
-            current.getAttribute('data-block-id') ||
+            current.getAttribute('data-fragment-v') ||
+            current.getAttribute('data-v') ||
             current.getAttribute('data-ref-id') ||
-            current.getAttribute('data-blockid') ||
-                          current.getAttribute('data-target-block-id') ||
-                          current.getAttribute('data-fragment-v') ||
-                          current.getAttribute('data-v') ||
-                          current.getAttribute('href')?.replace('#', '') ||
-                          current.getAttribute('data-id');
+            current.getAttribute('data-target-block-id');
           
           // 验证块ID是否有效（应该是数字）
           if (blockId && !isNaN(parseInt(blockId))) {
-            this.log(`🔗 从元素中提取到块引用ID: ${blockId}`);
             return blockId;
           }
         }
         
-        // 检查data属性中是否包含块ID
-        const dataset = current.dataset;
-        for (const [key, value] of Object.entries(dataset)) {
-          if ((key.toLowerCase().includes('block') || key.toLowerCase().includes('ref')) && 
-              value && !isNaN(parseInt(value))) {
-            this.log(`🔗 从data属性 ${key} 中提取到块引用ID: ${value}`);
-            return value;
-          }
-        }
-        
         current = current.parentElement;
+        depth++;
       }
       
-      // 尝试从文本内容中解析块ID（作为后备方案）
-      if (element.textContent) {
-        const text = element.textContent.trim();
-        const match = text.match(/\[\[(?:块)?(\d+)\]\]/) || text.match(/block[:\s]*(\d+)/i);
-        if (match && match[1]) {
-          this.log(`🔗 从文本内容中解析到块引用ID: ${match[1]}`);
-          return match[1];
-        }
-      }
-      
-      this.log("🔗 未能从元素中提取块引用ID");
+      // 没有找到块引用
       return null;
     } catch (error) {
       this.error("获取块引用ID时出错:", error);
@@ -10973,39 +10949,30 @@ class OrcaTabsPlugin {
     
     // 检查是否按住 Ctrl 键（Windows/Linux）或 Cmd 键（Mac）点击
     if ((e.ctrlKey || e.metaKey) && target) {
-      this.verboseLog(`🖱️ [DEBUG] Ctrl+点击检测: ctrlKey=${e.ctrlKey}, metaKey=${e.metaKey}`);
-      this.verboseLog(`🖱️ [DEBUG] 点击目标: ${target.tagName}, classes: ${target.className}`);
       
-    const blockRefId = this.getBlockRefId(target);
-    if (blockRefId) {
-        this.verboseLog(`🔗 [DEBUG] 检测到 Ctrl+点击 块引用: ${blockRefId}`);
-        
-        // 【关键修复】立即标记为正在创建，防止任何后续处理
-        // 这必须在阻止事件之前执行，确保即使事件处理有任何延迟，
-        // handleNewBlockInPanel 也能检测到并跳过
-        this.verboseLog(`🔒 [DEBUG] 立即将块 ${blockRefId} 添加到 creatingTabs（防止Orca原生导航触发重复创建）`);
+      // 尝试获取块引用ID
+      const blockRefId = this.getBlockRefId(target);
+      
+      // 【关键修复】只在确实获取到块引用ID时才处理和阻止事件
+      // 如果获取不到，让事件继续传播，这样 tabsman 等其他插件可以处理
+      if (blockRefId) {
+        // 立即标记为正在创建
         this.creatingTabs.add(blockRefId);
         
-        // 阻止默认行为和事件传播
-        // 在捕获阶段就彻底阻止，避免Orca的原生处理
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-      
-        this.verboseLog(`🔗 [DEBUG] 当前面板ID: ${this.currentPanelId}, 索引: ${this.currentPanelIndex}`);
-        this.verboseLog(`🔗 [DEBUG] 当前标签页数量: ${this.getCurrentPanelTabs().length}`);
+        // 只在这里阻止事件传播
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
         
         // 异步执行标签页创建
         this.openInNewTab(blockRefId).catch(error => {
-          this.error(`[DEBUG] Ctrl+点击创建标签失败:`, error);
           // 如果失败，清除标记
           this.creatingTabs.delete(blockRefId);
         });
         
         return;
-      } else {
-        this.verboseLog(`🔗 [DEBUG] 未能从点击目标获取块引用ID`);
       }
+      // 如果没有获取到块引用ID，不做任何处理，让事件继续传播
     }
     
     // 如果点击的不是插件相关元素，直接返回，减少干扰
