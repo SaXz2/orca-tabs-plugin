@@ -699,6 +699,12 @@ class OrcaTabsPlugin {
   /** 贴边隐藏触发区域元素 - 透明的触发区域，用于鼠标悬停检测 */
   private edgeHideTriggerElement: HTMLDivElement | null = null;
   
+  /** 容器鼠标进入处理器 - 绑定的事件处理函数，用于移除监听器 */
+  private boundContainerMouseEnter: (() => void) | null = null;
+  
+  /** 容器鼠标离开处理器 - 绑定的事件处理函数，用于移除监听器 */
+  private boundContainerMouseLeave: (() => void) | null = null;
+  
   // ==================== 窗口可见性 ====================
   /** 浮窗是否可见 - 控制标签页容器的显示/隐藏状态 */
   private isFloatingWindowVisible: boolean = true;
@@ -2855,7 +2861,7 @@ class OrcaTabsPlugin {
         --orca-input-bg: rgba(200, 200, 200, 0.6);
       }
       
-      /* 暗色模式的CSS变量 */
+      /* 手动设置的暗色模式 */
       :root[data-theme="dark"],
       .dark {
         --orca-tab-bg: color-mix(in srgb, var(--orca-color-bg-1), rgb(255 255 255 / 12%));
@@ -2863,6 +2869,17 @@ class OrcaTabsPlugin {
         --orca-tab-hover-border: var(--orca-color-primary-3);
         --orca-tab-active-border: rgba(255, 255, 255, 0.4);
         --orca-input-bg: rgba(255, 255, 255, 0.1);
+      }
+      
+      /* 系统暗色模式检测 - 自动跟随系统主题 */
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --orca-tab-bg: color-mix(in srgb, var(--orca-color-bg-1), rgb(255 255 255 / 12%));
+          --orca-tab-border: rgba(255, 255, 255, 0.2);
+          --orca-tab-hover-border: var(--orca-color-primary-3);
+          --orca-tab-active-border: rgba(255, 255, 255, 0.4);
+          --orca-input-bg: rgba(255, 255, 255, 0.1);
+        }
       }
       
       /* 有颜色标签的CSS变量 - 使用条件CSS变量 */
@@ -4650,6 +4667,7 @@ class OrcaTabsPlugin {
     
     // 检测当前靠近哪个边缘
     const detectedEdge = this.detectEdgeProximity();
+    this.verboseLog(`🔍 applyEdgeHideStyle: detectedEdge=${detectedEdge}, currentEdgeSide=${this.currentEdgeSide}, isVerticalMode=${this.isVerticalMode}`);
     
     // 只有在检测到边缘变化时才更新
     if (detectedEdge !== this.currentEdgeSide) {
@@ -4661,6 +4679,14 @@ class OrcaTabsPlugin {
         this.tabContainer.style.maxHeight = '';
         this.isEdgeHideExpanded = true;
         
+        // 清理容器监听器
+        if (this.boundContainerMouseEnter && this.boundContainerMouseLeave) {
+          this.tabContainer.removeEventListener('mouseenter', this.boundContainerMouseEnter);
+          this.tabContainer.removeEventListener('mouseleave', this.boundContainerMouseLeave);
+          this.boundContainerMouseEnter = null;
+          this.boundContainerMouseLeave = null;
+        }
+        
         // 清理触发区域
         if (this.edgeHideTriggerElement) {
           this.edgeHideTriggerElement.remove();
@@ -4671,6 +4697,9 @@ class OrcaTabsPlugin {
         return;
       }
       
+      // 【关键修复】在隐藏前保存容器位置，用于创建触发区域
+      const rectBeforeHide = this.tabContainer.getBoundingClientRect();
+      
       // 根据贴边方向设置最大高度/宽度限制
       this.applyEdgeConstraints();
       
@@ -4680,14 +4709,20 @@ class OrcaTabsPlugin {
       switch (this.currentEdgeSide) {
         case 'left':
           {
-            const containerWidth = this.isVerticalMode ? this.verticalWidth : this.tabContainer.offsetWidth;
-            this.tabContainer.style.transform = `translateX(-${containerWidth - hintSize}px)`;
+            // 使用容器实际宽度（隐藏前保存的rect）
+            const containerWidth = rectBeforeHide.width;
+            const translateAmount = containerWidth - hintSize;
+            this.verboseLog(`📦 左贴边隐藏: containerWidth=${containerWidth}, hintSize=${hintSize}, translateAmount=${translateAmount}`);
+            this.tabContainer.style.transform = `translateX(-${translateAmount}px)`;
           }
           break;
         case 'right':
           {
-            const containerWidth = this.isVerticalMode ? this.verticalWidth : this.tabContainer.offsetWidth;
-            this.tabContainer.style.transform = `translateX(${containerWidth - hintSize}px)`;
+            // 使用容器实际宽度（隐藏前保存的rect）
+            const containerWidth = rectBeforeHide.width;
+            const translateAmount = containerWidth - hintSize;
+            this.verboseLog(`📦 右贴边隐藏: containerWidth=${containerWidth}, hintSize=${hintSize}, translateAmount=${translateAmount}`);
+            this.tabContainer.style.transform = `translateX(${translateAmount}px)`;
           }
           break;
         case 'top':
@@ -4707,8 +4742,8 @@ class OrcaTabsPlugin {
       this.isEdgeHideExpanded = false;
       this.verboseLog(`🧲 检测到靠近${this.currentEdgeSide}边缘，自动隐藏`);
       
-      // 创建/更新触发区域
-      this.attachEdgeHideEvents();
+      // 创建/更新触发区域（使用隐藏前的位置）
+      this.attachEdgeHideEvents(rectBeforeHide);
     }
   }
 
@@ -4753,9 +4788,16 @@ class OrcaTabsPlugin {
 
   /**
    * 附加贴边隐藏事件监听 - 创建透明触发区域用于展开/收起
+   * @param containerRect 容器的位置信息（可选，如果不提供则使用当前位置）
    */
-  private attachEdgeHideEvents() {
+  private attachEdgeHideEvents(containerRect?: DOMRect) {
     if (!this.tabContainer || !this.currentEdgeSide) return;
+    
+    // 移除旧的容器监听器
+    if (this.boundContainerMouseEnter && this.boundContainerMouseLeave) {
+      this.tabContainer.removeEventListener('mouseenter', this.boundContainerMouseEnter);
+      this.tabContainer.removeEventListener('mouseleave', this.boundContainerMouseLeave);
+    }
     
     // 移除旧的触发区域
     if (this.edgeHideTriggerElement) {
@@ -4765,86 +4807,119 @@ class OrcaTabsPlugin {
     
     // 创建透明的触发区域
     this.edgeHideTriggerElement = document.createElement('div');
+    
+    // 根据调试模式决定是否显示可见的调试边框
+    const isDebugMode = this.currentLogLevel === LogLevel.VERBOSE;
     this.edgeHideTriggerElement.style.cssText = `
       position: fixed;
-      z-index: 299;
-      background: transparent;
+      z-index: 999;
+      background: ${isDebugMode ? 'rgba(255, 0, 0, 0.3)' : 'transparent'};
       pointer-events: auto;
+      border: ${isDebugMode ? '2px solid red' : 'none'};
     `;
     
     // 根据贴边方向设置触发区域的位置和大小
     const triggerSize = FEATURE_CONFIG.EDGE_TRIGGER_ZONE_SIZE;
-    const rect = this.tabContainer.getBoundingClientRect();
+    const rect = containerRect || this.tabContainer.getBoundingClientRect();
     
     switch (this.currentEdgeSide) {
       case 'left':
+        // 触发区域：从屏幕左边缘开始，宽度为 triggerSize + hintSize（覆盖边缘+露出的提示）
         this.edgeHideTriggerElement.style.left = '0';
         this.edgeHideTriggerElement.style.top = `${rect.top}px`;
-        this.edgeHideTriggerElement.style.width = `${triggerSize}px`;
+        this.edgeHideTriggerElement.style.width = `${triggerSize + FEATURE_CONFIG.EDGE_HINT_SIZE}px`;
         this.edgeHideTriggerElement.style.height = `${rect.height}px`;
         break;
       case 'right':
         this.edgeHideTriggerElement.style.right = '0';
         this.edgeHideTriggerElement.style.top = `${rect.top}px`;
-        this.edgeHideTriggerElement.style.width = `${triggerSize}px`;
+        this.edgeHideTriggerElement.style.width = `${triggerSize + FEATURE_CONFIG.EDGE_HINT_SIZE}px`;
         this.edgeHideTriggerElement.style.height = `${rect.height}px`;
         break;
       case 'top':
         this.edgeHideTriggerElement.style.left = `${rect.left}px`;
         this.edgeHideTriggerElement.style.top = '0';
         this.edgeHideTriggerElement.style.width = `${rect.width}px`;
-        this.edgeHideTriggerElement.style.height = `${triggerSize}px`;
+        this.edgeHideTriggerElement.style.height = `${triggerSize + FEATURE_CONFIG.EDGE_HINT_SIZE}px`;
         break;
       case 'bottom':
         this.edgeHideTriggerElement.style.left = `${rect.left}px`;
         this.edgeHideTriggerElement.style.bottom = '0';
         this.edgeHideTriggerElement.style.width = `${rect.width}px`;
-        this.edgeHideTriggerElement.style.height = `${triggerSize}px`;
+        this.edgeHideTriggerElement.style.height = `${triggerSize + FEATURE_CONFIG.EDGE_HINT_SIZE}px`;
         break;
     }
     
     // 监听鼠标进入/离开触发区域
     this.edgeHideTriggerElement.addEventListener('mouseenter', () => {
+      this.verboseLog(`🖱️ 鼠标进入触发区域 (${this.currentEdgeSide})`);
       this.handleEdgeHideMouseEnter();
     });
     
     this.edgeHideTriggerElement.addEventListener('mouseleave', () => {
+      this.verboseLog(`🖱️ 鼠标离开触发区域 (${this.currentEdgeSide})`);
       this.handleEdgeHideMouseLeave();
     });
     
-    // 容器本身也需要监听，防止鼠标在容器上时收起
-    this.tabContainer.addEventListener('mouseenter', () => {
+    // 创建绑定的事件处理函数
+    this.boundContainerMouseEnter = () => {
+      this.verboseLog(`🖱️ 鼠标进入容器本身`);
       if (this.edgeHideCollapseTimer) {
         clearTimeout(this.edgeHideCollapseTimer);
         this.edgeHideCollapseTimer = null;
+        this.verboseLog(`⏹️ 清除容器收起定时器`);
       }
-    });
+      // 【关键】如果容器当前是隐藏的，也应该展开
+      if (!this.isEdgeHideExpanded) {
+        this.verboseLog(`🚀 容器隐藏中，触发展开`);
+        this.handleEdgeHideMouseEnter();
+      }
+    };
     
-    this.tabContainer.addEventListener('mouseleave', () => {
+    this.boundContainerMouseLeave = () => {
+      this.verboseLog(`🖱️ 鼠标离开容器本身`);
       this.handleEdgeHideMouseLeave();
-    });
+    };
+    
+    // 容器本身也需要监听，防止鼠标在容器上时收起
+    this.tabContainer.addEventListener('mouseenter', this.boundContainerMouseEnter);
+    this.tabContainer.addEventListener('mouseleave', this.boundContainerMouseLeave);
     
     // 添加到DOM
     document.body.appendChild(this.edgeHideTriggerElement);
     
-    this.verboseLog(`🎯 创建触发区域: ${this.currentEdgeSide}侧, 大小: ${triggerSize}px`);
+    const finalRect = this.edgeHideTriggerElement.getBoundingClientRect();
+    this.verboseLog(`🎯 创建触发区域: ${this.currentEdgeSide}侧`);
+    this.verboseLog(`   - 触发区域大小: ${triggerSize}px`);
+    this.verboseLog(`   - 触发区域位置: left=${finalRect.left}, top=${finalRect.top}, width=${finalRect.width}, height=${finalRect.height}`);
+    this.verboseLog(`   - 容器位置（隐藏前）: left=${rect.left}, top=${rect.top}, width=${rect.width}, height=${rect.height}`);
+    this.verboseLog(`   - 容器当前transform: ${this.tabContainer.style.transform}`);
+    this.verboseLog(`   - isEdgeHideExpanded: ${this.isEdgeHideExpanded}`);
   }
 
   /**
    * 处理贴边隐藏的鼠标进入事件
    */
   private handleEdgeHideMouseEnter() {
+    this.verboseLog(`📥 handleEdgeHideMouseEnter - isExpanded: ${this.isEdgeHideExpanded}`);
+    
     // 清除收起定时器
     if (this.edgeHideCollapseTimer) {
       clearTimeout(this.edgeHideCollapseTimer);
       this.edgeHideCollapseTimer = null;
+      this.verboseLog(`⏹️ 清除收起定时器`);
     }
     
     // 如果已经展开，直接返回
-    if (this.isEdgeHideExpanded) return;
+    if (this.isEdgeHideExpanded) {
+      this.verboseLog(`✅ 已经展开，跳过`);
+      return;
+    }
     
     // 设置展开定时器
+    this.verboseLog(`⏰ 设置展开定时器: ${FEATURE_CONFIG.EDGE_HIDE_EXPAND_DELAY}ms`);
     this.edgeHideExpandTimer = window.setTimeout(() => {
+      this.verboseLog(`🚀 展开定时器触发`);
       this.expandEdgeHide();
     }, FEATURE_CONFIG.EDGE_HIDE_EXPAND_DELAY);
   }
@@ -4872,14 +4947,29 @@ class OrcaTabsPlugin {
    * 展开贴边隐藏的容器
    */
   private expandEdgeHide() {
-    if (!this.tabContainer || this.isEdgeHideExpanded) return;
+    this.verboseLog(`🔓 expandEdgeHide 开始 - container: ${!!this.tabContainer}, isExpanded: ${this.isEdgeHideExpanded}, edge: ${this.currentEdgeSide}`);
     
-    // 应用尺寸限制
-    this.applyEdgeConstraints();
+    if (!this.tabContainer || this.isEdgeHideExpanded) {
+      this.verboseLog(`❌ expandEdgeHide 跳过 - container: ${!!this.tabContainer}, isExpanded: ${this.isEdgeHideExpanded}`);
+      return;
+    }
     
-    // 展开容器
-    this.tabContainer.style.transform = 'translateX(0)';
+    // 根据贴边方向展开容器
+    if (this.currentEdgeSide === 'top' || this.currentEdgeSide === 'bottom') {
+      this.verboseLog(`📐 设置 translateY(0) for ${this.currentEdgeSide}`);
+      this.tabContainer.style.transform = 'translateY(0)';
+    } else {
+      this.verboseLog(`📐 设置 translateX(0) for ${this.currentEdgeSide}`);
+      this.tabContainer.style.transform = 'translateX(0)';
+    }
     this.isEdgeHideExpanded = true;
+    
+    // 【关键】展开后移除触发区域，避免阻挡下方元素的点击
+    if (this.edgeHideTriggerElement) {
+      this.edgeHideTriggerElement.remove();
+      this.edgeHideTriggerElement = null;
+      this.verboseLog('🗑️ 移除触发区域（展开状态下不需要）');
+    }
     
     this.verboseLog('📂 贴边隐藏容器已展开');
   }
@@ -4891,18 +4981,21 @@ class OrcaTabsPlugin {
     if (!this.tabContainer || !this.isEdgeHideExpanded || !this.currentEdgeSide) return;
     
     const hintSize = FEATURE_CONFIG.EDGE_HINT_SIZE;
+    const rect = this.tabContainer.getBoundingClientRect();
     
     // 根据当前贴边方向收起容器（只露出很小的视觉提示）
     switch (this.currentEdgeSide) {
       case 'left':
         {
-          const containerWidth = this.isVerticalMode ? this.verticalWidth : this.tabContainer.offsetWidth;
+          const containerWidth = rect.width;
+          this.verboseLog(`📦 左贴边收起: containerWidth=${containerWidth}, translateAmount=${containerWidth - hintSize}`);
           this.tabContainer.style.transform = `translateX(-${containerWidth - hintSize}px)`;
         }
         break;
       case 'right':
         {
-          const containerWidth = this.isVerticalMode ? this.verticalWidth : this.tabContainer.offsetWidth;
+          const containerWidth = rect.width;
+          this.verboseLog(`📦 右贴边收起: containerWidth=${containerWidth}, translateAmount=${containerWidth - hintSize}`);
           this.tabContainer.style.transform = `translateX(${containerWidth - hintSize}px)`;
         }
         break;
@@ -4921,6 +5014,10 @@ class OrcaTabsPlugin {
     }
     
     this.isEdgeHideExpanded = false;
+    
+    // 【关键】收起后重新创建触发区域，以便再次展开
+    // 使用收起前的位置信息创建触发区域
+    this.attachEdgeHideEvents(rect);
     
     this.verboseLog('📁 贴边隐藏容器已收起');
   }
@@ -7592,7 +7689,7 @@ class OrcaTabsPlugin {
           classList.contains('orca-ref') ||
             classList.contains('block-ref') || 
             classList.contains('block-reference') ||
-            classList.contains('orca-fragment-r') ||
+          classList.contains('orca-fragment-r') ||
             classList.contains('fragment-r') ||
             classList.contains('orca-block-reference') ||
           (current.tagName.toLowerCase() === 'a' && current.getAttribute('href')?.startsWith('#'))
@@ -7603,8 +7700,8 @@ class OrcaTabsPlugin {
             current.getAttribute('data-ref-id') ||
             current.getAttribute('data-blockid') ||
                           current.getAttribute('data-target-block-id') ||
-                          current.getAttribute('data-fragment-v') ||
-                          current.getAttribute('data-v') ||
+            current.getAttribute('data-fragment-v') ||
+            current.getAttribute('data-v') ||
                           current.getAttribute('href')?.replace('#', '') ||
                           current.getAttribute('data-id');
           
@@ -9888,6 +9985,25 @@ class OrcaTabsPlugin {
       
       // 如果启用了贴边隐藏，在拖拽结束后重新检测贴边状态
       if (this.enableEdgeHide && !this.isFixedToTop) {
+        // 先清理旧的触发区域和监听器
+        if (this.edgeHideTriggerElement) {
+          this.edgeHideTriggerElement.remove();
+          this.edgeHideTriggerElement = null;
+        }
+        if (this.boundContainerMouseEnter && this.boundContainerMouseLeave) {
+          this.tabContainer.removeEventListener('mouseenter', this.boundContainerMouseEnter);
+          this.tabContainer.removeEventListener('mouseleave', this.boundContainerMouseLeave);
+          this.boundContainerMouseEnter = null;
+          this.boundContainerMouseLeave = null;
+        }
+        
+        // 重置 transform 和状态，确保检测边缘位置时使用的是正确的位置
+        this.tabContainer.style.transform = 'none';
+        this.isEdgeHideExpanded = true;
+        this.currentEdgeSide = null;
+        
+        this.verboseLog('🔄 拖拽结束，重置贴边隐藏状态，准备重新检测');
+        
         // 延迟一帧以确保位置已更新
         requestAnimationFrame(() => {
           this.applyEdgeHideStyle();
