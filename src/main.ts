@@ -734,6 +734,12 @@ class OrcaTabsPlugin {
   /** 是否启用双击关闭标签页功能 - 控制双击是否关闭标签页 */
   private enableDoubleClickClose: boolean = false;
   
+  /** 是否隐藏标签页提示 - 控制是否隐藏标签页的悬停提示 */
+  public hideTabTooltips: boolean = false;
+  
+  /** 贴边隐藏检测防抖定时器 - 避免面板切换时的频繁检测 */
+  private edgeHideDebounceTimer: number | null = null;
+  
   /* ———————————————————————————————————————————————————————————————————————————— */
   /* 性能优化 - Performance Optimization */
   /* ———————————————————————————————————————————————————————————————————————————— */
@@ -2752,10 +2758,8 @@ class OrcaTabsPlugin {
       
       // 如果启用贴边隐藏，检测当前位置（会自动创建触发区域）
       if (this.enableEdgeHide) {
-        // 初始化时检测是否靠近边缘，但不立即应用隐藏（等待下一帧以确保DOM已就绪）
-        requestAnimationFrame(() => {
-          this.applyEdgeHideStyle();
-        });
+        // 初始化时检测是否靠近边缘，使用防抖避免频繁检测
+        this.debouncedApplyEdgeHideStyle(100);
       }
     }
     
@@ -3654,6 +3658,11 @@ class OrcaTabsPlugin {
       requestAnimationFrame(() => {
         this.applyEdgeConstraints();
       });
+    }
+    
+    // 【修复】多个面板时贴边隐藏失效问题：在UI更新后重新检测贴边隐藏（使用防抖避免频繁检测）
+    if (this.enableEdgeHide && !this.isFixedToTop) {
+      this.debouncedApplyEdgeHideStyle(100); // 100ms防抖，等待DOM更新完成
     }
     } catch (error) {
       this.error("更新UI时发生错误:", error);
@@ -4636,6 +4645,19 @@ class OrcaTabsPlugin {
     const rect = this.tabContainer.getBoundingClientRect();
     const threshold = FEATURE_CONFIG.EDGE_DETECTION_DISTANCE;
     
+    // 【修复】添加容器有效性检查，避免面板切换时的异常检测
+    if (!rect || rect.width === 0 || rect.height === 0) {
+      this.verboseLog('🔍 容器尺寸无效，跳过边缘检测');
+      return null;
+    }
+    
+    // 【修复】添加容器位置合理性检查，避免面板切换时的异常位置
+    if (rect.left < -rect.width || rect.top < -rect.height || 
+        rect.left > window.innerWidth || rect.top > window.innerHeight) {
+      this.verboseLog('🔍 容器位置异常，跳过边缘检测');
+      return null;
+    }
+    
     // 检测是否靠近左边缘
     if (rect.left <= threshold) {
       return 'left';
@@ -4660,6 +4682,20 @@ class OrcaTabsPlugin {
   }
 
   /**
+   * 防抖的贴边隐藏样式应用
+   */
+  private debouncedApplyEdgeHideStyle(delay: number = 200) {
+    if (this.edgeHideDebounceTimer) {
+      clearTimeout(this.edgeHideDebounceTimer);
+    }
+    
+    this.edgeHideDebounceTimer = setTimeout(() => {
+      this.applyEdgeHideStyle();
+      this.edgeHideDebounceTimer = null;
+    }, delay) as any as number;
+  }
+
+  /**
    * 应用贴边隐藏样式
    */
   private applyEdgeHideStyle() {
@@ -4669,8 +4705,9 @@ class OrcaTabsPlugin {
     const detectedEdge = this.detectEdgeProximity();
     this.verboseLog(`🔍 applyEdgeHideStyle: detectedEdge=${detectedEdge}, currentEdgeSide=${this.currentEdgeSide}, isVerticalMode=${this.isVerticalMode}`);
     
-    // 只有在检测到边缘变化时才更新
-    if (detectedEdge !== this.currentEdgeSide) {
+    // 【修复】多个面板时贴边隐藏失效问题：即使边缘没有变化，也要重新应用贴边隐藏样式
+    // 这是因为面板切换可能导致容器位置发生变化，需要重新检测和应用
+    if (detectedEdge !== this.currentEdgeSide || (this.currentEdgeSide && this.enableEdgeHide)) {
       this.currentEdgeSide = detectedEdge;
       
       if (!this.currentEdgeSide) {
@@ -5863,8 +5900,10 @@ class OrcaTabsPlugin {
       this.enableDragResize();
     }
     
-      // 设置悬停提示
-      addTooltip(tabElement, createCustomTabTooltip(tab));
+      // 设置悬停提示（根据设置决定是否显示）
+      if (!this.hideTabTooltips) {
+        addTooltip(tabElement, createCustomTabTooltip(tab));
+      }
 
     // 添加点击事件
     tabElement.addEventListener('click', (e) => {
@@ -6746,6 +6785,12 @@ class OrcaTabsPlugin {
           defaultValue: false,
           description: "开启：中键=固定/取消固定，双击=关闭；关闭：中键=关闭，双击=固定/取消固定"
         },
+        hideTabTooltips: {
+          label: "隐藏标签页提示",
+          type: "boolean" as const,
+          defaultValue: false,
+          description: "开启后将隐藏标签页的悬停提示（tooltip），减少视觉干扰"
+        },
       };
 
       await orca.plugins.setSettingsSchema(this.pluginName, settingsSchema);
@@ -6810,6 +6855,11 @@ class OrcaTabsPlugin {
         await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.ENABLE_DOUBLE_CLICK_CLOSE, settings.enableDoubleClickClose, this.pluginName);
       }
       
+      if (settings?.hideTabTooltips !== undefined) {
+        this.hideTabTooltips = settings.hideTabTooltips;
+        this.log(`💬 标签页提示: ${settings.hideTabTooltips ? '隐藏' : '显示'}`);
+      }
+      
       this.log("✅ 插件设置已注册");
     } catch (error) {
       this.error("注册插件设置失败:", error);
@@ -6827,7 +6877,8 @@ class OrcaTabsPlugin {
       enableWorkspaces: this.enableWorkspaces,
       debugMode: this.currentLogLevel === LogLevel.VERBOSE,
       restoreFocusedTab: this.restoreFocusedTab,
-      enableMiddleClickPin: this.enableMiddleClickPin
+      enableMiddleClickPin: this.enableMiddleClickPin,
+      hideTabTooltips: this.hideTabTooltips
     };
     
     // 每2秒检查一次设置变化
@@ -6915,9 +6966,50 @@ class OrcaTabsPlugin {
         // 更新UI中可能存在的按钮状态（若仍存在）
         this.updateFeatureToggleButton?.();
       }
+
+      // 监听标签页提示设置变化
+      if (currentSettings.hideTabTooltips !== undefined && currentSettings.hideTabTooltips !== this.lastSettings.hideTabTooltips) {
+        const oldValue = this.hideTabTooltips;
+        this.hideTabTooltips = currentSettings.hideTabTooltips;
+        this.log(`💬 设置变化：标签页提示 ${oldValue ? '隐藏' : '显示'} -> ${this.hideTabTooltips ? '隐藏' : '显示'}`);
+        // 立即更新所有现有标签页的tooltip状态
+        this.updateAllTabTooltips();
+        this.lastSettings.hideTabTooltips = this.hideTabTooltips;
+      }
     } catch (error) {
       this.error("检查设置变化失败:", error);
     }
+  }
+
+  /**
+   * 更新所有标签页的tooltip状态
+   */
+  private updateAllTabTooltips() {
+    if (!this.tabContainer) return;
+    
+    const tabElements = this.tabContainer.querySelectorAll('.orca-tab');
+    tabElements.forEach(tabElement => {
+      if (this.hideTabTooltips) {
+        // 隐藏tooltip：移除现有的tooltip
+        const cleanup = (tabElement as any).__tooltipCleanup;
+        if (cleanup) {
+          cleanup();
+          delete (tabElement as any).__tooltipCleanup;
+        }
+      } else {
+        // 显示tooltip：重新添加tooltip
+        const tabId = tabElement.getAttribute('data-tab-id');
+        if (tabId) {
+          const tab = this.getCurrentPanelTabs().find(t => t.blockId === tabId);
+          if (tab) {
+            // 重新添加tooltip
+            addTooltip(tabElement as HTMLElement, createCustomTabTooltip(tab));
+          }
+        }
+      }
+    });
+    
+    this.verboseLog(`💬 已更新 ${tabElements.length} 个标签页的tooltip状态: ${this.hideTabTooltips ? '隐藏' : '显示'}`);
   }
 
   /**
@@ -10004,10 +10096,8 @@ class OrcaTabsPlugin {
         
         this.verboseLog('🔄 拖拽结束，重置贴边隐藏状态，准备重新检测');
         
-        // 延迟一帧以确保位置已更新
-        requestAnimationFrame(() => {
-          this.applyEdgeHideStyle();
-        });
+        // 延迟检测以确保位置已更新，使用防抖避免频繁检测
+        this.debouncedApplyEdgeHideStyle(200);
       }
       // 移除可能影响其他元素点击的样式和属性
       this.tabContainer.style.userSelect = '';
@@ -11366,6 +11456,11 @@ class OrcaTabsPlugin {
             }
             
             this.debouncedUpdateTabsUI();
+            
+            // 【修复】多个面板时贴边隐藏失效问题：面板切换后重新检测贴边隐藏（使用防抖避免频繁检测）
+            if (this.enableEdgeHide && !this.isFixedToTop) {
+              this.debouncedApplyEdgeHideStyle(300); // 300ms防抖，等待面板切换动画完成
+            }
           }
         }
       }
@@ -15606,6 +15701,12 @@ class OrcaTabsPlugin {
       if (this.saveDataDebounceTimer !== null) {
         clearTimeout(this.saveDataDebounceTimer);
         this.saveDataDebounceTimer = null;
+      }
+      
+      // 清理贴边隐藏防抖定时器
+      if (this.edgeHideDebounceTimer !== null) {
+        clearTimeout(this.edgeHideDebounceTimer);
+        this.edgeHideDebounceTimer = null;
       }
       
       // 清理性能优化器
