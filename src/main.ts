@@ -4690,6 +4690,13 @@ class OrcaTabsPlugin {
       // 切换模式
       this.isVerticalMode = !this.isVerticalMode;
       
+      // 【修复】如果切换到水平模式且气泡模式启用，自动禁用它
+      if (!this.isVerticalMode && this.enableBubbleMode) {
+        this.enableBubbleMode = false;
+        this.isBubbleExpanded = false;
+        this.verboseLog('🫧 切换到水平模式，已自动禁用气泡模式');
+      }
+      
       // 保存布局模式到API配置
       await this.saveLayoutMode();
       
@@ -10991,6 +10998,13 @@ class OrcaTabsPlugin {
         this.enableEdgeHide = config.enableEdgeHide;
         this.enableBubbleMode = config.enableBubbleMode;
         
+        // 【修复】如果恢复的是水平模式且气泡模式启用，自动禁用它（气泡模式仅垂直模式可用）
+        if (!this.isVerticalMode && this.enableBubbleMode) {
+          this.enableBubbleMode = false;
+          this.isBubbleExpanded = false;
+          this.verboseLog('🫧 恢复配置：水平模式不支持气泡模式，已自动禁用');
+        }
+        
         this.log(`📐 布局模式已恢复: ${generateLayoutLogMessage(config)}, 当前位置: (${this.position.x}, ${this.position.y})`);
         
         // 如果侧边栏对齐功能已启用，启动监听器
@@ -11014,6 +11028,14 @@ class OrcaTabsPlugin {
           this.verticalPosition,
           this.horizontalPosition
         );
+        
+        // 【修复】如果默认配置是水平模式且气泡模式启用，自动禁用它（气泡模式仅垂直模式可用）
+        if (!this.isVerticalMode && this.enableBubbleMode) {
+          this.enableBubbleMode = false;
+          this.isBubbleExpanded = false;
+          this.verboseLog('🫧 默认配置：水平模式不支持气泡模式，已自动禁用');
+        }
+        
         this.log(`📐 布局模式: 水平 (默认)`);
       }
     } catch (e) {

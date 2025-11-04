@@ -6187,7 +6187,7 @@ class Hi {
    */
   async toggleLayoutMode() {
     try {
-      this.isVerticalMode ? (this.verticalPosition = { ...this.position }, this.position = this.horizontalPosition || { x: 100, y: 100 }) : (this.horizontalPosition = { ...this.position }, this.position = this.verticalPosition || { x: 100, y: 100 }), this.isVerticalMode = !this.isVerticalMode, await this.saveLayoutMode(), await this.createTabsUI(), this.log(`📐 布局模式已切换为: ${this.isVerticalMode ? "垂直" : "水平"}`);
+      this.isVerticalMode ? (this.verticalPosition = { ...this.position }, this.position = this.horizontalPosition || { x: 100, y: 100 }) : (this.horizontalPosition = { ...this.position }, this.position = this.verticalPosition || { x: 100, y: 100 }), this.isVerticalMode = !this.isVerticalMode, !this.isVerticalMode && this.enableBubbleMode && (this.enableBubbleMode = !1, this.isBubbleExpanded = !1, this.verboseLog("🫧 切换到水平模式，已自动禁用气泡模式")), await this.saveLayoutMode(), await this.createTabsUI(), this.log(`📐 布局模式已切换为: ${this.isVerticalMode ? "垂直" : "水平"}`);
     } catch (e) {
       this.error("切换布局模式失败:", e);
     }
@@ -8991,14 +8991,14 @@ class Hi {
           this.isVerticalMode,
           this.verticalPosition,
           this.horizontalPosition
-        ), this.isSidebarAlignmentEnabled = t.isSidebarAlignmentEnabled, this.isFloatingWindowVisible = t.isFloatingWindowVisible, this.showBlockTypeIcons = t.showBlockTypeIcons, this.showInHeadbar = t.showInHeadbar, this.horizontalTabMaxWidth = t.horizontalTabMaxWidth, this.horizontalTabMinWidth = t.horizontalTabMinWidth, this.enableEdgeHide = t.enableEdgeHide, this.enableBubbleMode = t.enableBubbleMode, this.log(`📐 布局模式已恢复: ${je(t)}, 当前位置: (${this.position.x}, ${this.position.y})`), this.isSidebarAlignmentEnabled && (this.startSidebarAlignmentObserver(), this.log("🔄 侧边栏对齐监听器已启动"));
+        ), this.isSidebarAlignmentEnabled = t.isSidebarAlignmentEnabled, this.isFloatingWindowVisible = t.isFloatingWindowVisible, this.showBlockTypeIcons = t.showBlockTypeIcons, this.showInHeadbar = t.showInHeadbar, this.horizontalTabMaxWidth = t.horizontalTabMaxWidth, this.horizontalTabMinWidth = t.horizontalTabMinWidth, this.enableEdgeHide = t.enableEdgeHide, this.enableBubbleMode = t.enableBubbleMode, !this.isVerticalMode && this.enableBubbleMode && (this.enableBubbleMode = !1, this.isBubbleExpanded = !1, this.verboseLog("🫧 恢复配置：水平模式不支持气泡模式，已自动禁用")), this.log(`📐 布局模式已恢复: ${je(t)}, 当前位置: (${this.position.x}, ${this.position.y})`), this.isSidebarAlignmentEnabled && (this.startSidebarAlignmentObserver(), this.log("🔄 侧边栏对齐监听器已启动"));
       } else {
         const t = V();
         this.isVerticalMode = t.isVerticalMode, this.verticalWidth = t.verticalWidth, this.verticalPosition = t.verticalPosition, this.horizontalPosition = t.horizontalPosition, this.horizontalTabMaxWidth = t.horizontalTabMaxWidth, this.horizontalTabMinWidth = t.horizontalTabMinWidth, this.enableEdgeHide = t.enableEdgeHide, this.enableBubbleMode = t.enableBubbleMode, this.position = re(
           this.isVerticalMode,
           this.verticalPosition,
           this.horizontalPosition
-        ), this.log("📐 布局模式: 水平 (默认)");
+        ), !this.isVerticalMode && this.enableBubbleMode && (this.enableBubbleMode = !1, this.isBubbleExpanded = !1, this.verboseLog("🫧 默认配置：水平模式不支持气泡模式，已自动禁用")), this.log("📐 布局模式: 水平 (默认)");
       }
     } catch (e) {
       this.error("恢复布局模式失败:", e);
