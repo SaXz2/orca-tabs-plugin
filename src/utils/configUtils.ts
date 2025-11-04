@@ -17,6 +17,7 @@ export interface LayoutConfig {
   horizontalTabMaxWidth: number;
   horizontalTabMinWidth: number;
   enableEdgeHide: boolean;
+  enableBubbleMode: boolean;
 }
 
 export interface PositionConfig {
@@ -39,7 +40,8 @@ export function createDefaultLayoutConfig(): LayoutConfig {
     showInHeadbar: true,
     horizontalTabMaxWidth: 130,
     horizontalTabMinWidth: 80,
-    enableEdgeHide: false
+    enableEdgeHide: false,
+    enableBubbleMode: false
   };
 }
 
@@ -83,7 +85,8 @@ export function mergeLayoutConfig(saved: Partial<LayoutConfig>): LayoutConfig {
     showInHeadbar: saved.showInHeadbar ?? defaultConfig.showInHeadbar,
     horizontalTabMaxWidth: saved.horizontalTabMaxWidth ?? defaultConfig.horizontalTabMaxWidth,
     horizontalTabMinWidth: saved.horizontalTabMinWidth ?? defaultConfig.horizontalTabMinWidth,
-    enableEdgeHide: saved.enableEdgeHide ?? defaultConfig.enableEdgeHide
+    enableEdgeHide: saved.enableEdgeHide ?? defaultConfig.enableEdgeHide,
+    enableBubbleMode: saved.enableBubbleMode ?? defaultConfig.enableBubbleMode
   };
 }
 

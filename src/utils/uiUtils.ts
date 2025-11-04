@@ -492,8 +492,77 @@ export function createTabContainerStyle(
   backgroundColor: string,
   verticalWidth?: number,
   enableEdgeHide?: boolean,
-  edgePosition?: 'left' | 'right'
+  edgePosition?: 'left' | 'right',
+  enableBubbleMode?: boolean,
+  isBubbleExpanded?: boolean
 ): string {
+  // 气泡模式样式（仅垂直模式）
+  if (isVerticalMode && enableBubbleMode) {
+    if (isBubbleExpanded) {
+      // 展开状态：正常显示
+      return `
+        position: fixed;
+        top: ${position.y}px;
+        left: ${position.x}px;
+        z-index: 300;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+        background: ${backgroundColor};
+        border-radius: var(--orca-radius-md);
+        padding: 4px 2px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        user-select: none;
+        max-height: 80vh;
+        flex-wrap: nowrap;
+        pointer-events: auto;
+        -webkit-app-region: no-drag;
+        app-region: no-drag;
+        width: ${verticalWidth || 200}px;
+        min-width: 120px;
+        max-width: 400px;
+        align-items: stretch;
+        overflow-y: auto;
+        overflow-x: hidden;
+        transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        opacity: 1;
+        transform: scale(1);
+      `;
+    } else {
+      // 气泡状态：最小化为圆形气泡，默认隐藏所有内容
+      return `
+        position: fixed;
+        top: ${position.y}px;
+        left: ${position.x}px;
+        z-index: 300;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+        background: ${backgroundColor};
+        border-radius: 50%;
+        padding: 0;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        user-select: none;
+        pointer-events: auto;
+        -webkit-app-region: no-drag;
+        app-region: no-drag;
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        max-width: 32px;
+        overflow: hidden;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        opacity: 1;
+        transform: scale(1);
+      `;
+    }
+  }
+  
   return isVerticalMode ? `
     position: fixed;
     top: ${position.y}px;

@@ -84,7 +84,8 @@ import {
   createTabTextContainer,
   createPinIcon,
   createTabTooltip,
-  calculateContextMenuPosition
+  calculateContextMenuPosition,
+  createTabContainerStyle
 } from './utils/uiUtils';
 
 // UI创建工具函数
@@ -704,6 +705,19 @@ class OrcaTabsPlugin {
   
   /** 容器鼠标离开处理器 - 绑定的事件处理函数，用于移除监听器 */
   private boundContainerMouseLeave: (() => void) | null = null;
+  
+  // ==================== 气泡模式 ====================
+  /** 气泡模式是否启用 - 控制是否启用气泡模式（仅垂直模式可用） */
+  private enableBubbleMode: boolean = false;
+  
+  /** 气泡模式是否展开 - 标识气泡模式下容器是否处于展开状态 */
+  private isBubbleExpanded: boolean = false;
+  
+  /** 气泡模式展开延迟定时器 - 用于延迟展开气泡模式容器 */
+  private bubbleExpandTimer: number | null = null;
+  
+  /** 气泡模式收起延迟定时器 - 用于延迟收起气泡模式容器 */
+  private bubbleCollapseTimer: number | null = null;
   
   // ==================== 窗口可见性 ====================
   /** 浮窗是否可见 - 控制标签页容器的显示/隐藏状态 */
@@ -2660,6 +2674,13 @@ class OrcaTabsPlugin {
 
     // 移除现有的标签容器和循环切换器
     if (this.tabContainer) {
+      // 清理气泡模式的事件监听器
+      if (this.enableBubbleMode) {
+        const clickOutsideHandler = (this.tabContainer as any)?._bubbleClickOutsideHandler;
+        if (clickOutsideHandler) {
+          document.removeEventListener('click', clickOutsideHandler, true);
+        }
+      }
       this.tabContainer.remove();
     }
     if (this.cycleSwitcher) {
@@ -2696,11 +2717,16 @@ class OrcaTabsPlugin {
       width = this.verticalWidth;
     }
     
+    // 气泡模式仅在垂直模式下可用且未固定到顶部时启用
+    const shouldUseBubbleMode = isVertical && !this.isFixedToTop && this.enableBubbleMode;
+    
     this.tabContainer = createTabContainer(
       isVertical, 
       currentPosition, 
       width, 
-      backgroundColor
+      backgroundColor,
+      shouldUseBubbleMode,
+      shouldUseBubbleMode ? this.isBubbleExpanded : false
     );
     
     // 如果是固定到顶部模式，将标签页直接添加到顶部工具栏
@@ -2839,11 +2865,21 @@ class OrcaTabsPlugin {
     this.addDragStyles();
 
     // 如果是垂直模式，启用拖拽调整宽度功能
-    if (this.isVerticalMode) {
+    if (this.isVerticalMode && !shouldUseBubbleMode) {
       this.enableDragResize();
     }
 
     await this.updateTabsUI();
+    
+    // 如果启用气泡模式，添加气泡模式的事件处理
+    if (shouldUseBubbleMode) {
+      this.setupBubbleModeEvents();
+      
+      // 如果未展开，创建气泡覆盖层
+      if (!this.isBubbleExpanded) {
+        this.createBubbleOverlay();
+      }
+    }
   }
 
   /**
@@ -3521,6 +3557,12 @@ class OrcaTabsPlugin {
       const fragment = document.createDocumentFragment();
       targetTabs.forEach((tab, index) => {
         const tabElement = this.createTabElement(tab);
+        // 确保新创建的标签透明度正常（避免切换标签后透明度异常）
+        if (this.enableBubbleMode && this.isBubbleExpanded) {
+          // 如果气泡模式已展开，确保标签透明度正常
+          (tabElement as HTMLElement).style.opacity = '1';
+          (tabElement as HTMLElement).style.transform = '';
+        }
         fragment.appendChild(tabElement);
       });
       
@@ -3533,6 +3575,20 @@ class OrcaTabsPlugin {
         } else {
           // 如果没有按钮，直接添加到末尾
           this.tabContainer.appendChild(fragment);
+        }
+        
+        // 【修复】切换标签页后，确保气泡模式下所有标签的透明度正常
+        if (this.enableBubbleMode && this.isBubbleExpanded) {
+          requestAnimationFrame(() => {
+            const allTabs = this.tabContainer?.querySelectorAll('.orca-tab');
+            allTabs?.forEach((tab) => {
+              const tabElement = tab as HTMLElement;
+              // 确保透明度正常，但保留 transition 样式以便后续动画正常工作
+              tabElement.style.opacity = '1';
+              tabElement.style.transform = '';
+              // 不清除 transition，让后续动画可以正常工作
+            });
+          });
         }
       }
     } else {
@@ -3664,9 +3720,33 @@ class OrcaTabsPlugin {
       });
     }
     
+    // 【修复】气泡模式下，确保切换标签后所有标签的透明度正常
+    if (this.enableBubbleMode && this.isBubbleExpanded && this.tabContainer) {
+      const allTabs = this.tabContainer.querySelectorAll('.orca-tab');
+      allTabs.forEach((tab) => {
+        const tabElement = tab as HTMLElement;
+        // 确保透明度正常，但保留 transition 样式以便后续动画正常工作
+        tabElement.style.opacity = '1';
+        tabElement.style.transform = '';
+        // 不清除 transition，让后续动画可以正常工作
+      });
+    }
+    
     // 【修复】多个面板时贴边隐藏失效问题：在UI更新后重新检测贴边隐藏（使用防抖避免频繁检测）
     if (this.enableEdgeHide && !this.isFixedToTop) {
       this.debouncedApplyEdgeHideStyle(100); // 100ms防抖，等待DOM更新完成
+    }
+    
+    // 如果启用气泡模式且处于收起状态，确保覆盖层显示在最上层
+    if (this.enableBubbleMode && !this.isBubbleExpanded && this.tabContainer) {
+      const overlay = this.tabContainer.querySelector('.bubble-overlay');
+      if (!overlay) {
+        this.createBubbleOverlay();
+      } else {
+        // 确保覆盖层在最上层
+        (overlay as HTMLElement).style.display = 'flex';
+        (overlay as HTMLElement).style.zIndex = '9999';
+      }
     }
     } catch (error) {
       this.error("更新UI时发生错误:", error);
@@ -4435,6 +4515,22 @@ class OrcaTabsPlugin {
       );
     }
 
+    // 在垂直模式且非固定到顶部模式下添加气泡模式选项
+    if (this.isVerticalMode && !this.isFixedToTop) {
+      menuItems.push(
+        {
+          text: '---',
+          action: () => {},
+          separator: true
+        },
+        {
+          text: this.enableBubbleMode ? '关闭气泡模式' : '开启气泡模式',
+          action: () => this.toggleBubbleMode(),
+          icon: this.enableBubbleMode ? '🫧' : '💧'
+        }
+      );
+    }
+
     // 只有在非固定到顶部模式下才添加侧边栏对齐选项
     if (!this.isFixedToTop) {
       menuItems.push(
@@ -4638,6 +4734,415 @@ class OrcaTabsPlugin {
       await this.createTabsUI();
     } catch (error) {
       this.error("切换贴边隐藏失败:", error);
+    }
+  }
+
+  /**
+   * 切换气泡模式（仅垂直模式可用）
+   */
+  async toggleBubbleMode() {
+    try {
+      if (!this.isVerticalMode) {
+        this.log("⚠️ 气泡模式仅在垂直模式下可用");
+        return;
+      }
+      
+      this.enableBubbleMode = !this.enableBubbleMode;
+      this.isBubbleExpanded = false; // 重置展开状态
+      
+      this.log(`🫧 气泡模式已${this.enableBubbleMode ? '启用' : '禁用'}`);
+      
+      // 保存配置
+      await this.saveLayoutMode();
+      
+      // 重新创建UI
+      await this.createTabsUI();
+    } catch (error) {
+      this.error("切换气泡模式失败:", error);
+    }
+  }
+
+  /**
+   * 设置气泡模式的事件处理
+   */
+  private setupBubbleModeEvents() {
+    if (!this.tabContainer) return;
+    
+    // 清除之前的定时器
+    if (this.bubbleExpandTimer) {
+      clearTimeout(this.bubbleExpandTimer);
+      this.bubbleExpandTimer = null;
+    }
+    if (this.bubbleCollapseTimer) {
+      clearTimeout(this.bubbleCollapseTimer);
+      this.bubbleCollapseTimer = null;
+    }
+    
+    // 存储事件处理函数，以便后续移除
+    const mouseEnterHandler = () => {
+      // 如果正在拖拽，不处理气泡展开
+      if (this.isDragging) return;
+      
+      if (this.bubbleCollapseTimer) {
+        clearTimeout(this.bubbleCollapseTimer);
+        this.bubbleCollapseTimer = null;
+      }
+      
+      if (!this.isBubbleExpanded) {
+        this.expandBubble();
+      }
+    };
+    
+    const mouseLeaveHandler = (e: MouseEvent) => {
+      // 如果正在拖拽，不处理气泡收起
+      if (this.isDragging) return;
+      
+      // 检查鼠标是否真的离开了容器（包括子元素）
+      const relatedTarget = e.relatedTarget as HTMLElement;
+      if (relatedTarget && this.tabContainer?.contains(relatedTarget)) {
+        return; // 鼠标仍在容器内
+      }
+      
+      if (this.bubbleExpandTimer) {
+        clearTimeout(this.bubbleExpandTimer);
+        this.bubbleExpandTimer = null;
+      }
+      
+      if (this.isBubbleExpanded) {
+        this.bubbleCollapseTimer = setTimeout(() => {
+          this.collapseBubble();
+        }, 200) as any as number;
+      }
+    };
+    
+    // 点击外部区域收起气泡
+    const clickOutsideHandler = (e: MouseEvent) => {
+      if (!this.enableBubbleMode || !this.isBubbleExpanded) return;
+      
+      const target = e.target as HTMLElement;
+      // 如果点击的不是容器及其子元素，则收起气泡
+      if (target && !this.tabContainer?.contains(target)) {
+        if (this.bubbleCollapseTimer) {
+          clearTimeout(this.bubbleCollapseTimer);
+        }
+        this.collapseBubble();
+      }
+    };
+    
+    // 保存事件处理函数引用，以便在拖拽时临时移除
+    (this.tabContainer as any)._bubbleMouseEnterHandler = mouseEnterHandler;
+    (this.tabContainer as any)._bubbleMouseLeaveHandler = mouseLeaveHandler;
+    (this.tabContainer as any)._bubbleClickOutsideHandler = clickOutsideHandler;
+    
+    // 鼠标进入：展开
+    this.tabContainer.addEventListener('mouseenter', mouseEnterHandler);
+    
+    // 鼠标离开：收起
+    this.tabContainer.addEventListener('mouseleave', mouseLeaveHandler);
+    
+    // 点击外部区域：收起
+    document.addEventListener('click', clickOutsideHandler, true);
+  }
+
+  /**
+   * 展开气泡
+   */
+  private expandBubble() {
+    if (!this.tabContainer || !this.enableBubbleMode || this.isBubbleExpanded) return;
+    
+    this.isBubbleExpanded = true;
+    
+    // 立即隐藏气泡覆盖层（不等待动画）
+    const overlay = this.tabContainer.querySelector('.bubble-overlay') as HTMLElement;
+    if (overlay) {
+      overlay.style.display = 'none';
+      overlay.style.opacity = '0';
+      overlay.style.transform = 'scale(0.8)';
+    }
+    
+    // 先添加缩放动画起始状态
+    this.tabContainer.style.transform = 'scale(0.8)';
+    this.tabContainer.style.opacity = '0.7';
+    
+    // 更新样式
+    const backgroundColor = 'color-mix(in srgb, var(--orca-color-bg-2), transparent 50%)';
+    const currentPosition = this.isVerticalMode ? this.verticalPosition : this.position;
+    const containerStyle = createTabContainerStyle(
+      this.isVerticalMode,
+      currentPosition,
+      backgroundColor,
+      this.verticalWidth,
+      undefined,
+      undefined,
+      true,
+      true
+    );
+    this.tabContainer.style.cssText = containerStyle;
+    
+    // 展开过程中隐藏滚动条
+    this.tabContainer.style.overflow = 'hidden';
+    
+    // 强制重置更新标志，确保 updateTabsUI 能执行
+    this.isUpdating = false;
+    this.lastUpdateTime = 0;
+    
+    // 使用 requestAnimationFrame 确保样式已应用后开始动画
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        // 展开动画：缩放 + 淡入
+        this.tabContainer!.style.transition = 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)';
+        this.tabContainer!.style.transform = 'scale(1)';
+        this.tabContainer!.style.opacity = '1';
+        
+        // 更新UI以显示标签（确保能执行）
+        this.updateTabsUI().then(() => {
+          // 验证标签是否成功加载
+          const tabs = this.tabContainer?.querySelectorAll('.orca-tab');
+          if (!tabs || tabs.length === 0) {
+            // 如果标签没有加载，重试一次
+            this.verboseLog('⚠️ 标签未加载，重试更新UI');
+            setTimeout(() => {
+              this.isUpdating = false;
+              this.updateTabsUI().then(() => {
+                this.applyTabAnimation();
+              });
+            }, 100);
+          } else {
+            this.applyTabAnimation();
+          }
+        }).catch((error) => {
+          this.log(`❌ 更新标签UI失败: ${error}`);
+          // 即使失败也尝试应用动画
+          this.applyTabAnimation();
+        });
+      });
+    });
+    
+    this.verboseLog('🫧 气泡已展开');
+  }
+  
+  /**
+   * 应用标签动画
+   */
+  private applyTabAnimation() {
+    const tabs = this.tabContainer?.querySelectorAll('.orca-tab');
+    if (!tabs || tabs.length === 0) return;
+    
+    // 确保滚动条在动画期间保持隐藏
+    if (this.tabContainer) {
+      this.tabContainer.style.overflow = 'hidden';
+      this.tabContainer.style.overflowY = 'hidden';
+      this.tabContainer.style.overflowX = 'hidden';
+    }
+    
+    tabs.forEach((tab, index) => {
+      const tabElement = tab as HTMLElement;
+      tabElement.style.opacity = '0';
+      tabElement.style.transform = 'translateY(-8px)';
+      tabElement.style.transition = 'opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)';
+      setTimeout(() => {
+        tabElement.style.opacity = '1';
+        tabElement.style.transform = 'translateY(0)';
+      }, index * 15 + 50); // 错开动画时间，创建流畅的展开效果
+    });
+    
+    // 动画完成后恢复滚动条
+    setTimeout(() => {
+      if (this.tabContainer) {
+        this.tabContainer.style.overflow = '';
+        this.tabContainer.style.overflowY = 'auto';
+        this.tabContainer.style.overflowX = 'hidden';
+      }
+    }, 450); // 稍微延长等待时间，确保动画完全完成
+  }
+
+  /**
+   * 收起气泡
+   */
+  private collapseBubble() {
+    if (!this.tabContainer || !this.enableBubbleMode || !this.isBubbleExpanded) return;
+    
+    this.isBubbleExpanded = false;
+    
+    // 先添加标签的淡出和上移动画 - 透明度逐渐变成0（最高优先级）
+    const tabs = this.tabContainer.querySelectorAll('.orca-tab');
+    tabs.forEach((tab, index) => {
+      const tabElement = tab as HTMLElement;
+      // 确保当前透明度被保存
+      const currentOpacity = tabElement.style.opacity || '1';
+      tabElement.style.opacity = currentOpacity;
+      tabElement.style.transition = 'opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)';
+      setTimeout(() => {
+        tabElement.style.opacity = '0';
+        tabElement.style.transform = 'translateY(-8px)';
+      }, index * 8); // 反向错开动画
+    });
+    
+    // 延迟执行容器缩小动画，让标签动画先开始
+    setTimeout(() => {
+      // 更新样式为气泡状态
+      const backgroundColor = 'color-mix(in srgb, var(--orca-color-bg-2), transparent 50%)';
+      const currentPosition = this.isVerticalMode ? this.verticalPosition : this.position;
+      const containerStyle = createTabContainerStyle(
+        this.isVerticalMode,
+        currentPosition,
+        backgroundColor,
+        this.verticalWidth,
+        undefined,
+        undefined,
+        true,
+        false
+      );
+      
+      // 先设置样式，然后添加缩小动画
+      if (!this.tabContainer) return;
+      this.tabContainer.style.cssText = containerStyle;
+      
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          // 缩小动画：缩放 + 淡出
+          this.tabContainer!.style.transition = 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+          this.tabContainer!.style.transform = 'scale(0.8)';
+          this.tabContainer!.style.opacity = '0.7';
+          
+          // 确保所有标签元素透明度变为0（防止遗漏）
+          setTimeout(() => {
+            tabs.forEach((tab) => {
+              const tabElement = tab as HTMLElement;
+              tabElement.style.opacity = '0';
+            });
+          }, 300);
+          
+          // 动画完成后创建覆盖层（带渐入动画）
+          setTimeout(() => {
+            this.createBubbleOverlay();
+            
+            // 覆盖层渐入动画（从透明到不透明）
+            const overlay = this.tabContainer?.querySelector('.bubble-overlay') as HTMLElement;
+            if (overlay) {
+              overlay.style.opacity = '0';
+              overlay.style.transform = 'scale(0.9)';
+              overlay.style.transition = 'opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+              requestAnimationFrame(() => {
+                overlay.style.opacity = '1';
+                overlay.style.transform = 'scale(1)';
+                
+                // 按钮闪亮动画 - 苹果风格的圆形边缘闪光
+                const icon = overlay.querySelector('div') as HTMLElement;
+                if (icon) {
+                  // 创建圆形边缘闪光效果 - 使用渐变和旋转
+                  const keyframes = [
+                    { 
+                      filter: 'drop-shadow(0 0 0px rgba(255, 255, 255, 0))',
+                      transform: 'scale(1) rotate(0deg)',
+                      offset: 0 
+                    },
+                    { 
+                      filter: 'drop-shadow(0 0 8px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 16px rgba(255, 255, 255, 0.6))',
+                      transform: 'scale(1.05) rotate(180deg)',
+                      offset: 0.5 
+                    },
+                    { 
+                      filter: 'drop-shadow(0 0 0px rgba(255, 255, 255, 0))',
+                      transform: 'scale(1) rotate(360deg)',
+                      offset: 1 
+                    }
+                  ];
+                  
+                  const animation = icon.animate(keyframes, {
+                    duration: 400,
+                    easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+                  });
+                  
+                  animation.addEventListener('finish', () => {
+                    icon.style.filter = '';
+                    icon.style.transform = '';
+                  });
+                }
+              });
+            }
+            
+            // 恢复容器到正常状态
+            this.tabContainer!.style.transform = 'scale(1)';
+            this.tabContainer!.style.opacity = '1';
+          }, 300);
+        });
+      });
+    }, 50);
+    
+    this.verboseLog('🫧 气泡已收起');
+  }
+
+  /**
+   * 创建气泡覆盖层（用于最小化时覆盖所有内容）
+   */
+  private createBubbleOverlay() {
+    if (!this.tabContainer) return;
+    
+    // 移除现有的覆盖层
+    const existingOverlay = this.tabContainer.querySelector('.bubble-overlay');
+    if (existingOverlay) {
+      existingOverlay.remove();
+    }
+    
+    // 创建覆盖层
+    const overlay = document.createElement('div');
+    overlay.className = 'bubble-overlay';
+    
+    // 获取容器背景色（用于覆盖层）- 使用实色
+    const backgroundColor = 'var(--orca-color-bg-2)';
+    
+    overlay.style.cssText = `
+      position: absolute;
+      top: -1px;
+      left: -1px;
+      width: calc(100% + 2px);
+      height: calc(100% + 2px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: ${backgroundColor};
+      border-radius: inherit;
+      z-index: 9999;
+      pointer-events: auto;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      opacity: 1;
+      transform: scale(1);
+    `;
+    
+    // 创建加号图标
+    const icon = document.createElement('div');
+    
+    // 检测暗色模式
+    const isDarkMode = document.documentElement.hasAttribute('data-theme') 
+      ? document.documentElement.getAttribute('data-theme') === 'dark'
+      : document.documentElement.classList.contains('dark') || 
+        (window as any).orca?.state?.themeMode === 'dark';
+    
+    icon.style.cssText = `
+      font-size: 16px;
+      font-weight: bold;
+      color: ${isDarkMode ? 'var(--orca-color-text-1, #ffffff)' : 'var(--orca-text-primary, #333)'};
+      user-select: none;
+      pointer-events: none;
+      text-shadow: ${isDarkMode ? '0 1px 2px rgba(0, 0, 0, 0.5)' : 'none'};
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      position: relative;
+    `;
+    icon.textContent = '+';
+    
+    overlay.appendChild(icon);
+    this.tabContainer.appendChild(overlay);
+    
+    // 确保容器相对定位，以便覆盖层正确定位
+    if (this.tabContainer.style.position !== 'fixed') {
+      this.tabContainer.style.position = 'fixed';
     }
   }
 
@@ -6633,6 +7138,20 @@ class OrcaTabsPlugin {
       }, 500);
 
       await this.focusTabElementById(tab.blockId);
+      
+      // 【修复】切换标签页后，确保气泡模式下所有标签的透明度正常
+      if (this.enableBubbleMode && this.isBubbleExpanded && this.tabContainer) {
+        requestAnimationFrame(() => {
+          const allTabs = this.tabContainer?.querySelectorAll('.orca-tab');
+          allTabs?.forEach((tabElement) => {
+            const element = tabElement as HTMLElement;
+            // 确保透明度正常，但保留 transition 样式以便后续动画正常工作
+            element.style.opacity = '1';
+            element.style.transform = '';
+            // 不清除 transition，让后续动画可以正常工作
+          });
+        });
+      }
       
       // 如果启用了工作区功能且有当前工作区，实时更新工作区
       if (this.enableWorkspaces && this.currentWorkspace) {
@@ -9980,6 +10499,33 @@ class OrcaTabsPlugin {
     e.stopPropagation();
     e.stopImmediatePropagation(); // 强制阻止窗口拖拽
     
+    // 如果启用气泡模式，先展开气泡（如果收起状态）并临时移除事件监听器
+    if (this.enableBubbleMode) {
+      if (!this.isBubbleExpanded) {
+        this.expandBubble();
+      }
+      // 清除收起定时器
+      if (this.bubbleCollapseTimer) {
+        clearTimeout(this.bubbleCollapseTimer);
+        this.bubbleCollapseTimer = null;
+      }
+      // 临时移除气泡模式的事件监听器，避免拖拽时触发
+      if (this.tabContainer) {
+        const mouseEnterHandler = (this.tabContainer as any)._bubbleMouseEnterHandler;
+        const mouseLeaveHandler = (this.tabContainer as any)._bubbleMouseLeaveHandler;
+        const clickOutsideHandler = (this.tabContainer as any)._bubbleClickOutsideHandler;
+        if (mouseEnterHandler) {
+          this.tabContainer.removeEventListener('mouseenter', mouseEnterHandler);
+        }
+        if (mouseLeaveHandler) {
+          this.tabContainer.removeEventListener('mouseleave', mouseLeaveHandler);
+        }
+        if (clickOutsideHandler) {
+          document.removeEventListener('click', clickOutsideHandler, true);
+        }
+      }
+    }
+    
     this.isDragging = true;
     // 根据布局模式使用不同的位置
     const currentPosition = this.isVerticalMode ? this.verticalPosition : this.position;
@@ -9989,6 +10535,8 @@ class OrcaTabsPlugin {
     // 添加拖拽状态类
     if (this.tabContainer) {
       this.tabContainer.classList.add('dragging');
+      // 禁用CSS过渡，确保拖拽时位置立即更新
+      this.tabContainer.style.transition = 'none';
       const dragHandle = this.tabContainer.querySelector('.drag-handle');
       if (dragHandle) {
         dragHandle.classList.add('dragging');
@@ -10025,6 +10573,24 @@ class OrcaTabsPlugin {
     if (!this.isDragging || !this.tabContainer) return;
 
     e.preventDefault();
+    
+    // 如果启用气泡模式且正在拖拽，确保容器保持展开状态
+    if (this.enableBubbleMode && !this.isBubbleExpanded) {
+      this.isBubbleExpanded = true;
+      const backgroundColor = 'color-mix(in srgb, var(--orca-color-bg-2), transparent 50%)';
+      const currentPosition = this.isVerticalMode ? this.verticalPosition : this.position;
+      const containerStyle = createTabContainerStyle(
+        this.isVerticalMode,
+        currentPosition,
+        backgroundColor,
+        this.verticalWidth,
+        undefined,
+        undefined,
+        true,
+        true
+      );
+      this.tabContainer.style.cssText = containerStyle;
+    }
     
     // 根据布局模式更新不同的位置
     if (this.isVerticalMode) {
@@ -10085,6 +10651,14 @@ class OrcaTabsPlugin {
         dragHandle.classList.remove('dragging');
       }
       this.tabContainer.style.cursor = 'default';
+      // 恢复CSS过渡（如果启用气泡模式，使用对应的过渡设置）
+      if (this.enableBubbleMode && this.isBubbleExpanded) {
+        this.tabContainer.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      } else if (this.enableBubbleMode && !this.isBubbleExpanded) {
+        this.tabContainer.style.transition = 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)';
+      } else {
+        this.tabContainer.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      }
       
       // 如果启用了贴边隐藏，在拖拽结束后重新检测贴边状态
       if (this.enableEdgeHide && !this.isFixedToTop) {
@@ -10110,6 +10684,30 @@ class OrcaTabsPlugin {
         // 延迟检测以确保位置已更新，使用防抖避免频繁检测
         this.debouncedApplyEdgeHideStyle(200);
       }
+      
+      // 如果启用了气泡模式，清除收起定时器并恢复事件监听器（拖拽结束后保持展开状态）
+      if (this.enableBubbleMode) {
+        if (this.bubbleCollapseTimer) {
+          clearTimeout(this.bubbleCollapseTimer);
+          this.bubbleCollapseTimer = null;
+        }
+        // 恢复气泡模式的事件监听器
+        if (this.tabContainer) {
+          const mouseEnterHandler = (this.tabContainer as any)._bubbleMouseEnterHandler;
+          const mouseLeaveHandler = (this.tabContainer as any)._bubbleMouseLeaveHandler;
+          const clickOutsideHandler = (this.tabContainer as any)._bubbleClickOutsideHandler;
+          if (mouseEnterHandler && !this.tabContainer.onmouseenter) {
+            this.tabContainer.addEventListener('mouseenter', mouseEnterHandler);
+          }
+          if (mouseLeaveHandler && !this.tabContainer.onmouseleave) {
+            this.tabContainer.addEventListener('mouseleave', mouseLeaveHandler);
+          }
+          if (clickOutsideHandler) {
+            document.addEventListener('click', clickOutsideHandler, true);
+          }
+        }
+      }
+      
       // 移除可能影响其他元素点击的样式和属性
       this.tabContainer.style.userSelect = '';
       this.tabContainer.style.pointerEvents = 'auto';
@@ -10166,7 +10764,8 @@ class OrcaTabsPlugin {
       showInHeadbar: this.showInHeadbar,
       horizontalTabMaxWidth: this.horizontalTabMaxWidth,
       horizontalTabMinWidth: this.horizontalTabMinWidth,
-      enableEdgeHide: this.enableEdgeHide
+      enableEdgeHide: this.enableEdgeHide,
+      enableBubbleMode: this.enableBubbleMode
     });
   }
 
@@ -10293,6 +10892,7 @@ class OrcaTabsPlugin {
         this.horizontalTabMaxWidth = config.horizontalTabMaxWidth;
         this.horizontalTabMinWidth = config.horizontalTabMinWidth;
         this.enableEdgeHide = config.enableEdgeHide;
+        this.enableBubbleMode = config.enableBubbleMode;
         
         this.log(`📐 布局模式已恢复: ${generateLayoutLogMessage(config)}, 当前位置: (${this.position.x}, ${this.position.y})`);
         
@@ -10311,6 +10911,7 @@ class OrcaTabsPlugin {
         this.horizontalTabMaxWidth = defaultConfig.horizontalTabMaxWidth;
         this.horizontalTabMinWidth = defaultConfig.horizontalTabMinWidth;
         this.enableEdgeHide = defaultConfig.enableEdgeHide;
+        this.enableBubbleMode = defaultConfig.enableBubbleMode;
         this.position = getPositionByMode(
           this.isVerticalMode,
           this.verticalPosition,

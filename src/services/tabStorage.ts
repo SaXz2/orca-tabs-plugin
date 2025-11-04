@@ -347,7 +347,8 @@ export class TabStorageService {
         showInHeadbar: false,
         horizontalTabMaxWidth: 130,
         horizontalTabMinWidth: 80,
-        enableEdgeHide: false
+        enableEdgeHide: false,
+        enableBubbleMode: false
       });
       
       this.log(`💾 位置已保存: ${generatePositionLogMessage(position, isVerticalMode)}`);
@@ -373,6 +374,7 @@ export class TabStorageService {
     horizontalTabMaxWidth: number;
     horizontalTabMinWidth: number;
     enableEdgeHide: boolean;
+    enableBubbleMode: boolean;
   }): Promise<void> {
     try {
       await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.LAYOUT_MODE, layoutData, this.pluginName);

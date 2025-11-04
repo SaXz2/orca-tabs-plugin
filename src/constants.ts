@@ -116,6 +116,9 @@ export const PLUGIN_STORAGE_KEYS = {
   
   /** 贴边隐藏功能开关 - 存储是否启用贴边隐藏功能 */
   ENABLE_EDGE_HIDE: 'enable-edge-hide',
+  
+  /** 气泡模式开关 - 存储是否启用气泡模式（仅垂直模式可用） */
+  ENABLE_BUBBLE_MODE: 'enable-bubble-mode',
 } as const;
 
 // ==================== 功能配置常量 ====================

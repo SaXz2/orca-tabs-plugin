@@ -14,14 +14,25 @@ export function createTabContainer(
   isVerticalMode: boolean,
   position: TabPosition,
   verticalWidth: number,
-  backgroundColor: string
+  backgroundColor: string,
+  enableBubbleMode?: boolean,
+  isBubbleExpanded?: boolean
 ): HTMLElement {
   const container = document.createElement('div');
   container.className = isVerticalMode 
     ? 'orca-tabs-plugin orca-tabs-container vertical'
     : 'orca-tabs-plugin orca-tabs-container';
   
-  const containerStyle = createTabContainerStyle(isVerticalMode, position, backgroundColor, verticalWidth);
+  const containerStyle = createTabContainerStyle(
+    isVerticalMode, 
+    position, 
+    backgroundColor, 
+    verticalWidth, 
+    undefined, 
+    undefined,
+    enableBubbleMode,
+    isBubbleExpanded
+  );
   container.style.cssText = containerStyle;
   
   return container;
