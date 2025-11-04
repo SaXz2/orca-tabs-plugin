@@ -3638,6 +3638,8 @@ class zi {
     v(this, "hideTabTooltips", !1);
     /** 贴边隐藏检测防抖定时器 - 避免面板切换时的频繁检测 */
     v(this, "edgeHideDebounceTimer", null);
+    /** 是否正在更新DOM - DOM更新期间禁用贴边隐藏检测 */
+    v(this, "isUpdatingDOM", !1);
     /* ———————————————————————————————————————————————————————————————————————————— */
     /* 性能优化 - Performance Optimization */
     /* ———————————————————————————————————————————————————————————————————————————— */
@@ -5425,7 +5427,7 @@ class zi {
   async updateTabsUI() {
     var t;
     if (!this.tabContainer || this.isUpdating) return;
-    this.isUpdating = !0;
+    this.isUpdating = !0, this.isUpdatingDOM = !0;
     const e = Date.now();
     try {
       if (e - this.lastUpdateTime < 200) {
@@ -5518,7 +5520,7 @@ class zi {
     } catch (i) {
       this.error("更新UI时发生错误:", i);
     } finally {
-      this.isUpdating = !1;
+      this.isUpdating = !1, this.isUpdatingDOM = !1;
     }
   }
   /**
@@ -6125,6 +6127,10 @@ class zi {
    */
   applyEdgeHideStyle() {
     if (!this.tabContainer) return;
+    if (this.isUpdatingDOM) {
+      this.verboseLog("🔍 DOM正在更新中，跳过贴边隐藏检测");
+      return;
+    }
     const e = this.detectEdgeProximity();
     if (this.verboseLog(`🔍 applyEdgeHideStyle: detectedEdge=${e}, currentEdgeSide=${this.currentEdgeSide}, isVerticalMode=${this.isVerticalMode}`), e !== this.currentEdgeSide || this.currentEdgeSide && this.enableEdgeHide) {
       if (this.currentEdgeSide = e, !this.currentEdgeSide) {
