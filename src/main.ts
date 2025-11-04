@@ -3479,7 +3479,14 @@ class OrcaTabsPlugin {
     }
   }
 
-  async updateTabsUI() {
+  async updateTabsUI(force: boolean = false) {
+    // 【修复】如果强制更新，先重置更新标志
+    if (force && this.isUpdating) {
+      this.verboseLog('🔄 强制更新：重置 isUpdating 标志');
+      this.isUpdating = false;
+      this.isUpdatingDOM = false;
+    }
+    
     if (!this.tabContainer || this.isUpdating) return;
     
     // 防止重复更新
@@ -3489,16 +3496,23 @@ class OrcaTabsPlugin {
     
     try {
         // 优化：大幅增加更新间隔，减少频繁更新
+        // 【修复】强制更新时跳过防抖检查
         const minUpdateInterval = 200; // 从100ms增加到200ms
-        if (now - this.lastUpdateTime < minUpdateInterval) {
+        if (!force && now - this.lastUpdateTime < minUpdateInterval) {
           // 只在很短时间内跳过时才记录，避免日志过多
           if (now - this.lastUpdateTime < 50) {
             this.verboseLog('⏭️ 跳过UI更新：距离上次更新仅 ' + (now - this.lastUpdateTime) + 'ms');
           }
+          // 重置标志，因为提前返回了
+          this.isUpdating = false;
+          this.isUpdatingDOM = false;
           return;
         }
       
       this.lastUpdateTime = now;
+      if (force) {
+        this.verboseLog('🔄 强制更新UI（跳过防抖检查）');
+      }
 
     // 清除现有标签（保留拖拽手柄、新建按钮和工作区按钮）
     const dragHandle = this.tabContainer.querySelector('.drag-handle');
@@ -3586,7 +3600,11 @@ class OrcaTabsPlugin {
               // 确保透明度正常，但保留 transition 样式以便后续动画正常工作
               tabElement.style.opacity = '1';
               tabElement.style.transform = '';
-              // 不清除 transition，让后续动画可以正常工作
+              // 确保 transition 属性存在（使用 collapseBubble 中相同的 transition 设置）
+              // 这样即使标签被重新创建，transition 也能正常工作
+              if (!tabElement.style.transition || tabElement.style.transition === 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)') {
+                tabElement.style.transition = 'opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)';
+              }
             });
           });
         }
@@ -3728,7 +3746,11 @@ class OrcaTabsPlugin {
         // 确保透明度正常，但保留 transition 样式以便后续动画正常工作
         tabElement.style.opacity = '1';
         tabElement.style.transform = '';
-        // 不清除 transition，让后续动画可以正常工作
+        // 确保 transition 属性存在（使用 collapseBubble 中相同的 transition 设置）
+        // 这样即使标签被重新创建，transition 也能正常工作
+        if (!tabElement.style.transition || tabElement.style.transition === 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)') {
+          tabElement.style.transition = 'opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)';
+        }
       });
     }
     
@@ -7148,7 +7170,11 @@ class OrcaTabsPlugin {
             // 确保透明度正常，但保留 transition 样式以便后续动画正常工作
             element.style.opacity = '1';
             element.style.transform = '';
-            // 不清除 transition，让后续动画可以正常工作
+            // 确保 transition 属性存在（使用 collapseBubble 中相同的 transition 设置）
+            // 这样即使标签被重新创建，transition 也能正常工作
+            if (!element.style.transition || element.style.transition === 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)') {
+              element.style.transition = 'opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)';
+            }
           });
         });
       }
@@ -8268,8 +8294,21 @@ class OrcaTabsPlugin {
       
       if (success) {
         this.verboseLog(`🔗 [DEBUG] ✅ 成功在后台创建新标签页`);
+        
+        // 【修复】确保UI更新完成，添加延迟和强制刷新
+        // 因为 addTabToPanel 内部的 updateTabsUI 可能有防抖延迟或 isUpdating 标志
+        await new Promise(resolve => setTimeout(resolve, 150));
+        
+        // 强制更新UI一次，确保标签页显示（绕过防抖和更新标志）
+        this.verboseLog(`🔗 [DEBUG] 强制更新UI以确保标签页显示`);
+        await this.updateTabsUI(true);
+        
         const updatedTabs = this.getCurrentPanelTabs();
         this.verboseLog(`🔗 [DEBUG] 更新后标签页数量: ${updatedTabs.length}`);
+        this.verboseLog(`🔗 [DEBUG] 更新后标签页列表:`);
+        updatedTabs.forEach((tab, idx) => {
+          this.verboseLog(`🔗 [DEBUG]   [${idx}] ${tab.title} (ID: ${tab.blockId})`);
+        });
       } else {
         this.verboseLog(`🔗 [DEBUG] ❌ 创建新标签页失败`);
       }
@@ -8293,6 +8332,7 @@ class OrcaTabsPlugin {
    * 2. 支持多种块引用的class和属性
    * 3. 支持从data属性中提取块ID
    * 4. 支持从文本内容中解析块ID（如 [[块123]] 或 block:123）
+   * 5. 支持从块标（orca-block-handle）中提取块ID
    * 
    * @param element 起始DOM元素
    * @returns 块引用ID，如果未找到则返回null
@@ -8304,6 +8344,41 @@ class OrcaTabsPlugin {
       // 向上遍历DOM树
       while (current && current !== document.body) {
         const classList = current.classList;
+        
+        // 检查是否是块标（block handle）
+        if (classList.contains('orca-block-handle') || classList.contains('block-handle')) {
+          // 从块标元素本身或其父元素中查找块ID
+          // 块标通常在块容器内，块容器应该有 data-block-id 属性
+          let blockId = current.getAttribute('data-block-id') ||
+                       current.getAttribute('data-blockid') ||
+                       current.getAttribute('data-id');
+          
+          // 如果块标本身没有，尝试从父元素中查找
+          if (!blockId) {
+            let parent = current.parentElement;
+            while (parent && parent !== document.body) {
+              blockId = parent.getAttribute('data-block-id') ||
+                       parent.getAttribute('data-blockid') ||
+                       parent.getAttribute('data-id');
+              if (blockId && !isNaN(parseInt(blockId))) {
+                break;
+              }
+              // 检查父元素是否是块容器
+              if (parent.classList.contains('orca-block') || 
+                  parent.classList.contains('orca-block-editor') ||
+                  parent.classList.contains('orca-hideable')) {
+                break;
+              }
+              parent = parent.parentElement;
+            }
+          }
+          
+          // 验证块ID是否有效（应该是数字）
+          if (blockId && !isNaN(parseInt(blockId))) {
+            this.log(`🔗 从块标中提取到块ID: ${blockId}`);
+            return blockId;
+          }
+        }
         
         // 检查是否是块引用元素（支持多种class名称）
         if (
@@ -8330,6 +8405,19 @@ class OrcaTabsPlugin {
           // 验证块ID是否有效（应该是数字）
           if (blockId && !isNaN(parseInt(blockId))) {
             this.log(`🔗 从元素中提取到块引用ID: ${blockId}`);
+            return blockId;
+          }
+        }
+        
+        // 检查data属性中是否包含块ID（优先检查块容器相关元素）
+        if (classList.contains('orca-block') || 
+            classList.contains('orca-block-editor') ||
+            classList.contains('orca-hideable')) {
+          const blockId = current.getAttribute('data-block-id') ||
+                         current.getAttribute('data-blockid') ||
+                         current.getAttribute('data-id');
+          if (blockId && !isNaN(parseInt(blockId))) {
+            this.log(`🔗 从块容器中提取到块ID: ${blockId}`);
             return blockId;
           }
         }
@@ -12202,8 +12290,9 @@ class OrcaTabsPlugin {
     
     const target = e.target as HTMLElement;
     
-    // 检查是否按住 Ctrl 键（Windows/Linux）或 Cmd 键（Mac）点击
-    if ((e.ctrlKey || e.metaKey) && target) {
+    // 检查是否按住 Ctrl 键（Windows/Linux）或 Cmd 键（Mac）左键点击
+    // 明确检查 e.button === 0 确保是左键点击（参考 tabsman 插件实现）
+    if ((e.ctrlKey || e.metaKey) && e.button === 0 && target) {
       
       // 尝试获取块引用ID
       const blockRefId = this.getBlockRefId(target);
