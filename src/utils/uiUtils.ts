@@ -555,7 +555,7 @@ export function createTabContainerStyle(
         height: 32px;
         min-width: 32px;
         max-width: 32px;
-        overflow: hidden;
+        overflow: clip;
         transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         opacity: 1;
         transform: scale(1);

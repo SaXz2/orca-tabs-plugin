@@ -4901,8 +4901,10 @@ class OrcaTabsPlugin {
     );
     this.tabContainer.style.cssText = containerStyle;
     
-    // 展开过程中隐藏滚动条
+    // 【修复】展开过程中隐藏滚动条，确保清理所有 overflow 相关样式
     this.tabContainer.style.overflow = 'hidden';
+    this.tabContainer.style.overflowY = '';
+    this.tabContainer.style.overflowX = '';
     
     // 强制重置更新标志，确保 updateTabsUI 能执行
     this.isUpdating = false;
@@ -4951,10 +4953,11 @@ class OrcaTabsPlugin {
     if (!tabs || tabs.length === 0) return;
     
     // 确保滚动条在动画期间保持隐藏
-    if (this.tabContainer) {
+    if (this.tabContainer && this.enableBubbleMode && this.isBubbleExpanded) {
+      // 【修复】使用 overflow: hidden 而不是分别设置 overflowY/overflowX，避免样式冲突
       this.tabContainer.style.overflow = 'hidden';
-      this.tabContainer.style.overflowY = 'hidden';
-      this.tabContainer.style.overflowX = 'hidden';
+      this.tabContainer.style.overflowY = '';
+      this.tabContainer.style.overflowX = '';
     }
     
     tabs.forEach((tab, index) => {
@@ -4970,7 +4973,8 @@ class OrcaTabsPlugin {
     
     // 动画完成后恢复滚动条
     setTimeout(() => {
-      if (this.tabContainer) {
+      if (this.tabContainer && this.enableBubbleMode && this.isBubbleExpanded) {
+        // 【修复】确保清理所有 overflow 相关样式，避免样式冲突
         this.tabContainer.style.overflow = '';
         this.tabContainer.style.overflowY = 'auto';
         this.tabContainer.style.overflowX = 'hidden';
@@ -5019,6 +5023,11 @@ class OrcaTabsPlugin {
       // 先设置样式，然后添加缩小动画
       if (!this.tabContainer) return;
       this.tabContainer.style.cssText = containerStyle;
+      
+      // 【修复】确保最小化状态使用 overflow: clip，避免出现滚动条
+      this.tabContainer.style.overflow = 'clip';
+      this.tabContainer.style.overflowY = 'clip';
+      this.tabContainer.style.overflowX = 'clip';
       
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
