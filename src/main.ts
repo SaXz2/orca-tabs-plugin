@@ -712,12 +712,18 @@ class OrcaTabsPlugin {
   
   /** 气泡模式是否展开 - 标识气泡模式下容器是否处于展开状态 */
   private isBubbleExpanded: boolean = false;
-  
+
   /** 气泡模式展开延迟定时器 - 用于延迟展开气泡模式容器 */
   private bubbleExpandTimer: number | null = null;
-  
+
   /** 气泡模式收起延迟定时器 - 用于延迟收起气泡模式容器 */
   private bubbleCollapseTimer: number | null = null;
+
+  /** 气泡模式动画进行中标志 - 防止动画冲突 */
+  private isBubbleAnimating: boolean = false;
+
+  /** 气泡模式动画定时器集合 - 用于取消所有进行中的动画 */
+  private bubbleAnimationTimers: Set<number> = new Set();
   
   // ==================== 窗口可见性 ====================
   /** 浮窗是否可见 - 控制标签页容器的显示/隐藏状态 */
@@ -3597,13 +3603,22 @@ class OrcaTabsPlugin {
             const allTabs = this.tabContainer?.querySelectorAll('.orca-tab');
             allTabs?.forEach((tab) => {
               const tabElement = tab as HTMLElement;
-              // 确保透明度正常，但保留 transition 样式以便后续动画正常工作
-              tabElement.style.opacity = '1';
-              tabElement.style.transform = '';
-              // 确保 transition 属性存在（使用 collapseBubble 中相同的 transition 设置）
-              // 这样即使标签被重新创建，transition 也能正常工作
-              if (!tabElement.style.transition || tabElement.style.transition === 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)') {
-                tabElement.style.transition = 'opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)';
+              const isFocused = tabElement.getAttribute('data-focused') === 'true';
+              // 如果正在动画中，不要重置透明度（避免干扰动画）
+              if (!this.isBubbleAnimating) {
+                // 确保透明度正常，但保留 transition 样式以便后续动画正常工作
+                if (isFocused) {
+                  // 聚焦标签页使用 !important 覆盖 CSS 规则
+                  tabElement.style.setProperty('opacity', '1', 'important');
+                } else {
+                  tabElement.style.opacity = '1';
+                }
+                tabElement.style.transform = '';
+                // 确保 transition 属性存在（使用 collapseBubble 中相同的 transition 设置）
+                // 这样即使标签被重新创建，transition 也能正常工作
+                if (!tabElement.style.transition || tabElement.style.transition === 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)') {
+                  tabElement.style.transition = 'opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)';
+                }
               }
             });
           });
@@ -3743,13 +3758,22 @@ class OrcaTabsPlugin {
       const allTabs = this.tabContainer.querySelectorAll('.orca-tab');
       allTabs.forEach((tab) => {
         const tabElement = tab as HTMLElement;
-        // 确保透明度正常，但保留 transition 样式以便后续动画正常工作
-        tabElement.style.opacity = '1';
-        tabElement.style.transform = '';
-        // 确保 transition 属性存在（使用 collapseBubble 中相同的 transition 设置）
-        // 这样即使标签被重新创建，transition 也能正常工作
-        if (!tabElement.style.transition || tabElement.style.transition === 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)') {
-          tabElement.style.transition = 'opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)';
+        const isFocused = tabElement.getAttribute('data-focused') === 'true';
+        // 如果正在动画中，不要重置透明度（避免干扰动画）
+        if (!this.isBubbleAnimating) {
+          // 确保透明度正常，但保留 transition 样式以便后续动画正常工作
+          if (isFocused) {
+            // 聚焦标签页使用 !important 覆盖 CSS 规则
+            tabElement.style.setProperty('opacity', '1', 'important');
+          } else {
+            tabElement.style.opacity = '1';
+          }
+          tabElement.style.transform = '';
+          // 确保 transition 属性存在（使用 collapseBubble 中相同的 transition 设置）
+          // 这样即使标签被重新创建，transition 也能正常工作
+          if (!tabElement.style.transition || tabElement.style.transition === 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)') {
+            tabElement.style.transition = 'opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)';
+          }
         }
       });
     }
@@ -4879,7 +4903,43 @@ class OrcaTabsPlugin {
   private expandBubble() {
     if (!this.tabContainer || !this.enableBubbleMode || this.isBubbleExpanded) return;
     
+    // 【修复】如果正在执行收起动画，先取消所有动画定时器并重置样式
+    if (this.isBubbleAnimating) {
+      this.verboseLog('🫧 检测到收起动画进行中，取消所有动画定时器');
+      this.cancelBubbleAnimations();
+      
+      // 重置容器样式，确保从正确状态开始展开
+      if (this.tabContainer) {
+        // 移除所有 transform 和 opacity，恢复初始状态
+        this.tabContainer.style.transform = '';
+        this.tabContainer.style.opacity = '';
+        // 重新应用最小化状态的样式
+        const backgroundColor = 'color-mix(in srgb, var(--orca-color-bg-2), transparent 50%)';
+        const currentPosition = this.isVerticalMode ? this.verticalPosition : this.position;
+        const containerStyle = createTabContainerStyle(
+          this.isVerticalMode,
+          currentPosition,
+          backgroundColor,
+          this.verticalWidth,
+          undefined,
+          undefined,
+          true,
+          false
+        );
+        this.tabContainer.style.cssText = containerStyle;
+        this.tabContainer.style.overflow = 'clip';
+        this.tabContainer.style.overflowY = 'clip';
+        this.tabContainer.style.overflowX = 'clip';
+        
+        // 等待一帧确保样式已应用
+        requestAnimationFrame(() => {
+          // 继续展开流程
+        });
+      }
+    }
+    
     this.isBubbleExpanded = true;
+    this.isBubbleAnimating = true;
     
     // 立即隐藏气泡覆盖层（不等待动画）
     const overlay = this.tabContainer.querySelector('.bubble-overlay') as HTMLElement;
@@ -4932,12 +4992,13 @@ class OrcaTabsPlugin {
           if (!tabs || tabs.length === 0) {
             // 如果标签没有加载，重试一次
             this.verboseLog('⚠️ 标签未加载，重试更新UI');
-            setTimeout(() => {
+            const retryTimer = setTimeout(() => {
               this.isUpdating = false;
               this.updateTabsUI().then(() => {
                 this.applyTabAnimation();
               });
-            }, 100);
+            }, 100) as any as number;
+            this.bubbleAnimationTimers.add(retryTimer);
           } else {
             this.applyTabAnimation();
           }
@@ -4948,6 +5009,13 @@ class OrcaTabsPlugin {
         });
       });
     });
+    
+    // 【修复】动画完成后重置标志（展开动画总时长约 0.35s + 标签动画时间）
+    const finishTimer = setTimeout(() => {
+      this.isBubbleAnimating = false;
+      this.verboseLog('🫧 展开动画完成');
+    }, 800) as any as number;
+    this.bubbleAnimationTimers.add(finishTimer);
     
     this.verboseLog('🫧 气泡已展开');
   }
@@ -4969,14 +5037,40 @@ class OrcaTabsPlugin {
     
     tabs.forEach((tab, index) => {
       const tabElement = tab as HTMLElement;
-      tabElement.style.opacity = '0';
+      const isFocused = tabElement.getAttribute('data-focused') === 'true';
+      
+      // 聚焦标签页：从更高的透明度开始（0.5），非聚焦标签页从完全透明开始
+      // 使用 setProperty 设置 !important 来覆盖 CSS 中的 opacity: 1 !important
+      const startOpacity = isFocused ? '0.5' : '0';
+      tabElement.style.setProperty('opacity', startOpacity, 'important');
       tabElement.style.transform = 'translateY(-8px)';
       tabElement.style.transition = 'opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)';
       setTimeout(() => {
-        tabElement.style.opacity = '1';
+        // 动画结束时，聚焦标签页保持 opacity: 1 !important，非聚焦标签页正常设置
+        if (isFocused) {
+          tabElement.style.setProperty('opacity', '1', 'important');
+        } else {
+          tabElement.style.opacity = '1';
+        }
         tabElement.style.transform = 'translateY(0)';
       }, index * 15 + 50); // 错开动画时间，创建流畅的展开效果
     });
+    
+    // 处理新建按钮和工作区按钮的动画
+    const buttons = this.tabContainer?.querySelectorAll('.new-tab-button, .workspace-button');
+    if (buttons && buttons.length > 0) {
+      buttons.forEach((button, index) => {
+        const buttonElement = button as HTMLElement;
+        // 按钮从完全透明开始
+        buttonElement.style.opacity = '0';
+        buttonElement.style.transform = 'translateY(-8px)';
+        buttonElement.style.transition = 'opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)';
+        setTimeout(() => {
+          buttonElement.style.opacity = '1';
+          buttonElement.style.transform = 'translateY(0)';
+        }, (tabs.length + index) * 15 + 50); // 在标签页之后显示
+      });
+    }
     
     // 动画完成后恢复滚动条
     setTimeout(() => {
@@ -4990,29 +5084,94 @@ class OrcaTabsPlugin {
   }
 
   /**
+   * 取消所有气泡动画
+   */
+  private cancelBubbleAnimations() {
+    // 清除所有定时器
+    this.bubbleAnimationTimers.forEach(timer => {
+      clearTimeout(timer);
+    });
+    this.bubbleAnimationTimers.clear();
+    
+    // 清除展开和收起定时器
+    if (this.bubbleExpandTimer) {
+      clearTimeout(this.bubbleExpandTimer);
+      this.bubbleExpandTimer = null;
+    }
+    if (this.bubbleCollapseTimer) {
+      clearTimeout(this.bubbleCollapseTimer);
+      this.bubbleCollapseTimer = null;
+    }
+    
+    // 【修复】立即停止所有 CSS 过渡动画，防止动画冲突
+    if (this.tabContainer) {
+      this.tabContainer.style.transition = 'none';
+      // 强制重排，确保 transition: none 立即生效
+      void this.tabContainer.offsetHeight;
+    }
+    
+    // 重置动画标志
+    this.isBubbleAnimating = false;
+  }
+
+  /**
    * 收起气泡
    */
   private collapseBubble() {
     if (!this.tabContainer || !this.enableBubbleMode || !this.isBubbleExpanded) return;
     
+    // 【修复】如果正在执行展开动画，先取消所有动画定时器
+    if (this.isBubbleAnimating) {
+      this.verboseLog('🫧 检测到展开动画进行中，取消所有动画定时器');
+      this.cancelBubbleAnimations();
+    }
+    
     this.isBubbleExpanded = false;
+    this.isBubbleAnimating = true;
     
     // 先添加标签的淡出和上移动画 - 透明度逐渐变成0（最高优先级）
     const tabs = this.tabContainer.querySelectorAll('.orca-tab');
     tabs.forEach((tab, index) => {
       const tabElement = tab as HTMLElement;
+      const isFocused = tabElement.getAttribute('data-focused') === 'true';
+      
       // 确保当前透明度被保存
       const currentOpacity = tabElement.style.opacity || '1';
-      tabElement.style.opacity = currentOpacity;
-      tabElement.style.transition = 'opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)';
-      setTimeout(() => {
-        tabElement.style.opacity = '0';
+      // 使用 setProperty 设置 !important 来覆盖 CSS 中的 opacity: 1 !important
+      tabElement.style.setProperty('opacity', currentOpacity, 'important');
+      
+      // 聚焦标签页使用更长的动画时间，动画过程中会经过0.3再到0，以突出显示变化过程
+      const transitionDuration = isFocused ? '0.4s' : '0.3s';
+      // 最终所有标签页都应该是0
+      const finalOpacity = '0';
+      
+      tabElement.style.transition = `opacity ${transitionDuration} cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)`;
+      const tabTimer = setTimeout(() => {
+        // 使用 setProperty 设置 !important 确保聚焦标签页的透明度变化生效
+        // 聚焦标签页通过更长的动画时间，会在动画过程中自然经过0.3再到0
+        tabElement.style.setProperty('opacity', finalOpacity, 'important');
         tabElement.style.transform = 'translateY(-8px)';
-      }, index * 8); // 反向错开动画
+      }, index * 8) as any as number;
+      this.bubbleAnimationTimers.add(tabTimer);
+    });
+    
+    // 处理新建按钮和工作区按钮的收起动画
+    const buttons = this.tabContainer.querySelectorAll('.new-tab-button, .workspace-button');
+    buttons.forEach((button, index) => {
+      const buttonElement = button as HTMLElement;
+      // 确保当前透明度被保存
+      const currentOpacity = buttonElement.style.opacity || '1';
+      buttonElement.style.opacity = currentOpacity;
+      buttonElement.style.transition = 'opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)';
+      const buttonTimer = setTimeout(() => {
+        buttonElement.style.opacity = '0';
+        buttonElement.style.transform = 'translateY(-8px)';
+      }, (tabs.length + index) * 8) as any as number;
+      this.bubbleAnimationTimers.add(buttonTimer);
     });
     
     // 延迟执行容器缩小动画，让标签动画先开始
-    setTimeout(() => {
+    const containerTimer = setTimeout(() => {
       // 更新样式为气泡状态
       const backgroundColor = 'color-mix(in srgb, var(--orca-color-bg-2), transparent 50%)';
       const currentPosition = this.isVerticalMode ? this.verticalPosition : this.position;
@@ -5043,16 +5202,23 @@ class OrcaTabsPlugin {
           this.tabContainer!.style.transform = 'scale(0.8)';
           this.tabContainer!.style.opacity = '0.7';
           
-          // 确保所有标签元素透明度变为0（防止遗漏）
-          setTimeout(() => {
+          // 确保所有标签元素和按钮最终透明度变为0（防止遗漏）
+          const tabOpacityTimer = setTimeout(() => {
             tabs.forEach((tab) => {
               const tabElement = tab as HTMLElement;
-              tabElement.style.opacity = '0';
+              // 最终所有标签页都应该是0
+              tabElement.style.setProperty('opacity', '0', 'important');
             });
-          }, 300);
+            // 确保按钮也变成0
+            buttons.forEach((button) => {
+              const buttonElement = button as HTMLElement;
+              buttonElement.style.opacity = '0';
+            });
+          }, 500) as any as number; // 延迟到动画完全结束后，确保所有元素都已变成0
+          this.bubbleAnimationTimers.add(tabOpacityTimer);
           
           // 动画完成后创建覆盖层（带渐入动画）
-          setTimeout(() => {
+          const overlayTimer = setTimeout(() => {
             this.createBubbleOverlay();
             
             // 覆盖层渐入动画（从透明到不透明）
@@ -5103,10 +5269,19 @@ class OrcaTabsPlugin {
             // 恢复容器到正常状态
             this.tabContainer!.style.transform = 'scale(1)';
             this.tabContainer!.style.opacity = '1';
-          }, 300);
+            
+            // 【修复】收起动画完成后重置标志（总时长约 50ms + 0.3s + 300ms + 300ms ≈ 950ms）
+            const finishTimer = setTimeout(() => {
+              this.isBubbleAnimating = false;
+              this.verboseLog('🫧 收起动画完成');
+            }, 100) as any as number;
+            this.bubbleAnimationTimers.add(finishTimer);
+          }, 300) as any as number;
+          this.bubbleAnimationTimers.add(overlayTimer);
         });
       });
-    }, 50);
+    }, 50) as any as number;
+    this.bubbleAnimationTimers.add(containerTimer);
     
     this.verboseLog('🫧 气泡已收起');
   }
@@ -5985,13 +6160,9 @@ class OrcaTabsPlugin {
         return React.createElement(Button, {
           variant: 'plain',
           onClick: () => this.toggleFloatingWindow(),
-          title: this.isFloatingWindowVisible ? '隐藏标签栏' : '显示标签栏',
-          style: {
-            color: this.isFloatingWindowVisible ? '#666' : '#999',
-            transition: 'color 0.2s ease'
-          }
+          title: this.isFloatingWindowVisible ? '隐藏标签栏' : '显示标签栏'
         }, React.createElement('i', {
-          className: this.isFloatingWindowVisible ? 'ti ti-eye' : 'ti ti-eye-off'
+          className: `${this.isFloatingWindowVisible ? 'ti ti-eye' : 'ti ti-eye-off'} orca-headbar-icon`
         }));
       });
 
@@ -6004,13 +6175,9 @@ class OrcaTabsPlugin {
           return React.createElement(Button, {
             variant: 'plain',
             onClick: () => this.toggleBlockTypeIcons(),
-            title: this.showBlockTypeIcons ? '隐藏块类型图标' : '显示块类型图标',
-            style: {
-              color: this.showBlockTypeIcons ? '#007acc' : '#999',
-              transition: 'color 0.2s ease'
-            }
+            title: this.showBlockTypeIcons ? '隐藏块类型图标' : '显示块类型图标'
           }, React.createElement('i', {
-            className: this.showBlockTypeIcons ? 'ti ti-palette' : 'ti ti-palette-off'
+            className: `${this.showBlockTypeIcons ? 'ti ti-palette' : 'ti ti-palette-off'} orca-headbar-icon`
           }));
         });
       }
@@ -6024,13 +6191,9 @@ class OrcaTabsPlugin {
           return React.createElement(Button, {
             variant: 'plain',
             onClick: (event: MouseEvent) => this.showRecentlyClosedTabsMenu(event),
-            title: `最近关闭的标签页 (${this.recentlyClosedTabs?.length || 0})`,
-            style: {
-              color: (this.recentlyClosedTabs?.length || 0) > 0 ? '#ff6b6b' : '#999',
-              transition: 'color 0.2s ease'
-            }
+            title: `最近关闭的标签页 (${this.recentlyClosedTabs?.length || 0})`
           }, React.createElement('i', {
-            className: 'ti ti-history'
+            className: 'ti ti-history orca-headbar-icon'
           }));
         });
       }
@@ -6044,13 +6207,9 @@ class OrcaTabsPlugin {
           return React.createElement(Button, {
             variant: 'plain',
             onClick: (event: MouseEvent) => this.showSavedTabSetsMenu(event),
-            title: `保存的标签页集合 (${this.savedTabSets?.length || 0})`,
-            style: {
-              color: (this.savedTabSets?.length || 0) > 0 ? '#3b82f6' : '#999',
-              transition: 'color 0.2s ease'
-            }
+            title: `保存的标签页集合 (${this.savedTabSets?.length || 0})`
           }, React.createElement('i', {
-            className: 'ti ti-bookmark'
+            className: 'ti ti-bookmark orca-headbar-icon'
           }));
         });
       }

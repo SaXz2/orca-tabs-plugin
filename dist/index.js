@@ -5547,8 +5547,8 @@ class Hi {
           var v;
           const g = (v = this.tabContainer) == null ? void 0 : v.querySelectorAll(".orca-tab");
           g == null || g.forEach((y) => {
-            const w = y;
-            w.style.opacity = "1", w.style.transform = "", (!w.style.transition || w.style.transition === "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)") && (w.style.transition = "opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)");
+            const w = y, x = w.getAttribute("data-focused") === "true";
+            this.isBubbleAnimating || (x ? w.style.setProperty("opacity", "1", "important") : w.style.opacity = "1", w.style.transform = "", (!w.style.transition || w.style.transition === "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)") && (w.style.transition = "opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)"));
           });
         }));
       } else
@@ -5619,8 +5619,8 @@ class Hi {
       if (this.enableEdgeHide && this.currentEdgeSide && !this.isFixedToTop && requestAnimationFrame(() => {
         this.applyEdgeConstraints();
       }), this.enableBubbleMode && this.isBubbleExpanded && this.tabContainer && this.tabContainer.querySelectorAll(".orca-tab").forEach((p) => {
-        const m = p;
-        m.style.opacity = "1", m.style.transform = "", (!m.style.transition || m.style.transition === "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)") && (m.style.transition = "opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)");
+        const m = p, g = m.getAttribute("data-focused") === "true";
+        this.isBubbleAnimating || (g ? m.style.setProperty("opacity", "1", "important") : m.style.opacity = "1", m.style.transform = "", (!m.style.transition || m.style.transition === "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)") && (m.style.transition = "opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)"));
       }), this.enableEdgeHide && !this.isFixedToTop && this.debouncedApplyEdgeHideStyle(100), this.enableBubbleMode && !this.isBubbleExpanded && this.tabContainer) {
         const b = this.tabContainer.querySelector(".bubble-overlay");
         b ? (b.style.display = "flex", b.style.zIndex = "9999") : this.createBubbleOverlay();
@@ -6325,16 +6325,24 @@ class Hi {
    * 应用标签动画
    */
   applyTabAnimation() {
-    var t;
-    const e = (t = this.tabContainer) == null ? void 0 : t.querySelectorAll(".orca-tab");
-    !e || e.length === 0 || (this.tabContainer && this.enableBubbleMode && this.isBubbleExpanded && (this.tabContainer.style.overflow = "hidden", this.tabContainer.style.overflowY = "", this.tabContainer.style.overflowX = ""), e.forEach((i, a) => {
-      const n = i;
-      n.style.opacity = "0", n.style.transform = "translateY(-8px)", n.style.transition = "opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)", setTimeout(() => {
-        n.style.opacity = "1", n.style.transform = "translateY(0)";
-      }, a * 15 + 50);
+    var i, a;
+    const e = (i = this.tabContainer) == null ? void 0 : i.querySelectorAll(".orca-tab");
+    if (!e || e.length === 0) return;
+    this.tabContainer && this.enableBubbleMode && this.isBubbleExpanded && (this.tabContainer.style.overflow = "hidden", this.tabContainer.style.overflowY = "", this.tabContainer.style.overflowX = ""), e.forEach((n, o) => {
+      const l = n, s = l.getAttribute("data-focused") === "true", c = s ? "0.5" : "0";
+      l.style.setProperty("opacity", c, "important"), l.style.transform = "translateY(-8px)", l.style.transition = "opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)", setTimeout(() => {
+        s ? l.style.setProperty("opacity", "1", "important") : l.style.opacity = "1", l.style.transform = "translateY(0)";
+      }, o * 15 + 50);
+    });
+    const t = (a = this.tabContainer) == null ? void 0 : a.querySelectorAll(".new-tab-button, .workspace-button");
+    t && t.length > 0 && t.forEach((n, o) => {
+      const l = n;
+      l.style.opacity = "0", l.style.transform = "translateY(-8px)", l.style.transition = "opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)", setTimeout(() => {
+        l.style.opacity = "1", l.style.transform = "translateY(0)";
+      }, (e.length + o) * 15 + 50);
     }), setTimeout(() => {
       this.tabContainer && this.enableBubbleMode && this.isBubbleExpanded && (this.tabContainer.style.overflow = "", this.tabContainer.style.overflowY = "auto", this.tabContainer.style.overflowX = "hidden");
-    }, 450));
+    }, 450);
   }
   /**
    * 取消所有气泡动画
@@ -6351,44 +6359,57 @@ class Hi {
     if (!this.tabContainer || !this.enableBubbleMode || !this.isBubbleExpanded) return;
     this.isBubbleAnimating && (this.verboseLog("🫧 检测到展开动画进行中，取消所有动画定时器"), this.cancelBubbleAnimations()), this.isBubbleExpanded = !1, this.isBubbleAnimating = !0;
     const e = this.tabContainer.querySelectorAll(".orca-tab");
-    e.forEach((i, a) => {
-      const n = i, o = n.style.opacity || "1";
-      n.style.opacity = o, n.style.transition = "opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)";
-      const l = setTimeout(() => {
-        n.style.opacity = "0", n.style.transform = "translateY(-8px)";
-      }, a * 8);
-      this.bubbleAnimationTimers.add(l);
+    e.forEach((a, n) => {
+      const o = a, l = o.getAttribute("data-focused") === "true", s = o.style.opacity || "1";
+      o.style.setProperty("opacity", s, "important");
+      const c = l ? "0.4s" : "0.3s", d = "0";
+      o.style.transition = `opacity ${c} cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)`;
+      const u = setTimeout(() => {
+        o.style.setProperty("opacity", d, "important"), o.style.transform = "translateY(-8px)";
+      }, n * 8);
+      this.bubbleAnimationTimers.add(u);
     });
-    const t = setTimeout(() => {
-      const i = "color-mix(in srgb, var(--orca-color-bg-2), transparent 50%)", a = this.isVerticalMode ? this.verticalPosition : this.position, n = K(
+    const t = this.tabContainer.querySelectorAll(".new-tab-button, .workspace-button");
+    t.forEach((a, n) => {
+      const o = a, l = o.style.opacity || "1";
+      o.style.opacity = l, o.style.transition = "opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)";
+      const s = setTimeout(() => {
+        o.style.opacity = "0", o.style.transform = "translateY(-8px)";
+      }, (e.length + n) * 8);
+      this.bubbleAnimationTimers.add(s);
+    });
+    const i = setTimeout(() => {
+      const a = "color-mix(in srgb, var(--orca-color-bg-2), transparent 50%)", n = this.isVerticalMode ? this.verticalPosition : this.position, o = K(
         this.isVerticalMode,
+        n,
         a,
-        i,
         this.verticalWidth,
         void 0,
         void 0,
         !0,
         !1
       );
-      this.tabContainer && (this.tabContainer.style.cssText = n, this.tabContainer.style.overflow = "clip", this.tabContainer.style.overflowY = "clip", this.tabContainer.style.overflowX = "clip", requestAnimationFrame(() => {
+      this.tabContainer && (this.tabContainer.style.cssText = o, this.tabContainer.style.overflow = "clip", this.tabContainer.style.overflowY = "clip", this.tabContainer.style.overflowX = "clip", requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           this.tabContainer.style.transition = "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)", this.tabContainer.style.transform = "scale(0.8)", this.tabContainer.style.opacity = "0.7";
-          const o = setTimeout(() => {
-            e.forEach((s) => {
-              const c = s;
-              c.style.opacity = "0";
-            });
-          }, 300);
-          this.bubbleAnimationTimers.add(o);
           const l = setTimeout(() => {
-            var d;
+            e.forEach((c) => {
+              c.style.setProperty("opacity", "0", "important");
+            }), t.forEach((c) => {
+              const d = c;
+              d.style.opacity = "0";
+            });
+          }, 500);
+          this.bubbleAnimationTimers.add(l);
+          const s = setTimeout(() => {
+            var u;
             this.createBubbleOverlay();
-            const s = (d = this.tabContainer) == null ? void 0 : d.querySelector(".bubble-overlay");
-            s && (s.style.opacity = "0", s.style.transform = "scale(0.9)", s.style.transition = "opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)", requestAnimationFrame(() => {
-              s.style.opacity = "1", s.style.transform = "scale(1)";
-              const u = s.querySelector("div");
-              if (u) {
-                const h = [
+            const c = (u = this.tabContainer) == null ? void 0 : u.querySelector(".bubble-overlay");
+            c && (c.style.opacity = "0", c.style.transform = "scale(0.9)", c.style.transition = "opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)", requestAnimationFrame(() => {
+              c.style.opacity = "1", c.style.transform = "scale(1)";
+              const h = c.querySelector("div");
+              if (h) {
+                const b = [
                   {
                     filter: "drop-shadow(0 0 0px rgba(255, 255, 255, 0))",
                     transform: "scale(1) rotate(0deg)",
@@ -6405,24 +6426,24 @@ class Hi {
                     offset: 1
                   }
                 ];
-                u.animate(h, {
+                h.animate(b, {
                   duration: 400,
                   easing: "cubic-bezier(0.25, 0.46, 0.45, 0.94)"
                 }).addEventListener("finish", () => {
-                  u.style.filter = "", u.style.transform = "";
+                  h.style.filter = "", h.style.transform = "";
                 });
               }
             })), this.tabContainer.style.transform = "scale(1)", this.tabContainer.style.opacity = "1";
-            const c = setTimeout(() => {
+            const d = setTimeout(() => {
               this.isBubbleAnimating = !1, this.verboseLog("🫧 收起动画完成");
             }, 100);
-            this.bubbleAnimationTimers.add(c);
+            this.bubbleAnimationTimers.add(d);
           }, 300);
-          this.bubbleAnimationTimers.add(l);
+          this.bubbleAnimationTimers.add(s);
         });
       }));
     }, 50);
-    this.bubbleAnimationTimers.add(t), this.verboseLog("🫧 气泡已收起");
+    this.bubbleAnimationTimers.add(i), this.verboseLog("🫧 气泡已收起");
   }
   /**
    * 创建气泡覆盖层（用于最小化时覆盖所有内容）
