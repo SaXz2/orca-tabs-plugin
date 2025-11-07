@@ -141,3 +141,48 @@ export function findClosestParent(
 ): HTMLElement | null {
   return element.closest(selector) as HTMLElement | null;
 }
+
+// 导入contentVisibilityHelper中的函数用于内部使用
+import { shouldAvoidOperation, safeRenderOperation, safeSetCSS, safeAppendChild, safeRemoveChild } from './contentVisibilityHelper';
+
+/**
+ * 为了向后兼容，重新导出contentVisibilityHelper中的函数
+ */
+export {
+  shouldAvoidOperation as isElementHiddenByContentVisibility,
+  safeRenderOperation,
+  safeSetCSS as safeSetElementStyles,
+  safeAppendChild,
+  safeRemoveChild
+} from './contentVisibilityHelper';
+
+/**
+ * 获取元素的可见状态信息
+ * @param element 要检查的元素
+ * @returns 包含可见状态信息的对象
+ */
+export function getElementVisibilityInfo(element: Element): {
+  isVisible: boolean;
+  isHiddenByContentVisibility: boolean;
+  hasHiddenClass: boolean;
+  isDisplayNone: boolean;
+  computedVisibility: string;
+  computedDisplay: string;
+} {
+  const computedStyle = window.getComputedStyle(element);
+  const contentVisibility = computedStyle.getPropertyValue('content-visibility');
+  const visibility = computedStyle.getPropertyValue('visibility');
+  const display = computedStyle.getPropertyValue('display');
+
+  return {
+    isVisible: !shouldAvoidOperation(element) &&
+                visibility !== 'hidden' &&
+                display !== 'none' &&
+                !element.classList.contains('orca-hideable-hidden'),
+    isHiddenByContentVisibility: shouldAvoidOperation(element),
+    hasHiddenClass: element.classList.contains('orca-hideable-hidden'),
+    isDisplayNone: display === 'none',
+    computedVisibility: visibility,
+    computedDisplay: display
+  };
+}

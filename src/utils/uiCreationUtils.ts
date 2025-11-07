@@ -3,8 +3,8 @@
  */
 
 import { TabInfo, TabPosition, HoverTabListConfig } from '../types';
-import { createStyledElement, addHoverEffect, safeRemoveElement } from './domUtils';
-import { createTabContainerStyle, createDialogStyle, createButtonStyle, createInputStyle, createSliderStyle, createContextMenuStyle, createMenuItemStyle, createSeparatorStyle } from './uiUtils';
+import { createStyledElement, addHoverEffect, safeRemoveElement, safeSetElementStyles, safeRenderOperation } from './domUtils';
+import { createTabContainerStyle, createDialogStyle, createButtonStyle, createInputStyle, createSliderStyle, createContextMenuStyle, createMenuItemStyle, createSeparatorStyle, safeUIOperation } from './uiUtils';
 import { simpleVerbose } from './logUtils';
 
 /**
@@ -24,16 +24,17 @@ export function createTabContainer(
     : 'orca-tabs-plugin orca-tabs-container';
   
   const containerStyle = createTabContainerStyle(
-    isVerticalMode, 
-    position, 
-    backgroundColor, 
-    verticalWidth, 
-    undefined, 
+    isVerticalMode,
+    position,
+    backgroundColor,
+    verticalWidth,
+    undefined,
     undefined,
     enableBubbleMode,
     isBubbleExpanded
   );
-  container.style.cssText = containerStyle;
+  // 使用安全的样式设置，避免在隐藏元素中设置样式
+  safeSetElementStyles(container, containerStyle);
   
   return container;
 }
@@ -93,7 +94,8 @@ export function createFeatureToggleButton(
     z-index: 1000;
   `;
   
-  button.style.cssText = buttonStyle;
+  // 使用安全的样式设置
+  safeSetElementStyles(button, buttonStyle);
   button.addEventListener('click', onClick);
   
   // 添加悬停效果
@@ -152,7 +154,8 @@ export function createNewTabButton(
     transition: all 0.2s ease;
   `;
   
-  button.style.cssText = buttonStyle;
+  // 使用安全的样式设置
+  safeSetElementStyles(button, buttonStyle);
   button.addEventListener('click', onClick);
   
   // 添加悬停效果
@@ -209,7 +212,8 @@ export function createDragHandle(
     pointer-events: auto;
   `;
   
-  handle.style.cssText = handleStyle;
+  // 使用安全的样式设置
+  safeSetElementStyles(handle, handleStyle);
   handle.addEventListener('mousedown', onMouseDown);
   
   return handle;
@@ -237,7 +241,8 @@ export function createResizeHandle(
     pointer-events: auto;
   `;
   
-  handle.style.cssText = handleStyle;
+  // 使用安全的样式设置
+  safeSetElementStyles(handle, handleStyle);
   handle.addEventListener('mousedown', onMouseDown);
   
   return handle;
@@ -1133,7 +1138,12 @@ export function showHoverTabList(
   const container = createHoverTabListContainer(config, position, isVerticalMode);
   simpleVerbose('📦 容器创建完成', container);
   
-  document.body.appendChild(container);
+  // 使用安全的DOM添加操作
+  if (document.body) {
+    safeRenderOperation(document.body, () => {
+      document.body.appendChild(container);
+    });
+  }
   simpleVerbose('📄 容器已添加到页面');
   
   // 更新内容

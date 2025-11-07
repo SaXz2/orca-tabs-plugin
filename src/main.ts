@@ -54,9 +54,12 @@ import {
 
 // ==================== DOM操作工具函数 ====================
 // DOM操作工具 - 提供安全的DOM元素创建、操作和事件处理功能
-import { 
+import {
   findClosestParent,
-  createContextMenuItem
+  createContextMenuItem,
+  isElementHiddenByContentVisibility,
+  safeRenderOperation,
+  getElementVisibilityInfo
 } from './utils/domUtils';
 
 // ==================== 样式工具函数 ====================
@@ -89,11 +92,12 @@ import {
 } from './utils/uiUtils';
 
 // UI创建工具函数
-import { 
+import {
   showHoverTabList,
   hideHoverTabList,
   updateHoverTabList
 } from './utils/uiCreationUtils';
+
 
 // Tooltip 工具函数
 import {
@@ -362,11 +366,11 @@ class OrcaTabsPlugin {
    */
   constructor(pluginName: string) {
     this.pluginName = pluginName;
-    
+
     // 初始化性能优化器
     this.initializePerformanceOptimizers();
   }
-  
+
   /**
    * 初始化性能优化器
    */
@@ -2748,48 +2752,58 @@ class OrcaTabsPlugin {
       });
       
       // 将标签容器添加到顶部工具栏
-      headbar.appendChild(this.tabContainer);
-      
+      if (headbar && this.tabContainer) {
+        safeRenderOperation(headbar, () => {
+          headbar.appendChild(this.tabContainer!);
+        });
+      }
+
       // 如果添加到body，创建固定顶部栏
-      if (headbar === document.body) {
-        this.tabContainer.style.cssText += `
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          z-index: 10000;
-          background-color: var(--orca-color-bg-1);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          border-bottom: 2px solid rgba(0, 0, 0, 0.15);
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        `;
-      } else {
+      if (headbar === document.body && this.tabContainer) {
+        safeRenderOperation(this.tabContainer, () => {
+          this.tabContainer!.style.cssText += `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 10000;
+            background-color: var(--orca-color-bg-1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 2px solid rgba(0, 0, 0, 0.15);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          `;
+        });
+      } else if (headbar && this.tabContainer) {
         // 使用flex布局让标签页水平排列
-        this.tabContainer.style.cssText += `
-          display: flex;
-          flex-direction: row;
-          align-items: center;
-          position: static;
-          width: auto;
-          height: 32px;
-          border-radius: var(--orca-radius-md);
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
-          margin: 0 4px;
-          padding: 0 8px;
-          gap: 10px;
-        `;
+        safeRenderOperation(this.tabContainer, () => {
+          this.tabContainer!.style.cssText += `
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            position: static;
+            width: auto;
+            height: 32px;
+            border-radius: var(--orca-radius-md);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            margin: 0 4px;
+            padding: 0 8px;
+            gap: 10px;
+          `;
+        });
       }
       
       // 添加固定到顶部的特殊类名
       this.tabContainer.classList.add('fixed-to-top');
       
       this.log(`📌 标签页已添加到顶部工具栏: ${headbar.className || headbar.tagName}`);
-    } else {
+    } else if (this.tabContainer) {
       // 正常模式：添加到body
-      document.body.appendChild(this.tabContainer);
+      safeRenderOperation(document.body, () => {
+        document.body.appendChild(this.tabContainer!);
+      });
       
       // 如果启用贴边隐藏，检测当前位置（会自动创建触发区域）
       if (this.enableEdgeHide) {
@@ -3494,6 +3508,14 @@ class OrcaTabsPlugin {
     }
     
     if (!this.tabContainer || this.isUpdating) return;
+
+    // 【修复】检查 tabContainer 是否被 content-visibility 隐藏
+    if (isElementHiddenByContentVisibility(this.tabContainer)) {
+      this.verboseLog('⚠️ tabContainer 被 content-visibility 隐藏，跳过UI更新以避免渲染警告');
+      this.isUpdating = false;
+      this.isUpdatingDOM = false;
+      return;
+    }
     
     // 防止重复更新
     this.isUpdating = true;
@@ -4966,12 +4988,17 @@ class OrcaTabsPlugin {
       true,
       true
     );
-    this.tabContainer.style.cssText = containerStyle;
-    
-    // 【修复】展开过程中隐藏滚动条，确保清理所有 overflow 相关样式
-    this.tabContainer.style.overflow = 'hidden';
-    this.tabContainer.style.overflowY = '';
-    this.tabContainer.style.overflowX = '';
+    // 安全地设置 tabContainer 样式，避免对被 content-visibility 隐藏的元素操作
+    if (this.tabContainer) {
+      safeRenderOperation(this.tabContainer, () => {
+        this.tabContainer!.style.cssText = containerStyle;
+
+        // 【修复】展开过程中隐藏滚动条，确保清理所有 overflow 相关样式
+        this.tabContainer!.style.overflow = 'hidden';
+        this.tabContainer!.style.overflowY = '';
+        this.tabContainer!.style.overflowX = '';
+      });
+    }
     
     // 强制重置更新标志，确保 updateTabsUI 能执行
     this.isUpdating = false;
@@ -6392,7 +6419,13 @@ class OrcaTabsPlugin {
         this.log("⚠️ 未找到 nav#sidebar 元素");
         return 0;
       }
-      
+
+      // 检查 sidebar 是否被 content-visibility 隐藏
+      if (isElementHiddenByContentVisibility(sidebar)) {
+        this.log("⚠️ sidebar 被 content-visibility 隐藏，跳过宽度获取以避免渲染警告");
+        return 0;
+      }
+
       this.log(`   侧边栏元素信息:`);
       this.log(`     - ID: ${sidebar.id}`);
       this.log(`     - 类名: ${sidebar.className}`);
@@ -10064,8 +10097,10 @@ class OrcaTabsPlugin {
       return trigger;
     });
 
-    // 渲染组件
-    ReactDOM.render(inputBoxElement, container);
+    // 渲染组件 - 使用安全渲染操作以避免 content-visibility 警告
+    safeRenderOperation(container, () => {
+      ReactDOM.render(inputBoxElement, container);
+    });
 
     // 立即触发打开
     setTimeout(() => {
@@ -10397,8 +10432,10 @@ class OrcaTabsPlugin {
       return overlay;
     });
 
-    // 渲染ContextMenu
-    ReactDOM.render(contextMenuElement, menuContainer);
+    // 渲染ContextMenu - 使用安全渲染操作以避免 content-visibility 警告
+    safeRenderOperation(menuContainer, () => {
+      ReactDOM.render(contextMenuElement, menuContainer);
+    });
 
     // 清理函数
     const cleanup = () => {
@@ -14133,12 +14170,20 @@ class OrcaTabsPlugin {
    * 重新渲染可排序的标签列表
    */
   renderSortableTabs(container: HTMLElement, tabs: TabInfo[], tabSet?: SavedTabSet) {
+    // 【修复】检查容器是否被 content-visibility 隐藏
+    if (isElementHiddenByContentVisibility(container)) {
+      this.verboseLog('⚠️ renderSortableTabs 容器被 content-visibility 隐藏，跳过渲染以避免渲染警告');
+      return;
+    }
+
     // 检测暗色模式
     const isDarkMode = document.documentElement.classList.contains('dark') ||
                       (window as any).orca?.state?.themeMode === 'dark';
-    
-    // 清空容器
-    container.innerHTML = '';
+
+    // 安全地清空容器
+    safeRenderOperation(container, () => {
+      container.innerHTML = '';
+    });
     
     // 全局拖拽状态管理
     let draggedTabIndex = -1;

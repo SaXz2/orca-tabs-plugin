@@ -6,6 +6,7 @@
  */
 
 import { simpleVerbose } from './logUtils';
+import { isElementHiddenByContentVisibility } from './domUtils';
 
 export interface MutationObserverConfig {
   /** 是否启用批量处理 */
@@ -236,12 +237,18 @@ export class OptimizedMutationObserver {
   private filterRelevantMutations(mutations: MutationRecord[]): MutationRecord[] {
     return mutations.filter(mutation => {
       const target = mutation.target as Element;
-      
+
       // 跳过不相关的元素
       if (target.nodeType !== Node.ELEMENT_NODE) {
         return false;
       }
-      
+
+      // 跳过被 content-visibility 隐藏的元素，以避免渲染警告
+      if (isElementHiddenByContentVisibility(target)) {
+        this.log(`跳过被 content-visibility 隐藏的元素的变化: ${target.tagName}.${target.className}`);
+        return false;
+      }
+
       // 关注特定类别的元素
       const relevantClasses = [
         'orca-panel',
@@ -250,11 +257,11 @@ export class OptimizedMutationObserver {
         'orca-panels-row',
         'orca-tab'
       ];
-      
-      const hasRelevantClass = relevantClasses.some(cls => 
+
+      const hasRelevantClass = relevantClasses.some(cls =>
         target.classList.contains(cls) || target.closest(`.${cls}`)
       );
-      
+
       return hasRelevantClass;
     });
   }

@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(npm run build)",
+      "Bash(npx tsc:*)",
+      "Read(//d/**)",
+      "Bash(del:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

@@ -2,6 +2,8 @@
  * 性能优化相关的工具函数
  */
 
+import { isElementHiddenByContentVisibility } from './domUtils';
+
 /**
  * 创建防抖函数
  */
@@ -536,3 +538,130 @@ export function createResourcePreloader(): {
     }
   };
 }
+
+/**
+ * Content-Visibility 性能优化工具
+ * 提供专门处理 content-visibility 相关性能问题的工具函数
+ */
+export class ContentVisibilityOptimizer {
+  private static instance: ContentVisibilityOptimizer;
+  private hiddenElementsCache = new WeakSet<Element>();
+  private lastCheckTime = new Map<string, number>();
+  private readonly CACHE_DURATION = 100; // 缓存100ms
+
+  static getInstance(): ContentVisibilityOptimizer {
+    if (!ContentVisibilityOptimizer.instance) {
+      ContentVisibilityOptimizer.instance = new ContentVisibilityOptimizer();
+    }
+    return ContentVisibilityOptimizer.instance;
+  }
+
+  /**
+   * 检查元素是否被 content-visibility 隐藏（带缓存）
+   */
+  isHiddenByContentVisibility(element: Element): boolean {
+    const elementId = this.getElementId(element);
+    const now = Date.now();
+
+    // 检查缓存
+    const lastCheck = this.lastCheckTime.get(elementId);
+    if (lastCheck && now - lastCheck < this.CACHE_DURATION) {
+      return this.hiddenElementsCache.has(element);
+    }
+
+    // 执行检查
+    const isHidden = isElementHiddenByContentVisibility(element);
+
+    // 更新缓存
+    if (isHidden) {
+      this.hiddenElementsCache.add(element);
+    } else {
+      this.hiddenElementsCache.delete(element);
+    }
+    this.lastCheckTime.set(elementId, now);
+
+    return isHidden;
+  }
+
+  /**
+   * 安全地执行DOM操作，避免对隐藏元素操作
+   */
+  safeDOMOperation<T>(
+    element: Element,
+    operation: () => T,
+    fallback?: () => T
+  ): T | undefined {
+    if (this.isHiddenByContentVisibility(element)) {
+      console.debug('[ContentVisibilityOptimizer] 跳过对被 content-visibility 隐藏元素的DOM操作');
+      return fallback ? fallback() : undefined;
+    }
+
+    try {
+      return operation();
+    } catch (error) {
+      console.error('[ContentVisibilityOptimizer] DOM操作失败:', error);
+      return fallback ? fallback() : undefined;
+    }
+  }
+
+  /**
+   * 批量检查多个元素的可见性
+   */
+  batchVisibilityCheck(elements: Element[]): Map<Element, boolean> {
+    const results = new Map<Element, boolean>();
+
+    for (const element of elements) {
+      results.set(element, this.isHiddenByContentVisibility(element));
+    }
+
+    return results;
+  }
+
+  /**
+   * 清理缓存
+   */
+  clearCache(): void {
+    this.hiddenElementsCache = new WeakSet();
+    this.lastCheckTime.clear();
+  }
+
+  /**
+   * 获取元素的唯一标识
+   */
+  private getElementId(element: Element): string {
+    if (element.id) {
+      return `#${element.id}`;
+    }
+
+    if (element.className) {
+      return `${element.tagName.toLowerCase()}.${element.className.split(' ').join('.')}`;
+    }
+
+    return element.tagName.toLowerCase();
+  }
+
+  /**
+   * 监控元素的可见性变化
+   */
+  watchElementVisibility(
+    element: Element,
+    onChange: (isVisible: boolean) => void
+  ): () => void {
+    let lastVisibility = !this.isHiddenByContentVisibility(element);
+
+    const checkInterval = setInterval(() => {
+      const currentVisibility = !this.isHiddenByContentVisibility(element);
+      if (currentVisibility !== lastVisibility) {
+        lastVisibility = currentVisibility;
+        onChange(currentVisibility);
+      }
+    }, this.CACHE_DURATION);
+
+    return () => clearInterval(checkInterval);
+  }
+}
+
+/**
+ * 获取 Content-Visibility 优化器实例
+ */
+export const contentVisibilityOptimizer = ContentVisibilityOptimizer.getInstance();
