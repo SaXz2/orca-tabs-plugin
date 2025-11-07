@@ -3,6 +3,8 @@
  * 使用原生 DOM 实现悬浮提示
  */
 
+import { safeGetComputedStyle, safeGetElementPosition } from './domUtils';
+
 export interface TooltipConfig {
   /** 提示文本 */
   text: string;
@@ -423,13 +425,24 @@ export function cleanupAllTooltips(): void {
   // 清理可能跑到左上角的 tooltip（position: absolute 且 left/top 接近 0）
   const suspiciousTooltips = document.querySelectorAll('[style*="position: absolute"]');
   suspiciousTooltips.forEach(el => {
-    const style = window.getComputedStyle(el);
-    const left = parseFloat(style.left);
-    const top = parseFloat(style.top);
+    // 使用安全的位置获取函数，避免对content-visibility隐藏的元素进行布局计算
+    const position = safeGetElementPosition(el);
+    if (!position) {
+      // 如果无法安全获取位置，跳过此元素
+      return;
+    }
+
+    const style = safeGetComputedStyle(el);
+    if (!style) {
+      return;
+    }
+
+    const left = position.left;
+    const top = position.top;
     const zIndex = parseInt(style.zIndex);
-    
+
     // 如果是高 z-index 的绝对定位元素，且位置在左上角附近，可能是遗留的 tooltip
-    if (zIndex >= 10000 && left < 20 && top < 20 && 
+    if (zIndex >= 10000 && left < 20 && top < 20 &&
         (el.classList.contains('orca-tooltip') || el.classList.contains('tooltip'))) {
       try {
         if (el.parentNode) {

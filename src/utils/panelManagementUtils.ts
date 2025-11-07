@@ -2,6 +2,8 @@
  * 面板管理相关的工具函数
  */
 
+import { safeGetComputedStyle } from './domUtils';
+
 /**
  * 面板发现缓存接口
  */
@@ -561,7 +563,10 @@ export function getPanelZIndex(panelId: string): number {
     return 0;
   }
   
-  const computedStyle = window.getComputedStyle(panel);
+  const computedStyle = safeGetComputedStyle(panel);
+  if (!computedStyle) {
+    return 0;
+  }
   return parseInt(computedStyle.zIndex) || 0;
 }
 
@@ -587,7 +592,10 @@ export function getPanelOpacity(panelId: string): number {
     return 1;
   }
   
-  const computedStyle = window.getComputedStyle(panel);
+  const computedStyle = safeGetComputedStyle(panel);
+  if (!computedStyle) {
+    return 1;
+  }
   return parseFloat(computedStyle.opacity) || 1;
 }
 

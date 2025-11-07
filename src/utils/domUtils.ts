@@ -142,19 +142,19 @@ export function findClosestParent(
   return element.closest(selector) as HTMLElement | null;
 }
 
-// 导入contentVisibilityHelper中的函数用于内部使用
-import { shouldAvoidOperation, safeRenderOperation, safeSetCSS, safeAppendChild, safeRemoveChild } from './contentVisibilityHelper';
-
-/**
- * 为了向后兼容，重新导出contentVisibilityHelper中的函数
- */
+// 重新导出contentVisibilityHelper中的函数以保持向后兼容
 export {
   shouldAvoidOperation as isElementHiddenByContentVisibility,
   safeRenderOperation,
   safeSetCSS as safeSetElementStyles,
   safeAppendChild,
-  safeRemoveChild
+  safeRemoveChild,
+  safeGetComputedStyle,
+  safeGetElementPosition
 } from './contentVisibilityHelper';
+
+// 导入安全函数用于内部使用
+import { safeGetComputedStyle } from './contentVisibilityHelper';
 
 /**
  * 获取元素的可见状态信息
@@ -169,17 +169,31 @@ export function getElementVisibilityInfo(element: Element): {
   computedVisibility: string;
   computedDisplay: string;
 } {
-  const computedStyle = window.getComputedStyle(element);
+  const computedStyle = safeGetComputedStyle(element);
+  if (!computedStyle) {
+    // 如果无法安全获取样式，返回默认值
+    return {
+      isVisible: false,
+      isHiddenByContentVisibility: true,
+      hasHiddenClass: element.classList.contains('orca-hideable-hidden'),
+      isDisplayNone: true,
+      computedVisibility: 'hidden',
+      computedDisplay: 'none'
+    };
+  }
+
   const contentVisibility = computedStyle.getPropertyValue('content-visibility');
   const visibility = computedStyle.getPropertyValue('visibility');
   const display = computedStyle.getPropertyValue('display');
 
+  const isHiddenByContent = contentVisibility === 'hidden';
+
   return {
-    isVisible: !shouldAvoidOperation(element) &&
+    isVisible: !isHiddenByContent &&
                 visibility !== 'hidden' &&
                 display !== 'none' &&
                 !element.classList.contains('orca-hideable-hidden'),
-    isHiddenByContentVisibility: shouldAvoidOperation(element),
+    isHiddenByContentVisibility: isHiddenByContent,
     hasHiddenClass: element.classList.contains('orca-hideable-hidden'),
     isDisplayNone: display === 'none',
     computedVisibility: visibility,

@@ -4,7 +4,7 @@
 
 import { TabInfo, TabPosition, HoverTabListConfig } from '../types';
 import { createStyledElement, addHoverEffect, safeRemoveElement, safeSetElementStyles, safeRenderOperation } from './domUtils';
-import { createTabContainerStyle, createDialogStyle, createButtonStyle, createInputStyle, createSliderStyle, createContextMenuStyle, createMenuItemStyle, createSeparatorStyle, safeUIOperation } from './uiUtils';
+import { createTabContainerStyle, createDialogStyle, createButtonStyle, createInputStyle, createSliderStyle, createContextMenuStyle, createMenuItemStyle, createSeparatorStyle } from './uiUtils';
 import { simpleVerbose } from './logUtils';
 
 /**

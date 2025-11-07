@@ -4,38 +4,8 @@
 
 import { TabInfo } from '../types';
 import { createStyledElement, addHoverEffect } from './domUtils';
-import { shouldAvoidOperation, safeSetCSS } from './contentVisibilityHelper';
+import { shouldAvoidOperation } from './contentVisibilityHelper';
 
-/**
- * 安全地创建和操作DOM元素，避免对被 content-visibility 隐藏的元素进行操作
- * @param container 容器元素
- * @param operation 要执行的操作
- * @returns 操作是否成功执行
- */
-export function safeUIOperation(
-  container: Element,
-  operation: () => void
-): boolean {
-  if (shouldAvoidOperation(container)) {
-    return false;
-  }
-
-  try {
-    operation();
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
-
-/**
- * 检查元素是否可以安全地进行UI操作
- * @param element 要检查的元素
- * @returns 是否可以安全操作
- */
-export function canSafelyOperateOnElement(element: Element): boolean {
-  return !shouldAvoidOperation(element);
-}
 
 /**
  * 创建标签元素的基础样式 - 优化为纯CSS变量方式

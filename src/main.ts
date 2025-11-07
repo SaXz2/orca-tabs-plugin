@@ -66,6 +66,10 @@ import {
 // 样式处理工具 - 提供颜色转换、样式生成等样式相关功能
 import { hexToRgba } from './utils/styleUtils';
 
+// ==================== Content-Visibility 修复工具 ====================
+// 导入content-visibility修复工具，用于避免渲染警告
+import { setStrictMode } from './utils/contentVisibilityHelper';
+
 // ==================== 配置管理工具函数 ====================
 import { 
   createDefaultLayoutConfig,
@@ -16760,9 +16764,12 @@ export async function load(_name: string) {
   // 如果 Orca 内部代码报错，说明这是 Orca 自身的问题，不是插件需要修复的。
   // ==========================================
 
+  // 启用content-visibility严格模式
+  setStrictMode(true);
+
   // 初始化标签页插件
   tabsPlugin = new OrcaTabsPlugin(pluginName);
-  
+
   // 等待DOM加载完成后初始化
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
