@@ -22,6 +22,7 @@ import {
   generatePositionLogMessage,
   type LayoutConfig 
 } from '../utils/configUtils';
+import { normalizeTabInfoArray } from '../utils/tabOperationsUtils';
 
 /**
  * 标签页存储服务类
@@ -76,8 +77,10 @@ export class TabStorageService {
     try {
       const saved = await this.storageService.getConfig<TabInfo[]>(PLUGIN_STORAGE_KEYS.FIRST_PANEL_TABS, this.pluginName, []);
       if (saved && Array.isArray(saved)) {
-        this.log(`📂 从API配置恢复了第一个面板的 ${saved.length} 个标签页`);
-        return saved;
+        // 规范化标签数据，确保视图面板字段正确设置
+        const normalizedTabs = normalizeTabInfoArray(saved);
+        this.log(`📂 从API配置恢复了第一个面板的 ${normalizedTabs.length} 个标签页`);
+        return normalizedTabs;
       } else {
         this.log(`📂 没有找到第一个面板的持久化标签数据，返回空数组`);
         return [];
@@ -119,8 +122,10 @@ export class TabStorageService {
     try {
       const saved = await this.storageService.getConfig<TabInfo[]>(storageKey, this.pluginName, []);
       if (saved && Array.isArray(saved)) {
-        this.verboseLog(`📂 从 ${storageKey} 恢复了 ${saved.length} 个标签页`);
-        return saved;
+        // 规范化标签数据，确保视图面板字段正确设置
+        const normalizedTabs = normalizeTabInfoArray(saved);
+        this.verboseLog(`📂 从 ${storageKey} 恢复了 ${normalizedTabs.length} 个标签页`);
+        return normalizedTabs;
       }
       return [];
     } catch (error) {
@@ -184,8 +189,10 @@ export class TabStorageService {
     try {
       const saved = await this.storageService.getConfig<TabInfo[]>(PLUGIN_STORAGE_KEYS.RECENTLY_CLOSED_TABS, this.pluginName, []);
       if (saved && Array.isArray(saved)) {
-        this.log(`📂 从API配置恢复了 ${saved.length} 个最近关闭的标签页`);
-        return saved;
+        // 规范化标签数据，确保视图面板字段正确设置
+        const normalizedTabs = normalizeTabInfoArray(saved);
+        this.log(`📂 从API配置恢复了 ${normalizedTabs.length} 个最近关闭的标签页`);
+        return normalizedTabs;
       } else {
         this.log(`📂 没有找到最近关闭标签页数据，返回空数组`);
         return [];
@@ -217,8 +224,13 @@ export class TabStorageService {
     try {
       const saved = await this.storageService.getConfig<SavedTabSet[]>(PLUGIN_STORAGE_KEYS.SAVED_TAB_SETS, this.pluginName, []);
       if (saved && Array.isArray(saved)) {
-        this.log(`📂 从API配置恢复了 ${saved.length} 个多标签页集合`);
-        return saved;
+        // 规范化每个标签页集合中的标签数据
+        const normalizedSets = saved.map(set => ({
+          ...set,
+          tabs: normalizeTabInfoArray(set.tabs || [])
+        }));
+        this.log(`📂 从API配置恢复了 ${normalizedSets.length} 个多标签页集合`);
+        return normalizedSets;
       } else {
         this.log(`📂 没有找到多标签页集合数据，返回空数组`);
         return [];
@@ -237,7 +249,13 @@ export class TabStorageService {
   async loadWorkspaces(): Promise<{ workspaces: Workspace[], enableWorkspaces: boolean }> {
     try {
       const workspacesData = await this.storageService.getConfig(PLUGIN_STORAGE_KEYS.WORKSPACES);
-      const workspaces: Workspace[] = workspacesData && Array.isArray(workspacesData) ? workspacesData : [];
+      let workspaces: Workspace[] = workspacesData && Array.isArray(workspacesData) ? workspacesData : [];
+      
+      // 规范化每个工作区中的标签数据
+      workspaces = workspaces.map(workspace => ({
+        ...workspace,
+        tabs: normalizeTabInfoArray(workspace.tabs || [])
+      }));
       
       const enableWorkspaces = await this.storageService.getConfig(PLUGIN_STORAGE_KEYS.ENABLE_WORKSPACES);
       const enableWorkspacesValue = typeof enableWorkspaces === 'boolean' ? enableWorkspaces : false;
@@ -295,7 +313,10 @@ export class TabStorageService {
     try {
       const tabs = await this.storageService.getConfig<TabInfo[]>(PLUGIN_STORAGE_KEYS.TABS_BEFORE_WORKSPACE, this.pluginName);
       if (tabs && tabs.length > 0) {
-        this.log(`📁 已加载进入工作区前的标签页组: ${tabs.length}个标签页`);
+        // 规范化标签数据，确保视图面板字段正确设置
+        const normalizedTabs = normalizeTabInfoArray(tabs);
+        this.log(`📁 已加载进入工作区前的标签页组: ${normalizedTabs.length}个标签页`);
+        return normalizedTabs;
       }
       return tabs;
     } catch (error) {
@@ -493,8 +514,16 @@ export class TabStorageService {
         {}
       );
       if (saved && typeof saved === 'object') {
-        this.verboseLog(`📂 从API配置恢复了 ${Object.keys(saved).length} 个标签的切换历史`);
-        return saved;
+        // 规范化每个历史记录中的标签数据
+        const normalizedHistory: Record<string, RecentTabSwitchHistory> = {};
+        for (const [key, history] of Object.entries(saved)) {
+          normalizedHistory[key] = {
+            ...history,
+            recentTabs: normalizeTabInfoArray(history.recentTabs || [])
+          };
+        }
+        this.verboseLog(`📂 从API配置恢复了 ${Object.keys(normalizedHistory).length} 个标签的切换历史`);
+        return normalizedHistory;
       } else {
         this.log(`📂 没有找到最近切换标签历史数据，返回空对象`);
         return {};

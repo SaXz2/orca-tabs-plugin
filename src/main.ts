@@ -38,7 +38,7 @@ import zhCN from "./translations/zhCN";
 // 常量定义 - 包含应用配置常量和存储键定义
 import { AppKeys, PropType, PLUGIN_STORAGE_KEYS, FEATURE_CONFIG } from './constants';
 // 类型定义 - 包含所有TypeScript接口和类型
-import { TabInfo, TabPosition, PanelTabsData, SavedTabSet, Workspace, HoverTabListConfig } from './types';
+import { TabInfo, TabPosition, PanelTabsData, SavedTabSet, Workspace, HoverTabListConfig, ViewPanelInfo } from './types';
 // 存储服务 - 提供统一的数据存储接口，支持Orca API和localStorage降级
 import { OrcaStorageService } from './services/storage';
 // 标签页存储服务 - 提供标签页相关的数据存储操作
@@ -153,6 +153,7 @@ import {
   isValidTab,
   getTabDisplayName,
   canOperateTab,
+  isViewPanel,
   type TabOperationResult,
   type TabSwitchOptions,
   type TabPinOptions,
@@ -331,6 +332,9 @@ class OrcaTabsPlugin {
   /** 上次面板块检查时间 - 用于防抖 checkCurrentPanelBlocks 调用 */
   private lastBlockCheckTime: number = 0;
   
+  /** 防抖的面板发现方法 - 500ms延迟，避免频繁调用 */
+  private discoverPanelsDebounced: (() => void) | null = null;
+  
   /** 数据保存防抖定时器 - 用于合并频繁的保存操作 */
   private saveDataDebounceTimer: number | null = null;
   
@@ -370,6 +374,11 @@ class OrcaTabsPlugin {
    */
   constructor(pluginName: string) {
     this.pluginName = pluginName;
+
+    // 初始化防抖的面板发现方法
+    this.discoverPanelsDebounced = debounce(() => {
+      this.discoverPanelsInternal();
+    }, 500);
 
     // 初始化性能优化器
     this.initializePerformanceOptimizers();
@@ -1913,10 +1922,24 @@ class OrcaTabsPlugin {
   /* ———————————————————————————————————————————————————————————————————————————— */
 
   /**
-   * 发现并更新面板信息
+   * 发现并更新面板信息（防抖版本）
    * 排除特殊面板（如全局搜索面板），只处理正常的内容面板
+   * 使用500ms防抖，避免频繁调用
    */
   async discoverPanels() {
+    if (this.discoverPanelsDebounced) {
+      this.discoverPanelsDebounced();
+    } else {
+      // 降级：如果防抖函数未初始化，直接调用内部方法
+      await this.discoverPanelsInternal();
+    }
+  }
+
+  /**
+   * 发现并更新面板信息（内部实现）
+   * 排除特殊面板（如全局搜索面板），只处理正常的内容面板
+   */
+  private async discoverPanelsInternal() {
     // 获取所有面板元素
     const panels = document.querySelectorAll('.orca-panel');
     const newPanelIds: string[] = [];
@@ -1939,6 +1962,26 @@ class OrcaTabsPlugin {
         }
       }
     });
+    
+    // 缓存检查：如果面板列表与缓存完全相同，跳过后续处理
+    if (this.panelDiscoveryCache) {
+      const cachedIds = this.panelDiscoveryCache.panelIds;
+      const isSameList = cachedIds.length === newPanelIds.length &&
+        cachedIds.every((id, index) => id === newPanelIds[index]);
+      
+      if (isSameList) {
+        this.verboseLog('📋 面板列表与缓存相同，跳过重新扫描');
+        // 仍然需要更新当前面板信息（活动面板可能变化）
+        this.updateCurrentPanelInfo(activePanelId);
+        return;
+      }
+    }
+    
+    // 更新缓存
+    this.panelDiscoveryCache = {
+      panelIds: [...newPanelIds],
+      timestamp: Date.now()
+    };
     
     // 检查面板变化
     const oldPanelIds = this.getPanelIds();
@@ -1999,21 +2042,48 @@ class OrcaTabsPlugin {
   
   /**
    * 处理面板关闭
+   * 
+   * 支持处理普通块面板和视图面板（如 AI Chat 面板）的关闭。
+   * 视图面板的标签页 blockId 以 'view:' 前缀开头，需要特殊处理以避免错误。
+   * 
+   * Requirements: 4.3, 5.3
    */
   private async handlePanelClosure(closedPanelIds: string[]) {
     this.log(`🗑️ 处理面板关闭:`, closedPanelIds);
     
-    // 找到被关闭面板的索引
+    // 找到被关闭面板的索引，并收集视图面板信息
     const closedIndices: number[] = [];
+    const viewPanelIds: string[] = [];
+    
     closedPanelIds.forEach(closedId => {
       const oldIndex = this.panelOrder.findIndex(p => p.id === closedId);
       if (oldIndex !== -1) {
         closedIndices.push(oldIndex);
+        
+        // 检查该面板的标签页是否包含视图面板
+        const panelTabs = this.panelTabsData[oldIndex] || [];
+        panelTabs.forEach(tab => {
+          if (isViewPanel(tab)) {
+            viewPanelIds.push(tab.blockId);
+            this.verboseLog(`🖼️ 检测到视图面板标签页将被清理: ${tab.title} (blockId: ${tab.blockId})`);
+          }
+        });
       }
     });
     
+    if (viewPanelIds.length > 0) {
+      this.log(`🖼️ 面板关闭将清理 ${viewPanelIds.length} 个视图面板标签页`);
+    }
+    
     // 从后往前删除，避免索引错乱
     closedIndices.sort((a, b) => b - a).forEach(index => {
+      // 在删除前，将该面板的所有标签页添加到已关闭列表
+      const panelTabs = this.panelTabsData[index] || [];
+      panelTabs.forEach(tab => {
+        // 视图面板的 blockId 以 'view:' 前缀开头，可以安全地添加到 closedTabs 集合
+        this.closedTabs.add(tab.blockId);
+      });
+      
       this.panelTabsData.splice(index, 1);
       this.log(`🗑️ 删除面板 ${closedPanelIds[closedIndices.indexOf(index)]} 的标签页数据`);
     });
@@ -2042,6 +2112,9 @@ class OrcaTabsPlugin {
       const storageKey = i === 0 ? PLUGIN_STORAGE_KEYS.FIRST_PANEL_TABS : `panel_${i + 1}_tabs`;
       await this.savePanelTabsByKey(storageKey, tabs);
     }
+    
+    // 保存已关闭标签页列表
+    await this.saveClosedTabs();
     
     // 强制更新UI，确保面板关闭后能正确显示
     this.log(`🔄 面板关闭后强制更新UI`);
@@ -2148,7 +2221,7 @@ class OrcaTabsPlugin {
     const isSameOrder = oldPanelIds.length === newPanelIds.length &&
       oldPanelIds.every((id, index) => id === newPanelIds[index]);
     if (isSameOrder) {
-      return;
+      return;  // 完全跳过，不输出日志
     }
 
     // 添加新面板
@@ -2164,7 +2237,8 @@ class OrcaTabsPlugin {
       this.removePanel(panel.id);
     });
 
-    this.log(`🔄 面板顺序更新完成:`, this.panelOrder.map(p => `${p.id}(${p.order})`));
+    // 只在 DEBUG 模式下输出日志
+    this.verboseLog(`🔄 面板顺序更新完成:`, this.panelOrder.map(p => `${p.id}(${p.order})`));
   }
 
   /**
@@ -2547,6 +2621,13 @@ class OrcaTabsPlugin {
 
   async getTabInfo(blockId: string, panelId: string, order: number): Promise<TabInfo | null> {
     try {
+      // 检查是否为视图面板（如 AI Chat 面板）
+      // 视图面板的 blockId 以 'view:' 前缀开头，不是真正的块ID
+      if (blockId.startsWith('view:')) {
+        this.verboseLog(`⏭️ 跳过视图面板的块信息获取: ${blockId}`);
+        return null;
+      }
+      
       // 获取块信息
       const block = await orca.invokeBackend("get-block", parseInt(blockId));
       if (!block) return null;
@@ -6334,6 +6415,14 @@ class OrcaTabsPlugin {
     
     for (let i = 0; i < currentTabs.length; i++) {
       const tab = currentTabs[i];
+      
+      // 跳过视图面板（如 AI Chat 面板）
+      // 视图面板没有真正的块ID，不需要从后端获取块信息
+      if (isViewPanel(tab)) {
+        this.verboseLog(`⏭️ 跳过视图面板: ${tab.title}`);
+        continue;
+      }
+      
       try {
         // 重新获取块信息
         const block = await orca.invokeBackend("get-block", parseInt(tab.blockId));
@@ -7314,6 +7403,35 @@ class OrcaTabsPlugin {
         this.verboseLog('无法直接聚焦面板，继续尝试导航', focusError);
       }
       
+      // 检查是否为视图面板（如 AI Chat 面板）
+      // 视图面板使用 switchFocusTo 导航，而非块导航
+      if (isViewPanel(tab)) {
+        // 从 blockId 中提取面板ID（格式: view:${panelId}）
+        const viewPanelId = tab.blockId.startsWith('view:') 
+          ? tab.blockId.substring(5) // 移除 'view:' 前缀
+          : tab.panelId;
+        
+        this.verboseLog(`🖼️ 检测到视图面板，使用 switchFocusTo 导航: ${viewPanelId}`);
+        
+        try {
+          orca.nav.switchFocusTo(viewPanelId);
+          this.verboseLog(`✅ 视图面板导航成功: ${tab.title}`);
+          
+          // 更新当前激活的标签ID
+          this.lastActiveBlockId = tab.blockId;
+          
+          // 延迟清除标记，确保导航完成后再允许替换操作
+          setTimeout(() => {
+            this.isSwitchingTab = false;
+          }, 300);
+          
+          return; // 视图面板导航完成，直接返回
+        } catch (viewNavError) {
+          this.warn(`⚠️ 视图面板导航失败:`, viewNavError);
+          // 继续尝试其他导航方式
+        }
+      }
+      
       // 使用更安全的导航方式
       try {
         /**
@@ -8009,6 +8127,13 @@ class OrcaTabsPlugin {
    * 设置块内容
    */
   private async setBlockContent(blockId: string, content: string): Promise<void> {
+    // 检查是否为视图面板（如 AI Chat 面板）
+    // 视图面板的 blockId 以 'view:' 前缀开头，不是真正的块ID
+    if (blockId.startsWith('view:')) {
+      this.verboseLog(`⏭️ 跳过视图面板的内容设置: ${blockId}`);
+      return;
+    }
+    
     try {
       // 使用后端API来更新块内容
       await orca.invokeBackend("set-block-content", parseInt(blockId), [{ t: "t", v: content }]);
@@ -8106,6 +8231,13 @@ class OrcaTabsPlugin {
       
       let tabInfo: TabInfo | null = null;
       try {
+      // 检查是否为视图面板（如 AI Chat 面板）
+      // 视图面板的 blockId 以 'view:' 前缀开头，不是真正的块ID
+      if (blockId.startsWith('view:')) {
+        this.verboseLog(`⏭️ 跳过视图面板的块信息获取: ${blockId}`);
+        return false;
+      }
+      
       // 获取块信息
       const block = orca.state.blocks[parseInt(blockId)];
       if (!block) {
@@ -8267,7 +8399,7 @@ class OrcaTabsPlugin {
    * 统一的导航方法，确保所有导航都设置 isNavigating 标志
    * @param blockId 要导航到的块ID
    * @param panelId 目标面板ID
-   * @param tab 可选的标签信息，用于判断是否为日期块
+   * @param tab 可选的标签信息，用于判断是否为日期块或视图面板
    */
   private async safeNavigate(blockId: string, panelId: string, tab?: TabInfo): Promise<void> {
     this.isNavigating = true;
@@ -8276,6 +8408,20 @@ class OrcaTabsPlugin {
     this.verboseLog(`🚀 [safeNavigate] 开始导航到块 ${blockId}，设置 isNavigating = true`);
     
     try {
+      // 检查是否为视图面板（如 AI Chat 面板）
+      // 视图面板使用 switchFocusTo 导航，而非块导航
+      if (tab && isViewPanel(tab)) {
+        // 从 blockId 中提取面板ID（格式: view:${panelId}）
+        const viewPanelId = blockId.startsWith('view:') 
+          ? blockId.substring(5) // 移除 'view:' 前缀
+          : tab.panelId;
+        
+        this.verboseLog(`🖼️ [safeNavigate] 检测到视图面板，使用 switchFocusTo 导航: ${viewPanelId}`);
+        orca.nav.switchFocusTo(viewPanelId);
+        this.verboseLog(`✅ [safeNavigate] 视图面板导航成功`);
+        return;
+      }
+      
       // 【修复BUG】判断是否为日期块，使用正确的导航方式
       if (tab && (tab.isJournal || tab.blockType === 'journal')) {
         // 日期块：使用 journal 导航，避免创建重复的日期块实例
@@ -8300,6 +8446,17 @@ class OrcaTabsPlugin {
       }
       
       // 普通块或日期导航失败时：使用块导航
+      // 检查是否为视图面板（如 AI Chat 面板）
+      // 视图面板的 blockId 以 'view:' 前缀开头，不是真正的块ID
+      if (blockId.startsWith('view:')) {
+        // 从 blockId 中提取面板ID（格式: view:${panelId}）
+        const viewPanelId = blockId.substring(5); // 移除 'view:' 前缀
+        this.verboseLog(`🖼️ [safeNavigate] 检测到视图面板 blockId，使用 switchFocusTo 导航: ${viewPanelId}`);
+        orca.nav.switchFocusTo(viewPanelId);
+        this.verboseLog(`✅ [safeNavigate] 视图面板导航成功`);
+        return;
+      }
+      
       await orca.nav.goTo("block", { blockId: parseInt(blockId) }, panelId);
       this.verboseLog(`✅ [safeNavigate] 使用 block 导航成功`);
     } catch (error) {
@@ -9704,6 +9861,11 @@ class OrcaTabsPlugin {
 
   /**
    * 关闭标签页
+   * 
+   * 支持关闭普通块标签页和视图面板标签页（如 AI Chat 面板）。
+   * 视图面板的 blockId 以 'view:' 前缀开头，需要特殊处理以避免错误。
+   * 
+   * Requirements: 4.3, 5.3
    */
   async closeTab(tab: TabInfo) {
     const currentTabs = this.getCurrentPanelTabs();
@@ -9720,6 +9882,12 @@ class OrcaTabsPlugin {
       // 这里可以添加确认对话框，暂时直接关闭
     }
     
+    // 检查是否为视图面板（如 AI Chat 面板）
+    const isViewPanelTab = isViewPanel(tab);
+    if (isViewPanelTab) {
+      this.verboseLog(`🖼️ 检测到视图面板标签页关闭: ${tab.title} (blockId: ${tab.blockId})`);
+    }
+    
     const tabIndex = currentTabs.findIndex(t => t.blockId === tab.blockId);
     if (tabIndex !== -1) {
       // 检查当前关闭的标签是否是激活的标签
@@ -9730,9 +9898,11 @@ class OrcaTabsPlugin {
       const adjacentTab = isClosingActiveTab ? this.getAdjacentTab(tab) : null;
       
       // 将标签添加到已关闭列表
+      // 视图面板的 blockId 以 'view:' 前缀开头，可以安全地添加到 closedTabs 集合
       this.closedTabs.add(tab.blockId);
       
       // 如果启用了最近关闭标签页功能，添加到最近关闭列表
+      // 视图面板也可以添加到最近关闭列表，以便用户可以恢复
       if (this.enableRecentlyClosedTabs) {
         // 添加时间戳
         const tabWithTimestamp = { ...tab, closedAt: Date.now() };
@@ -9754,7 +9924,9 @@ class OrcaTabsPlugin {
       }
       
       // 删除该标签的切换历史记录
-      const tabElement = this.tabContainer?.querySelector(`[data-tab-id="${tab.blockId}"]`) as HTMLElement;
+      // 视图面板的 blockId 可能包含特殊字符，需要正确转义
+      const escapedBlockId = CSS.escape(tab.blockId);
+      const tabElement = this.tabContainer?.querySelector(`[data-tab-id="${escapedBlockId}"]`) as HTMLElement;
       const tabHistoryId = tabElement?.getAttribute('data-tab-history-id');
       if (tabHistoryId) {
         await this.deleteTabSwitchHistory(tabHistoryId);
@@ -9777,7 +9949,8 @@ class OrcaTabsPlugin {
         this.log(`🔄 标签页删除，实时更新工作区: ${tab.title}`);
       }
       
-      this.log(`🗑️ 标签 "${tab.title}" 已关闭，已添加到关闭列表`);
+      const tabType = isViewPanelTab ? '视图面板' : '标签';
+      this.log(`🗑️ ${tabType} "${tab.title}" 已关闭，已添加到关闭列表`);
       
       // 如果关闭的是当前激活的标签，自动切换到相邻标签
       if (isClosingActiveTab && adjacentTab) {
@@ -9792,14 +9965,25 @@ class OrcaTabsPlugin {
 
   /**
    * 关闭全部标签页（保留固定标签）
+   * 
+   * 支持关闭普通块标签页和视图面板标签页（如 AI Chat 面板）。
+   * 视图面板的 blockId 以 'view:' 前缀开头，可以安全地添加到 closedTabs 集合。
+   * 
+   * Requirements: 4.3, 5.3
    */
   async closeAllTabs() {
     const currentTabs = this.getCurrentPanelTabs();
     
     // 将非固定标签添加到已关闭列表
+    // 视图面板的 blockId 以 'view:' 前缀开头，可以安全地添加到 closedTabs 集合
     const nonPinnedTabs = currentTabs.filter(tab => !tab.isPinned);
+    let viewPanelCount = 0;
     nonPinnedTabs.forEach(tab => {
       this.closedTabs.add(tab.blockId);
+      if (isViewPanel(tab)) {
+        viewPanelCount++;
+        this.verboseLog(`🖼️ 关闭视图面板标签页: ${tab.title} (blockId: ${tab.blockId})`);
+      }
     });
     
     // 只保留固定标签
@@ -9822,11 +10006,20 @@ class OrcaTabsPlugin {
       this.log(`🔄 批量关闭标签页，实时更新工作区`);
     }
     
-    this.log(`🗑️ 已关闭 ${closedCount} 个标签，保留了 ${pinnedTabs.length} 个固定标签`);
+    if (viewPanelCount > 0) {
+      this.log(`🗑️ 已关闭 ${closedCount} 个标签（包含 ${viewPanelCount} 个视图面板），保留了 ${pinnedTabs.length} 个固定标签`);
+    } else {
+      this.log(`🗑️ 已关闭 ${closedCount} 个标签，保留了 ${pinnedTabs.length} 个固定标签`);
+    }
   }
 
   /**
    * 关闭其他标签页（保留当前标签和固定标签）
+   * 
+   * 支持关闭普通块标签页和视图面板标签页（如 AI Chat 面板）。
+   * 视图面板的 blockId 以 'view:' 前缀开头，可以安全地添加到 closedTabs 集合。
+   * 
+   * Requirements: 4.3, 5.3
    */
   async closeOtherTabs(currentTab: TabInfo) {
     const currentTabs = this.getCurrentPanelTabs();
@@ -9837,11 +10030,17 @@ class OrcaTabsPlugin {
     );
     
     // 将其他标签添加到已关闭列表
+    // 视图面板的 blockId 以 'view:' 前缀开头，可以安全地添加到 closedTabs 集合
     const otherTabs = currentTabs.filter(tab => 
       tab.blockId !== currentTab.blockId && !tab.isPinned
     );
+    let viewPanelCount = 0;
     otherTabs.forEach(tab => {
       this.closedTabs.add(tab.blockId);
+      if (isViewPanel(tab)) {
+        viewPanelCount++;
+        this.verboseLog(`🖼️ 关闭视图面板标签页: ${tab.title} (blockId: ${tab.blockId})`);
+      }
     });
     
     const closedCount = currentTabs.length - keepTabs.length;
@@ -9861,7 +10060,11 @@ class OrcaTabsPlugin {
       this.log(`🔄 关闭其他标签页，实时更新工作区`);
     }
     
-    this.log(`🗑️ 已关闭其他 ${closedCount} 个标签，保留了当前标签和固定标签`);
+    if (viewPanelCount > 0) {
+      this.log(`🗑️ 已关闭其他 ${closedCount} 个标签（包含 ${viewPanelCount} 个视图面板），保留了当前标签和固定标签`);
+    } else {
+      this.log(`🗑️ 已关闭其他 ${closedCount} 个标签，保留了当前标签和固定标签`);
+    }
   }
 
   /**
@@ -10691,6 +10894,13 @@ class OrcaTabsPlugin {
     
     for (let i = 0; i < firstPanelTabs.length; i++) {
       const tab = firstPanelTabs[i];
+      
+      // 跳过视图面板（如 AI Chat 面板）
+      // 视图面板没有真正的块ID，不需要从后端获取块信息
+      if (isViewPanel(tab)) {
+        this.verboseLog(`⏭️ 跳过视图面板: ${tab.title}`);
+        continue;
+      }
       
       // 检查是否需要更新块类型和图标
       const needsUpdate = !tab.blockType || !tab.icon;
@@ -11705,6 +11915,48 @@ class OrcaTabsPlugin {
         this.verboseLog(`🔄 更新当前面板索引: ${panelIndex} (面板ID: ${currentPanelId})`);
       }
 
+      // 步骤3.5: 检查是否为视图面板（如 AI Chat）
+      // 视图面板没有块编辑器，需要特殊处理
+      const viewPanelInfo = this.getViewPanelInfo(currentActivePanel);
+      if (viewPanelInfo) {
+        this.verboseLog(`🖼️ 检测到视图面板: ${viewPanelInfo.title}`);
+        
+        // 获取当前面板的标签页数据
+        let currentTabs = this.getCurrentPanelTabs();
+        
+        // 检查是否已有该视图面板的标签页
+        const viewBlockId = `view:${viewPanelInfo.panelId}`;
+        const existingViewTab = currentTabs.find(tab => tab.blockId === viewBlockId);
+        
+        if (!existingViewTab) {
+          // 创建视图面板的 TabInfo
+          const viewTabInfo: TabInfo = {
+            blockId: viewBlockId,
+            panelId: viewPanelInfo.panelId,
+            title: viewPanelInfo.title,
+            icon: viewPanelInfo.icon,
+            order: 0,
+            blockType: 'view',
+            isViewPanel: true
+          };
+          
+          this.panelTabsData[this.currentPanelIndex] = [viewTabInfo];
+          this.log(`📋 为视图面板创建标签页: ${viewPanelInfo.title}`);
+          
+          // 保存数据
+          const storageKey = this.currentPanelIndex === 0 ? PLUGIN_STORAGE_KEYS.FIRST_PANEL_TABS : `panel_${this.currentPanelIndex + 1}_tabs`;
+          await this.savePanelTabsByKey(storageKey, [viewTabInfo]);
+          
+          // 更新 UI
+          await this.immediateUpdateTabsUI();
+        } else {
+          // 更新聚焦状态
+          this.updateFocusState(viewBlockId, existingViewTab.title);
+          await this.immediateUpdateTabsUI();
+        }
+        return;
+      }
+
       // 步骤4: 获取当前激活的块编辑器
       // 查找面板中可见的块编辑器（没有 orca-hideable-hidden 类）
       // 这个选择器确保只获取用户当前看到的内容
@@ -12001,6 +12253,27 @@ class OrcaTabsPlugin {
             }
           }
         }
+        
+        // 处理视图面板元数据属性变化
+        if (mutation.type === 'attributes' && 
+            (mutation.attributeName === 'data-panel-title' || 
+             mutation.attributeName === 'data-panel-icon' || 
+             mutation.attributeName === 'data-panel-type')) {
+          const target = mutation.target as Element;
+          
+          // 检查是否为面板元素
+          if (target.classList.contains('orca-panel')) {
+            const panelId = target.getAttribute('data-panel-id');
+            const panelTitle = target.getAttribute('data-panel-title');
+            const panelType = target.getAttribute('data-panel-type');
+            
+            // 如果是视图面板，触发标签页检查以更新显示
+            if (panelId && panelTitle && panelType === 'view') {
+              this.verboseLog(`🎨 检测到视图面板元数据变化: ${panelTitle}`);
+              shouldCheckNewBlocks = true;
+            }
+          }
+        }
       });
 
       // 处理面板切换
@@ -12081,9 +12354,14 @@ class OrcaTabsPlugin {
     observer.observe(document.body, {
       childList: true,
       subtree: true,
-      // 只监听属性变化中的class变化，减少不必要的回调
+      // 监听属性变化：class变化和视图面板元数据属性
       attributes: true,
-      attributeFilter: ['class'],
+      attributeFilter: [
+        'class',
+        'data-panel-title',  // 视图面板标题属性
+        'data-panel-icon',   // 视图面板图标属性
+        'data-panel-type'    // 视图面板类型属性
+      ],
       // 不监听文本内容变化，减少触发频率
       characterData: false
     });
@@ -12125,6 +12403,47 @@ class OrcaTabsPlugin {
           target.closest('.orca-sidebar') ||
           target.closest('.orca-headbar')) {
         return;
+      }
+      
+      // 步骤0.5: 检查是否点击在视图面板内（如 AI Chat 面板）
+      // 视图面板没有 .orca-hideable 结构，需要特殊处理
+      const viewPanel = target.closest('.orca-panel[data-panel-type="view"]');
+      if (viewPanel) {
+        const viewPanelId = viewPanel.getAttribute('data-panel-id');
+        const viewBlockId = viewPanelId ? `view:${viewPanelId}` : null;
+        
+        // 如果是同一个视图面板，跳过检查（避免重复）
+        if (viewBlockId && viewBlockId === lastCheckedBlockId) {
+          this.verboseLog(`⏭️ 跳过重复检查：同一个视图面板 ${viewBlockId}`);
+          return;
+        }
+        
+        // 防抖处理
+        if (focusChangeTimeout) {
+          clearTimeout(focusChangeTimeout);
+        }
+        
+        focusChangeTimeout = window.setTimeout(async () => {
+          // 如果正在导航中，跳过聚焦检测
+          if (this.isNavigating) {
+            this.verboseLog('⏭️ 正在导航中，跳过视图面板聚焦检测');
+            return;
+          }
+          
+          this.verboseLog(`🎯 检测到视图面板内点击: ${viewPanelId}`);
+          
+          // 更新上次检查的块ID
+          if (viewBlockId) {
+            lastCheckedBlockId = viewBlockId;
+          }
+          
+          // 触发标签页更新，确保视图面板标签页保持聚焦状态
+          await this.checkCurrentPanelBlocks();
+          
+          focusChangeTimeout = null;
+        }, 0);
+        
+        return; // 已处理视图面板，直接返回
       }
       
       // 步骤1: 查找最近的 orca-hideable 元素
@@ -12207,6 +12526,11 @@ class OrcaTabsPlugin {
     // 监听器1: 点击事件
     // 处理用户鼠标点击不同内容的情况
     document.addEventListener('click', handleFocusChange);
+    
+    // 监听器1.5: 鼠标按下事件
+    // 处理用户开始选择文本的情况（如在 AI 聊天面板中选中消息）
+    // 这比 click 事件更早触发，能更快响应用户的交互意图
+    document.addEventListener('mousedown', handleFocusChange);
     
     // 监听器2: 聚焦事件
     // 处理键盘导航、程序化聚焦等情况
@@ -12433,7 +12757,9 @@ class OrcaTabsPlugin {
       passive: false,  // 不能使用 passive，需要调用 preventDefault()
       capture: true    // 【关键】在捕获阶段处理，先于 Orca 原生处理
     });
-    document.addEventListener('contextmenu', this.globalEventListener, { passive: false });
+    // 【修复】移除全局 contextmenu 监听器，避免阻止面板内的右键菜单
+    // 标签页的右键菜单已经在 addOrcaContextMenu 中单独处理
+    // document.addEventListener('contextmenu', this.globalEventListener, { passive: false });
     // 移除keydown监听以避免干扰Orca核心功能
   }
 
@@ -12892,8 +13218,51 @@ class OrcaTabsPlugin {
   }
 
   /**
+   * 获取视图面板信息
+   * 
+   * 从面板 DOM 元素中提取视图面板的元数据（标题、图标、类型）。
+   * 用于识别自定义视图面板（如 AI Chat），这些面板没有传统的块编辑器。
+   * 
+   * @param panel - 面板 DOM 元素
+   * @returns ViewPanelInfo 对象（如果是视图面板）或 null（如果不是视图面板）
+   * 
+   * @example
+   * ```typescript
+   * const panel = document.querySelector('.orca-panel[data-panel-id="xxx"]');
+   * const viewInfo = this.getViewPanelInfo(panel);
+   * if (viewInfo) {
+   *   console.log(`视图面板: ${viewInfo.title}, 图标: ${viewInfo.icon}`);
+   * }
+   * ```
+   */
+  private getViewPanelInfo(panel: Element): ViewPanelInfo | null {
+    const panelId = panel.getAttribute('data-panel-id');
+    const title = panel.getAttribute('data-panel-title');
+    const icon = panel.getAttribute('data-panel-icon');
+    const type = panel.getAttribute('data-panel-type');
+    
+    // 必须有 panelId 和 title，且 type 必须为 'view'
+    if (!panelId || !title || type !== 'view') {
+      return null;
+    }
+    
+    return {
+      panelId,
+      title,
+      icon: icon || undefined,
+      type: 'view'
+    };
+  }
+
+  /**
    * 扫描当前面板的标签页 - 重构为简化的数组操作
    * 按照用户思路：直接扫描当前面板并更新panelTabsData数组
+   * 
+   * 支持两种类型的面板：
+   * 1. 块编辑器面板 - 包含 .orca-block-editor 元素的传统面板
+   * 2. 视图面板 - 自定义视图面板（如 AI Chat），通过 data-panel-* 属性识别
+   * 
+   * Requirements: 3.2, 3.3, 4.1
    */
   async scanCurrentPanelTabs() {
     if (!this.currentPanelId || '' || this.currentPanelIndex < 0) {
@@ -12907,6 +13276,30 @@ class OrcaTabsPlugin {
       return;
     }
 
+    // 首先检查是否为视图面板（Requirements: 3.2）
+    const viewPanelInfo = this.getViewPanelInfo(panel);
+    if (viewPanelInfo) {
+      // 创建视图面板的 TabInfo（Requirements: 3.3, 4.1）
+      const viewTabInfo: TabInfo = {
+        blockId: `view:${viewPanelInfo.panelId}`,  // 使用 view:${panelId} 格式
+        panelId: viewPanelInfo.panelId,
+        title: viewPanelInfo.title,
+        icon: viewPanelInfo.icon,
+        order: 0,
+        blockType: 'view',      // 设置 blockType 为 'view'
+        isViewPanel: true       // 标识为视图面板
+      };
+      
+      this.panelTabsData[this.currentPanelIndex] = [viewTabInfo];
+      this.log(`📋 面板 ${this.currentPanelId || ''} (索引: ${this.currentPanelIndex}) 是视图面板: ${viewPanelInfo.title}`);
+      
+      // 保存数据（基于当前面板索引）
+      const storageKey = this.currentPanelIndex === 0 ? PLUGIN_STORAGE_KEYS.FIRST_PANEL_TABS : `panel_${this.currentPanelIndex + 1}_tabs`;
+      await this.savePanelTabsByKey(storageKey, [viewTabInfo]);
+      return;
+    }
+
+    // 原有的块编辑器扫描逻辑
     const hideableElements = panel.querySelectorAll('.orca-hideable');
     const newTabs: TabInfo[] = [];
     let order = 0;
@@ -13204,6 +13597,11 @@ class OrcaTabsPlugin {
 
   /**
    * 恢复最近关闭的标签页
+   * 
+   * 支持恢复普通块标签页和视图面板标签页（如 AI Chat 面板）。
+   * 视图面板的 blockId 以 'view:' 前缀开头，需要特殊处理。
+   * 
+   * Requirements: 4.3, 5.3
    */
   async restoreRecentlyClosedTab(tab: TabInfo, index: number) {
     try {
@@ -13212,10 +13610,47 @@ class OrcaTabsPlugin {
       await this.saveRecentlyClosedTabs();
 
       // 从已关闭列表中移除（如果存在）
+      // 视图面板的 blockId 以 'view:' 前缀开头，可以安全地从 closedTabs 集合中删除
       this.closedTabs.delete(tab.blockId);
       await this.saveClosedTabs();
 
-      // 添加到当前面板
+      // 检查是否为视图面板（如 AI Chat 面板）
+      if (isViewPanel(tab)) {
+        this.verboseLog(`🖼️ 恢复视图面板标签页: ${tab.title} (blockId: ${tab.blockId})`);
+        
+        // 视图面板需要直接添加到当前面板的标签页列表中
+        const currentTabs = this.getCurrentPanelTabs();
+        
+        // 检查是否已经存在
+        const existingTab = currentTabs.find(t => t.blockId === tab.blockId);
+        if (existingTab) {
+          this.log(`🔄 视图面板标签页已存在，切换到该标签: "${tab.title}"`);
+          await this.switchToTab(existingTab);
+        } else {
+          // 添加到标签页列表末尾
+          currentTabs.push({
+            ...tab,
+            order: currentTabs.length,
+            closedAt: undefined // 清除关闭时间戳
+          });
+          
+          // 同步更新存储
+          this.syncCurrentTabsToStorage(currentTabs);
+          
+          // 更新UI和保存数据
+          await this.immediateUpdateTabsUI();
+          await this.saveCurrentPanelTabs();
+          
+          // 切换到恢复的视图面板
+          await this.switchToTab(tab);
+        }
+        
+        this.log(`🔄 已恢复视图面板标签页: "${tab.title}"`);
+        orca.notify('success', `已恢复标签页: ${tab.title}`);
+        return;
+      }
+
+      // 普通块标签页：添加到当前面板
       await this.addTabToPanel(tab.blockId, 'end', true);
 
       this.log(`🔄 已恢复最近关闭的标签页: "${tab.title}"`);
@@ -16709,7 +17144,8 @@ class OrcaTabsPlugin {
       if (this.globalEventListener) {
         // 【重要】移除时必须使用相同的 capture 参数
         document.removeEventListener('click', this.globalEventListener, { capture: true });
-        document.removeEventListener('contextmenu', this.globalEventListener);
+        // 【修复】contextmenu 监听器已移除，不需要清理
+        // document.removeEventListener('contextmenu', this.globalEventListener);
         this.globalEventListener = null;
       }
       if (this.dragEndListener) {

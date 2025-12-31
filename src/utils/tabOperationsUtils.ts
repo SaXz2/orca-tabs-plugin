@@ -5,6 +5,175 @@
 import { TabInfo } from '../types';
 
 /**
+ * 检查 TabInfo 是否代表视图面板
+ * 
+ * 视图面板是自定义视图（如 AI Chat 面板），与普通块面板不同。
+ * 此函数通过以下条件判断：
+ * 1. isViewPanel 标志为 true
+ * 2. blockType 为 'view'
+ * 3. blockId 以 'view:' 前缀开头
+ * 
+ * @param tab - 要检查的 TabInfo 对象
+ * @returns 如果是视图面板返回 true，否则返回 false
+ * 
+ * @example
+ * const tab: TabInfo = { blockId: 'view:ai-chat', ... };
+ * if (isViewPanel(tab)) {
+ *   // 使用面板导航而非块导航
+ *   orca.nav.switchFocusTo(panelId);
+ * }
+ * 
+ * Requirements: 6.1, 6.2
+ */
+export function isViewPanel(tab: TabInfo): boolean {
+  // Check isViewPanel flag first (most explicit)
+  if ((tab as any).isViewPanel === true) {
+    return true;
+  }
+  
+  // Check blockType for 'view'
+  if (tab.blockType === 'view') {
+    return true;
+  }
+  
+  // Check blockId prefix for 'view:'
+  if (typeof tab.blockId === 'string' && tab.blockId.startsWith('view:')) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * 规范化 TabInfo 对象，确保视图面板字段正确设置
+ * 
+ * 此函数用于反序列化后规范化 TabInfo 数据，确保：
+ * 1. 如果 blockId 以 'view:' 开头，则设置 isViewPanel 和 blockType
+ * 2. 如果 blockType 为 'view'，则设置 isViewPanel
+ * 3. 如果 isViewPanel 为 true，则确保 blockType 为 'view'
+ * 
+ * 这确保了从存储中恢复的数据与新创建的视图面板数据一致。
+ * 
+ * @param tab - 要规范化的 TabInfo 对象
+ * @returns 规范化后的 TabInfo 对象
+ * 
+ * @example
+ * const restoredTab = JSON.parse(savedData);
+ * const normalizedTab = normalizeTabInfo(restoredTab);
+ * 
+ * Requirements: 6.3
+ */
+export function normalizeTabInfo(tab: TabInfo): TabInfo {
+  // Create a copy to avoid mutating the original
+  const normalized = { ...tab };
+  
+  // Detect if this is a view panel based on any indicator
+  const hasViewPrefix = typeof normalized.blockId === 'string' && normalized.blockId.startsWith('view:');
+  const hasViewBlockType = normalized.blockType === 'view';
+  const hasViewPanelFlag = normalized.isViewPanel === true;
+  
+  // If any view panel indicator is present, ensure all are set correctly
+  if (hasViewPrefix || hasViewBlockType || hasViewPanelFlag) {
+    normalized.isViewPanel = true;
+    normalized.blockType = 'view';
+  }
+  
+  return normalized;
+}
+
+/**
+ * 批量规范化 TabInfo 数组
+ * 
+ * 用于反序列化后批量规范化标签页数据，确保所有视图面板字段正确设置。
+ * 
+ * @param tabs - 要规范化的 TabInfo 数组
+ * @returns 规范化后的 TabInfo 数组
+ * 
+ * @example
+ * const restoredTabs = JSON.parse(savedData);
+ * const normalizedTabs = normalizeTabInfoArray(restoredTabs);
+ * 
+ * Requirements: 6.3
+ */
+export function normalizeTabInfoArray(tabs: TabInfo[]): TabInfo[] {
+  if (!Array.isArray(tabs)) {
+    return [];
+  }
+  return tabs.map(normalizeTabInfo);
+}
+
+/**
+ * 序列化 TabInfo 对象为 JSON 字符串
+ * 
+ * 此函数确保视图面板的所有相关字段都被正确序列化。
+ * 
+ * @param tab - 要序列化的 TabInfo 对象
+ * @returns JSON 字符串
+ * 
+ * Requirements: 6.3
+ */
+export function serializeTabInfo(tab: TabInfo): string {
+  // Normalize before serialization to ensure consistency
+  const normalized = normalizeTabInfo(tab);
+  return JSON.stringify(normalized);
+}
+
+/**
+ * 从 JSON 字符串反序列化 TabInfo 对象
+ * 
+ * 此函数解析 JSON 并规范化视图面板字段。
+ * 
+ * @param json - JSON 字符串
+ * @returns 规范化后的 TabInfo 对象，如果解析失败返回 null
+ * 
+ * Requirements: 6.3
+ */
+export function deserializeTabInfo(json: string): TabInfo | null {
+  try {
+    const parsed = JSON.parse(json);
+    if (parsed && typeof parsed === 'object' && parsed.blockId) {
+      return normalizeTabInfo(parsed as TabInfo);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 序列化 TabInfo 数组为 JSON 字符串
+ * 
+ * @param tabs - 要序列化的 TabInfo 数组
+ * @returns JSON 字符串
+ * 
+ * Requirements: 6.3
+ */
+export function serializeTabInfoArray(tabs: TabInfo[]): string {
+  const normalized = normalizeTabInfoArray(tabs);
+  return JSON.stringify(normalized);
+}
+
+/**
+ * 从 JSON 字符串反序列化 TabInfo 数组
+ * 
+ * @param json - JSON 字符串
+ * @returns 规范化后的 TabInfo 数组，如果解析失败返回空数组
+ * 
+ * Requirements: 6.3
+ */
+export function deserializeTabInfoArray(json: string): TabInfo[] {
+  try {
+    const parsed = JSON.parse(json);
+    if (Array.isArray(parsed)) {
+      return normalizeTabInfoArray(parsed);
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+/**
  * 标签操作结果接口
  */
 export interface TabOperationResult {
@@ -120,6 +289,21 @@ export async function performNavigation(
   isJournal: boolean = false
 ): Promise<TabOperationResult> {
   try {
+    // 检查是否为视图面板（如 AI Chat 面板）
+    // 视图面板使用 switchFocusTo 导航，而非块导航
+    if (isViewPanel(tab)) {
+      // 从 blockId 中提取面板ID（格式: view:${panelId}）
+      const viewPanelId = tab.blockId.startsWith('view:') 
+        ? tab.blockId.substring(5) // 移除 'view:' 前缀
+        : tab.panelId;
+      
+      orca.nav.switchFocusTo(viewPanelId);
+      return {
+        success: true,
+        message: `成功切换到视图面板: ${viewPanelId}`
+      };
+    }
+    
     if (isJournal) {
       // 日期块导航 - 使用统一的逻辑
       const targetDate = extractDateFromTitle(tab.title);

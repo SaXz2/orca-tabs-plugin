@@ -1,12 +1,12 @@
-var Ye = Object.defineProperty;
-var je = (r, e, t) => e in r ? Ye(r, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : r[e] = t;
-var f = (r, e, t) => je(r, typeof e != "symbol" ? e + "" : e, t);
-const Le = {
+var Xe = Object.defineProperty;
+var Ke = (r, e, t) => e in r ? Xe(r, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : r[e] = t;
+var v = (r, e, t) => Ke(r, typeof e != "symbol" ? e + "" : e, t);
+const Be = {
   /** 缓存编辑器数量 - 对应Orca设置中的最大标签页数量配置 */
   CachedEditorNum: 13,
   /** 日志日期格式 - 对应Orca设置中的日期格式配置 */
   JournalDateFormat: 12
-}, Me = {
+}, Ae = {
   /** JSON数据类型 - 用于存储结构化数据 */
   JSON: 0,
   /** 文本数据类型 - 用于存储纯文本数据 */
@@ -70,7 +70,7 @@ const Le = {
   /** 贴边隐藏收起延迟 - 鼠标离开后收起的延迟时间（毫秒） */
   EDGE_HIDE_COLLAPSE_DELAY: 100
 };
-class Ge {
+class Je {
   // ==================== 日志方法 ====================
   /**
    * 调试日志方法
@@ -223,7 +223,7 @@ class Ge {
     }
   }
 }
-function Y() {
+function G() {
   return {
     isVerticalMode: !1,
     verticalWidth: 200,
@@ -239,15 +239,15 @@ function Y() {
     enableBubbleMode: !1
   };
 }
-function Xe(r, e, t = 200) {
+function Ze(r, e, t = 200) {
   const i = e ? t : 400, a = 40, n = window.innerWidth - i, o = window.innerHeight - a;
   return {
     x: Math.max(0, Math.min(r.x, n)),
     y: Math.max(0, Math.min(r.y, o))
   };
 }
-function Ke(r) {
-  const e = Y();
+function Qe(r) {
+  const e = G();
   return {
     isVerticalMode: r.isVerticalMode ?? e.isVerticalMode,
     verticalWidth: r.verticalWidth ?? e.verticalWidth,
@@ -263,10 +263,10 @@ function Ke(r) {
     enableBubbleMode: r.enableBubbleMode ?? e.enableBubbleMode
   };
 }
-function le(r, e, t) {
+function de(r, e, t) {
   return r ? { ...e } : { ...t };
 }
-function Je(r, e, t, i) {
+function et(r, e, t, i) {
   return e ? {
     verticalPosition: { ...r },
     horizontalPosition: { ...i }
@@ -275,20 +275,111 @@ function Je(r, e, t, i) {
     horizontalPosition: { ...r }
   };
 }
-function Ze(r) {
+function tt(r) {
   return `布局模式: ${r.isVerticalMode ? "垂直" : "水平"}, 垂直宽度: ${r.verticalWidth}px, 垂直位置: (${r.verticalPosition.x}, ${r.verticalPosition.y}), 水平位置: (${r.horizontalPosition.x}, ${r.horizontalPosition.y})`;
 }
-function De(r, e) {
+function Ne(r, e) {
   return `位置已${e ? "垂直" : "水平"}模式 (${r.x}, ${r.y})`;
 }
-class Qe {
+function A(r) {
+  return !!(r.isViewPanel === !0 || r.blockType === "view" || typeof r.blockId == "string" && r.blockId.startsWith("view:"));
+}
+function it(r) {
+  const e = { ...r }, t = typeof e.blockId == "string" && e.blockId.startsWith("view:"), i = e.blockType === "view", a = e.isViewPanel === !0;
+  return (t || i || a) && (e.isViewPanel = !0, e.blockType = "view"), e;
+}
+function _(r) {
+  return Array.isArray(r) ? r.map(it) : [];
+}
+function at(r, e, t = {}) {
+  try {
+    const {
+      updateOrder: i = !0,
+      saveData: a = !0,
+      updateUI: n = !0
+    } = t, o = e.findIndex((d) => d.blockId === r.blockId);
+    if (o === -1)
+      return {
+        success: !1,
+        message: `标签不存在: ${r.title}`
+      };
+    e[o].isPinned = !e[o].isPinned;
+    const l = e[o].isPinned;
+    i && st(e);
+    const s = e.findIndex((d) => d.blockId === r.blockId), c = l ? "固定" : "取消固定";
+    return {
+      success: !0,
+      message: `标签 "${r.title}" 已${c}`,
+      data: { tab: e[s], tabIndex: s }
+    };
+  } catch (i) {
+    return {
+      success: !1,
+      message: `切换固定状态失败: ${i}`
+    };
+  }
+}
+function nt(r, e, t, i = {}) {
+  try {
+    const {
+      updateUI: a = !0,
+      saveData: n = !0,
+      validateData: o = !0
+    } = i, l = t.findIndex((s) => s.blockId === r.blockId);
+    if (l === -1)
+      return {
+        success: !1,
+        message: `标签不存在: ${r.title}`
+      };
+    if (o) {
+      const s = ot(e);
+      if (!s.success)
+        return s;
+    }
+    return t[l] = { ...t[l], ...e }, {
+      success: !0,
+      message: `标签 "${r.title}" 已更新`,
+      data: { tab: t[l], tabIndex: l }
+    };
+  } catch (a) {
+    return {
+      success: !1,
+      message: `更新标签失败: ${a}`
+    };
+  }
+}
+function rt(r, e, t, i = {}) {
+  return !e || e.trim() === "" ? {
+    success: !1,
+    message: "标签标题不能为空"
+  } : nt(r, { title: e.trim() }, t, i);
+}
+function ot(r) {
+  return r.blockId !== void 0 && (!r.blockId || r.blockId.trim() === "") ? {
+    success: !1,
+    message: "标签块ID不能为空"
+  } : r.title !== void 0 && (!r.title || r.title.trim() === "") ? {
+    success: !1,
+    message: "标签标题不能为空"
+  } : r.order !== void 0 && (r.order < 0 || !Number.isInteger(r.order)) ? {
+    success: !1,
+    message: "标签顺序必须是正整数"
+  } : {
+    success: !0,
+    message: "标签数据验证通过"
+  };
+}
+function st(r) {
+  r.sort((e, t) => e.isPinned && !t.isPinned ? -1 : !e.isPinned && t.isPinned ? 1 : e.order - t.order);
+}
+class lt {
   constructor(e, t, i) {
-    f(this, "storageService");
-    f(this, "pluginName");
-    f(this, "log");
-    f(this, "warn");
-    f(this, "error");
-    f(this, "verboseLog");
+    v(this, "storageService");
+    v(this, "pluginName");
+    v(this, "log");
+    v(this, "warn");
+    v(this, "error");
+    v(this, "verboseLog");
     this.storageService = e, this.pluginName = t, this.log = i.log, this.warn = i.warn, this.error = i.error, this.verboseLog = i.verboseLog;
   }
   // ==================== 标签页数据存储 ====================
@@ -308,7 +399,11 @@ class Qe {
   async restoreFirstPanelTabs() {
     try {
       const e = await this.storageService.getConfig(C.FIRST_PANEL_TABS, this.pluginName, []);
-      return e && Array.isArray(e) ? (this.log(`📂 从API配置恢复了第一个面板的 ${e.length} 个标签页`), e) : (this.log("📂 没有找到第一个面板的持久化标签数据，返回空数组"), []);
+      if (e && Array.isArray(e)) {
+        const t = _(e);
+        return this.log(`📂 从API配置恢复了第一个面板的 ${t.length} 个标签页`), t;
+      } else
+        return this.log("📂 没有找到第一个面板的持久化标签数据，返回空数组"), [];
     } catch (e) {
       return this.warn("无法恢复第一个面板标签数据:", e), [];
     }
@@ -339,7 +434,11 @@ class Qe {
   async restorePanelTabsByKey(e) {
     try {
       const t = await this.storageService.getConfig(e, this.pluginName, []);
-      return t && Array.isArray(t) ? (this.verboseLog(`📂 从 ${e} 恢复了 ${t.length} 个标签页`), t) : [];
+      if (t && Array.isArray(t)) {
+        const i = _(t);
+        return this.verboseLog(`📂 从 ${e} 恢复了 ${i.length} 个标签页`), i;
+      }
+      return [];
     } catch (t) {
       return this.warn(`❌ 恢复 ${e} 标签页数据失败:`, t), [];
     }
@@ -387,7 +486,11 @@ class Qe {
   async restoreRecentlyClosedTabs() {
     try {
       const e = await this.storageService.getConfig(C.RECENTLY_CLOSED_TABS, this.pluginName, []);
-      return e && Array.isArray(e) ? (this.log(`📂 从API配置恢复了 ${e.length} 个最近关闭的标签页`), e) : (this.log("📂 没有找到最近关闭标签页数据，返回空数组"), []);
+      if (e && Array.isArray(e)) {
+        const t = _(e);
+        return this.log(`📂 从API配置恢复了 ${t.length} 个最近关闭的标签页`), t;
+      } else
+        return this.log("📂 没有找到最近关闭标签页数据，返回空数组"), [];
     } catch (e) {
       return this.warn("无法恢复最近关闭标签页列表:", e), [];
     }
@@ -409,7 +512,14 @@ class Qe {
   async restoreSavedTabSets() {
     try {
       const e = await this.storageService.getConfig(C.SAVED_TAB_SETS, this.pluginName, []);
-      return e && Array.isArray(e) ? (this.log(`📂 从API配置恢复了 ${e.length} 个多标签页集合`), e) : (this.log("📂 没有找到多标签页集合数据，返回空数组"), []);
+      if (e && Array.isArray(e)) {
+        const t = e.map((i) => ({
+          ...i,
+          tabs: _(i.tabs || [])
+        }));
+        return this.log(`📂 从API配置恢复了 ${t.length} 个多标签页集合`), t;
+      } else
+        return this.log("📂 没有找到多标签页集合数据，返回空数组"), [];
     } catch (e) {
       return this.warn("无法恢复多标签页集合:", e), [];
     }
@@ -420,7 +530,13 @@ class Qe {
    */
   async loadWorkspaces() {
     try {
-      const e = await this.storageService.getConfig(C.WORKSPACES), t = e && Array.isArray(e) ? e : [], i = await this.storageService.getConfig(C.ENABLE_WORKSPACES), a = typeof i == "boolean" ? i : !1;
+      const e = await this.storageService.getConfig(C.WORKSPACES);
+      let t = e && Array.isArray(e) ? e : [];
+      t = t.map((n) => ({
+        ...n,
+        tabs: _(n.tabs || [])
+      }));
+      const i = await this.storageService.getConfig(C.ENABLE_WORKSPACES), a = typeof i == "boolean" ? i : !1;
       return this.log(`📁 已加载 ${t.length} 个工作区`), { workspaces: t, enableWorkspaces: a };
     } catch (e) {
       return this.error("加载工作区数据失败:", e), { workspaces: [], enableWorkspaces: !1 };
@@ -462,7 +578,11 @@ class Qe {
   async loadTabsBeforeWorkspace() {
     try {
       const e = await this.storageService.getConfig(C.TABS_BEFORE_WORKSPACE, this.pluginName);
-      return e && e.length > 0 && this.log(`📁 已加载进入工作区前的标签页组: ${e.length}个标签页`), e;
+      if (e && e.length > 0) {
+        const t = _(e);
+        return this.log(`📁 已加载进入工作区前的标签页组: ${t.length}个标签页`), t;
+      }
+      return e;
     } catch (e) {
       return this.error("加载进入工作区前的标签页组失败:", e), null;
     }
@@ -483,7 +603,7 @@ class Qe {
    */
   async savePosition(e, t, i, a) {
     try {
-      const n = Je(
+      const n = et(
         e,
         t,
         i,
@@ -504,7 +624,7 @@ class Qe {
         horizontalTabMinWidth: 80,
         enableEdgeHide: !1,
         enableBubbleMode: !1
-      }), this.log(`💾 位置已保存: ${De(e, t)}`), n;
+      }), this.log(`💾 位置已保存: ${Ne(e, t)}`), n;
     } catch {
       return this.warn("无法保存标签位置"), { verticalPosition: i, horizontalPosition: a };
     }
@@ -527,14 +647,14 @@ class Qe {
       const e = await this.storageService.getConfig(
         C.LAYOUT_MODE,
         this.pluginName,
-        Y()
+        G()
       ), t = {
-        ...Y(),
+        ...G(),
         ...e
       };
       return this.log(`📂 恢复布局模式配置: ${t.isVerticalMode ? "垂直" : "水平"}`), t;
     } catch (e) {
-      return this.warn("恢复布局模式配置失败:", e), Y();
+      return this.warn("恢复布局模式配置失败:", e), G();
     }
   }
   /**
@@ -605,7 +725,16 @@ class Qe {
         this.pluginName,
         {}
       );
-      return e && typeof e == "object" ? (this.verboseLog(`📂 从API配置恢复了 ${Object.keys(e).length} 个标签的切换历史`), e) : (this.log("📂 没有找到最近切换标签历史数据，返回空对象"), {});
+      if (e && typeof e == "object") {
+        const t = {};
+        for (const [i, a] of Object.entries(e))
+          t[i] = {
+            ...a,
+            recentTabs: _(a.recentTabs || [])
+          };
+        return this.verboseLog(`📂 从API配置恢复了 ${Object.keys(t).length} 个标签的切换历史`), t;
+      } else
+        return this.log("📂 没有找到最近切换标签历史数据，返回空对象"), {};
     } catch (e) {
       return this.warn("无法恢复最近切换标签历史:", e), {};
     }
@@ -692,38 +821,38 @@ class Qe {
     }
   }
 }
-const Be = 6048e5, et = 864e5, Te = Symbol.for("constructDateFrom");
+const We = 6048e5, ct = 864e5, Ce = Symbol.for("constructDateFrom");
 function D(r, e) {
-  return typeof r == "function" ? r(e) : r && typeof r == "object" && Te in r ? r[Te](e) : r instanceof Date ? new r.constructor(e) : new Date(e);
+  return typeof r == "function" ? r(e) : r && typeof r == "object" && Ce in r ? r[Ce](e) : r instanceof Date ? new r.constructor(e) : new Date(e);
 }
 function B(r, e) {
   return D(e || r, r);
 }
-function Ae(r, e, t) {
+function ze(r, e, t) {
   const i = B(r, t == null ? void 0 : t.in);
   return isNaN(e) ? D(r, NaN) : (e && i.setDate(i.getDate() + e), i);
 }
-let tt = {};
-function oe() {
-  return tt;
+let dt = {};
+function le() {
+  return dt;
 }
-function Q(r, e) {
+function te(r, e) {
   var l, s, c, d;
-  const t = oe(), i = (e == null ? void 0 : e.weekStartsOn) ?? ((s = (l = e == null ? void 0 : e.locale) == null ? void 0 : l.options) == null ? void 0 : s.weekStartsOn) ?? t.weekStartsOn ?? ((d = (c = t.locale) == null ? void 0 : c.options) == null ? void 0 : d.weekStartsOn) ?? 0, a = B(r, e == null ? void 0 : e.in), n = a.getDay(), o = (n < i ? 7 : 0) + n - i;
+  const t = le(), i = (e == null ? void 0 : e.weekStartsOn) ?? ((s = (l = e == null ? void 0 : e.locale) == null ? void 0 : l.options) == null ? void 0 : s.weekStartsOn) ?? t.weekStartsOn ?? ((d = (c = t.locale) == null ? void 0 : c.options) == null ? void 0 : d.weekStartsOn) ?? 0, a = B(r, e == null ? void 0 : e.in), n = a.getDay(), o = (n < i ? 7 : 0) + n - i;
   return a.setDate(a.getDate() - o), a.setHours(0, 0, 0, 0), a;
 }
-function ie(r, e) {
-  return Q(r, { ...e, weekStartsOn: 1 });
+function ne(r, e) {
+  return te(r, { ...e, weekStartsOn: 1 });
 }
-function We(r, e) {
+function He(r, e) {
   const t = B(r, e == null ? void 0 : e.in), i = t.getFullYear(), a = D(t, 0);
   a.setFullYear(i + 1, 0, 4), a.setHours(0, 0, 0, 0);
-  const n = ie(a), o = D(t, 0);
+  const n = ne(a), o = D(t, 0);
   o.setFullYear(i, 0, 4), o.setHours(0, 0, 0, 0);
-  const l = ie(o);
+  const l = ne(o);
   return t.getTime() >= n.getTime() ? i + 1 : t.getTime() >= l.getTime() ? i : i - 1;
 }
-function we(r) {
+function ke(r) {
   const e = B(r), t = new Date(
     Date.UTC(
       e.getFullYear(),
@@ -737,51 +866,51 @@ function we(r) {
   );
   return t.setUTCFullYear(e.getFullYear()), +r - +t;
 }
-function Ne(r, ...e) {
+function Oe(r, ...e) {
   const t = D.bind(
     null,
     e.find((i) => typeof i == "object")
   );
   return e.map(t);
 }
-function ae(r, e) {
+function re(r, e) {
   const t = B(r, e == null ? void 0 : e.in);
   return t.setHours(0, 0, 0, 0), t;
 }
-function it(r, e, t) {
-  const [i, a] = Ne(
+function ht(r, e, t) {
+  const [i, a] = Oe(
     t == null ? void 0 : t.in,
     r,
     e
-  ), n = ae(i), o = ae(a), l = +n - we(n), s = +o - we(o);
-  return Math.round((l - s) / et);
+  ), n = re(i), o = re(a), l = +n - ke(n), s = +o - ke(o);
+  return Math.round((l - s) / ct);
 }
-function at(r, e) {
-  const t = We(r, e), i = D(r, 0);
-  return i.setFullYear(t, 0, 4), i.setHours(0, 0, 0, 0), ie(i);
+function ut(r, e) {
+  const t = He(r, e), i = D(r, 0);
+  return i.setFullYear(t, 0, 4), i.setHours(0, 0, 0, 0), ne(i);
 }
-function ve(r) {
+function xe(r) {
   return D(r, Date.now());
 }
-function ye(r, e, t) {
-  const [i, a] = Ne(
+function Te(r, e, t) {
+  const [i, a] = Oe(
     t == null ? void 0 : t.in,
     r,
     e
   );
-  return +ae(i) == +ae(a);
+  return +re(i) == +re(a);
 }
-function nt(r) {
+function bt(r) {
   return r instanceof Date || typeof r == "object" && Object.prototype.toString.call(r) === "[object Date]";
 }
-function rt(r) {
-  return !(!nt(r) && typeof r != "number" || isNaN(+B(r)));
+function gt(r) {
+  return !(!bt(r) && typeof r != "number" || isNaN(+B(r)));
 }
-function ot(r, e) {
+function pt(r, e) {
   const t = B(r, e == null ? void 0 : e.in);
   return t.setFullYear(t.getFullYear(), 0, 1), t.setHours(0, 0, 0, 0), t;
 }
-const st = {
+const mt = {
   lessThanXSeconds: {
     one: "less than a second",
     other: "less than {{count}} seconds"
@@ -843,54 +972,54 @@ const st = {
     one: "almost 1 year",
     other: "almost {{count}} years"
   }
-}, lt = (r, e, t) => {
+}, ft = (r, e, t) => {
   let i;
-  const a = st[r];
+  const a = mt[r];
   return typeof a == "string" ? i = a : e === 1 ? i = a.one : i = a.other.replace("{{count}}", e.toString()), t != null && t.addSuffix ? t.comparison && t.comparison > 0 ? "in " + i : i + " ago" : i;
 };
-function ce(r) {
+function he(r) {
   return (e = {}) => {
     const t = e.width ? String(e.width) : r.defaultWidth;
     return r.formats[t] || r.formats[r.defaultWidth];
   };
 }
-const ct = {
+const vt = {
   full: "EEEE, MMMM do, y",
   long: "MMMM do, y",
   medium: "MMM d, y",
   short: "MM/dd/yyyy"
-}, dt = {
+}, yt = {
   full: "h:mm:ss a zzzz",
   long: "h:mm:ss a z",
   medium: "h:mm:ss a",
   short: "h:mm a"
-}, ht = {
+}, xt = {
   full: "{{date}} 'at' {{time}}",
   long: "{{date}} 'at' {{time}}",
   medium: "{{date}}, {{time}}",
   short: "{{date}}, {{time}}"
-}, ut = {
-  date: ce({
-    formats: ct,
+}, Tt = {
+  date: he({
+    formats: vt,
     defaultWidth: "full"
   }),
-  time: ce({
-    formats: dt,
+  time: he({
+    formats: yt,
     defaultWidth: "full"
   }),
-  dateTime: ce({
-    formats: ht,
+  dateTime: he({
+    formats: xt,
     defaultWidth: "full"
   })
-}, bt = {
+}, wt = {
   lastWeek: "'last' eeee 'at' p",
   yesterday: "'yesterday at' p",
   today: "'today at' p",
   tomorrow: "'tomorrow at' p",
   nextWeek: "eeee 'at' p",
   other: "P"
-}, gt = (r, e, t, i) => bt[r];
-function G(r) {
+}, Ct = (r, e, t, i) => wt[r];
+function K(r) {
   return (e, t) => {
     const i = t != null && t.context ? String(t.context) : "standalone";
     let a;
@@ -905,15 +1034,15 @@ function G(r) {
     return a[n];
   };
 }
-const pt = {
+const kt = {
   narrow: ["B", "A"],
   abbreviated: ["BC", "AD"],
   wide: ["Before Christ", "Anno Domini"]
-}, mt = {
+}, Et = {
   narrow: ["1", "2", "3", "4"],
   abbreviated: ["Q1", "Q2", "Q3", "Q4"],
   wide: ["1st quarter", "2nd quarter", "3rd quarter", "4th quarter"]
-}, ft = {
+}, It = {
   narrow: ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"],
   abbreviated: [
     "Jan",
@@ -943,7 +1072,7 @@ const pt = {
     "November",
     "December"
   ]
-}, vt = {
+}, St = {
   narrow: ["S", "M", "T", "W", "T", "F", "S"],
   short: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
   abbreviated: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
@@ -956,7 +1085,7 @@ const pt = {
     "Friday",
     "Saturday"
   ]
-}, yt = {
+}, Pt = {
   narrow: {
     am: "a",
     pm: "p",
@@ -987,7 +1116,7 @@ const pt = {
     evening: "evening",
     night: "night"
   }
-}, xt = {
+}, $t = {
   narrow: {
     am: "a",
     pm: "p",
@@ -1018,7 +1147,7 @@ const pt = {
     evening: "in the evening",
     night: "at night"
   }
-}, Tt = (r, e) => {
+}, Lt = (r, e) => {
   const t = Number(r), i = t % 100;
   if (i > 20 || i < 10)
     switch (i % 10) {
@@ -1030,40 +1159,40 @@ const pt = {
         return t + "rd";
     }
   return t + "th";
-}, wt = {
-  ordinalNumber: Tt,
-  era: G({
-    values: pt,
+}, Mt = {
+  ordinalNumber: Lt,
+  era: K({
+    values: kt,
     defaultWidth: "wide"
   }),
-  quarter: G({
-    values: mt,
+  quarter: K({
+    values: Et,
     defaultWidth: "wide",
     argumentCallback: (r) => r - 1
   }),
-  month: G({
-    values: ft,
+  month: K({
+    values: It,
     defaultWidth: "wide"
   }),
-  day: G({
-    values: vt,
+  day: K({
+    values: St,
     defaultWidth: "wide"
   }),
-  dayPeriod: G({
-    values: yt,
+  dayPeriod: K({
+    values: Pt,
     defaultWidth: "wide",
-    formattingValues: xt,
+    formattingValues: $t,
     defaultFormattingWidth: "wide"
   })
 };
-function X(r) {
+function J(r) {
   return (e, t = {}) => {
     const i = t.width, a = i && r.matchPatterns[i] || r.matchPatterns[r.defaultMatchWidth], n = e.match(a);
     if (!n)
       return null;
-    const o = n[0], l = i && r.parsePatterns[i] || r.parsePatterns[r.defaultParseWidth], s = Array.isArray(l) ? kt(l, (u) => u.test(o)) : (
+    const o = n[0], l = i && r.parsePatterns[i] || r.parsePatterns[r.defaultParseWidth], s = Array.isArray(l) ? Bt(l, (u) => u.test(o)) : (
       // [TODO] -- I challenge you to fix the type
-      Ct(l, (u) => u.test(o))
+      Dt(l, (u) => u.test(o))
     );
     let c;
     c = r.valueCallback ? r.valueCallback(s) : s, c = t.valueCallback ? (
@@ -1074,17 +1203,17 @@ function X(r) {
     return { value: c, rest: d };
   };
 }
-function Ct(r, e) {
+function Dt(r, e) {
   for (const t in r)
     if (Object.prototype.hasOwnProperty.call(r, t) && e(r[t]))
       return t;
 }
-function kt(r, e) {
+function Bt(r, e) {
   for (let t = 0; t < r.length; t++)
     if (e(r[t]))
       return t;
 }
-function Et(r) {
+function At(r) {
   return (e, t = {}) => {
     const i = e.match(r.matchPattern);
     if (!i) return null;
@@ -1096,23 +1225,23 @@ function Et(r) {
     return { value: o, rest: l };
   };
 }
-const St = /^(\d+)(th|st|nd|rd)?/i, It = /\d+/i, Pt = {
+const Nt = /^(\d+)(th|st|nd|rd)?/i, Wt = /\d+/i, zt = {
   narrow: /^(b|a)/i,
   abbreviated: /^(b\.?\s?c\.?|b\.?\s?c\.?\s?e\.?|a\.?\s?d\.?|c\.?\s?e\.?)/i,
   wide: /^(before christ|before common era|anno domini|common era)/i
-}, $t = {
+}, Ht = {
   any: [/^b/i, /^(a|c)/i]
-}, Lt = {
+}, Ot = {
   narrow: /^[1234]/i,
   abbreviated: /^q[1234]/i,
   wide: /^[1234](th|st|nd|rd)? quarter/i
-}, Mt = {
+}, Ft = {
   any: [/1/i, /2/i, /3/i, /4/i]
-}, Dt = {
+}, _t = {
   narrow: /^[jfmasond]/i,
   abbreviated: /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i,
   wide: /^(january|february|march|april|may|june|july|august|september|october|november|december)/i
-}, Bt = {
+}, Ut = {
   narrow: [
     /^j/i,
     /^f/i,
@@ -1141,18 +1270,18 @@ const St = /^(\d+)(th|st|nd|rd)?/i, It = /\d+/i, Pt = {
     /^n/i,
     /^d/i
   ]
-}, At = {
+}, Rt = {
   narrow: /^[smtwf]/i,
   short: /^(su|mo|tu|we|th|fr|sa)/i,
   abbreviated: /^(sun|mon|tue|wed|thu|fri|sat)/i,
   wide: /^(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/i
-}, Wt = {
+}, qt = {
   narrow: [/^s/i, /^m/i, /^t/i, /^w/i, /^t/i, /^f/i, /^s/i],
   any: [/^su/i, /^m/i, /^tu/i, /^w/i, /^th/i, /^f/i, /^sa/i]
-}, Nt = {
+}, Vt = {
   narrow: /^(a|p|mi|n|(in the|at) (morning|afternoon|evening|night))/i,
   any: /^([ap]\.?\s?m\.?|midnight|noon|(in the|at) (morning|afternoon|evening|night))/i
-}, Ht = {
+}, Yt = {
   any: {
     am: /^a/i,
     pm: /^p/i,
@@ -1163,82 +1292,82 @@ const St = /^(\d+)(th|st|nd|rd)?/i, It = /\d+/i, Pt = {
     evening: /evening/i,
     night: /night/i
   }
-}, zt = {
-  ordinalNumber: Et({
-    matchPattern: St,
-    parsePattern: It,
+}, jt = {
+  ordinalNumber: At({
+    matchPattern: Nt,
+    parsePattern: Wt,
     valueCallback: (r) => parseInt(r, 10)
   }),
-  era: X({
-    matchPatterns: Pt,
+  era: J({
+    matchPatterns: zt,
     defaultMatchWidth: "wide",
-    parsePatterns: $t,
+    parsePatterns: Ht,
     defaultParseWidth: "any"
   }),
-  quarter: X({
-    matchPatterns: Lt,
+  quarter: J({
+    matchPatterns: Ot,
     defaultMatchWidth: "wide",
-    parsePatterns: Mt,
+    parsePatterns: Ft,
     defaultParseWidth: "any",
     valueCallback: (r) => r + 1
   }),
-  month: X({
-    matchPatterns: Dt,
+  month: J({
+    matchPatterns: _t,
     defaultMatchWidth: "wide",
-    parsePatterns: Bt,
+    parsePatterns: Ut,
     defaultParseWidth: "any"
   }),
-  day: X({
-    matchPatterns: At,
+  day: J({
+    matchPatterns: Rt,
     defaultMatchWidth: "wide",
-    parsePatterns: Wt,
+    parsePatterns: qt,
     defaultParseWidth: "any"
   }),
-  dayPeriod: X({
-    matchPatterns: Nt,
+  dayPeriod: J({
+    matchPatterns: Vt,
     defaultMatchWidth: "any",
-    parsePatterns: Ht,
+    parsePatterns: Yt,
     defaultParseWidth: "any"
   })
-}, Ot = {
+}, Gt = {
   code: "en-US",
-  formatDistance: lt,
-  formatLong: ut,
-  formatRelative: gt,
-  localize: wt,
-  match: zt,
+  formatDistance: ft,
+  formatLong: Tt,
+  formatRelative: Ct,
+  localize: Mt,
+  match: jt,
   options: {
     weekStartsOn: 0,
     firstWeekContainsDate: 1
   }
 };
-function Ft(r, e) {
+function Xt(r, e) {
   const t = B(r, e == null ? void 0 : e.in);
-  return it(t, ot(t)) + 1;
+  return ht(t, pt(t)) + 1;
 }
-function _t(r, e) {
-  const t = B(r, e == null ? void 0 : e.in), i = +ie(t) - +at(t);
-  return Math.round(i / Be) + 1;
+function Kt(r, e) {
+  const t = B(r, e == null ? void 0 : e.in), i = +ne(t) - +ut(t);
+  return Math.round(i / We) + 1;
 }
-function He(r, e) {
+function Fe(r, e) {
   var d, u, h, b;
-  const t = B(r, e == null ? void 0 : e.in), i = t.getFullYear(), a = oe(), n = (e == null ? void 0 : e.firstWeekContainsDate) ?? ((u = (d = e == null ? void 0 : e.locale) == null ? void 0 : d.options) == null ? void 0 : u.firstWeekContainsDate) ?? a.firstWeekContainsDate ?? ((b = (h = a.locale) == null ? void 0 : h.options) == null ? void 0 : b.firstWeekContainsDate) ?? 1, o = D((e == null ? void 0 : e.in) || r, 0);
+  const t = B(r, e == null ? void 0 : e.in), i = t.getFullYear(), a = le(), n = (e == null ? void 0 : e.firstWeekContainsDate) ?? ((u = (d = e == null ? void 0 : e.locale) == null ? void 0 : d.options) == null ? void 0 : u.firstWeekContainsDate) ?? a.firstWeekContainsDate ?? ((b = (h = a.locale) == null ? void 0 : h.options) == null ? void 0 : b.firstWeekContainsDate) ?? 1, o = D((e == null ? void 0 : e.in) || r, 0);
   o.setFullYear(i + 1, 0, n), o.setHours(0, 0, 0, 0);
-  const l = Q(o, e), s = D((e == null ? void 0 : e.in) || r, 0);
+  const l = te(o, e), s = D((e == null ? void 0 : e.in) || r, 0);
   s.setFullYear(i, 0, n), s.setHours(0, 0, 0, 0);
-  const c = Q(s, e);
+  const c = te(s, e);
   return +t >= +l ? i + 1 : +t >= +c ? i : i - 1;
 }
-function Ut(r, e) {
+function Jt(r, e) {
   var l, s, c, d;
-  const t = oe(), i = (e == null ? void 0 : e.firstWeekContainsDate) ?? ((s = (l = e == null ? void 0 : e.locale) == null ? void 0 : l.options) == null ? void 0 : s.firstWeekContainsDate) ?? t.firstWeekContainsDate ?? ((d = (c = t.locale) == null ? void 0 : c.options) == null ? void 0 : d.firstWeekContainsDate) ?? 1, a = He(r, e), n = D((e == null ? void 0 : e.in) || r, 0);
-  return n.setFullYear(a, 0, i), n.setHours(0, 0, 0, 0), Q(n, e);
+  const t = le(), i = (e == null ? void 0 : e.firstWeekContainsDate) ?? ((s = (l = e == null ? void 0 : e.locale) == null ? void 0 : l.options) == null ? void 0 : s.firstWeekContainsDate) ?? t.firstWeekContainsDate ?? ((d = (c = t.locale) == null ? void 0 : c.options) == null ? void 0 : d.firstWeekContainsDate) ?? 1, a = Fe(r, e), n = D((e == null ? void 0 : e.in) || r, 0);
+  return n.setFullYear(a, 0, i), n.setHours(0, 0, 0, 0), te(n, e);
 }
-function Rt(r, e) {
-  const t = B(r, e == null ? void 0 : e.in), i = +Q(t, e) - +Ut(t, e);
-  return Math.round(i / Be) + 1;
+function Zt(r, e) {
+  const t = B(r, e == null ? void 0 : e.in), i = +te(t, e) - +Jt(t, e);
+  return Math.round(i / We) + 1;
 }
-function S(r, e) {
+function I(r, e) {
   const t = r < 0 ? "-" : "", i = Math.abs(r).toString().padStart(e, "0");
   return t + i;
 }
@@ -1246,16 +1375,16 @@ const W = {
   // Year
   y(r, e) {
     const t = r.getFullYear(), i = t > 0 ? t : 1 - t;
-    return S(e === "yy" ? i % 100 : i, e.length);
+    return I(e === "yy" ? i % 100 : i, e.length);
   },
   // Month
   M(r, e) {
     const t = r.getMonth();
-    return e === "M" ? String(t + 1) : S(t + 1, 2);
+    return e === "M" ? String(t + 1) : I(t + 1, 2);
   },
   // Day of the month
   d(r, e) {
-    return S(r.getDate(), e.length);
+    return I(r.getDate(), e.length);
   },
   // AM or PM
   a(r, e) {
@@ -1275,35 +1404,35 @@ const W = {
   },
   // Hour [1-12]
   h(r, e) {
-    return S(r.getHours() % 12 || 12, e.length);
+    return I(r.getHours() % 12 || 12, e.length);
   },
   // Hour [0-23]
   H(r, e) {
-    return S(r.getHours(), e.length);
+    return I(r.getHours(), e.length);
   },
   // Minute
   m(r, e) {
-    return S(r.getMinutes(), e.length);
+    return I(r.getMinutes(), e.length);
   },
   // Second
   s(r, e) {
-    return S(r.getSeconds(), e.length);
+    return I(r.getSeconds(), e.length);
   },
   // Fraction of second
   S(r, e) {
     const t = e.length, i = r.getMilliseconds(), a = Math.trunc(
       i * Math.pow(10, t - 3)
     );
-    return S(a, e.length);
+    return I(a, e.length);
   }
-}, R = {
+}, V = {
   midnight: "midnight",
   noon: "noon",
   morning: "morning",
   afternoon: "afternoon",
   evening: "evening",
   night: "night"
-}, Ce = {
+}, Ee = {
   // Era
   G: function(r, e, t) {
     const i = r.getFullYear() > 0 ? 1 : 0;
@@ -1329,17 +1458,17 @@ const W = {
   },
   // Local week-numbering year
   Y: function(r, e, t, i) {
-    const a = He(r, i), n = a > 0 ? a : 1 - a;
+    const a = Fe(r, i), n = a > 0 ? a : 1 - a;
     if (e === "YY") {
       const o = n % 100;
-      return S(o, 2);
+      return I(o, 2);
     }
-    return e === "Yo" ? t.ordinalNumber(n, { unit: "year" }) : S(n, e.length);
+    return e === "Yo" ? t.ordinalNumber(n, { unit: "year" }) : I(n, e.length);
   },
   // ISO week-numbering year
   R: function(r, e) {
-    const t = We(r);
-    return S(t, e.length);
+    const t = He(r);
+    return I(t, e.length);
   },
   // Extended year. This is a single number designating the year of this calendar system.
   // The main difference between `y` and `u` localizers are B.C. years:
@@ -1352,7 +1481,7 @@ const W = {
   // while `uu` pads single digit years to 2 characters and returns other years unchanged.
   u: function(r, e) {
     const t = r.getFullYear();
-    return S(t, e.length);
+    return I(t, e.length);
   },
   // Quarter
   Q: function(r, e, t) {
@@ -1361,7 +1490,7 @@ const W = {
       case "Q":
         return String(i);
       case "QQ":
-        return S(i, 2);
+        return I(i, 2);
       case "Qo":
         return t.ordinalNumber(i, { unit: "quarter" });
       case "QQQ":
@@ -1389,7 +1518,7 @@ const W = {
       case "q":
         return String(i);
       case "qq":
-        return S(i, 2);
+        return I(i, 2);
       case "qo":
         return t.ordinalNumber(i, { unit: "quarter" });
       case "qqq":
@@ -1441,7 +1570,7 @@ const W = {
       case "L":
         return String(i + 1);
       case "LL":
-        return S(i + 1, 2);
+        return I(i + 1, 2);
       case "Lo":
         return t.ordinalNumber(i + 1, { unit: "month" });
       case "LLL":
@@ -1461,13 +1590,13 @@ const W = {
   },
   // Local week of year
   w: function(r, e, t, i) {
-    const a = Rt(r, i);
-    return e === "wo" ? t.ordinalNumber(a, { unit: "week" }) : S(a, e.length);
+    const a = Zt(r, i);
+    return e === "wo" ? t.ordinalNumber(a, { unit: "week" }) : I(a, e.length);
   },
   // ISO week of year
   I: function(r, e, t) {
-    const i = _t(r);
-    return e === "Io" ? t.ordinalNumber(i, { unit: "week" }) : S(i, e.length);
+    const i = Kt(r);
+    return e === "Io" ? t.ordinalNumber(i, { unit: "week" }) : I(i, e.length);
   },
   // Day of the month
   d: function(r, e, t) {
@@ -1475,8 +1604,8 @@ const W = {
   },
   // Day of year
   D: function(r, e, t) {
-    const i = Ft(r);
-    return e === "Do" ? t.ordinalNumber(i, { unit: "dayOfYear" }) : S(i, e.length);
+    const i = Xt(r);
+    return e === "Do" ? t.ordinalNumber(i, { unit: "dayOfYear" }) : I(i, e.length);
   },
   // Day of week
   E: function(r, e, t) {
@@ -1514,7 +1643,7 @@ const W = {
       case "e":
         return String(n);
       case "ee":
-        return S(n, 2);
+        return I(n, 2);
       case "eo":
         return t.ordinalNumber(n, { unit: "day" });
       case "eee":
@@ -1547,7 +1676,7 @@ const W = {
       case "c":
         return String(n);
       case "cc":
-        return S(n, e.length);
+        return I(n, e.length);
       case "co":
         return t.ordinalNumber(n, { unit: "day" });
       case "ccc":
@@ -1580,7 +1709,7 @@ const W = {
       case "i":
         return String(a);
       case "ii":
-        return S(a, e.length);
+        return I(a, e.length);
       case "io":
         return t.ordinalNumber(a, { unit: "day" });
       case "iii":
@@ -1638,7 +1767,7 @@ const W = {
   b: function(r, e, t) {
     const i = r.getHours();
     let a;
-    switch (i === 12 ? a = R.noon : i === 0 ? a = R.midnight : a = i / 12 >= 1 ? "pm" : "am", e) {
+    switch (i === 12 ? a = V.noon : i === 0 ? a = V.midnight : a = i / 12 >= 1 ? "pm" : "am", e) {
       case "b":
       case "bb":
         return t.dayPeriod(a, {
@@ -1667,7 +1796,7 @@ const W = {
   B: function(r, e, t) {
     const i = r.getHours();
     let a;
-    switch (i >= 17 ? a = R.evening : i >= 12 ? a = R.afternoon : i >= 4 ? a = R.morning : a = R.night, e) {
+    switch (i >= 17 ? a = V.evening : i >= 12 ? a = V.afternoon : i >= 4 ? a = V.morning : a = V.night, e) {
       case "B":
       case "BB":
       case "BBB":
@@ -1703,12 +1832,12 @@ const W = {
   // Hour [0-11]
   K: function(r, e, t) {
     const i = r.getHours() % 12;
-    return e === "Ko" ? t.ordinalNumber(i, { unit: "hour" }) : S(i, e.length);
+    return e === "Ko" ? t.ordinalNumber(i, { unit: "hour" }) : I(i, e.length);
   },
   // Hour [1-24]
   k: function(r, e, t) {
     let i = r.getHours();
-    return i === 0 && (i = 24), e === "ko" ? t.ordinalNumber(i, { unit: "hour" }) : S(i, e.length);
+    return i === 0 && (i = 24), e === "ko" ? t.ordinalNumber(i, { unit: "hour" }) : I(i, e.length);
   },
   // Minute
   m: function(r, e, t) {
@@ -1729,14 +1858,14 @@ const W = {
       return "Z";
     switch (e) {
       case "X":
-        return Ee(i);
+        return Se(i);
       case "XXXX":
       case "XX":
-        return _(i);
+        return R(i);
       case "XXXXX":
       case "XXX":
       default:
-        return _(i, ":");
+        return R(i, ":");
     }
   },
   // Timezone (ISO-8601. If offset is 0, output is `'+00:00'` or equivalent)
@@ -1744,14 +1873,14 @@ const W = {
     const i = r.getTimezoneOffset();
     switch (e) {
       case "x":
-        return Ee(i);
+        return Se(i);
       case "xxxx":
       case "xx":
-        return _(i);
+        return R(i);
       case "xxxxx":
       case "xxx":
       default:
-        return _(i, ":");
+        return R(i, ":");
     }
   },
   // Timezone (GMT)
@@ -1761,10 +1890,10 @@ const W = {
       case "O":
       case "OO":
       case "OOO":
-        return "GMT" + ke(i, ":");
+        return "GMT" + Ie(i, ":");
       case "OOOO":
       default:
-        return "GMT" + _(i, ":");
+        return "GMT" + R(i, ":");
     }
   },
   // Timezone (specific non-location)
@@ -1774,34 +1903,34 @@ const W = {
       case "z":
       case "zz":
       case "zzz":
-        return "GMT" + ke(i, ":");
+        return "GMT" + Ie(i, ":");
       case "zzzz":
       default:
-        return "GMT" + _(i, ":");
+        return "GMT" + R(i, ":");
     }
   },
   // Seconds timestamp
   t: function(r, e, t) {
     const i = Math.trunc(+r / 1e3);
-    return S(i, e.length);
+    return I(i, e.length);
   },
   // Milliseconds timestamp
   T: function(r, e, t) {
-    return S(+r, e.length);
+    return I(+r, e.length);
   }
 };
-function ke(r, e = "") {
+function Ie(r, e = "") {
   const t = r > 0 ? "-" : "+", i = Math.abs(r), a = Math.trunc(i / 60), n = i % 60;
-  return n === 0 ? t + String(a) : t + String(a) + e + S(n, 2);
+  return n === 0 ? t + String(a) : t + String(a) + e + I(n, 2);
 }
-function Ee(r, e) {
-  return r % 60 === 0 ? (r > 0 ? "-" : "+") + S(Math.abs(r) / 60, 2) : _(r, e);
+function Se(r, e) {
+  return r % 60 === 0 ? (r > 0 ? "-" : "+") + I(Math.abs(r) / 60, 2) : R(r, e);
 }
-function _(r, e = "") {
-  const t = r > 0 ? "-" : "+", i = Math.abs(r), a = S(Math.trunc(i / 60), 2), n = S(i % 60, 2);
+function R(r, e = "") {
+  const t = r > 0 ? "-" : "+", i = Math.abs(r), a = I(Math.trunc(i / 60), 2), n = I(i % 60, 2);
   return t + a + e + n;
 }
-const Se = (r, e) => {
+const Pe = (r, e) => {
   switch (r) {
     case "P":
       return e.date({ width: "short" });
@@ -1813,7 +1942,7 @@ const Se = (r, e) => {
     default:
       return e.date({ width: "full" });
   }
-}, ze = (r, e) => {
+}, _e = (r, e) => {
   switch (r) {
     case "p":
       return e.time({ width: "short" });
@@ -1825,10 +1954,10 @@ const Se = (r, e) => {
     default:
       return e.time({ width: "full" });
   }
-}, qt = (r, e) => {
+}, Qt = (r, e) => {
   const t = r.match(/(P+)(p+)?/) || [], i = t[1], a = t[2];
   if (!a)
-    return Se(r, e);
+    return Pe(r, e);
   let n;
   switch (i) {
     case "P":
@@ -1845,47 +1974,47 @@ const Se = (r, e) => {
       n = e.dateTime({ width: "full" });
       break;
   }
-  return n.replace("{{date}}", Se(i, e)).replace("{{time}}", ze(a, e));
-}, Vt = {
-  p: ze,
-  P: qt
-}, Yt = /^D+$/, jt = /^Y+$/, Gt = ["D", "DD", "YY", "YYYY"];
-function Xt(r) {
-  return Yt.test(r);
+  return n.replace("{{date}}", Pe(i, e)).replace("{{time}}", _e(a, e));
+}, ei = {
+  p: _e,
+  P: Qt
+}, ti = /^D+$/, ii = /^Y+$/, ai = ["D", "DD", "YY", "YYYY"];
+function ni(r) {
+  return ti.test(r);
 }
-function Kt(r) {
-  return jt.test(r);
+function ri(r) {
+  return ii.test(r);
 }
-function Jt(r, e, t) {
-  const i = Zt(r, e, t);
-  if (console.warn(i), Gt.includes(r)) throw new RangeError(i);
+function oi(r, e, t) {
+  const i = si(r, e, t);
+  if (console.warn(i), ai.includes(r)) throw new RangeError(i);
 }
-function Zt(r, e, t) {
+function si(r, e, t) {
   const i = r[0] === "Y" ? "years" : "days of the month";
   return `Use \`${r.toLowerCase()}\` instead of \`${r}\` (in \`${e}\`) for formatting ${i} to the input \`${t}\`; see: https://github.com/date-fns/date-fns/blob/master/docs/unicodeTokens.md`;
 }
-const Qt = /[yYQqMLwIdDecihHKkms]o|(\w)\1*|''|'(''|[^'])+('|$)|./g, ei = /P+p+|P+|p+|''|'(''|[^'])+('|$)|./g, ti = /^'([^]*?)'?$/, ii = /''/g, ai = /[a-zA-Z]/;
-function z(r, e, t) {
+const li = /[yYQqMLwIdDecihHKkms]o|(\w)\1*|''|'(''|[^'])+('|$)|./g, ci = /P+p+|P+|p+|''|'(''|[^'])+('|$)|./g, di = /^'([^]*?)'?$/, hi = /''/g, ui = /[a-zA-Z]/;
+function O(r, e, t) {
   var d, u, h, b;
-  const i = oe(), a = i.locale ?? Ot, n = i.firstWeekContainsDate ?? ((u = (d = i.locale) == null ? void 0 : d.options) == null ? void 0 : u.firstWeekContainsDate) ?? 1, o = i.weekStartsOn ?? ((b = (h = i.locale) == null ? void 0 : h.options) == null ? void 0 : b.weekStartsOn) ?? 0, l = B(r, t == null ? void 0 : t.in);
-  if (!rt(l))
+  const i = le(), a = i.locale ?? Gt, n = i.firstWeekContainsDate ?? ((u = (d = i.locale) == null ? void 0 : d.options) == null ? void 0 : u.firstWeekContainsDate) ?? 1, o = i.weekStartsOn ?? ((b = (h = i.locale) == null ? void 0 : h.options) == null ? void 0 : b.weekStartsOn) ?? 0, l = B(r, t == null ? void 0 : t.in);
+  if (!gt(l))
     throw new RangeError("Invalid time value");
-  let s = e.match(ei).map((p) => {
+  let s = e.match(ci).map((p) => {
     const m = p[0];
     if (m === "p" || m === "P") {
-      const g = Vt[m];
+      const g = ei[m];
       return g(p, a.formatLong);
     }
     return p;
-  }).join("").match(Qt).map((p) => {
+  }).join("").match(li).map((p) => {
     if (p === "''")
       return { isToken: !1, value: "'" };
     const m = p[0];
     if (m === "'")
-      return { isToken: !1, value: ni(p) };
-    if (Ce[m])
+      return { isToken: !1, value: bi(p) };
+    if (Ee[m])
       return { isToken: !0, value: p };
-    if (m.match(ai))
+    if (m.match(ui))
       throw new RangeError(
         "Format string contains an unescaped latin alphabet character `" + m + "`"
       );
@@ -1900,60 +2029,60 @@ function z(r, e, t) {
   return s.map((p) => {
     if (!p.isToken) return p.value;
     const m = p.value;
-    (Kt(m) || Xt(m)) && Jt(m, e, String(r));
-    const g = Ce[m[0]];
+    (ri(m) || ni(m)) && oi(m, e, String(r));
+    const g = Ee[m[0]];
     return g(l, m, a.localize, c);
   }).join("");
 }
-function ni(r) {
-  const e = r.match(ti);
-  return e ? e[1].replace(ii, "'") : r;
+function bi(r) {
+  const e = r.match(di);
+  return e ? e[1].replace(hi, "'") : r;
 }
-function ri(r, e) {
-  return ye(
+function gi(r, e) {
+  return Te(
     D(r, r),
-    ve(r)
+    xe(r)
   );
 }
-function oi(r, e) {
-  return ye(
+function pi(r, e) {
+  return Te(
     r,
-    Ae(ve(r), 1),
+    ze(xe(r), 1),
     e
   );
 }
-function si(r, e, t) {
-  return Ae(r, -1, t);
+function mi(r, e, t) {
+  return ze(r, -1, t);
 }
-function li(r, e) {
-  return ye(
+function fi(r, e) {
+  return Te(
     D(r, r),
-    si(ve(r))
+    mi(xe(r))
   );
 }
-function ci(r) {
+function vi(r) {
   try {
-    let e = orca.state.settings[Le.JournalDateFormat];
-    if ((!e || typeof e != "string") && (e = (orca.state.locale || "zh-CN").startsWith("zh") ? "yyyy年MM月dd日" : "yyyy-MM-dd"), ri(r))
+    let e = orca.state.settings[Be.JournalDateFormat];
+    if ((!e || typeof e != "string") && (e = (orca.state.locale || "zh-CN").startsWith("zh") ? "yyyy年MM月dd日" : "yyyy-MM-dd"), gi(r))
       return "今天";
-    if (li(r))
+    if (fi(r))
       return "昨天";
-    if (oi(r))
+    if (pi(r))
       return "明天";
     try {
       if (e.includes("E"))
         if ((orca.state.locale || "zh-CN").startsWith("zh")) {
           const i = r.getDay(), n = ["日", "一", "二", "三", "四", "五", "六"][i], o = e.replace(/E/g, n);
-          return z(r, o);
+          return O(r, o);
         } else
-          return z(r, e);
+          return O(r, e);
       else
-        return z(r, e);
+        return O(r, e);
     } catch {
       const i = ["yyyy-MM-dd", "MM/dd/yyyy", "dd/MM/yyyy", "yyyy年MM月dd日"];
       for (const a of i)
         try {
-          return z(r, a);
+          return O(r, a);
         } catch {
           continue;
         }
@@ -1963,10 +2092,10 @@ function ci(r) {
     return r.toLocaleDateString();
   }
 }
-function Oe(r) {
+function Ue(r) {
   try {
-    const e = ue(r, "_repr");
-    if (!e || e.type !== Me.JSON || !e.value)
+    const e = ge(r, "_repr");
+    if (!e || e.type !== Ae.JSON || !e.value)
       return null;
     const t = typeof e.value == "string" ? JSON.parse(e.value) : e.value;
     return t.type === "journal" && t.date ? new Date(t.date) : null;
@@ -1974,9 +2103,9 @@ function Oe(r) {
     return null;
   }
 }
-async function de(r) {
+async function ue(r) {
   try {
-    if (Oe(r))
+    if (Ue(r))
       return "journal";
     if (r["data-type"]) {
       const i = r["data-type"];
@@ -1994,13 +2123,13 @@ async function de(r) {
     }
     if (r.aliases && r.aliases.length > 0 && r.aliases[0])
       try {
-        const a = ue(r, "_hide");
+        const a = ge(r, "_hide");
         return a && a.value ? "page" : "tag";
       } catch {
         return "tag";
       }
-    const t = ue(r, "_repr");
-    if (t && t.type === Me.JSON && t.value)
+    const t = ge(r, "_repr");
+    if (t && t.type === Ae.JSON && t.value)
       try {
         const i = typeof t.value == "string" ? JSON.parse(t.value) : t.value;
         if (i.type)
@@ -2050,7 +2179,7 @@ async function de(r) {
     return "default";
   }
 }
-function K(r) {
+function Z(r) {
   const e = {
     // 基础块类型
     journal: "📅",
@@ -2221,12 +2350,12 @@ function K(r) {
   };
   let t = e[r];
   if (!t) {
-    const i = di(r);
+    const i = yi(r);
     i && (t = i);
   }
   return t || (t = e.default), t;
 }
-function di(r) {
+function yi(r) {
   const e = r.toLowerCase(), t = {
     date: "ti ti-calendar",
     time: "ti ti-clock",
@@ -2375,10 +2504,10 @@ function di(r) {
       return a;
   return null;
 }
-function ue(r, e) {
+function ge(r, e) {
   return !r.properties || !Array.isArray(r.properties) ? null : r.properties.find((t) => t.name === e);
 }
-function hi(r) {
+function xi(r) {
   if (!Array.isArray(r) || r.length === 0)
     return !1;
   let e = 0, t = 0;
@@ -2386,36 +2515,36 @@ function hi(r) {
     i && typeof i == "object" && (i.t === "text" && i.v ? e++ : i.t === "ref" && i.v && t++);
   return e > 0 && t > 0 && e >= t;
 }
-async function ui(r) {
+async function Ti(r) {
   if (!r || r.length === 0) return "";
   let e = "";
   for (const t of r)
     t.t === "t" && t.v ? e += t.v : t.t === "r" ? t.u ? t.v ? e += t.v : e += t.u : t.a ? e += `[[${t.a}]]` : t.v && (typeof t.v == "number" || typeof t.v == "string") ? e += `[[块${t.v}]]` : t.v && (e += t.v) : t.t === "br" && t.v ? e += `[[块${t.v}]]` : t.t && t.t.includes("math") && t.v ? e += `[数学: ${t.v}]` : t.t && t.t.includes("code") && t.v ? e += `[代码: ${t.v}]` : t.t && t.t.includes("image") && t.v ? e += `[图片: ${t.v}]` : t.v && (e += t.v);
   return e;
 }
-let te = !0;
-function bi(r) {
-  te = r;
+let ae = !0;
+function wi(r) {
+  ae = r;
 }
-function j(r) {
+function X(r) {
   if (!r) return !0;
   if (r.classList && (r.classList.contains("orca-hideable-hidden") || r.id === "sidebar"))
-    return te && console.debug("[ContentVisibilityHelper] 跳过操作：已知隐藏元素", r), !0;
+    return ae && console.debug("[ContentVisibilityHelper] 跳过操作：已知隐藏元素", r), !0;
   let e = r.parentElement;
   for (; e && e !== document.body; ) {
     if (e.classList && (e.classList.contains("orca-hideable-hidden") || e.id === "sidebar"))
-      return te && console.debug("[ContentVisibilityHelper] 跳过操作：父元素为已知隐藏元素", e), !0;
+      return ae && console.debug("[ContentVisibilityHelper] 跳过操作：父元素为已知隐藏元素", e), !0;
     e = e.parentElement;
   }
   try {
     const t = window.getComputedStyle(r);
-    return t.getPropertyValue("content-visibility") === "hidden" ? (te && console.debug("[ContentVisibilityHelper] 跳过操作：元素有 content-visibility: hidden", r), !0) : t.getPropertyValue("display") === "none" || t.getPropertyValue("visibility") === "hidden" || t.getPropertyValue("opacity") === "0";
+    return t.getPropertyValue("content-visibility") === "hidden" ? (ae && console.debug("[ContentVisibilityHelper] 跳过操作：元素有 content-visibility: hidden", r), !0) : t.getPropertyValue("display") === "none" || t.getPropertyValue("visibility") === "hidden" || t.getPropertyValue("opacity") === "0";
   } catch {
     return !1;
   }
 }
-function Fe(r, e) {
-  if (!r || j(r))
+function Re(r, e) {
+  if (!r || X(r))
     return !1;
   try {
     return r.style.cssText = e, !0;
@@ -2423,7 +2552,7 @@ function Fe(r, e) {
     return !1;
   }
 }
-function xe(r) {
+function we(r) {
   if (!r || r.classList && (r.classList.contains("orca-hideable-hidden") || r.id === "sidebar"))
     return null;
   let e = r.parentElement;
@@ -2439,8 +2568,8 @@ function xe(r) {
     return null;
   }
 }
-function gi(r) {
-  const e = xe(r);
+function Ci(r) {
+  const e = we(r);
   if (!e)
     return null;
   try {
@@ -2450,17 +2579,17 @@ function gi(r) {
     return null;
   }
 }
-function A(r, e) {
-  if (j(r))
+function N(r, e) {
+  if (X(r))
     return console.debug("[ContentVisibilityHelper] 安全阻止了可能触发渲染警告的操作", r), !1;
   try {
-    const t = xe(r);
+    const t = we(r);
     return !t || t.getPropertyValue("content-visibility") === "hidden" ? (console.debug("[ContentVisibilityHelper] 二次检查发现隐藏元素，阻止操作", r), !1) : (e(), !0);
   } catch (t) {
     return console.debug("[ContentVisibilityHelper] 渲染操作失败:", t), !1;
   }
 }
-function pi(r, e, t, i) {
+function ki(r, e, t, i) {
   const a = document.createElement("div");
   a.className = "orca-tabs-ref-menu-item", a.setAttribute("role", "menuitem"), a.style.cssText = `
     display: flex;
@@ -2504,17 +2633,17 @@ function pi(r, e, t, i) {
     s && (s.style.display = "none", s.remove());
   }), a;
 }
-function mi(r, e, t) {
+function Ei(r, e, t) {
   r.addEventListener("mouseenter", () => {
     r.style.cssText += e;
   }), r.addEventListener("mouseleave", () => {
     r.style.cssText = t;
   });
 }
-function _e(r) {
+function qe(r) {
   r && r.parentNode && r.parentNode.removeChild(r);
 }
-function fi(r, e) {
+function Ii(r, e) {
   const t = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(r);
   if (t) {
     const i = parseInt(t[1], 16), a = parseInt(t[2], 16), n = parseInt(t[3], 16);
@@ -2522,7 +2651,7 @@ function fi(r, e) {
   }
   return `rgba(200, 200, 200, ${e})`;
 }
-function Ie(r, e, t, i, a) {
+function $e(r, e, t, i, a) {
   let n = "var(--orca-tab-bg)", o = "var(--orca-color-text-1)", l = "normal", s = "";
   if (r.color)
     try {
@@ -2573,7 +2702,7 @@ function Ie(r, e, t, i, a) {
     will-change: transform, margin, opacity, max-width, min-width;
   `;
 }
-function vi() {
+function Si() {
   const r = document.createElement("div");
   return r.style.cssText = `
     display: flex;
@@ -2583,7 +2712,7 @@ function vi() {
     gap: 6px;
   `, r;
 }
-function yi(r) {
+function Pi(r) {
   const e = document.createElement("div");
   if (e.style.cssText = `
     display: flex;
@@ -2601,7 +2730,7 @@ function yi(r) {
     e.textContent = r;
   return e;
 }
-function xi(r) {
+function $i(r) {
   const e = document.createElement("div");
   e.style.cssText = `
     flex: 1;
@@ -2622,13 +2751,13 @@ function xi(r) {
     line-height: 2.2;
     vertical-align: middle;
   `, t.textContent = r, e.appendChild(t), requestAnimationFrame(() => {
-    if (!j(e)) {
+    if (!X(e)) {
       const i = e.offsetWidth;
       t.scrollWidth > i && (t.style.mask = "linear-gradient(to right, black 0%, black 87%, transparent 100%)", t.style.webkitMask = "linear-gradient(to right, black 0%, black 87%, transparent 100%)", t.style.maskSize = "100% 100%", t.style.webkitMaskSize = "100% 100%", t.style.maskRepeat = "no-repeat", t.style.webkitMaskRepeat = "no-repeat");
     }
   }), e;
 }
-function Ti() {
+function Li() {
   const r = document.createElement("span");
   return r.textContent = "📌", r.style.cssText = `
     flex-shrink: 0;
@@ -2636,12 +2765,12 @@ function Ti() {
     opacity: 0.8;
   `, r;
 }
-function J(r, e, t = 180, i = 200) {
+function Q(r, e, t = 180, i = 200) {
   const a = window.innerWidth, n = window.innerHeight, o = 10;
   let l = r, s = e;
   return l + t > a - o && (l = a - t - o), s + i > n - o && (s = n - i - o, s < e - i && (s = e - i - 5)), l < o && (l = o), s < o && (s = e + 5), l = Math.max(o, Math.min(l, a - t - o)), s = Math.max(o, Math.min(s, n - i - o)), { x: l, y: s };
 }
-function Ue() {
+function Ve() {
   return `
     position: fixed;
     top: 50%;
@@ -2658,14 +2787,14 @@ function Ue() {
     -webkit-backdrop-filter: blur(8px);
   `;
 }
-function ne(r = "primary") {
+function oe(r = "primary") {
   return {
     primary: "orca-button orca-button-primary",
     secondary: "orca-button",
     danger: "orca-button"
   }[r];
 }
-function be() {
+function pe() {
   return `
     width: 100%;
     height: 6px;
@@ -2675,7 +2804,7 @@ function be() {
     -webkit-appearance: none;
   `;
 }
-function Z(r, e, t, i, a, n, o, l) {
+function ee(r, e, t, i, a, n, o, l) {
   return r && o ? l ? `
         position: fixed;
         top: ${e.y}px;
@@ -2785,56 +2914,56 @@ function Z(r, e, t, i, a, n, o, l) {
   `;
 }
 var $ = /* @__PURE__ */ ((r) => (r[r.ERROR = 0] = "ERROR", r[r.WARN = 1] = "WARN", r[r.INFO = 2] = "INFO", r[r.DEBUG = 3] = "DEBUG", r[r.VERBOSE = 4] = "VERBOSE", r))($ || {});
-const Re = 1, V = class V {
+const Ye = 1, j = class j {
   /**
    * 设置当前日志级别
    */
   static setLogLevel(e) {
-    V.currentLogLevel = e;
+    j.currentLogLevel = e;
   }
   /**
    * 获取当前日志级别
    */
   static getLogLevel() {
-    return V.currentLogLevel;
+    return j.currentLogLevel;
   }
   /**
    * 检查是否应该输出指定级别的日志
    */
   static shouldLog(e) {
-    return V.currentLogLevel >= e;
+    return j.currentLogLevel >= e;
   }
 };
-f(V, "currentLogLevel", Re);
-let U = V;
-function he(r, ...e) {
-  U.shouldLog(
+v(j, "currentLogLevel", Ye);
+let q = j;
+function be(r, ...e) {
+  q.shouldLog(
     2
     /* INFO */
   ) && console.info("[OrcaPlugin]", r, ...e);
 }
-function wi(r, ...e) {
-  U.shouldLog(
+function Mi(r, ...e) {
+  q.shouldLog(
     0
     /* ERROR */
   ) && console.error("[OrcaPlugin]", r, ...e);
 }
-function Ci(r, ...e) {
-  U.shouldLog(
+function Di(r, ...e) {
+  q.shouldLog(
     1
     /* WARN */
   ) && console.warn("[OrcaPlugin]", r, ...e);
 }
-function F(r, ...e) {
-  U.shouldLog(
+function U(r, ...e) {
+  q.shouldLog(
     4
     /* VERBOSE */
   ) && console.log("[OrcaPlugin]", r, ...e);
 }
-function ki(r, e, t, i, a, n) {
+function Bi(r, e, t, i, a, n) {
   const o = document.createElement("div");
   o.className = r ? "orca-tabs-plugin orca-tabs-container vertical" : "orca-tabs-plugin orca-tabs-container";
-  const l = Z(
+  const l = ee(
     r,
     e,
     i,
@@ -2844,11 +2973,11 @@ function ki(r, e, t, i, a, n) {
     a,
     n
   );
-  return Fe(o, l), o;
+  return Re(o, l), o;
 }
-function Ei(r, e, t) {
+function Ai(r, e, t) {
   const i = document.createElement("div");
-  return i.className = "feature-toggle-button", i.innerHTML = e ? "🔒" : "🔓", i.title = e ? "中键固定/双击关闭 (已启用)" : "中键固定/双击关闭 (已禁用)", Fe(i, r ? `
+  return i.className = "feature-toggle-button", i.innerHTML = e ? "🔒" : "🔓", i.title = e ? "中键固定/双击关闭 (已启用)" : "中键固定/双击关闭 (已禁用)", Re(i, r ? `
     width: calc(100% - 6px);
     margin: 0 3px;
     height: 24px;
@@ -2888,9 +3017,9 @@ function Ei(r, e, t) {
     transition: all 0.2s ease;
     border: 2px solid ${e ? "rgba(0, 150, 0, 0.8)" : "rgba(255, 0, 0, 0.8)"};
     z-index: 1000;
-  `), i.addEventListener("click", t), mi(i, e ? "#006600" : "#666", e ? "#004400" : "#333"), i;
+  `), i.addEventListener("click", t), Ei(i, e ? "#006600" : "#666", e ? "#004400" : "#333"), i;
 }
-function Si(r, e, t) {
+function Ni(r, e, t) {
   const i = document.createElement("div");
   i.className = "hover-tab-list-container";
   const a = `
@@ -2944,7 +3073,7 @@ function Si(r, e, t) {
     i.style.opacity = "1", i.style.transform = "translateY(0)";
   }), i;
 }
-function Ii(r, e, t, i, a) {
+function Wi(r, e, t, i, a) {
   const n = document.createElement("div");
   n.className = "hover-tab-item", n.setAttribute("data-tab-id", r.blockId);
   const o = t.maxDisplayCount - 1, l = Math.max(t.minOpacity, 1 - e / o * (1 - t.minOpacity)), s = Math.max(t.minScale, 1 - e / o * (1 - t.minScale)), c = `
@@ -2998,32 +3127,32 @@ function Ii(r, e, t, i, a) {
     n.style.background = "transparent", n.style.transform = `scale(${s})`;
   }), n;
 }
-function ge(r, e, t, i, a, n = 0) {
+function me(r, e, t, i, a, n = 0) {
   const o = r.querySelector(".hover-tab-list-scroll");
   if (!o) return;
   o.innerHTML = "";
   const l = n, s = Math.min(l + t.maxDisplayCount, e.length);
   e.slice(l, s).forEach((d, u) => {
-    const h = Ii(d, u, t, i);
+    const h = Wi(d, u, t, i);
     o.appendChild(h);
   }), n > 0 && (o.scrollTop = n * 32);
 }
-function Pe(r, e, t, i, a) {
-  F("🎨 showHoverTabList 被调用", { tabs: r.length, position: e, config: t });
+function Le(r, e, t, i, a) {
+  U("🎨 showHoverTabList 被调用", { tabs: r.length, position: e, config: t });
   const n = document.querySelector(".hover-tab-list-container");
-  n && (F("🗑️ 移除现有的悬浮列表"), _e(n)), F("🏗️ 创建新容器");
-  const o = Si(t, e);
-  return F("📦 容器创建完成", o), document.body && A(document.body, () => {
+  n && (U("🗑️ 移除现有的悬浮列表"), qe(n)), U("🏗️ 创建新容器");
+  const o = Ni(t, e);
+  return U("📦 容器创建完成", o), document.body && N(document.body, () => {
     document.body.appendChild(o);
-  }), F("📄 容器已添加到页面"), F("🔄 更新内容"), ge(o, r, t, i), F("✅ 内容更新完成"), o;
+  }), U("📄 容器已添加到页面"), U("🔄 更新内容"), me(o, r, t, i), U("✅ 内容更新完成"), o;
 }
-function N() {
+function z() {
   const r = document.querySelector(".hover-tab-list-container");
   r && (r.style.opacity = "0", r.style.transform = "translateY(-10px)", setTimeout(() => {
-    _e(r);
+    qe(r);
   }, 200));
 }
-const pe = /* @__PURE__ */ new WeakMap();
+const fe = /* @__PURE__ */ new WeakMap();
 function M(r, e) {
   if (!r || !e.text)
     return;
@@ -3053,7 +3182,7 @@ function M(r, e) {
             return;
           }
           let u = 0, h = 0, b = e.defaultPlacement || "top";
-          const p = window.innerWidth, m = window.innerHeight, g = 8, v = (w) => {
+          const p = window.innerWidth, m = window.innerHeight, g = 8, f = (w) => {
             let x = 0, T = 0;
             switch (w) {
               case "top":
@@ -3071,23 +3200,23 @@ function M(r, e) {
             }
             return { x, y: T };
           }, y = (w) => {
-            const { x, y: T } = v(w);
+            const { x, y: T } = f(w);
             return x >= g && x + d.width <= p - g && T >= g && T + d.height <= m - g;
           };
           if (y(b)) {
-            const w = v(b);
+            const w = f(b);
             u = w.x, h = w.y;
           } else {
             const w = b === "bottom" ? ["top", "left", "right"] : b === "top" ? ["bottom", "left", "right"] : b === "left" ? ["right", "top", "bottom"] : ["left", "top", "bottom"];
             let x = !1;
             for (const T of w)
               if (y(T)) {
-                const E = v(T);
+                const E = f(T);
                 u = E.x, h = E.y, b = T, x = !0;
                 break;
               }
             if (!x) {
-              const T = v(b);
+              const T = f(b);
               u = T.x, h = T.y;
             }
           }
@@ -3127,13 +3256,13 @@ function M(r, e) {
       t = null;
     }
   };
-  pe.set(r, l);
+  fe.set(r, l);
 }
-function Pi(r) {
-  const e = pe.get(r);
-  e && (e(), pe.delete(r));
+function zi(r) {
+  const e = fe.get(r);
+  e && (e(), fe.delete(r));
 }
-function q(r, e) {
+function Y(r, e) {
   return {
     text: r,
     shortcut: e,
@@ -3142,7 +3271,7 @@ function q(r, e) {
     // 按钮tooltip默认显示在下方
   };
 }
-function me(r) {
+function ve(r) {
   let e = r.title || "未命名标签页";
   const t = [];
   return r.blockId && t.push(`ID: ${r.blockId}`), r.blockType && t.push(`类型: ${r.blockType}`), r.isPinned && t.push("📌 已固定"), r.isJournal && t.push("📝 日志块"), t.length > 0 && (e += `
@@ -3153,7 +3282,7 @@ function me(r) {
     // 标签页 tooltip 默认显示在下方
   };
 }
-function fe(r) {
+function ye(r) {
   return {
     text: r,
     delay: 500,
@@ -3161,7 +3290,7 @@ function fe(r) {
     // 状态tooltip默认显示在下方
   };
 }
-function $i() {
+function Hi() {
   document.querySelectorAll('[data-tooltip="true"]').forEach((e, t) => {
     const i = e.getAttribute("data-tooltip-text"), a = e.getAttribute("data-tooltip-shortcut"), n = e.getAttribute("data-tooltip-delay");
     if (i) {
@@ -3174,7 +3303,7 @@ function $i() {
     }
   });
 }
-function ee() {
+function ie() {
   document.querySelectorAll(".orca-tooltip").forEach((i) => {
     var a;
     try {
@@ -3191,10 +3320,10 @@ function ee() {
     }
   }), document.querySelectorAll('[style*="position: absolute"]').forEach((i) => {
     var c;
-    const a = gi(i);
+    const a = Ci(i);
     if (!a)
       return;
-    const n = xe(i);
+    const n = we(i);
     if (!n)
       return;
     const o = a.left, l = a.top;
@@ -3206,110 +3335,29 @@ function ee() {
       }
   });
 }
-function qe() {
+function je() {
   setInterval(() => {
-    ee();
+    ie();
   }, 3e4);
 }
-function Ve() {
+function Ge() {
   window.addEventListener("beforeunload", () => {
-    ee();
+    ie();
   }), document.addEventListener("visibilitychange", () => {
-    document.visibilityState === "hidden" && ee();
+    document.visibilityState === "hidden" && ie();
   });
 }
-typeof window < "u" && (window.addTooltip = M, window.removeTooltip = Pi, window.createButtonTooltip = q, window.createTabTooltip = me, window.createStatusTooltip = fe, window.cleanupAllTooltips = ee, window.startTooltipCleanupTimer = qe, window.setupPageUnloadCleanup = Ve);
-function Li(r, e, t = {}) {
-  try {
-    const {
-      updateOrder: i = !0,
-      saveData: a = !0,
-      updateUI: n = !0
-    } = t, o = e.findIndex((d) => d.blockId === r.blockId);
-    if (o === -1)
-      return {
-        success: !1,
-        message: `标签不存在: ${r.title}`
-      };
-    e[o].isPinned = !e[o].isPinned;
-    const l = e[o].isPinned;
-    i && Ai(e);
-    const s = e.findIndex((d) => d.blockId === r.blockId), c = l ? "固定" : "取消固定";
-    return {
-      success: !0,
-      message: `标签 "${r.title}" 已${c}`,
-      data: { tab: e[s], tabIndex: s }
-    };
-  } catch (i) {
-    return {
-      success: !1,
-      message: `切换固定状态失败: ${i}`
-    };
-  }
-}
-function Mi(r, e, t, i = {}) {
-  try {
-    const {
-      updateUI: a = !0,
-      saveData: n = !0,
-      validateData: o = !0
-    } = i, l = t.findIndex((s) => s.blockId === r.blockId);
-    if (l === -1)
-      return {
-        success: !1,
-        message: `标签不存在: ${r.title}`
-      };
-    if (o) {
-      const s = Bi(e);
-      if (!s.success)
-        return s;
-    }
-    return t[l] = { ...t[l], ...e }, {
-      success: !0,
-      message: `标签 "${r.title}" 已更新`,
-      data: { tab: t[l], tabIndex: l }
-    };
-  } catch (a) {
-    return {
-      success: !1,
-      message: `更新标签失败: ${a}`
-    };
-  }
-}
-function Di(r, e, t, i = {}) {
-  return !e || e.trim() === "" ? {
-    success: !1,
-    message: "标签标题不能为空"
-  } : Mi(r, { title: e.trim() }, t, i);
-}
-function Bi(r) {
-  return r.blockId !== void 0 && (!r.blockId || r.blockId.trim() === "") ? {
-    success: !1,
-    message: "标签块ID不能为空"
-  } : r.title !== void 0 && (!r.title || r.title.trim() === "") ? {
-    success: !1,
-    message: "标签标题不能为空"
-  } : r.order !== void 0 && (r.order < 0 || !Number.isInteger(r.order)) ? {
-    success: !1,
-    message: "标签顺序必须是正整数"
-  } : {
-    success: !0,
-    message: "标签数据验证通过"
-  };
-}
-function Ai(r) {
-  r.sort((e, t) => e.isPinned && !t.isPinned ? -1 : !e.isPinned && t.isPinned ? 1 : e.order - t.order);
-}
-function Wi(r) {
+typeof window < "u" && (window.addTooltip = M, window.removeTooltip = zi, window.createButtonTooltip = Y, window.createTabTooltip = ve, window.createStatusTooltip = ye, window.cleanupAllTooltips = ie, window.startTooltipCleanupTimer = je, window.setupPageUnloadCleanup = Ge);
+function Oi(r) {
   for (let e = r.length - 1; e >= 0; e--)
     if (!r[e].isPinned)
       return e;
   return -1;
 }
-function Ni(r) {
+function Fi(r) {
   return [...r].sort((e, t) => e.isPinned && !t.isPinned ? -1 : !e.isPinned && t.isPinned ? 1 : 0);
 }
-function Hi(r, e, t, i) {
+function _i(r, e, t, i) {
   return e ? {
     x: r.x,
     y: r.y,
@@ -3322,12 +3370,12 @@ function Hi(r, e, t, i) {
     height: 28
   };
 }
-function zi(r, e, t, i) {
-  const a = Hi(r, e, t, i);
+function Ui(r, e, t, i) {
+  const a = _i(r, e, t, i);
   let n = r.x, o = r.y;
   return a.x < 0 ? n = 0 : a.x + a.width > window.innerWidth && (n = window.innerWidth - a.width), a.y < 0 ? o = 0 : a.y + a.height > window.innerHeight && (o = window.innerHeight - a.height), { x: n, y: o };
 }
-function Oi(r, e, t = !1) {
+function Me(r, e, t = !1) {
   let i = null;
   const a = (...n) => {
     const o = t && !i;
@@ -3339,7 +3387,7 @@ function Oi(r, e, t = !1) {
     i && (clearTimeout(i), i = null);
   }, a;
 }
-function Fi(r, e, t) {
+function Ri(r, e, t) {
   var i, a;
   try {
     const n = r.startsWith("#") ? r : `#${r}`;
@@ -3351,17 +3399,17 @@ function Fi(r, e, t) {
     return e === "background" ? "rgba(0, 0, 0, 0.1)" : "#333333";
   }
 }
-function $e(r, e, t, i) {
+function De(r, e, t, i) {
   if (typeof e == "number" && typeof t == "function")
-    return _i(r, e, t, i);
+    return qi(r, e, t, i);
   if (typeof e == "function" && typeof t == "function")
-    return Ui(r, e, t);
+    return Vi(r, e, t);
   throw new Error("Invalid parameters for createWidthAdjustmentDialog");
 }
-function _i(r, e, t, i) {
+function qi(r, e, t, i) {
   const a = document.createElement("div");
   a.className = "width-adjustment-dialog";
-  const n = Ue();
+  const n = Ve();
   a.style.cssText = n;
   const o = document.createElement("div");
   o.className = "dialog-title", o.textContent = "调整标签宽度", a.appendChild(o);
@@ -3377,7 +3425,7 @@ function _i(r, e, t, i) {
     color: var(--orca-color-text-1);
   `;
   const c = document.createElement("input");
-  c.type = "range", c.min = "80", c.max = "200", c.value = r.toString(), c.style.cssText = be();
+  c.type = "range", c.min = "80", c.max = "200", c.value = r.toString(), c.style.cssText = pe();
   const d = document.createElement("div");
   d.className = "dialog-width-display", d.style.cssText = `
     text-align: center;
@@ -3397,7 +3445,7 @@ function _i(r, e, t, i) {
     color: var(--orca-color-text-1);
   `;
   const b = document.createElement("input");
-  b.type = "range", b.min = "60", b.max = "150", b.value = e.toString(), b.style.cssText = be();
+  b.type = "range", b.min = "60", b.max = "150", b.value = e.toString(), b.style.cssText = pe();
   const p = document.createElement("div");
   p.className = "dialog-width-display", p.style.cssText = `
     text-align: center;
@@ -3422,8 +3470,8 @@ function _i(r, e, t, i) {
     const E = parseInt(c.value), k = parseInt(b.value);
     g(E, k);
   }, l.appendChild(s), l.appendChild(c), l.appendChild(d), u.appendChild(h), u.appendChild(b), u.appendChild(p), a.appendChild(l), a.appendChild(u);
-  const v = document.createElement("div");
-  v.className = "dialog-buttons", v.style.cssText = `
+  const f = document.createElement("div");
+  f.className = "dialog-buttons", f.style.cssText = `
     display: flex;
     justify-content: flex-end;
     gap: 10px;
@@ -3431,19 +3479,19 @@ function _i(r, e, t, i) {
     border-top: 1px solid #eee;
   `;
   const y = document.createElement("button");
-  y.className = "btn btn-primary", y.textContent = "确定", y.style.cssText = ne(), y.onclick = () => {
+  y.className = "btn btn-primary", y.textContent = "确定", y.style.cssText = oe(), y.onclick = () => {
     const x = parseInt(c.value), T = parseInt(b.value);
-    t(x, T), re(a);
+    t(x, T), se(a);
   };
   const w = document.createElement("button");
-  return w.className = "btn btn-secondary", w.textContent = "取消", w.style.cssText = ne(), w.onclick = () => {
-    i && i(), re(a);
-  }, v.appendChild(y), v.appendChild(w), a.appendChild(v), a;
+  return w.className = "btn btn-secondary", w.textContent = "取消", w.style.cssText = oe(), w.onclick = () => {
+    i && i(), se(a);
+  }, f.appendChild(y), f.appendChild(w), a.appendChild(f), a;
 }
-function Ui(r, e, t) {
+function Vi(r, e, t) {
   const i = document.createElement("div");
   i.className = "width-adjustment-dialog";
-  const a = Ue();
+  const a = Ve();
   i.style.cssText = a;
   const n = document.createElement("div");
   n.className = "dialog-title", n.textContent = "调整面板宽度", i.appendChild(n);
@@ -3453,7 +3501,7 @@ function Ui(r, e, t) {
     padding: 0 20px;
   `;
   const l = document.createElement("input");
-  l.type = "range", l.min = "120", l.max = "800", l.value = r.toString(), l.style.cssText = be();
+  l.type = "range", l.min = "120", l.max = "800", l.value = r.toString(), l.style.cssText = pe();
   const s = document.createElement("div");
   s.className = "dialog-width-display", s.style.cssText = `
     text-align: center;
@@ -3473,18 +3521,18 @@ function Ui(r, e, t) {
     border-top: 1px solid #eee;
   `;
   const d = document.createElement("button");
-  d.className = "btn btn-primary", d.textContent = "确定", d.style.cssText = ne(), d.onclick = () => re(i);
+  d.className = "btn btn-primary", d.textContent = "确定", d.style.cssText = oe(), d.onclick = () => se(i);
   const u = document.createElement("button");
-  return u.className = "btn btn-secondary", u.textContent = "取消", u.style.cssText = ne(), u.onclick = () => {
-    t(), re(i);
+  return u.className = "btn btn-secondary", u.textContent = "取消", u.style.cssText = oe(), u.onclick = () => {
+    t(), se(i);
   }, c.appendChild(d), c.appendChild(u), i.appendChild(c), i;
 }
-function re(r) {
+function se(r) {
   r && r.parentNode && r.parentNode.removeChild(r);
   const e = document.querySelector(".dialog-backdrop");
   e && e.remove();
 }
-function Ri() {
+function Yi() {
   if (document.getElementById("dialog-styles")) return;
   const r = document.createElement("style");
   r.id = "dialog-styles", r.textContent = `
@@ -3619,11 +3667,11 @@ function Ri() {
     }
   `, document.head.appendChild(r);
 }
-function qi(r, e) {
+function ji(r, e) {
   return r.length !== e.length ? !0 : !r.every((t, i) => t === e[i]);
 }
 let H;
-class Vi {
+class Gi {
   /**
    * 构造函数
    * @param pluginName 插件名称
@@ -3633,199 +3681,201 @@ class Vi {
     /* 核心数据属性 - Core Data Properties */
     /* ———————————————————————————————————————————————————————————————————————————— */
     /** 插件名称 - 动态获取的插件名称，用于API调用和存储 */
-    f(this, "pluginName");
+    v(this, "pluginName");
     // ==================== 重构的面板数据管理 ====================
     /** 面板顺序映射 - 存储面板ID和序号的映射关系，支持面板关闭后重新排序 */
-    f(this, "panelOrder", []);
+    v(this, "panelOrder", []);
     /** 当前激活的面板ID - 通过.orca-panel.active获取 */
-    f(this, "currentPanelId", null);
+    v(this, "currentPanelId", null);
     /** 当前面板索引 - 在panelOrder数组中的索引位置 */
-    f(this, "currentPanelIndex", -1);
+    v(this, "currentPanelIndex", -1);
     /** 每个面板的标签页数据 - 索引对应panelOrder数组，完全独立存储 */
-    f(this, "panelTabsData", []);
+    v(this, "panelTabsData", []);
     /** 存储服务实例 - 提供统一的数据存储接口，支持Orca API和localStorage降级 */
-    f(this, "storageService", new Ge());
+    v(this, "storageService", new Je());
     /** 标签页存储服务实例 - 提供标签页相关的数据存储操作 */
-    f(this, "tabStorageService");
+    v(this, "tabStorageService");
     /** 上次面板检查时间 - 用于防抖面板发现调用 */
-    f(this, "lastPanelCheckTime", 0);
+    v(this, "lastPanelCheckTime", 0);
     /** 上次面板块检查时间 - 用于防抖 checkCurrentPanelBlocks 调用 */
-    f(this, "lastBlockCheckTime", 0);
+    v(this, "lastBlockCheckTime", 0);
+    /** 防抖的面板发现方法 - 500ms延迟，避免频繁调用 */
+    v(this, "discoverPanelsDebounced", null);
     /** 数据保存防抖定时器 - 用于合并频繁的保存操作 */
-    f(this, "saveDataDebounceTimer", null);
+    v(this, "saveDataDebounceTimer", null);
     /** 数据保存防抖延迟（毫秒） - 性能优化：增加到500ms减少频繁保存 */
-    f(this, "SAVE_DEBOUNCE_DELAY", 500);
+    v(this, "SAVE_DEBOUNCE_DELAY", 500);
     /* ———————————————————————————————————————————————————————————————————————————— */
     /* 日志管理 - Log Management */
     /* ———————————————————————————————————————————————————————————————————————————— */
     // ==================== 日志系统 ====================
     /** 当前日志级别 */
-    f(this, "currentLogLevel", Re);
+    v(this, "currentLogLevel", Ye);
     /* ———————————————————————————————————————————————————————————————————————————— */
     /* UI元素和状态管理 - UI Elements and State Management */
     /* ———————————————————————————————————————————————————————————————————————————— */
     // ==================== UI元素引用 ====================
     /** 标签页容器元素 - 包含所有标签页的主容器 */
-    f(this, "tabContainer", null);
+    v(this, "tabContainer", null);
     /** 循环切换器元素 - 用于在面板间切换的UI元素 */
-    f(this, "cycleSwitcher", null);
+    v(this, "cycleSwitcher", null);
     // ==================== 拖拽状态 ====================
     /** 是否正在拖拽 - 标识当前是否处于拖拽状态 */
-    f(this, "isDragging", !1);
+    v(this, "isDragging", !1);
     /** 是否正在切换标签 - 防止在标签切换过程中错误替换标签 */
-    f(this, "isSwitchingTab", !1);
+    v(this, "isSwitchingTab", !1);
     /** 拖拽起始X坐标 - 记录拖拽开始时的鼠标X坐标 */
-    f(this, "dragStartX", 0);
+    v(this, "dragStartX", 0);
     /** 拖拽起始Y坐标 - 记录拖拽开始时的鼠标Y坐标 */
-    f(this, "dragStartY", 0);
+    v(this, "dragStartY", 0);
     // ==================== 配置参数 ====================
     /** 最大标签页数量 - 限制同时显示的标签页数量，从设置中读取 */
-    f(this, "maxTabs", 10);
+    v(this, "maxTabs", 10);
     /** 主页块ID - 主页块的唯一标识符，从设置中读取 */
-    f(this, "homePageBlockId", null);
+    v(this, "homePageBlockId", null);
     /** 标签页位置 - 标签页容器的屏幕坐标位置 */
-    f(this, "position", { x: 50, y: 50 });
+    v(this, "position", { x: 50, y: 50 });
     // ==================== 状态管理 ====================
     /** 监控定时器 - 用于定期检查面板状态和更新UI */
-    f(this, "monitoringInterval", null);
+    v(this, "monitoringInterval", null);
     /** 焦点同步定时器 - 控制自动同步焦点的轮询逻辑 */
-    f(this, "focusSyncInterval", null);
+    v(this, "focusSyncInterval", null);
     /** 上一次焦点检测的状态 - 用于避免重复调用 checkCurrentPanelBlocks */
-    f(this, "lastFocusState", null);
+    v(this, "lastFocusState", null);
     /** 面板块检测任务 - 防止 checkCurrentPanelBlocks 并发执行 */
-    f(this, "panelBlockCheckTask", null);
+    v(this, "panelBlockCheckTask", null);
     /** 面板状态检测任务 - 防止 checkPanelStatusChange 并发执行 */
-    f(this, "panelStatusCheckTask", null);
+    v(this, "panelStatusCheckTask", null);
     /** 正在创建的标签 - 防止重复创建同一个标签 */
-    f(this, "creatingTabs", /* @__PURE__ */ new Set());
+    v(this, "creatingTabs", /* @__PURE__ */ new Set());
     /** 全局事件监听器 - 统一的全局事件处理函数 */
-    f(this, "globalEventListener", null);
+    v(this, "globalEventListener", null);
     /** 更新防抖计时器 - 防止频繁更新UI的防抖机制 */
-    f(this, "updateDebounceTimer", null);
+    v(this, "updateDebounceTimer", null);
     /** 面板索引更新防抖计时器 - 防止频繁更新面板索引 */
-    f(this, "panelIndexUpdateTimer", null);
+    v(this, "panelIndexUpdateTimer", null);
     /** 上次更新时间 - 记录最后一次UI更新的时间戳 */
-    f(this, "lastUpdateTime", 0);
+    v(this, "lastUpdateTime", 0);
     /** 是否正在更新 - 标识当前是否正在进行UI更新操作 */
-    f(this, "isUpdating", !1);
+    v(this, "isUpdating", !1);
     /** 是否已完成初始化 - 标识插件是否已完成初始化过程 */
-    f(this, "isInitialized", !1);
+    v(this, "isInitialized", !1);
     /* ———————————————————————————————————————————————————————————————————————————— */
     /* 布局和位置管理 - Layout and Position Management */
     /* ———————————————————————————————————————————————————————————————————————————— */
     // ==================== 布局模式 ====================
     /** 垂直模式标志 - 标识当前是否处于垂直布局模式 */
-    f(this, "isVerticalMode", !1);
+    v(this, "isVerticalMode", !1);
     /** 垂直模式窗口宽度 - 垂直布局模式下的标签页容器宽度 */
-    f(this, "verticalWidth", 120);
+    v(this, "verticalWidth", 120);
     /** 垂直模式位置 - 垂直布局模式下的标签页容器位置 */
-    f(this, "verticalPosition", { x: 20, y: 20 });
+    v(this, "verticalPosition", { x: 20, y: 20 });
     /** 水平模式位置 - 水平布局模式下的标签页容器位置 */
-    f(this, "horizontalPosition", { x: 20, y: 20 });
+    v(this, "horizontalPosition", { x: 20, y: 20 });
     /** 水平布局标签最大宽度 - 水平布局下标签的最大宽度 */
-    f(this, "horizontalTabMaxWidth", 130);
+    v(this, "horizontalTabMaxWidth", 130);
     /** 水平布局标签最小宽度 - 水平布局下标签的最小宽度 */
-    f(this, "horizontalTabMinWidth", 80);
+    v(this, "horizontalTabMinWidth", 80);
     // ==================== 调整大小状态 ====================
     /** 是否正在调整大小 - 标识当前是否正在进行大小调整操作 */
-    f(this, "isResizing", !1);
+    v(this, "isResizing", !1);
     /** 是否固定到顶部 - 标识标签页容器是否固定到屏幕顶部 */
-    f(this, "isFixedToTop", !1);
+    v(this, "isFixedToTop", !1);
     /** 调整大小手柄 - 用于调整标签页容器大小的拖拽手柄元素 */
-    f(this, "resizeHandle", null);
+    v(this, "resizeHandle", null);
     // ==================== 侧边栏对齐 ====================
     /** 侧边栏对齐功能是否启用 - 控制是否自动与侧边栏对齐 */
-    f(this, "isSidebarAlignmentEnabled", !1);
+    v(this, "isSidebarAlignmentEnabled", !1);
     /** 侧边栏状态监听器 - 监听侧边栏状态变化的MutationObserver */
-    f(this, "sidebarAlignmentObserver", null);
+    v(this, "sidebarAlignmentObserver", null);
     /** 上次检测到的侧边栏状态 - 用于检测侧边栏状态变化 */
-    f(this, "lastSidebarState", null);
+    v(this, "lastSidebarState", null);
     /** 侧边栏防抖计时器 - 防止频繁响应侧边栏状态变化 */
-    f(this, "sidebarDebounceTimer", null);
+    v(this, "sidebarDebounceTimer", null);
     // ==================== 贴边隐藏 ====================
     /** 贴边隐藏功能是否启用 - 控制是否启用贴边隐藏功能 */
-    f(this, "enableEdgeHide", !1);
+    v(this, "enableEdgeHide", !1);
     /** 当前贴边的方向 - 检测到容器靠近哪个边缘（null表示不靠近任何边缘） */
-    f(this, "currentEdgeSide", null);
+    v(this, "currentEdgeSide", null);
     /** 贴边隐藏是否展开 - 标识贴边隐藏状态下容器是否处于展开状态 */
-    f(this, "isEdgeHideExpanded", !1);
+    v(this, "isEdgeHideExpanded", !1);
     /** 贴边隐藏展开延迟定时器 - 用于延迟展开贴边隐藏的容器 */
-    f(this, "edgeHideExpandTimer", null);
+    v(this, "edgeHideExpandTimer", null);
     /** 贴边隐藏收起延迟定时器 - 用于延迟收起贴边隐藏的容器 */
-    f(this, "edgeHideCollapseTimer", null);
+    v(this, "edgeHideCollapseTimer", null);
     /** 贴边隐藏触发区域元素 - 透明的触发区域，用于鼠标悬停检测 */
-    f(this, "edgeHideTriggerElement", null);
+    v(this, "edgeHideTriggerElement", null);
     /** 容器鼠标进入处理器 - 绑定的事件处理函数，用于移除监听器 */
-    f(this, "boundContainerMouseEnter", null);
+    v(this, "boundContainerMouseEnter", null);
     /** 容器鼠标离开处理器 - 绑定的事件处理函数，用于移除监听器 */
-    f(this, "boundContainerMouseLeave", null);
+    v(this, "boundContainerMouseLeave", null);
     // ==================== 气泡模式 ====================
     /** 气泡模式是否启用 - 控制是否启用气泡模式（仅垂直模式可用） */
-    f(this, "enableBubbleMode", !1);
+    v(this, "enableBubbleMode", !1);
     /** 气泡模式是否展开 - 标识气泡模式下容器是否处于展开状态 */
-    f(this, "isBubbleExpanded", !1);
+    v(this, "isBubbleExpanded", !1);
     /** 气泡模式展开延迟定时器 - 用于延迟展开气泡模式容器 */
-    f(this, "bubbleExpandTimer", null);
+    v(this, "bubbleExpandTimer", null);
     /** 气泡模式收起延迟定时器 - 用于延迟收起气泡模式容器 */
-    f(this, "bubbleCollapseTimer", null);
+    v(this, "bubbleCollapseTimer", null);
     /** 气泡模式动画进行中标志 - 防止动画冲突 */
-    f(this, "isBubbleAnimating", !1);
+    v(this, "isBubbleAnimating", !1);
     /** 气泡模式动画定时器集合 - 用于取消所有进行中的动画 */
-    f(this, "bubbleAnimationTimers", /* @__PURE__ */ new Set());
+    v(this, "bubbleAnimationTimers", /* @__PURE__ */ new Set());
     // ==================== 窗口可见性 ====================
     /** 浮窗是否可见 - 控制标签页容器的显示/隐藏状态 */
-    f(this, "isFloatingWindowVisible", !0);
+    v(this, "isFloatingWindowVisible", !0);
     // ==================== 功能开关 ====================
     /** 是否显示块类型图标 - 控制是否在标签页中显示块类型图标 */
-    f(this, "showBlockTypeIcons", !0);
+    v(this, "showBlockTypeIcons", !0);
     /** 是否在顶部栏显示按钮 - 控制是否在Orca顶部工具栏显示插件按钮 */
-    f(this, "showInHeadbar", !0);
+    v(this, "showInHeadbar", !0);
     /** 是否启用最近关闭的标签页功能 - 控制是否记录和显示最近关闭的标签页 */
-    f(this, "enableRecentlyClosedTabs", !0);
+    v(this, "enableRecentlyClosedTabs", !0);
     /** 是否启用多标签页保存功能 - 控制是否允许保存多个标签页组合 */
-    f(this, "enableMultiTabSaving", !0);
+    v(this, "enableMultiTabSaving", !0);
     /** 是否在刷新后恢复聚焦标签页 - 控制软件刷新后是否自动聚焦并打开当前聚焦的标签页 */
-    f(this, "restoreFocusedTab", !0);
+    v(this, "restoreFocusedTab", !0);
     /** 新标签是否添加到末尾（一次性标志，使用后自动重置为false） */
-    f(this, "addNewTabToEnd", !0);
+    v(this, "addNewTabToEnd", !0);
     /** 是否启用中键固定标签页功能 - 控制中键点击是否固定标签页 */
-    f(this, "enableMiddleClickPin", !1);
+    v(this, "enableMiddleClickPin", !1);
     /** 是否启用双击关闭标签页功能 - 控制双击是否关闭标签页 */
-    f(this, "enableDoubleClickClose", !1);
+    v(this, "enableDoubleClickClose", !1);
     /** 是否隐藏标签页提示 - 控制是否隐藏标签页的悬停提示 */
-    f(this, "hideTabTooltips", !1);
+    v(this, "hideTabTooltips", !1);
     /** 贴边隐藏检测防抖定时器 - 避免面板切换时的频繁检测 */
-    f(this, "edgeHideDebounceTimer", null);
+    v(this, "edgeHideDebounceTimer", null);
     /** 是否正在更新DOM - DOM更新期间禁用贴边隐藏检测 */
-    f(this, "isUpdatingDOM", !1);
+    v(this, "isUpdatingDOM", !1);
     /* ———————————————————————————————————————————————————————————————————————————— */
     /* 性能优化 - Performance Optimization */
     /* ———————————————————————————————————————————————————————————————————————————— */
     // ==================== 性能优化管理器 ====================
     /** 性能优化管理器 - 统一管理所有性能优化工具 */
-    f(this, "performanceOptimizer", null);
+    v(this, "performanceOptimizer", null);
     /** MutationObserver优化器实例 - 用于优化DOM变化监听 */
-    f(this, "optimizedObserver", null);
+    v(this, "optimizedObserver", null);
     /** 高级防抖优化器实例 - 用于任务防抖和调度 */
-    f(this, "debounceOptimizer", null);
+    v(this, "debounceOptimizer", null);
     /** 内存泄漏防护器实例 - 用于跟踪和清理资源 */
-    f(this, "memoryLeakProtector", null);
+    v(this, "memoryLeakProtector", null);
     /** 批量处理器实例 - 用于批量DOM操作 */
-    f(this, "batchProcessor", null);
+    v(this, "batchProcessor", null);
     /** 性能监控器实例 - 用于监控性能指标（已禁用） */
     // private performanceMonitor: PerformanceMonitorOptimizer | null = null;
     /** 性能指标计数缓存 - 记录自定义指标的累计值（已禁用） */
     // private performanceCounters: Record<string, number> = {};
     /** 性能基线定时器ID - 控制基线采集任务 */
-    f(this, "performanceBaselineTimer", null);
+    v(this, "performanceBaselineTimer", null);
     /** 最近一次性能基线场景 */
-    f(this, "lastBaselineScenario", null);
+    v(this, "lastBaselineScenario", null);
     /** 最近一次性能基线报告（已禁用） */
     // private lastBaselineReport: PerformanceReport | null = null;
     /** 上一次插件初始化耗时（毫秒） */
-    f(this, "lastInitDurationMs", null);
+    v(this, "lastInitDurationMs", null);
     /** 性能指标名称常量 */
-    f(this, "performanceMetricKeys", {
+    v(this, "performanceMetricKeys", {
       initTotal: "plugin_init_total",
       tabInteraction: "tab_interaction_total",
       domMutations: "dom_mutations"
@@ -3835,91 +3885,93 @@ class Vi {
     /* ———————————————————————————————————————————————————————————————————————————— */
     // ==================== 拖拽状态管理 ====================
     /** 当前正在拖拽的标签 - 存储正在被拖拽的标签页信息 */
-    f(this, "draggingTab", null);
+    v(this, "draggingTab", null);
     /** 全局拖拽结束监听器 - 处理拖拽结束事件的全局监听器 */
-    f(this, "dragEndListener", null);
+    v(this, "dragEndListener", null);
     /** 拖拽交换防抖计时器 - 防止拖拽过程中频繁触发交换操作 */
-    f(this, "swapDebounceTimer", null);
+    v(this, "swapDebounceTimer", null);
     /** 拖拽位置指示器 - 显示拖拽目标位置的视觉指示器 */
-    f(this, "dropIndicator", null);
+    v(this, "dropIndicator", null);
     /** 当前拖拽悬停的标签 - 鼠标悬停的标签页信息 */
-    f(this, "dragOverTab", null);
+    v(this, "dragOverTab", null);
     /** 上次交换的目标标签和位置 - 防止重复交换 */
-    f(this, "lastSwapKey", "");
+    v(this, "lastSwapKey", "");
     /** 优化的拖拽监听器 - 避免全文档监听 */
-    f(this, "dragOverListener", null);
+    v(this, "dragOverListener", null);
     /** 懒加载状态 - 避免不必要的初始化 */
-    f(this, "isDragListenersInitialized", !1);
+    v(this, "isDragListenersInitialized", !1);
     /** 拖拽悬停计时器 - 控制拖拽悬停的延迟响应 */
-    f(this, "dragOverTimer", null);
+    v(this, "dragOverTimer", null);
     /** 是否正在拖拽悬停状态 - 标识当前是否处于拖拽悬停状态 */
-    f(this, "isDragOverActive", !1);
+    v(this, "isDragOverActive", !1);
     // ==================== 事件监听器 ====================
     /** 主题变化监听器 - 监听Orca主题变化的事件监听器 */
-    f(this, "themeChangeListener", null);
+    v(this, "themeChangeListener", null);
     /** 滚动监听器 - 监听页面滚动事件的监听器 */
-    f(this, "scrollListener", null);
+    v(this, "scrollListener", null);
     // ==================== 缓存和优化 ====================
     /** 上次面板发现时间 - 记录最后一次发现面板的时间戳 */
-    f(this, "lastPanelDiscoveryTime", 0);
+    v(this, "lastPanelDiscoveryTime", 0);
     /** 面板发现缓存 - 缓存面板发现结果，避免频繁扫描 */
-    f(this, "panelDiscoveryCache", null);
+    v(this, "panelDiscoveryCache", null);
     /** 设置检查定时器 - 定期检查设置变化的定时器 */
-    f(this, "settingsCheckInterval", null);
+    v(this, "settingsCheckInterval", null);
     /** 上次的设置状态 - 缓存上次的设置状态，用于检测变化 */
-    f(this, "lastSettings", null);
+    v(this, "lastSettings", null);
     /* ———————————————————————————————————————————————————————————————————————————— */
     /* 标签页跟踪和快捷键 - Tab Tracking and Shortcuts */
     /* ———————————————————————————————————————————————————————————————————————————— */
     // ==================== 已关闭标签页跟踪 ====================
     /** 已关闭的标签页blockId集合 - 用于跟踪已关闭的标签页，避免重复创建 */
-    f(this, "closedTabs", /* @__PURE__ */ new Set());
+    v(this, "closedTabs", /* @__PURE__ */ new Set());
     /** 最近关闭的标签页列表 - 按时间倒序存储最近关闭的标签页信息 */
-    f(this, "recentlyClosedTabs", []);
+    v(this, "recentlyClosedTabs", []);
     /** 保存的多标签页集合 - 存储用户保存的标签页组合 */
-    f(this, "savedTabSets", []);
+    v(this, "savedTabSets", []);
     /** 记录上一个标签集合 - 用于比较标签页变化 */
-    f(this, "previousTabSet", null);
+    v(this, "previousTabSet", null);
     // ==================== 工作区功能 ====================
     /** 工作区列表 - 存储所有用户创建的工作区 */
-    f(this, "workspaces", []);
+    v(this, "workspaces", []);
     /** 当前工作区ID - 标识当前激活的工作区 */
-    f(this, "currentWorkspace", null);
+    v(this, "currentWorkspace", null);
     /** 是否启用工作区功能 - 控制工作区功能的开关 */
-    f(this, "enableWorkspaces", !0);
+    v(this, "enableWorkspaces", !0);
     /** 进入工作区之前的标签页组 - 用于退出工作区时恢复到原始标签页组 */
-    f(this, "tabsBeforeWorkspace", null);
+    v(this, "tabsBeforeWorkspace", null);
     /** 是否需要在初始化后恢复标签页组 - 用于处理在工作区状态下关闭软件的情况 */
-    f(this, "shouldRestoreTabsBeforeWorkspace", !1);
+    v(this, "shouldRestoreTabsBeforeWorkspace", !1);
     // ==================== 对话框管理 ====================
     /** 对话框层级管理器 - 管理对话框的z-index层级 */
-    f(this, "dialogZIndex", 2e3);
+    v(this, "dialogZIndex", 2e3);
     /** 最后激活的块ID - 记录最后激活的块，用于快捷键操作 */
-    f(this, "lastActiveBlockId", null);
+    v(this, "lastActiveBlockId", null);
     /** 是否正在导航中 - 用于避免导航时触发重复的聚焦检测 */
-    f(this, "isNavigating", !1);
+    v(this, "isNavigating", !1);
     /** 最近导航到的块ID - 用于防止导航后立即重复创建标签页 */
-    f(this, "lastNavigatedBlockId", null);
+    v(this, "lastNavigatedBlockId", null);
     /** 最近导航的时间戳 - 用于判断导航是否刚刚完成 */
-    f(this, "lastNavigationTime", 0);
+    v(this, "lastNavigationTime", 0);
     // ==================== 快捷键相关 ====================
     /** 当前鼠标悬停的块ID - 用于快捷键操作的目标块 */
-    f(this, "hoveredBlockId", null);
+    v(this, "hoveredBlockId", null);
     // 防抖函数实例（仅用于拖拽等非关键场景）
-    f(this, "draggingDebounce", Oi(async () => {
+    v(this, "draggingDebounce", Me(async () => {
       await this.updateTabsUI();
     }, 200));
-    this.pluginName = e, this.initializePerformanceOptimizers();
+    this.pluginName = e, this.discoverPanelsDebounced = Me(() => {
+      this.discoverPanelsInternal();
+    }, 500), this.initializePerformanceOptimizers();
   }
   /** 简单的日志方法 */
   log(e, ...t) {
-    this.currentLogLevel >= $.INFO && he(e, ...t);
+    this.currentLogLevel >= $.INFO && be(e, ...t);
   }
   logError(e, ...t) {
-    this.currentLogLevel >= $.ERROR && wi(e, ...t);
+    this.currentLogLevel >= $.ERROR && Mi(e, ...t);
   }
   logWarn(e, ...t) {
-    this.currentLogLevel >= $.WARN && Ci(e, ...t);
+    this.currentLogLevel >= $.WARN && Di(e, ...t);
   }
   /**
    * 初始化性能优化器
@@ -3989,11 +4041,11 @@ class Vi {
   // ==================== 日志方法 ====================
   /** 调试日志 - 用于开发调试，记录一般信息 */
   debugLog(...e) {
-    this.currentLogLevel >= $.DEBUG && he(e.join(" "), ...e);
+    this.currentLogLevel >= $.DEBUG && be(e.join(" "), ...e);
   }
   /** 详细日志 - 仅在详细模式下启用，记录详细的调试信息 */
   verboseLog(...e) {
-    this.currentLogLevel >= $.VERBOSE && he(e.join(" "), ...e);
+    this.currentLogLevel >= $.VERBOSE && be(e.join(" "), ...e);
   }
   /** 警告日志 - 记录警告信息，提醒潜在问题 */
   warn(...e) {
@@ -4007,7 +4059,7 @@ class Vi {
    * 设置日志级别
    */
   setLogLevel(e) {
-    this.currentLogLevel = e, U.setLogLevel(e), this.log(`📊 日志级别已设置为: ${$[e]}`);
+    this.currentLogLevel = e, q.setLogLevel(e), this.log(`📊 日志级别已设置为: ${$[e]}`);
   }
   /**
    * 从存储中恢复调试模式设置
@@ -4068,14 +4120,14 @@ class Vi {
    * @throws {Error} 当初始化过程中发生错误时抛出
    */
   async init() {
-    await this.restoreDebugMode(), await this.restoreRestoreFocusedTabSetting(), await this.restoreFeatureToggleSettings(), Ri(), this.tabStorageService = new Qe(this.storageService, this.pluginName, {
+    await this.restoreDebugMode(), await this.restoreRestoreFocusedTabSetting(), await this.restoreFeatureToggleSettings(), Yi(), this.tabStorageService = new lt(this.storageService, this.pluginName, {
       log: this.log.bind(this),
       warn: this.warn.bind(this),
       error: this.error.bind(this),
       verboseLog: this.verboseLog.bind(this)
     });
     try {
-      this.maxTabs = orca.state.settings[Le.CachedEditorNum] || 10;
+      this.maxTabs = orca.state.settings[Be.CachedEditorNum] || 10;
     } catch {
       this.warn("无法读取最大标签数设置，使用默认值10");
     }
@@ -4140,7 +4192,7 @@ class Vi {
         this.log('📋 已关闭"刷新后恢复聚焦标签页"，跳过当前聚焦页面的恢复');
     this.restoreFocusedTab ? await this.autoDetectAndSyncCurrentFocus() : this.log('📋 已关闭"刷新后恢复聚焦标签页"，跳过自动检测聚焦页面'), await this.createTabsUI(), this.observeChanges(), this.observeWindowResize(), this.initializeOptimizedDOMObserver(), this.startActiveMonitoring(), this.setupDragEndListener(), this.setupThemeChangeListener(), this.setupScrollListener(), setTimeout(() => {
       try {
-        $i(), this.initializeHeadbarUserToolsTooltips(), qe(), Ve(), this.log("✅ Tooltips 初始化完成，清理定时器和页面卸载清理已启动");
+        Hi(), this.initializeHeadbarUserToolsTooltips(), je(), Ge(), this.log("✅ Tooltips 初始化完成，清理定时器和页面卸载清理已启动");
       } catch (s) {
         this.log("⚠️ Tooltips 初始化失败:", s);
       }
@@ -4482,20 +4534,38 @@ class Vi {
   /* 面板管理 - Panel Management */
   /* ———————————————————————————————————————————————————————————————————————————— */
   /**
-   * 发现并更新面板信息
+   * 发现并更新面板信息（防抖版本）
    * 排除特殊面板（如全局搜索面板），只处理正常的内容面板
+   * 使用500ms防抖，避免频繁调用
    */
   async discoverPanels() {
+    this.discoverPanelsDebounced ? this.discoverPanelsDebounced() : await this.discoverPanelsInternal();
+  }
+  /**
+   * 发现并更新面板信息（内部实现）
+   * 排除特殊面板（如全局搜索面板），只处理正常的内容面板
+   */
+  async discoverPanelsInternal() {
     const e = document.querySelectorAll(".orca-panel"), t = [];
     let i = null;
-    e.forEach((n) => {
+    if (e.forEach((n) => {
       const o = n.getAttribute("data-panel-id");
       if (o) {
         if (o.startsWith("_"))
           return;
         t.push(o), n.classList.contains("active") && (i = o);
       }
-    });
+    }), this.panelDiscoveryCache) {
+      const n = this.panelDiscoveryCache.panelIds;
+      if (n.length === t.length && n.every((l, s) => l === t[s])) {
+        this.verboseLog("📋 面板列表与缓存相同，跳过重新扫描"), this.updateCurrentPanelInfo(i);
+        return;
+      }
+    }
+    this.panelDiscoveryCache = {
+      panelIds: [...t],
+      timestamp: Date.now()
+    };
     const a = this.getPanelIds();
     this.updatePanelOrder(t), this.updateCurrentPanelInfo(i), await this.handlePanelChanges(a, t);
   }
@@ -4525,21 +4595,30 @@ class Vi {
   }
   /**
    * 处理面板关闭
+   * 
+   * 支持处理普通块面板和视图面板（如 AI Chat 面板）的关闭。
+   * 视图面板的标签页 blockId 以 'view:' 前缀开头，需要特殊处理以避免错误。
+   * 
+   * Requirements: 4.3, 5.3
    */
   async handlePanelClosure(e) {
     this.log("🗑️ 处理面板关闭:", e);
-    const t = [];
-    e.forEach((i) => {
-      const a = this.panelOrder.findIndex((n) => n.id === i);
-      a !== -1 && t.push(a);
-    }), t.sort((i, a) => a - i).forEach((i) => {
-      this.panelTabsData.splice(i, 1), this.log(`🗑️ 删除面板 ${e[t.indexOf(i)]} 的标签页数据`);
-    }), this.currentPanelId && (this.currentPanelIndex = this.panelOrder.findIndex((i) => i.id === this.currentPanelId), this.currentPanelIndex === -1 && (this.panelOrder.length > 0 ? (this.currentPanelIndex = 0, this.currentPanelId = this.panelOrder[0].id, this.log(`🔄 当前面板被关闭，切换到第一个面板: ${this.currentPanelId}`)) : (this.currentPanelIndex = -1, this.currentPanelId = null, this.log("❌ 所有面板已关闭")))), this.log("💾 面板关闭后保存所有剩余面板的数据");
-    for (let i = 0; i < this.panelOrder.length; i++) {
-      const a = this.panelTabsData[i] || [], n = i === 0 ? C.FIRST_PANEL_TABS : `panel_${i + 1}_tabs`;
-      await this.savePanelTabsByKey(n, a);
+    const t = [], i = [];
+    e.forEach((a) => {
+      const n = this.panelOrder.findIndex((o) => o.id === a);
+      n !== -1 && (t.push(n), (this.panelTabsData[n] || []).forEach((l) => {
+        A(l) && (i.push(l.blockId), this.verboseLog(`🖼️ 检测到视图面板标签页将被清理: ${l.title} (blockId: ${l.blockId})`));
+      }));
+    }), i.length > 0 && this.log(`🖼️ 面板关闭将清理 ${i.length} 个视图面板标签页`), t.sort((a, n) => n - a).forEach((a) => {
+      (this.panelTabsData[a] || []).forEach((o) => {
+        this.closedTabs.add(o.blockId);
+      }), this.panelTabsData.splice(a, 1), this.log(`🗑️ 删除面板 ${e[t.indexOf(a)]} 的标签页数据`);
+    }), this.currentPanelId && (this.currentPanelIndex = this.panelOrder.findIndex((a) => a.id === this.currentPanelId), this.currentPanelIndex === -1 && (this.panelOrder.length > 0 ? (this.currentPanelIndex = 0, this.currentPanelId = this.panelOrder[0].id, this.log(`🔄 当前面板被关闭，切换到第一个面板: ${this.currentPanelId}`)) : (this.currentPanelIndex = -1, this.currentPanelId = null, this.log("❌ 所有面板已关闭")))), this.log("💾 面板关闭后保存所有剩余面板的数据");
+    for (let a = 0; a < this.panelOrder.length; a++) {
+      const n = this.panelTabsData[a] || [], o = a === 0 ? C.FIRST_PANEL_TABS : `panel_${a + 1}_tabs`;
+      await this.savePanelTabsByKey(o, n);
     }
-    this.log("🔄 面板关闭后强制更新UI"), this.debouncedUpdateTabsUI();
+    await this.saveClosedTabs(), this.log("🔄 面板关闭后强制更新UI"), this.debouncedUpdateTabsUI();
   }
   /**
    * 处理新面板
@@ -4613,7 +4692,7 @@ class Vi {
       this.panelOrder.find((o) => o.id === n) || this.addPanel(n);
     }), this.panelOrder.filter((n) => !e.includes(n.id)).forEach((n) => {
       this.removePanel(n.id);
-    }), this.log("🔄 面板顺序更新完成:", this.panelOrder.map((n) => `${n.id}(${n.order})`));
+    }), this.verboseLog("🔄 面板顺序更新完成:", this.panelOrder.map((n) => `${n.id}(${n.order})`));
   }
   /**
    * 智能选择新的持久化面板（基于面板位置，不依赖ID）
@@ -4660,7 +4739,7 @@ class Vi {
    * 按固定状态排序标签（固定标签在前，非固定在后）
    */
   sortTabsByPinStatus() {
-    const e = this.getCurrentPanelTabs(), t = Ni(e);
+    const e = this.getCurrentPanelTabs(), t = Fi(e);
     this.setCurrentPanelTabs(t), this.syncCurrentTabsToStorage(t);
   }
   /**
@@ -4668,13 +4747,13 @@ class Vi {
    */
   findLastNonPinnedTabIndex() {
     const e = this.getCurrentPanelTabs();
-    return Wi(e);
+    return Oi(e);
   }
   /**
    * 从ContentFragment数组中提取纯文本
    */
   async extractTextFromContent(e) {
-    return ui(e);
+    return Ti(e);
   }
   /**
    * 检查content是否需要拼接多段
@@ -4691,7 +4770,7 @@ class Vi {
    * 检查content是否主要是文本+块引用的组合
    */
   isTextWithBlockRefs(e) {
-    return hi(e);
+    return xi(e);
   }
   /* ———————————————————————————————————————————————————————————————————————————— */
   /* 块类型检测和处理 - Block Type Detection and Processing */
@@ -4828,16 +4907,16 @@ class Vi {
       if (t.includes("E"))
         if ((orca.state.locale || "zh-CN").startsWith("zh")) {
           const a = e.getDay(), o = ["日", "一", "二", "三", "四", "五", "六"][a], l = t.replace(/E/g, o);
-          return z(e, l);
+          return O(e, l);
         } else
-          return z(e, t);
+          return O(e, t);
       else
-        return z(e, t);
+        return O(e, t);
     } catch {
       const a = ["yyyy-MM-dd", "MM/dd/yyyy", "dd/MM/yyyy", "yyyy年MM月dd日"];
       for (const n of a)
         try {
-          return z(e, n);
+          return O(e, n);
         } catch {
           continue;
         }
@@ -4867,14 +4946,16 @@ class Vi {
   }
   async getTabInfo(e, t, i) {
     try {
+      if (e.startsWith("view:"))
+        return this.verboseLog(`⏭️ 跳过视图面板的块信息获取: ${e}`), null;
       const a = await orca.invokeBackend("get-block", parseInt(e));
       if (!a) return null;
       let n = "", o = "", l = "", s = !1, c = "";
-      c = await de(a), this.verboseLog(`🔍 检测到块类型: ${c} (块ID: ${e})`), a.aliases && a.aliases.length > 0 && this.verboseLog(`🏷️ 别名块详细信息: blockId=${e}, aliases=${JSON.stringify(a.aliases)}, 检测到的类型=${c}`);
+      c = await ue(a), this.verboseLog(`🔍 检测到块类型: ${c} (块ID: ${e})`), a.aliases && a.aliases.length > 0 && this.verboseLog(`🏷️ 别名块详细信息: blockId=${e}, aliases=${JSON.stringify(a.aliases)}, 检测到的类型=${c}`);
       try {
-        const d = Oe(a);
+        const d = Ue(a);
         if (d)
-          s = !0, n = ci(d);
+          s = !0, n = vi(d);
         else if (a.aliases && a.aliases.length > 0)
           n = a.aliases[0];
         else if (a.content && a.content.length > 0)
@@ -4905,9 +4986,9 @@ class Vi {
       }
       try {
         const d = this.findProperty(a, "_color"), u = this.findProperty(a, "_icon");
-        d && d.type === 1 && (o = d.value), u && u.type === 1 && u.value && u.value.trim() ? (l = u.value, this.verboseLog(`🎨 使用用户自定义图标: ${l} (块ID: ${e})`)) : (this.showBlockTypeIcons || c === "journal") && (l = K(c), this.verboseLog(`🎨 使用块类型图标: ${l} (块类型: ${c}, 块ID: ${e})`));
+        d && d.type === 1 && (o = d.value), u && u.type === 1 && u.value && u.value.trim() ? (l = u.value, this.verboseLog(`🎨 使用用户自定义图标: ${l} (块ID: ${e})`)) : (this.showBlockTypeIcons || c === "journal") && (l = Z(c), this.verboseLog(`🎨 使用块类型图标: ${l} (块类型: ${c}, 块ID: ${e})`));
       } catch (d) {
-        this.warn("获取属性失败:", d), l = K(c);
+        this.warn("获取属性失败:", d), l = Z(c);
       }
       return {
         blockId: e,
@@ -4946,7 +5027,7 @@ class Vi {
     let t, i, a;
     this.isFixedToTop ? (t = { x: 0, y: 0 }, i = !1, a = window.innerWidth) : (t = this.isVerticalMode ? this.verticalPosition : this.position, i = this.isVerticalMode, a = this.verticalWidth);
     const n = i && !this.isFixedToTop && this.enableBubbleMode;
-    if (this.tabContainer = ki(
+    if (this.tabContainer = Bi(
       i,
       t,
       a,
@@ -4959,9 +5040,9 @@ class Vi {
         headbar: (s == null ? void 0 : s.className) || (s == null ? void 0 : s.tagName),
         headbarExists: !!s,
         bodyChildren: document.body.children.length
-      }), s && this.tabContainer && A(s, () => {
+      }), s && this.tabContainer && N(s, () => {
         s.appendChild(this.tabContainer);
-      }), s === document.body && this.tabContainer ? A(this.tabContainer, () => {
+      }), s === document.body && this.tabContainer ? N(this.tabContainer, () => {
         this.tabContainer.style.cssText += `
             position: fixed;
             top: 0;
@@ -4974,7 +5055,7 @@ class Vi {
             border-bottom: 2px solid rgba(0, 0, 0, 0.15);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
           `;
-      }) : s && this.tabContainer && A(this.tabContainer, () => {
+      }) : s && this.tabContainer && N(this.tabContainer, () => {
         this.tabContainer.style.cssText += `
             display: flex;
             flex-direction: row;
@@ -4991,7 +5072,7 @@ class Vi {
             gap: 10px;
           `;
       }), this.tabContainer.classList.add("fixed-to-top"), this.log(`📌 标签页已添加到顶部工具栏: ${s.className || s.tagName}`);
-    } else this.tabContainer && (A(document.body, () => {
+    } else this.tabContainer && (N(document.body, () => {
       document.body.appendChild(this.tabContainer);
     }), this.enableEdgeHide && this.debouncedApplyEdgeHideStyle(100));
     this.tabContainer.addEventListener("mousedown", (s) => {
@@ -5604,7 +5685,7 @@ class Vi {
   async updateTabsUI(e = !1) {
     var i;
     if (e && this.isUpdating && (this.verboseLog("🔄 强制更新：重置 isUpdating 标志"), this.isUpdating = !1, this.isUpdatingDOM = !1), !this.tabContainer || this.isUpdating) return;
-    if (j(this.tabContainer)) {
+    if (X(this.tabContainer)) {
       this.verboseLog("⚠️ tabContainer 被 content-visibility 隐藏，跳过UI更新以避免渲染警告"), this.isUpdating = !1, this.isUpdatingDOM = !1;
       return;
     }
@@ -5624,14 +5705,14 @@ class Vi {
         let b = this.panelTabsData[h] || [];
         b.length === 0 && (this.log(`🔍 面板 ${u} 没有标签数据，重新扫描`), await this.scanPanelTabsByIndex(h, u), b = this.panelTabsData[h] || []), this.sortTabsByPinStatus(), b = this.panelTabsData[h] || [];
         const p = document.createDocumentFragment();
-        b.forEach((g, v) => {
+        b.forEach((g, f) => {
           const y = this.createTabElement(g);
           this.enableBubbleMode && this.isBubbleExpanded && (y.style.opacity = "1", y.style.transform = ""), p.appendChild(y);
         });
         const m = (i = this.tabContainer) == null ? void 0 : i.querySelector(".new-tab-button");
         this.tabContainer && (m ? this.tabContainer.insertBefore(p, m) : this.tabContainer.appendChild(p), this.enableBubbleMode && this.isBubbleExpanded && requestAnimationFrame(() => {
-          var v;
-          const g = (v = this.tabContainer) == null ? void 0 : v.querySelectorAll(".orca-tab");
+          var f;
+          const g = (f = this.tabContainer) == null ? void 0 : f.querySelectorAll(".orca-tab");
           g == null || g.forEach((y) => {
             const w = y, x = w.getAttribute("data-focused") === "true";
             this.isBubbleAnimating || (x ? w.style.setProperty("opacity", "1", "important") : w.style.opacity = "1", w.style.transform = "", (!w.style.transition || w.style.transition === "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)") && (w.style.transition = "opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)"));
@@ -5684,8 +5765,8 @@ class Vi {
            `, T.color && y.style.setProperty("--tab-color", T.color);
           }
         });
-        const v = this.tabContainer.querySelector(".new-tab-button");
-        v && (v.style.cssText += `
+        const f = this.tabContainer.querySelector(".new-tab-button");
+        f && (f.style.cssText += `
           display: flex;
           align-items: center;
           justify-content: center;
@@ -5747,7 +5828,7 @@ class Vi {
         pointer-events: auto;
       `;
       const a = this.currentPanelIndex + 1;
-      i.textContent = `面板 ${a}（无标签页）`, M(i, fe(`当前在面板 ${a}，该面板没有标签页`)), t.appendChild(i);
+      i.textContent = `面板 ${a}（无标签页）`, M(i, ye(`当前在面板 ${a}，该面板没有标签页`)), t.appendChild(i);
     }
     this.tabContainer.appendChild(t), this.addNewTabButton();
   }
@@ -5781,7 +5862,7 @@ class Vi {
         pointer-events: auto;
       `;
       const a = this.currentPanelIndex + 1;
-      i.textContent = `面板 ${a}（无标签页）`, M(i, fe(`当前在面板 ${a}，该面板没有标签页`)), t.appendChild(i);
+      i.textContent = `面板 ${a}（无标签页）`, M(i, ye(`当前在面板 ${a}，该面板没有标签页`)), t.appendChild(i);
     }
     this.tabContainer.appendChild(t), this.addNewTabButton();
   }
@@ -5835,7 +5916,7 @@ class Vi {
       border-radius: var(--orca-radius-md);
       transition: all 0.2s ease;
     `;
-    t.style.cssText = i, t.innerHTML = "+", M(t, q("新建标签页")), t.addEventListener("mouseenter", () => {
+    t.style.cssText = i, t.innerHTML = "+", M(t, Y("新建标签页")), t.addEventListener("mouseenter", () => {
       t.style.background = "rgba(0, 0, 0, 0.1)", t.style.color = "#333";
     }), t.addEventListener("mouseleave", () => {
       t.style.background = "transparent", t.style.color = "#666";
@@ -5851,7 +5932,7 @@ class Vi {
       this.horizontalTabMaxWidth = e, this.horizontalTabMinWidth = t, this.tabContainer && !this.isVerticalMode ? (this.tabContainer.querySelectorAll(".orca-tab").forEach((a) => {
         const n = a, o = this.getTabInfoFromElement(n);
         if (o) {
-          const l = this.isVerticalMode && !this.isFixedToTop, s = Ie(o, l, () => "", e, t);
+          const l = this.isVerticalMode && !this.isFixedToTop, s = $e(o, l, () => "", e, t);
           n.style.cssText = s;
         }
       }), this.log(`📏 标签宽度已优化更新: 最大${e}px, 最小${t}px`)) : await this.createTabsUI();
@@ -5877,7 +5958,7 @@ class Vi {
   async showWidthAdjustmentDialog() {
     try {
       if (this.isVerticalMode) {
-        const e = $e(
+        const e = De(
           this.verticalWidth,
           async (t) => {
             try {
@@ -5902,7 +5983,7 @@ class Vi {
         );
         document.body.appendChild(e);
       } else {
-        const e = this.horizontalTabMaxWidth, t = this.horizontalTabMinWidth, i = $e(
+        const e = this.horizontalTabMaxWidth, t = this.horizontalTabMinWidth, i = De(
           this.horizontalTabMaxWidth,
           this.horizontalTabMinWidth,
           async (a, n) => {
@@ -5937,14 +6018,14 @@ class Vi {
     }
     const t = this.enableMiddleClickPin || this.enableDoubleClickClose;
     this.log(`🔧 创建功能切换按钮，当前状态: 中键固定=${this.enableMiddleClickPin}, 双击关闭=${this.enableDoubleClickClose}, 按钮启用=${t}`);
-    const i = Ei(
+    const i = Ai(
       this.isVerticalMode,
       t,
       async (a) => {
         a.preventDefault(), a.stopPropagation(), this.log("🔧 点击功能切换按钮"), alert("功能切换按钮被点击了！"), await this.toggleFeatureSettings();
       }
     );
-    M(i, q(
+    M(i, Y(
       t ? "中键固定/双击关闭 (已启用)" : "中键固定/双击关闭 (已禁用)"
     )), i.addEventListener("mouseenter", () => {
       i.style.background = t ? "rgba(0, 150, 0, 0.2)" : "rgba(0, 0, 0, 0.1)", i.style.color = t ? "#004400" : "#333";
@@ -6080,7 +6161,7 @@ class Vi {
       border-radius: var(--orca-radius-md);
       transition: all 0.2s ease;
     `;
-    t.style.cssText = i, t.innerHTML = '<i class="ti ti-layout-grid" style="font-size: 14px;"></i>', M(t, q(`工作区 (${((a = this.workspaces) == null ? void 0 : a.length) || 0})`)), t.addEventListener("mouseenter", () => {
+    t.style.cssText = i, t.innerHTML = '<i class="ti ti-layout-grid" style="font-size: 14px;"></i>', M(t, Y(`工作区 (${((a = this.workspaces) == null ? void 0 : a.length) || 0})`)), t.addEventListener("mouseenter", () => {
       t.style.background = "rgba(0, 0, 0, 0.1)", t.style.color = "#333";
     }), t.addEventListener("mouseleave", () => {
       t.style.background = "transparent", t.style.color = "#666";
@@ -6105,7 +6186,7 @@ class Vi {
     t && t.remove(), document.documentElement.hasAttribute("data-theme") ? document.documentElement.getAttribute("data-theme") : document.documentElement.classList.contains("dark") || ((u = (d = window.orca) == null ? void 0 : d.state) == null || u.themeMode);
     const i = document.createElement("div");
     i.className = "new-tab-context-menu";
-    const a = 200, n = 140, { x: o, y: l } = J(e.clientX, e.clientY, a, n);
+    const a = 200, n = 140, { x: o, y: l } = Q(e.clientX, e.clientY, a, n);
     i.style.cssText = `
       position: fixed;
       left: ${o}px;
@@ -6356,7 +6437,7 @@ class Vi {
     if (!this.tabContainer || !this.enableBubbleMode || this.isBubbleExpanded) return;
     if (this.isBubbleAnimating && (this.verboseLog("🫧 检测到收起动画进行中，取消所有动画定时器"), this.cancelBubbleAnimations(), this.tabContainer)) {
       this.tabContainer.style.transform = "", this.tabContainer.style.opacity = "";
-      const o = "color-mix(in srgb, var(--orca-color-bg-2), transparent 50%)", l = this.isVerticalMode ? this.verticalPosition : this.position, s = Z(
+      const o = "color-mix(in srgb, var(--orca-color-bg-2), transparent 50%)", l = this.isVerticalMode ? this.verticalPosition : this.position, s = ee(
         this.isVerticalMode,
         l,
         o,
@@ -6372,7 +6453,7 @@ class Vi {
     this.isBubbleExpanded = !0, this.isBubbleAnimating = !0;
     const e = this.tabContainer.querySelector(".bubble-overlay");
     e && (e.style.display = "none", e.style.opacity = "0", e.style.transform = "scale(0.8)"), this.tabContainer.style.transform = "scale(0.8)", this.tabContainer.style.opacity = "0.7";
-    const t = "color-mix(in srgb, var(--orca-color-bg-2), transparent 50%)", i = this.isVerticalMode ? this.verticalPosition : this.position, a = Z(
+    const t = "color-mix(in srgb, var(--orca-color-bg-2), transparent 50%)", i = this.isVerticalMode ? this.verticalPosition : this.position, a = ee(
       this.isVerticalMode,
       i,
       t,
@@ -6382,7 +6463,7 @@ class Vi {
       !0,
       !0
     );
-    this.tabContainer && A(this.tabContainer, () => {
+    this.tabContainer && N(this.tabContainer, () => {
       this.tabContainer.style.cssText = a, this.tabContainer.style.overflow = "hidden", this.tabContainer.style.overflowY = "", this.tabContainer.style.overflowX = "";
     }), this.isUpdating = !1, this.lastUpdateTime = 0, requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -6467,7 +6548,7 @@ class Vi {
       this.bubbleAnimationTimers.add(s);
     });
     const i = setTimeout(() => {
-      const a = "color-mix(in srgb, var(--orca-color-bg-2), transparent 50%)", n = this.isVerticalMode ? this.verticalPosition : this.position, o = Z(
+      const a = "color-mix(in srgb, var(--orca-color-bg-2), transparent 50%)", n = this.isVerticalMode ? this.verticalPosition : this.position, o = ee(
         this.isVerticalMode,
         n,
         a,
@@ -7028,12 +7109,16 @@ class Vi {
     let t = !1;
     for (let i = 0; i < e.length; i++) {
       const a = e[i];
+      if (A(a)) {
+        this.verboseLog(`⏭️ 跳过视图面板: ${a.title}`);
+        continue;
+      }
       try {
         const n = await orca.invokeBackend("get-block", parseInt(a.blockId));
         if (n) {
-          const o = await de(n), l = this.findProperty(n, "_color"), s = this.findProperty(n, "_icon");
+          const o = await ue(n), l = this.findProperty(n, "_color"), s = this.findProperty(n, "_icon");
           let c = a.color, d = a.icon;
-          l && l.type === 1 && (c = l.value), s && s.type === 1 && s.value && s.value.trim() ? d = s.value : d || (d = K(o)), a.blockType !== o || a.icon !== d || a.color !== c ? (e[i] = {
+          l && l.type === 1 && (c = l.value), s && s.type === 1 && s.value && s.value.trim() ? d = s.value : d || (d = Z(o)), a.blockType !== o || a.icon !== d || a.color !== c ? (e[i] = {
             ...a,
             blockType: o,
             icon: d,
@@ -7065,7 +7150,7 @@ class Vi {
       const e = document.querySelector("nav#sidebar");
       if (this.log(`   查找 nav#sidebar 元素: ${e ? "找到" : "未找到"}`), !e)
         return this.log("⚠️ 未找到 nav#sidebar 元素"), 0;
-      if (j(e))
+      if (X(e))
         return this.log("⚠️ sidebar 被 content-visibility 隐藏，跳过宽度获取以避免渲染警告"), 0;
       this.log("   侧边栏元素信息:"), this.log(`     - ID: ${e.id}`), this.log(`     - 类名: ${e.className}`), this.log(`     - 标签名: ${e.tagName}`);
       const i = window.getComputedStyle(e).getPropertyValue("--orca-sidebar-width");
@@ -7158,19 +7243,19 @@ class Vi {
     this.verboseLog(`🔧 创建标签元素: ${e.title} (ID: ${e.blockId})`);
     const t = document.createElement("div");
     t.className = "orca-tab", t.setAttribute("data-tab-id", e.blockId), this.isTabActive(e) && t.setAttribute("data-focused", "true");
-    const a = this.isVerticalMode && !this.isFixedToTop, n = Ie(e, a, () => "", this.horizontalTabMaxWidth, this.horizontalTabMinWidth);
+    const a = this.isVerticalMode && !this.isFixedToTop, n = $e(e, a, () => "", this.horizontalTabMaxWidth, this.horizontalTabMinWidth);
     t.style.cssText = n;
-    const o = vi();
+    const o = Si();
     if (e.icon && this.showBlockTypeIcons) {
-      const s = yi(e.icon);
+      const s = Pi(e.icon);
       o.appendChild(s);
     }
-    const l = xi(e.title);
+    const l = $i(e.title);
     if (o.appendChild(l), e.isPinned) {
-      const s = Ti();
+      const s = Li();
       o.appendChild(s);
     }
-    return t.appendChild(o), this.isVerticalMode && !this.resizeHandle && this.enableDragResize(), this.hideTabTooltips || M(t, me(e)), t.addEventListener("click", (s) => {
+    return t.appendChild(o), this.isVerticalMode && !this.resizeHandle && this.enableDragResize(), this.hideTabTooltips || M(t, ve(e)), t.addEventListener("click", (s) => {
       var h;
       const c = s.target;
       if (c.classList.contains("drag-handle") || c.closest && c.closest(".drag-handle"))
@@ -7180,7 +7265,7 @@ class Vi {
         return;
       }
       if (document.querySelector(".hover-tab-list-container")) {
-        N();
+        z();
         return;
       }
       s.preventDefault(), this.verboseLog(`🖱️ 点击标签: ${e.title} (ID: ${e.blockId})`), this.closedTabs.has(e.blockId) && (this.closedTabs.delete(e.blockId), this.saveClosedTabs(), this.log(`🔄 点击已关闭的标签 "${e.title}"，从已关闭列表中移除`));
@@ -7266,7 +7351,7 @@ class Vi {
     }), t;
   }
   hexToRgba(e, t) {
-    return fi(e, t);
+    return Ii(e, t);
   }
   /**
    * 根据背景颜色计算合适的文字颜色
@@ -7296,14 +7381,14 @@ class Vi {
    * RGB转OKLCH颜色空间
    */
   rgbToOklch(e, t, i) {
-    const a = e / 255, n = t / 255, o = i / 255, l = (se) => se <= 0.04045 ? se / 12.92 : Math.pow((se + 0.055) / 1.055, 2.4), s = l(a), c = l(n), d = l(o), u = s * 0.4124564 + c * 0.3575761 + d * 0.1804375, h = s * 0.2126729 + c * 0.7151522 + d * 0.072175, b = s * 0.0193339 + c * 0.119192 + d * 0.9503041, p = 0.2104542553 * u + 0.793617785 * h - 0.0040720468 * b, m = 1.9779984951 * u - 2.428592205 * h + 0.4505937099 * b, g = 0.0259040371 * u + 0.7827717662 * h - 0.808675766 * b, v = Math.cbrt(p), y = Math.cbrt(m), w = Math.cbrt(g), x = 0.2104542553 * v + 0.793617785 * y + 0.0040720468 * w, T = 1.9779984951 * v - 2.428592205 * y + 0.4505937099 * w, E = 0.0259040371 * v + 0.7827717662 * y - 0.808675766 * w, k = Math.sqrt(T * T + E * E), L = Math.atan2(E, T) * 180 / Math.PI, O = L < 0 ? L + 360 : L;
-    return { l: x, c: k, h: O };
+    const a = e / 255, n = t / 255, o = i / 255, l = (ce) => ce <= 0.04045 ? ce / 12.92 : Math.pow((ce + 0.055) / 1.055, 2.4), s = l(a), c = l(n), d = l(o), u = s * 0.4124564 + c * 0.3575761 + d * 0.1804375, h = s * 0.2126729 + c * 0.7151522 + d * 0.072175, b = s * 0.0193339 + c * 0.119192 + d * 0.9503041, p = 0.2104542553 * u + 0.793617785 * h - 0.0040720468 * b, m = 1.9779984951 * u - 2.428592205 * h + 0.4505937099 * b, g = 0.0259040371 * u + 0.7827717662 * h - 0.808675766 * b, f = Math.cbrt(p), y = Math.cbrt(m), w = Math.cbrt(g), x = 0.2104542553 * f + 0.793617785 * y + 0.0040720468 * w, T = 1.9779984951 * f - 2.428592205 * y + 0.4505937099 * w, E = 0.0259040371 * f + 0.7827717662 * y - 0.808675766 * w, k = Math.sqrt(T * T + E * E), L = Math.atan2(E, T) * 180 / Math.PI, F = L < 0 ? L + 360 : L;
+    return { l: x, c: k, h: F };
   }
   /**
    * OKLCH转RGB颜色空间
    */
   oklchToRgb(e, t, i) {
-    const a = i * Math.PI / 180, n = t * Math.cos(a), o = t * Math.sin(a), l = e, s = n, c = o, d = l * l * l, u = s * s * s, h = c * c * c, b = 1.0478112 * d + 0.0228866 * u - 0.050217 * h, p = 0.0295424 * d + 0.9904844 * u + 0.0170491 * h, m = -92345e-7 * d + 0.0150436 * u + 0.7521316 * h, g = 3.2404542 * b - 1.5371385 * p - 0.4985314 * m, v = -0.969266 * b + 1.8760108 * p + 0.041556 * m, y = 0.0556434 * b - 0.2040259 * p + 1.0572252 * m, w = (k) => k <= 31308e-7 ? 12.92 * k : 1.055 * Math.pow(k, 1 / 2.4) - 0.055, x = Math.max(0, Math.min(255, Math.round(w(g) * 255))), T = Math.max(0, Math.min(255, Math.round(w(v) * 255))), E = Math.max(0, Math.min(255, Math.round(w(y) * 255)));
+    const a = i * Math.PI / 180, n = t * Math.cos(a), o = t * Math.sin(a), l = e, s = n, c = o, d = l * l * l, u = s * s * s, h = c * c * c, b = 1.0478112 * d + 0.0228866 * u - 0.050217 * h, p = 0.0295424 * d + 0.9904844 * u + 0.0170491 * h, m = -92345e-7 * d + 0.0150436 * u + 0.7521316 * h, g = 3.2404542 * b - 1.5371385 * p - 0.4985314 * m, f = -0.969266 * b + 1.8760108 * p + 0.041556 * m, y = 0.0556434 * b - 0.2040259 * p + 1.0572252 * m, w = (k) => k <= 31308e-7 ? 12.92 * k : 1.055 * Math.pow(k, 1 / 2.4) - 0.055, x = Math.max(0, Math.min(255, Math.round(w(g) * 255))), T = Math.max(0, Math.min(255, Math.round(w(f) * 255))), E = Math.max(0, Math.min(255, Math.round(w(y) * 255)));
     return { r: x, g: T, b: E };
   }
   /**
@@ -7311,7 +7396,7 @@ class Vi {
    * 优先使用简单的RGB调整，避免OKLCH偏色问题
    */
   applyOklchFormula(e, t) {
-    return Fi(e, t);
+    return Ri(e, t);
   }
   /* ———————————————————————————————————————————————————————————————————————————— */
   /* 标签操作 - Tab Operations */
@@ -7394,6 +7479,18 @@ class Vi {
       } catch (o) {
         this.verboseLog("无法直接聚焦面板，继续尝试导航", o);
       }
+      if (A(e)) {
+        const o = e.blockId.startsWith("view:") ? e.blockId.substring(5) : e.panelId;
+        this.verboseLog(`🖼️ 检测到视图面板，使用 switchFocusTo 导航: ${o}`);
+        try {
+          orca.nav.switchFocusTo(o), this.verboseLog(`✅ 视图面板导航成功: ${e.title}`), this.lastActiveBlockId = e.blockId, setTimeout(() => {
+            this.isSwitchingTab = !1;
+          }, 300);
+          return;
+        } catch (l) {
+          this.warn("⚠️ 视图面板导航失败:", l);
+        }
+      }
       try {
         this.verboseLog(`🚀 尝试使用安全导航到块 ${e.blockId}`), await this.safeNavigate(e.blockId, a, e), this.verboseLog("✅ 安全导航成功");
       } catch (o) {
@@ -7452,7 +7549,7 @@ class Vi {
    * 切换标签固定状态
    */
   async toggleTabPinStatus(e) {
-    const t = this.getCurrentPanelTabs(), i = Li(e, t, {
+    const t = this.getCurrentPanelTabs(), i = at(e, t, {
       updateOrder: !0,
       saveData: !0,
       updateUI: !0
@@ -7598,7 +7695,7 @@ class Vi {
         const i = t.getAttribute("data-tab-id");
         if (i) {
           const a = this.getCurrentPanelTabs().find((n) => n.blockId === i);
-          a && M(t, me(a));
+          a && M(t, ve(a));
         }
       }
     }), this.verboseLog(`💬 已更新 ${e.length} 个标签页的tooltip状态: ${this.hideTabTooltips ? "隐藏" : "显示"}`);
@@ -7719,6 +7816,10 @@ class Vi {
    * 设置块内容
    */
   async setBlockContent(e, t) {
+    if (e.startsWith("view:")) {
+      this.verboseLog(`⏭️ 跳过视图面板的内容设置: ${e}`);
+      return;
+    }
     try {
       await orca.invokeBackend("set-block-content", parseInt(e), [{ t: "t", v: t }]), this.log(`📝 已为新块 ${e} 设置内容: "${t}"`);
     } catch (i) {
@@ -7760,6 +7861,8 @@ class Vi {
       this.verboseLog(`📋 [DEBUG] ✅ 块 ${e} 不存在，准备创建新标签`), this.creatingTabs.has(e) ? this.verboseLog(`📋 [DEBUG] ℹ️ 块 ${e} 已在 creatingTabs 中（可能来自 Ctrl+点击）`) : (this.verboseLog(`📋 [DEBUG] 🔒 将块 ${e} 添加到 creatingTabs 集合，防止重复处理`), this.creatingTabs.add(e));
       let o = null;
       try {
+        if (e.startsWith("view:"))
+          return this.verboseLog(`⏭️ 跳过视图面板的块信息获取: ${e}`), !1;
         if (!orca.state.blocks[parseInt(e)])
           return this.verboseLog(`📋 [addTabToPanel] 错误 - 无法找到块 ${e}`), this.warn(`无法找到块 ${e}`), !1;
         if (this.verboseLog("📋 [addTabToPanel] 找到块信息"), this.verboseLog("📋 [addTabToPanel] 获取标签信息..."), o = await this.getTabInfo(e, this.currentPanelId || "", a.length), !o)
@@ -7814,11 +7917,16 @@ class Vi {
    * 统一的导航方法，确保所有导航都设置 isNavigating 标志
    * @param blockId 要导航到的块ID
    * @param panelId 目标面板ID
-   * @param tab 可选的标签信息，用于判断是否为日期块
+   * @param tab 可选的标签信息，用于判断是否为日期块或视图面板
    */
   async safeNavigate(e, t, i) {
     this.isNavigating = !0, this.lastNavigatedBlockId = e, this.lastNavigationTime = Date.now(), this.verboseLog(`🚀 [safeNavigate] 开始导航到块 ${e}，设置 isNavigating = true`);
     try {
+      if (i && A(i)) {
+        const a = e.startsWith("view:") ? e.substring(5) : i.panelId;
+        this.verboseLog(`🖼️ [safeNavigate] 检测到视图面板，使用 switchFocusTo 导航: ${a}`), orca.nav.switchFocusTo(a), this.verboseLog("✅ [safeNavigate] 视图面板导航成功");
+        return;
+      }
       if (i && (i.isJournal || i.blockType === "journal")) {
         this.verboseLog(`📅 [safeNavigate] 检测到日期块，使用 journal 导航: ${i.title}`);
         const a = this.extractDateFromTitle(i.title);
@@ -7831,6 +7939,11 @@ class Vi {
           }
         else
           this.verboseLog(`⚠️ [safeNavigate] 无法从标题提取日期: "${i.title}"，回退到块导航`);
+      }
+      if (e.startsWith("view:")) {
+        const a = e.substring(5);
+        this.verboseLog(`🖼️ [safeNavigate] 检测到视图面板 blockId，使用 switchFocusTo 导航: ${a}`), orca.nav.switchFocusTo(a), this.verboseLog("✅ [safeNavigate] 视图面板导航成功");
+        return;
       }
       await orca.nav.goTo("block", { blockId: parseInt(e) }, t), this.verboseLog("✅ [safeNavigate] 使用 block 导航成功");
     } catch (a) {
@@ -8019,7 +8132,7 @@ class Vi {
    * 创建上下文菜单项
    */
   createContextMenuItem(e, t, i, a) {
-    return pi(e, t, i, a);
+    return ki(e, t, i, a);
   }
   /**
    * 记录当前标签的滚动位置
@@ -8152,16 +8265,16 @@ class Vi {
                 this.verboseLog("⚠️ 过滤后没有可显示的历史记录，不显示悬浮列表");
                 return;
               }
-              const v = e.getBoundingClientRect(), y = {
-                x: v.left,
-                y: v.bottom + 4
+              const f = e.getBoundingClientRect(), y = {
+                x: f.left,
+                y: f.bottom + 4
                 // 在标签下方显示
               };
-              this.verboseLog(`📍 计算悬浮位置: x=${y.x}, y=${y.y}`), this.verboseLog(`📊 标签尺寸: width=${v.width}, height=${v.height}`), this.verboseLog("🎨 开始创建悬浮标签列表");
+              this.verboseLog(`📍 计算悬浮位置: x=${y.x}, y=${y.y}`), this.verboseLog(`📊 标签尺寸: width=${f.width}, height=${f.height}`), this.verboseLog("🎨 开始创建悬浮标签列表");
               const w = (T) => {
-                this.verboseLog(`🖱️ 点击悬浮标签: ${T.title}`), this.getCurrentPanelTabs().find((L) => L.blockId === T.blockId) ? (this.verboseLog(`🔄 标签已存在，跳转到: ${T.title}`), this.recordTabSwitchHistory(t.blockId, T), this.switchToTab(T)) : (this.verboseLog(`🔄 标签不存在，替换当前标签: ${t.title} -> ${T.title}`), this.replaceCurrentTabWith(t.blockId, T)), N();
+                this.verboseLog(`🖱️ 点击悬浮标签: ${T.title}`), this.getCurrentPanelTabs().find((L) => L.blockId === T.blockId) ? (this.verboseLog(`🔄 标签已存在，跳转到: ${T.title}`), this.recordTabSwitchHistory(t.blockId, T), this.switchToTab(T)) : (this.verboseLog(`🔄 标签不存在，替换当前标签: ${t.title} -> ${T.title}`), this.replaceCurrentTabWith(t.blockId, T)), z();
               };
-              a = Pe(
+              a = Le(
                 g,
                 y,
                 l,
@@ -8170,7 +8283,7 @@ class Vi {
               ), this.verboseLog("✅ 悬浮标签列表创建完成"), l.enableScroll && g.length > l.maxDisplayCount && this.addScrollEvents(a, g, l, n, w);
               const x = (T) => {
                 const E = T.target;
-                this.safeClosest(E, ".hover-tab-list-container") || (N(), a = null, n = 0, document.removeEventListener("click", x));
+                this.safeClosest(E, ".hover-tab-list-container") || (z(), a = null, n = 0, document.removeEventListener("click", x));
               };
               setTimeout(() => {
                 document.addEventListener("click", x);
@@ -8188,7 +8301,7 @@ class Vi {
     });
     const s = () => {
       setTimeout(() => {
-        N(), a = null, n = 0;
+        z(), a = null, n = 0;
       }, 200);
     };
     document.addEventListener("mouseenter", (c) => {
@@ -8234,16 +8347,16 @@ class Vi {
             this.verboseLog("⚠️ 过滤后没有可显示的历史记录，不显示悬浮列表");
             return;
           }
-          const v = e.getBoundingClientRect(), y = {
-            x: v.left,
-            y: v.bottom + 4
+          const f = e.getBoundingClientRect(), y = {
+            x: f.left,
+            y: f.bottom + 4
             // 在标签下方显示
           };
-          this.verboseLog(`📍 计算悬浮位置: x=${y.x}, y=${y.y}`), this.verboseLog(`📊 标签尺寸: width=${v.width}, height=${v.height}`), this.verboseLog("🎨 开始创建悬浮标签列表");
+          this.verboseLog(`📍 计算悬浮位置: x=${y.x}, y=${y.y}`), this.verboseLog(`📊 标签尺寸: width=${f.width}, height=${f.height}`), this.verboseLog("🎨 开始创建悬浮标签列表");
           const w = (T) => {
-            this.verboseLog(`🖱️ 点击悬浮标签: ${T.title}`), this.getCurrentPanelTabs().find((L) => L.blockId === T.blockId) ? (this.verboseLog(`🔄 标签已存在，跳转到: ${T.title}`), this.recordTabSwitchHistory(t.blockId, T), this.switchToTab(T)) : (this.verboseLog(`🔄 标签不存在，替换当前标签: ${t.title} -> ${T.title}`), this.replaceCurrentTabWith(t.blockId, T)), N();
+            this.verboseLog(`🖱️ 点击悬浮标签: ${T.title}`), this.getCurrentPanelTabs().find((L) => L.blockId === T.blockId) ? (this.verboseLog(`🔄 标签已存在，跳转到: ${T.title}`), this.recordTabSwitchHistory(t.blockId, T), this.switchToTab(T)) : (this.verboseLog(`🔄 标签不存在，替换当前标签: ${t.title} -> ${T.title}`), this.replaceCurrentTabWith(t.blockId, T)), z();
           };
-          a = Pe(
+          a = Le(
             g,
             y,
             o,
@@ -8252,7 +8365,7 @@ class Vi {
           ), this.verboseLog("✅ 悬浮标签列表创建完成"), o.enableScroll && g.length > o.maxDisplayCount && this.addScrollEvents(a, g, o, n, w);
           const x = (T) => {
             const E = T.target;
-            this.safeClosest(E, ".hover-tab-list-container") || (N(), a = null, n = 0, document.removeEventListener("click", x));
+            this.safeClosest(E, ".hover-tab-list-container") || (z(), a = null, n = 0, document.removeEventListener("click", x));
           };
           setTimeout(() => {
             document.addEventListener("click", x);
@@ -8263,14 +8376,14 @@ class Vi {
       }, 500);
     }), e.addEventListener("mouseleave", () => {
       i && (clearTimeout(i), i = null), i = window.setTimeout(() => {
-        N(), a = null, n = 0;
+        z(), a = null, n = 0;
       }, 200);
     });
     const l = () => {
       i && (clearTimeout(i), i = null);
     }, s = () => {
       i = window.setTimeout(() => {
-        N(), a = null, n = 0;
+        z(), a = null, n = 0;
       }, 200);
     };
     document.addEventListener("mouseenter", (c) => {
@@ -8290,14 +8403,14 @@ class Vi {
       if (s.preventDefault(), l) return;
       l = !0;
       const c = s.deltaY > 0 ? i.scrollStep : -i.scrollStep, d = Math.max(0, Math.min(a + c, t.length - i.maxDisplayCount));
-      d !== a && (a = d, ge(e, t, i, n, this.isVerticalMode, a)), setTimeout(() => {
+      d !== a && (a = d, me(e, t, i, n, this.isVerticalMode, a)), setTimeout(() => {
         l = !1;
       }, 100);
     }), e.addEventListener("keydown", (s) => {
       if (s.key === "ArrowUp" || s.key === "ArrowDown") {
         s.preventDefault();
         const c = s.key === "ArrowDown" ? i.scrollStep : -i.scrollStep, d = Math.max(0, Math.min(a + c, t.length - i.maxDisplayCount));
-        d !== a && (a = d, ge(e, t, i, n, this.isVerticalMode, a));
+        d !== a && (a = d, me(e, t, i, n, this.isVerticalMode, a));
       }
     });
   }
@@ -8450,51 +8563,72 @@ class Vi {
   }
   /**
    * 关闭标签页
+   * 
+   * 支持关闭普通块标签页和视图面板标签页（如 AI Chat 面板）。
+   * 视图面板的 blockId 以 'view:' 前缀开头，需要特殊处理以避免错误。
+   * 
+   * Requirements: 4.3, 5.3
    */
   async closeTab(e) {
-    var a;
+    var n;
     const t = this.getCurrentPanelTabs();
     if (t.length <= 1) {
       this.log("⚠️ 只有一个标签，无法关闭");
       return;
     }
     e.isPinned && this.log("⚠️ 固定标签默认不可关闭，需要强制关闭");
-    const i = t.findIndex((n) => n.blockId === e.blockId);
-    if (i !== -1) {
-      const n = this.getCurrentActiveTab(), o = n && n.blockId === e.blockId, l = o ? this.getAdjacentTab(e) : null;
+    const i = A(e);
+    i && this.verboseLog(`🖼️ 检测到视图面板标签页关闭: ${e.title} (blockId: ${e.blockId})`);
+    const a = t.findIndex((o) => o.blockId === e.blockId);
+    if (a !== -1) {
+      const o = this.getCurrentActiveTab(), l = o && o.blockId === e.blockId, s = l ? this.getAdjacentTab(e) : null;
       if (this.closedTabs.add(e.blockId), this.enableRecentlyClosedTabs) {
-        const d = { ...e, closedAt: Date.now() }, u = this.recentlyClosedTabs.findIndex((h) => h.blockId === e.blockId);
-        u !== -1 && this.recentlyClosedTabs.splice(u, 1), this.recentlyClosedTabs.unshift(d), this.recentlyClosedTabs.length > 10 && (this.recentlyClosedTabs = this.recentlyClosedTabs.slice(0, 10)), await this.saveRecentlyClosedTabs();
+        const b = { ...e, closedAt: Date.now() }, p = this.recentlyClosedTabs.findIndex((m) => m.blockId === e.blockId);
+        p !== -1 && this.recentlyClosedTabs.splice(p, 1), this.recentlyClosedTabs.unshift(b), this.recentlyClosedTabs.length > 10 && (this.recentlyClosedTabs = this.recentlyClosedTabs.slice(0, 10)), await this.saveRecentlyClosedTabs();
       }
-      const s = (a = this.tabContainer) == null ? void 0 : a.querySelector(`[data-tab-id="${e.blockId}"]`), c = s == null ? void 0 : s.getAttribute("data-tab-history-id");
-      c && await this.deleteTabSwitchHistory(c), t.splice(i, 1), this.syncCurrentTabsToStorage(t), await this.immediateUpdateTabsUI(), await this.saveCurrentPanelTabs(), await this.saveClosedTabs(), this.enableWorkspaces && this.currentWorkspace && (await this.saveCurrentTabsToWorkspace(), this.log(`🔄 标签页删除，实时更新工作区: ${e.title}`)), this.log(`🗑️ 标签 "${e.title}" 已关闭，已添加到关闭列表`), o && l ? (this.log(`🔄 自动切换到相邻标签: "${l.title}"`), await this.switchToTab(l)) : o && !l && this.log("⚠️ 关闭了激活标签但没有相邻标签可切换");
+      const c = CSS.escape(e.blockId), d = (n = this.tabContainer) == null ? void 0 : n.querySelector(`[data-tab-id="${c}"]`), u = d == null ? void 0 : d.getAttribute("data-tab-history-id");
+      u && await this.deleteTabSwitchHistory(u), t.splice(a, 1), this.syncCurrentTabsToStorage(t), await this.immediateUpdateTabsUI(), await this.saveCurrentPanelTabs(), await this.saveClosedTabs(), this.enableWorkspaces && this.currentWorkspace && (await this.saveCurrentTabsToWorkspace(), this.log(`🔄 标签页删除，实时更新工作区: ${e.title}`));
+      const h = i ? "视图面板" : "标签";
+      this.log(`🗑️ ${h} "${e.title}" 已关闭，已添加到关闭列表`), l && s ? (this.log(`🔄 自动切换到相邻标签: "${s.title}"`), await this.switchToTab(s)) : l && !s && this.log("⚠️ 关闭了激活标签但没有相邻标签可切换");
     }
   }
   /**
    * 关闭全部标签页（保留固定标签）
+   * 
+   * 支持关闭普通块标签页和视图面板标签页（如 AI Chat 面板）。
+   * 视图面板的 blockId 以 'view:' 前缀开头，可以安全地添加到 closedTabs 集合。
+   * 
+   * Requirements: 4.3, 5.3
    */
   async closeAllTabs() {
-    const e = this.getCurrentPanelTabs();
-    e.filter((n) => !n.isPinned).forEach((n) => {
-      this.closedTabs.add(n.blockId);
+    const e = this.getCurrentPanelTabs(), t = e.filter((o) => !o.isPinned);
+    let i = 0;
+    t.forEach((o) => {
+      this.closedTabs.add(o.blockId), A(o) && (i++, this.verboseLog(`🖼️ 关闭视图面板标签页: ${o.title} (blockId: ${o.blockId})`));
     });
-    const i = e.filter((n) => n.isPinned), a = e.length - i.length;
-    this.setCurrentPanelTabs(i), this.syncCurrentTabsToStorage(i), await this.immediateUpdateTabsUI(), await this.saveCurrentPanelTabs(), await this.saveClosedTabs(), this.enableWorkspaces && this.currentWorkspace && (await this.saveCurrentTabsToWorkspace(), this.log("🔄 批量关闭标签页，实时更新工作区")), this.log(`🗑️ 已关闭 ${a} 个标签，保留了 ${i.length} 个固定标签`);
+    const a = e.filter((o) => o.isPinned), n = e.length - a.length;
+    this.setCurrentPanelTabs(a), this.syncCurrentTabsToStorage(a), await this.immediateUpdateTabsUI(), await this.saveCurrentPanelTabs(), await this.saveClosedTabs(), this.enableWorkspaces && this.currentWorkspace && (await this.saveCurrentTabsToWorkspace(), this.log("🔄 批量关闭标签页，实时更新工作区")), i > 0 ? this.log(`🗑️ 已关闭 ${n} 个标签（包含 ${i} 个视图面板），保留了 ${a.length} 个固定标签`) : this.log(`🗑️ 已关闭 ${n} 个标签，保留了 ${a.length} 个固定标签`);
   }
   /**
    * 关闭其他标签页（保留当前标签和固定标签）
+   * 
+   * 支持关闭普通块标签页和视图面板标签页（如 AI Chat 面板）。
+   * 视图面板的 blockId 以 'view:' 前缀开头，可以安全地添加到 closedTabs 集合。
+   * 
+   * Requirements: 4.3, 5.3
    */
   async closeOtherTabs(e) {
     const t = this.getCurrentPanelTabs(), i = t.filter(
-      (o) => o.blockId === e.blockId || o.isPinned
+      (l) => l.blockId === e.blockId || l.isPinned
+    ), a = t.filter(
+      (l) => l.blockId !== e.blockId && !l.isPinned
     );
-    t.filter(
-      (o) => o.blockId !== e.blockId && !o.isPinned
-    ).forEach((o) => {
-      this.closedTabs.add(o.blockId);
+    let n = 0;
+    a.forEach((l) => {
+      this.closedTabs.add(l.blockId), A(l) && (n++, this.verboseLog(`🖼️ 关闭视图面板标签页: ${l.title} (blockId: ${l.blockId})`));
     });
-    const n = t.length - i.length;
-    this.setCurrentPanelTabs(i), this.syncCurrentTabsToStorage(i), await this.immediateUpdateTabsUI(), await this.saveCurrentPanelTabs(), await this.saveClosedTabs(), this.enableWorkspaces && this.currentWorkspace && (await this.saveCurrentTabsToWorkspace(), this.log("🔄 关闭其他标签页，实时更新工作区")), this.log(`🗑️ 已关闭其他 ${n} 个标签，保留了当前标签和固定标签`);
+    const o = t.length - i.length;
+    this.setCurrentPanelTabs(i), this.syncCurrentTabsToStorage(i), await this.immediateUpdateTabsUI(), await this.saveCurrentPanelTabs(), await this.saveClosedTabs(), this.enableWorkspaces && this.currentWorkspace && (await this.saveCurrentTabsToWorkspace(), this.log("🔄 关闭其他标签页，实时更新工作区")), n > 0 ? this.log(`🗑️ 已关闭其他 ${o} 个标签（包含 ${n} 个视图面板），保留了当前标签和固定标签`) : this.log(`🗑️ 已关闭其他 ${o} 个标签，保留了当前标签和固定标签`);
   }
   /**
    * 重命名标签（内联编辑）
@@ -8572,8 +8706,8 @@ class Vi {
     let o = { x: "50%", y: "50%" };
     if (n) {
       const u = n.getBoundingClientRect(), h = window.innerWidth, b = window.innerHeight, p = 300, m = 100, g = 20;
-      let v = u.left, y = u.top - m - 10;
-      v + p > h - g && (v = h - p - g), v < g && (v = g), y < g && (y = u.bottom + 10, y + m > b - g && (y = (b - m) / 2)), y + m > b - g && (y = b - m - g), v = Math.max(g, Math.min(v, h - p - g)), y = Math.max(g, Math.min(y, b - m - g)), o = { x: `${v}px`, y: `${y}px` };
+      let f = u.left, y = u.top - m - 10;
+      f + p > h - g && (f = h - p - g), f < g && (f = g), y < g && (y = u.bottom + 10, y + m > b - g && (y = (b - m) / 2)), y + m > b - g && (y = b - m - g), f = Math.max(g, Math.min(f, h - p - g)), y = Math.max(g, Math.min(y, b - m - g)), o = { x: `${f}px`, y: `${y}px` };
     }
     const l = orca.components.InputBox, s = t.createElement(l, {
       label: "重命名标签",
@@ -8593,7 +8727,7 @@ class Vi {
       },
       onClick: u
     }, ""));
-    A(a, () => {
+    N(a, () => {
       i.render(s, a);
     }), setTimeout(() => {
       const u = a.querySelector("div");
@@ -8676,7 +8810,7 @@ class Vi {
    */
   async updateTabTitle(e, t) {
     try {
-      const i = this.getCurrentPanelTabs(), a = Di(e, t, i, {
+      const i = this.getCurrentPanelTabs(), a = rt(e, t, i, {
         updateUI: !0,
         saveData: !0,
         validateData: !0
@@ -8787,7 +8921,7 @@ class Vi {
         g.preventDefault(), g.stopPropagation(), b(g);
       }
     }));
-    A(n, () => {
+    N(n, () => {
       a.render(d, n);
     });
     const u = () => {
@@ -8810,7 +8944,7 @@ class Vi {
     i && i.remove();
     const a = document.documentElement.classList.contains("dark") || ((b = (h = window.orca) == null ? void 0 : h.state) == null ? void 0 : b.themeMode) === "dark", n = document.createElement("div");
     n.className = "tab-context-menu";
-    const o = 220, l = 240, { x: s, y: c } = J(e.clientX, e.clientY, o, l);
+    const o = 220, l = 240, { x: s, y: c } = Q(e.clientX, e.clientY, o, l);
     n.style.cssText = `
       position: fixed;
       left: ${s}px;
@@ -8867,8 +9001,8 @@ class Vi {
         border-radius: var(--orca-radius-md);
         transition: background-color 0.2s;
       `;
-      const v = document.createElement("i");
-      v.className = "tab-context-menu-icon", p.text.includes("重命名") ? v.classList.add("ti", "ti-edit") : p.text.includes("固定") ? v.classList.add("ti", t.isPinned ? "ti-pin-off" : "ti-pin") : p.text.includes("添加到已有标签组") ? v.classList.add("ti", "ti-bookmark-plus") : p.text.includes("关闭") ? v.classList.add("ti", "ti-x") : v.classList.add("ti", "ti-edit"), v.style.cssText = `
+      const f = document.createElement("i");
+      f.className = "tab-context-menu-icon", p.text.includes("重命名") ? f.classList.add("ti", "ti-edit") : p.text.includes("固定") ? f.classList.add("ti", t.isPinned ? "ti-pin-off" : "ti-pin") : p.text.includes("添加到已有标签组") ? f.classList.add("ti", "ti-bookmark-plus") : p.text.includes("关闭") ? f.classList.add("ti", "ti-x") : f.classList.add("ti", "ti-edit"), f.style.cssText = `
         flex: 0 0 auto;
         font-size: var(--orca-fontsize-lg);
         margin-top: var(--orca-spacing-xs);
@@ -8876,7 +9010,7 @@ class Vi {
         color: var(--orca-tab-colored-text);
         width: 16px;
         text-align: center;
-      `, m.appendChild(v);
+      `, m.appendChild(f);
       const y = document.createElement("span");
       y.textContent = p.text, m.appendChild(y), p.disabled || (m.addEventListener("mouseenter", () => {
         m.style.backgroundColor = "var(--orca-color-menu-highlight)";
@@ -8938,13 +9072,17 @@ class Vi {
     let t = !1;
     for (let i = 0; i < e.length; i++) {
       const a = e[i];
+      if (A(a)) {
+        this.verboseLog(`⏭️ 跳过视图面板: ${a.title}`);
+        continue;
+      }
       if (!a.blockType || !a.icon)
         try {
           const o = await orca.invokeBackend("get-block", parseInt(a.blockId));
           if (o) {
-            const l = await de(o);
+            const l = await ue(o);
             let s = a.icon;
-            s || (s = K(l)), e[i] = {
+            s || (s = Z(l)), e[i] = {
               ...a,
               blockType: l,
               icon: s
@@ -9023,7 +9161,7 @@ class Vi {
     if (!this.isDragging || !this.tabContainer) return;
     if (e.preventDefault(), this.enableBubbleMode && !this.isBubbleExpanded) {
       this.isBubbleExpanded = !0;
-      const s = "color-mix(in srgb, var(--orca-color-bg-2), transparent 50%)", c = this.isVerticalMode ? this.verticalPosition : this.position, d = Z(
+      const s = "color-mix(in srgb, var(--orca-color-bg-2), transparent 50%)", c = this.isVerticalMode ? this.verticalPosition : this.position, d = ee(
         this.isVerticalMode,
         c,
         s,
@@ -9113,11 +9251,11 @@ class Vi {
   }
   async restorePosition() {
     try {
-      this.position = le(
+      this.position = de(
         this.isVerticalMode,
         this.verticalPosition,
         this.horizontalPosition
-      ), this.position = Xe(this.position, this.isVerticalMode, this.verticalWidth), this.log(`📍 位置已恢复: ${De(this.position, this.isVerticalMode)}`);
+      ), this.position = Ze(this.position, this.isVerticalMode, this.verticalWidth), this.log(`📍 位置已恢复: ${Ne(this.position, this.isVerticalMode)}`);
     } catch {
       this.warn("无法恢复标签位置");
     }
@@ -9130,18 +9268,18 @@ class Vi {
       const e = await this.storageService.getConfig(
         C.LAYOUT_MODE,
         this.pluginName,
-        Y()
+        G()
       );
       if (e) {
-        const t = Ke(e);
-        this.isVerticalMode = t.isVerticalMode, this.verticalWidth = t.verticalWidth, this.verticalPosition = t.verticalPosition, this.horizontalPosition = t.horizontalPosition, this.position = le(
+        const t = Qe(e);
+        this.isVerticalMode = t.isVerticalMode, this.verticalWidth = t.verticalWidth, this.verticalPosition = t.verticalPosition, this.horizontalPosition = t.horizontalPosition, this.position = de(
           this.isVerticalMode,
           this.verticalPosition,
           this.horizontalPosition
-        ), this.isSidebarAlignmentEnabled = t.isSidebarAlignmentEnabled, this.isFloatingWindowVisible = t.isFloatingWindowVisible, this.showBlockTypeIcons = t.showBlockTypeIcons, this.showInHeadbar = t.showInHeadbar, this.horizontalTabMaxWidth = t.horizontalTabMaxWidth, this.horizontalTabMinWidth = t.horizontalTabMinWidth, this.enableEdgeHide = t.enableEdgeHide, this.enableBubbleMode = t.enableBubbleMode, !this.isVerticalMode && this.enableBubbleMode && (this.enableBubbleMode = !1, this.isBubbleExpanded = !1, this.verboseLog("🫧 恢复配置：水平模式不支持气泡模式，已自动禁用")), this.log(`📐 布局模式已恢复: ${Ze(t)}, 当前位置: (${this.position.x}, ${this.position.y})`), this.isSidebarAlignmentEnabled && (this.startSidebarAlignmentObserver(), this.log("🔄 侧边栏对齐监听器已启动"));
+        ), this.isSidebarAlignmentEnabled = t.isSidebarAlignmentEnabled, this.isFloatingWindowVisible = t.isFloatingWindowVisible, this.showBlockTypeIcons = t.showBlockTypeIcons, this.showInHeadbar = t.showInHeadbar, this.horizontalTabMaxWidth = t.horizontalTabMaxWidth, this.horizontalTabMinWidth = t.horizontalTabMinWidth, this.enableEdgeHide = t.enableEdgeHide, this.enableBubbleMode = t.enableBubbleMode, !this.isVerticalMode && this.enableBubbleMode && (this.enableBubbleMode = !1, this.isBubbleExpanded = !1, this.verboseLog("🫧 恢复配置：水平模式不支持气泡模式，已自动禁用")), this.log(`📐 布局模式已恢复: ${tt(t)}, 当前位置: (${this.position.x}, ${this.position.y})`), this.isSidebarAlignmentEnabled && (this.startSidebarAlignmentObserver(), this.log("🔄 侧边栏对齐监听器已启动"));
       } else {
-        const t = Y();
-        this.isVerticalMode = t.isVerticalMode, this.verticalWidth = t.verticalWidth, this.verticalPosition = t.verticalPosition, this.horizontalPosition = t.horizontalPosition, this.horizontalTabMaxWidth = t.horizontalTabMaxWidth, this.horizontalTabMinWidth = t.horizontalTabMinWidth, this.enableEdgeHide = t.enableEdgeHide, this.enableBubbleMode = t.enableBubbleMode, this.position = le(
+        const t = G();
+        this.isVerticalMode = t.isVerticalMode, this.verticalWidth = t.verticalWidth, this.verticalPosition = t.verticalPosition, this.horizontalPosition = t.horizontalPosition, this.horizontalTabMaxWidth = t.horizontalTabMaxWidth, this.horizontalTabMinWidth = t.horizontalTabMinWidth, this.enableEdgeHide = t.enableEdgeHide, this.enableBubbleMode = t.enableBubbleMode, this.position = de(
           this.isVerticalMode,
           this.verticalPosition,
           this.horizontalPosition
@@ -9171,7 +9309,7 @@ class Vi {
    */
   constrainPosition() {
     const e = this.isVerticalMode ? Math.min(this.getCurrentPanelTabs().length * 28 + 8, window.innerHeight * 0.8) : 28;
-    this.position = zi(this.position, this.isVerticalMode, this.verticalWidth, e);
+    this.position = Ui(this.position, this.isVerticalMode, this.verticalWidth, e);
   }
   /**
    * 检查新添加的块
@@ -9337,7 +9475,7 @@ class Vi {
     try {
       if (d = await this.createTabInfoFromBlock(e, t), !d) return;
       s = this.getCurrentPanelTabs();
-      const g = s.find((v) => v.blockId === e);
+      const g = s.find((f) => f.blockId === e);
       if (g) {
         this.log(`✅ 标签已被其他地方创建（在await期间），只更新聚焦状态: "${g.title}"`), this.updateFocusState(e, g.title), this.immediateUpdateTabsUI();
         return;
@@ -9349,18 +9487,18 @@ class Vi {
     if (u) {
       if (u.isPinned) {
         this.log(`📌 当前激活标签已置顶，创建新标签: "${d.title}"`);
-        const v = s.filter((y) => y.isPinned).length;
-        s.splice(v, 0, d), this.updateFocusState(e, d.title), this.setCurrentPanelTabs(s), this.immediateUpdateTabsUI();
+        const f = s.filter((y) => y.isPinned).length;
+        s.splice(f, 0, d), this.updateFocusState(e, d.title), this.setCurrentPanelTabs(s), this.immediateUpdateTabsUI();
         return;
       }
-      const g = s.findIndex((v) => v.blockId === u.blockId);
+      const g = s.findIndex((f) => f.blockId === u.blockId);
       if (g !== -1) {
         this.verboseLog(`🔄 替换当前激活标签页: "${u.title}" -> "${d.title}"`), this.recordTabSwitchHistory(u.blockId, d), s[g] = d, this.updateFocusState(e, d.title), this.setCurrentPanelTabs(s), this.immediateUpdateTabsUI();
         return;
       }
     }
     if (this.lastActiveBlockId) {
-      const g = s.findIndex((v) => v.blockId === this.lastActiveBlockId);
+      const g = s.findIndex((f) => f.blockId === this.lastActiveBlockId);
       if (g !== -1) {
         if (s[g].isPinned) {
           this.log(`📌 上一个激活标签已置顶，创建新标签: "${d.title}"`);
@@ -9376,15 +9514,15 @@ class Vi {
     const b = (p = this.tabContainer) == null ? void 0 : p.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
     if (b) {
       const g = b.getAttribute("data-tab-id");
-      h = s.findIndex((v) => v.blockId === g);
+      h = s.findIndex((f) => f.blockId === g);
     }
     if (h === -1) {
       const g = (m = this.tabContainer) == null ? void 0 : m.querySelectorAll(".orca-tabs-plugin .orca-tab");
       if (g && g.length > 0)
-        for (let v = 0; v < g.length; v++) {
-          const y = g[v];
+        for (let f = 0; f < g.length; f++) {
+          const y = g[f];
           if (y.classList.contains("focused") || y.getAttribute("data-focused") === "true" || y.classList.contains("active")) {
-            h = v;
+            h = f;
             break;
           }
         }
@@ -9392,8 +9530,8 @@ class Vi {
     if (h === -1 && s.length > 0 && (h = 0, this.log("⚠️ 无法确定当前聚焦的标签页，使用第一个标签页作为替换目标")), h >= 0 && h < s.length)
       if (s[h].isPinned) {
         this.log(`📌 目标标签已置顶，创建新标签: "${d.title}"`);
-        const v = s.filter((y) => y.isPinned).length;
-        s.splice(v, 0, d), this.updateFocusState(e, d.title), this.setCurrentPanelTabs(s), this.immediateUpdateTabsUI();
+        const f = s.filter((y) => y.isPinned).length;
+        s.splice(f, 0, d), this.updateFocusState(e, d.title), this.setCurrentPanelTabs(s), this.immediateUpdateTabsUI();
       } else
         s[h] = d, this.updateFocusState(e, d.title), this.setCurrentPanelTabs(s), this.immediateUpdateTabsUI();
     else
@@ -9405,7 +9543,7 @@ class Vi {
       return;
     }
     this.panelBlockCheckTask = (async () => {
-      var p;
+      var m;
       if (this.isNavigating) {
         this.verboseLog("⏭️ 正在导航中，跳过面板块检查");
         return;
@@ -9414,10 +9552,10 @@ class Vi {
       const e = document.querySelector(".orca-panel.active");
       if (!e) {
         this.log("❌ 没有找到当前激活的面板");
-        const m = document.querySelectorAll(".orca-panel");
-        this.log("📊 当前所有面板状态:"), m.forEach((g, v) => {
-          const y = g.getAttribute("data-panel-id"), w = g.classList.contains("active");
-          this.log(`  面板${v + 1}: ID=${y}, active=${w}`);
+        const g = document.querySelectorAll(".orca-panel");
+        this.log("📊 当前所有面板状态:"), g.forEach((f, y) => {
+          const w = f.getAttribute("data-panel-id"), x = f.classList.contains("active");
+          this.log(`  面板${y + 1}: ID=${w}, active=${x}`);
         });
         return;
       }
@@ -9428,71 +9566,95 @@ class Vi {
       }
       this.verboseLog(`✅ 找到激活面板: ID=${t}, class=${e.className}`);
       const i = this.getPanelIds().indexOf(t);
-      i !== -1 && (this.currentPanelIndex = i, this.currentPanelId = t, this.verboseLog(`🔄 更新当前面板索引: ${i} (面板ID: ${t})`)), e.querySelectorAll(".orca-hideable");
-      const a = e.querySelector(".orca-hideable:not(.orca-hideable-hidden) .orca-block-editor[data-block-id]");
-      if (!a) {
+      i !== -1 && (this.currentPanelIndex = i, this.currentPanelId = t, this.verboseLog(`🔄 更新当前面板索引: ${i} (面板ID: ${t})`));
+      const a = this.getViewPanelInfo(e);
+      if (a) {
+        this.verboseLog(`🖼️ 检测到视图面板: ${a.title}`);
+        let g = this.getCurrentPanelTabs();
+        const f = `view:${a.panelId}`, y = g.find((w) => w.blockId === f);
+        if (y)
+          this.updateFocusState(f, y.title), await this.immediateUpdateTabsUI();
+        else {
+          const w = {
+            blockId: f,
+            panelId: a.panelId,
+            title: a.title,
+            icon: a.icon,
+            order: 0,
+            blockType: "view",
+            isViewPanel: !0
+          };
+          this.panelTabsData[this.currentPanelIndex] = [w], this.log(`📋 为视图面板创建标签页: ${a.title}`);
+          const x = this.currentPanelIndex === 0 ? C.FIRST_PANEL_TABS : `panel_${this.currentPanelIndex + 1}_tabs`;
+          await this.savePanelTabsByKey(x, [w]), await this.immediateUpdateTabsUI();
+        }
+        return;
+      }
+      e.querySelectorAll(".orca-hideable");
+      const n = e.querySelector(".orca-hideable:not(.orca-hideable-hidden) .orca-block-editor[data-block-id]");
+      if (!n) {
         this.log(`❌ 激活面板 ${t} 中没有找到可见的块编辑器`);
         return;
       }
-      const n = a.getAttribute("data-block-id");
-      if (!n) {
+      const o = n.getAttribute("data-block-id");
+      if (!o) {
         this.log("激活的块编辑器没有blockId");
         return;
       }
-      let o = this.getCurrentPanelTabs();
-      o.length === 0 && (this.log("📋 当前面板没有标签数据，先扫描面板数据"), await this.scanCurrentPanelTabs(), o = this.getCurrentPanelTabs());
-      const l = o.find((m) => m.blockId === n);
-      if (l) {
-        this.closedTabs.has(n) && (this.closedTabs.delete(n), await this.saveClosedTabs()), this.updateFocusState(n, l.title), await this.immediateUpdateTabsUI();
+      let l = this.getCurrentPanelTabs();
+      l.length === 0 && (this.log("📋 当前面板没有标签数据，先扫描面板数据"), await this.scanCurrentPanelTabs(), l = this.getCurrentPanelTabs());
+      const s = l.find((g) => g.blockId === o);
+      if (s) {
+        this.closedTabs.has(o) && (this.closedTabs.delete(o), await this.saveClosedTabs()), this.updateFocusState(o, s.title), await this.immediateUpdateTabsUI();
         return;
       }
-      const s = Date.now() - this.lastNavigationTime;
-      if (this.lastNavigatedBlockId && s < 1e3 && o.find((g) => g.blockId === this.lastNavigatedBlockId)) {
-        this.verboseLog(`⏭️ 检测到导航后的新块 ${n}，但我们刚导航到 ${this.lastNavigatedBlockId}，跳过处理（防止重复标签页）`), this.verboseLog(`⏭️ 时间差: ${s}ms`);
+      const c = Date.now() - this.lastNavigationTime;
+      if (this.lastNavigatedBlockId && c < 1e3 && l.find((f) => f.blockId === this.lastNavigatedBlockId)) {
+        this.verboseLog(`⏭️ 检测到导航后的新块 ${o}，但我们刚导航到 ${this.lastNavigatedBlockId}，跳过处理（防止重复标签页）`), this.verboseLog(`⏭️ 时间差: ${c}ms`);
         return;
       }
-      const c = (p = this.tabContainer) == null ? void 0 : p.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
-      if (!c) {
-        this.verboseLog(`⚠️ 未找到聚焦的标签元素，当前块: ${n}`);
+      const d = (m = this.tabContainer) == null ? void 0 : m.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
+      if (!d) {
+        this.verboseLog(`⚠️ 未找到聚焦的标签元素，当前块: ${o}`);
         return;
       }
-      const d = c.getAttribute("data-tab-id");
-      if (!d)
+      const u = d.getAttribute("data-tab-id");
+      if (!u)
         return;
-      const u = o.findIndex((m) => m.blockId === d);
-      if (u === -1)
+      const h = l.findIndex((g) => g.blockId === u);
+      if (h === -1)
         return;
-      if (o[u].isPinned) {
-        this.log(`📌 聚焦标签已置顶，不替换，创建新标签: "${n}"`);
-        const m = o.find((g) => g.blockId === n);
-        if (m) {
-          this.log(`✅ 标签已被其他地方创建，只更新聚焦状态: "${m.title}"`), this.updateFocusState(n, m.title), await this.immediateUpdateTabsUI();
+      if (l[h].isPinned) {
+        this.log(`📌 聚焦标签已置顶，不替换，创建新标签: "${o}"`);
+        const g = l.find((f) => f.blockId === o);
+        if (g) {
+          this.log(`✅ 标签已被其他地方创建，只更新聚焦状态: "${g.title}"`), this.updateFocusState(o, g.title), await this.immediateUpdateTabsUI();
           return;
         }
-        if (this.creatingTabs.has(n)) {
-          this.log(`⏳ 标签 ${n} 正在被其他地方创建，跳过`);
+        if (this.creatingTabs.has(o)) {
+          this.log(`⏳ 标签 ${o} 正在被其他地方创建，跳过`);
           return;
         }
-        this.creatingTabs.add(n);
+        this.creatingTabs.add(o);
         try {
-          const g = await this.getTabInfo(n, t, o.length);
-          if (!g)
+          const f = await this.getTabInfo(o, t, l.length);
+          if (!f)
             return;
-          o = this.getCurrentPanelTabs();
-          const v = o.find((w) => w.blockId === n);
-          if (v) {
-            this.log(`✅ 标签在创建过程中已被其他地方创建: "${v.title}"`), this.updateFocusState(n, v.title), await this.immediateUpdateTabsUI();
+          l = this.getCurrentPanelTabs();
+          const y = l.find((x) => x.blockId === o);
+          if (y) {
+            this.log(`✅ 标签在创建过程中已被其他地方创建: "${y.title}"`), this.updateFocusState(o, y.title), await this.immediateUpdateTabsUI();
             return;
           }
-          const y = o.filter((w) => w.isPinned).length;
-          o.splice(y, 0, g), this.updateFocusState(n, g.title), this.setCurrentPanelTabs(o), await this.immediateUpdateTabsUI();
+          const w = l.filter((x) => x.isPinned).length;
+          l.splice(w, 0, f), this.updateFocusState(o, f.title), this.setCurrentPanelTabs(l), await this.immediateUpdateTabsUI();
         } finally {
-          this.creatingTabs.delete(n);
+          this.creatingTabs.delete(o);
         }
         return;
       }
-      const b = await this.getTabInfo(n, t, u);
-      b && (o[u] = b, this.setCurrentPanelTabs(o), await this.immediateUpdateTabsUI());
+      const p = await this.getTabInfo(o, t, h);
+      p && (l[h] = p, this.setCurrentPanelTabs(l), await this.immediateUpdateTabsUI());
     })();
     try {
       await this.panelBlockCheckTask;
@@ -9521,16 +9683,16 @@ class Vi {
           if ((p.classList.contains("orca-panels-row") || p.closest(".orca-panels-row")) && (l = !0), b.addedNodes.length > 0 && p.closest(".orca-panel")) {
             for (const g of b.addedNodes)
               if (g.nodeType === Node.ELEMENT_NODE) {
-                const v = g;
-                if (this.handleNewHideableElement(v)) {
+                const f = g;
+                if (this.handleNewHideableElement(f)) {
                   o = !0;
                   break;
                 }
-                if (v.classList.contains("orca-block-editor") || v.querySelector(".orca-block-editor")) {
+                if (f.classList.contains("orca-block-editor") || f.querySelector(".orca-block-editor")) {
                   o = !0;
                   break;
                 }
-                if (this.handleChildHideableElements(v)) {
+                if (this.handleChildHideableElements(f)) {
                   o = !0;
                   break;
                 }
@@ -9542,12 +9704,12 @@ class Vi {
           if (p.classList.contains("orca-panel")) {
             if (s = !0, p.classList.contains("active")) {
               const m = p.getAttribute("data-panel-id"), g = p.querySelectorAll(".orca-hideable");
-              let v = null;
+              let f = null;
               g.forEach((y) => {
                 const w = y.classList.contains("orca-hideable-hidden"), x = y.querySelector(".orca-block-editor[data-block-id]"), T = x == null ? void 0 : x.getAttribute("data-block-id");
-                !w && x && T && (v = T);
-              }), v && m && this.handleNewBlockInPanel(v, m).catch((y) => {
-                this.error(`处理面板激活时的新块失败: ${v}`, y);
+                !w && x && T && (f = T);
+              }), f && m && this.handleNewBlockInPanel(f, m).catch((y) => {
+                this.error(`处理面板激活时的新块失败: ${f}`, y);
               }), setTimeout(async () => {
                 await this.checkCurrentPanelBlocks();
               }, 50), setTimeout(async () => {
@@ -9558,6 +9720,13 @@ class Vi {
           }
           p.classList.contains("orca-hideable") && !p.classList.contains("orca-hideable-hidden") && (this.verboseLog("🎯 检测到 orca-hideable 元素聚焦状态变化"), o = !0);
         }
+        if (b.type === "attributes" && (b.attributeName === "data-panel-title" || b.attributeName === "data-panel-icon" || b.attributeName === "data-panel-type")) {
+          const p = b.target;
+          if (p.classList.contains("orca-panel")) {
+            const m = p.getAttribute("data-panel-id"), g = p.getAttribute("data-panel-title"), f = p.getAttribute("data-panel-type");
+            m && g && f === "view" && (this.verboseLog(`🎨 检测到视图面板元数据变化: ${g}`), o = !0);
+          }
+        }
       }), s && (await this.updateCurrentPanelIndex(), c !== this.currentPanelIndex && (this.log(`🔄 面板切换: ${c} -> ${this.currentPanelIndex}`), await this.immediateUpdateTabsUI())), l && d - u > h ? (this.lastPanelCheckTime = d, this.verboseLog(`🔍 面板检查防抖：距离上次检查 ${d - u}ms`), setTimeout(async () => {
         await this.checkForNewPanels();
       }, 100)) : l && d - u < 100 && this.verboseLog(`⏭️ 跳过面板检查：距离上次检查仅 ${d - u}ms`), o) {
@@ -9567,9 +9736,17 @@ class Vi {
     }).observe(document.body, {
       childList: !0,
       subtree: !0,
-      // 只监听属性变化中的class变化，减少不必要的回调
+      // 监听属性变化：class变化和视图面板元数据属性
       attributes: !0,
-      attributeFilter: ["class"],
+      attributeFilter: [
+        "class",
+        "data-panel-title",
+        // 视图面板标题属性
+        "data-panel-icon",
+        // 视图面板图标属性
+        "data-panel-type"
+        // 视图面板类型属性
+      ],
       // 不监听文本内容变化，减少触发频率
       characterData: !1
     });
@@ -9580,26 +9757,42 @@ class Vi {
       const o = n.target;
       if (o.closest(".orca-tabs-plugin") || o.closest(".orca-sidebar") || o.closest(".orca-headbar"))
         return;
-      const l = o.closest(".orca-hideable");
+      const l = o.closest('.orca-panel[data-panel-type="view"]');
       if (l) {
-        const s = l.querySelector(".orca-block-editor[data-block-id]"), c = s == null ? void 0 : s.getAttribute("data-block-id");
-        if (c && c === i) {
-          this.verboseLog(`⏭️ 跳过重复检查：同一个块 ${c}`);
+        const c = l.getAttribute("data-panel-id"), d = c ? `view:${c}` : null;
+        if (d && d === i) {
+          this.verboseLog(`⏭️ 跳过重复检查：同一个视图面板 ${d}`);
           return;
         }
         t && clearTimeout(t), t = window.setTimeout(async () => {
-          if (!l.classList.contains("orca-hideable-hidden")) {
+          if (this.isNavigating) {
+            this.verboseLog("⏭️ 正在导航中，跳过视图面板聚焦检测");
+            return;
+          }
+          this.verboseLog(`🎯 检测到视图面板内点击: ${c}`), d && (i = d), await this.checkCurrentPanelBlocks(), t = null;
+        }, 0);
+        return;
+      }
+      const s = o.closest(".orca-hideable");
+      if (s) {
+        const c = s.querySelector(".orca-block-editor[data-block-id]"), d = c == null ? void 0 : c.getAttribute("data-block-id");
+        if (d && d === i) {
+          this.verboseLog(`⏭️ 跳过重复检查：同一个块 ${d}`);
+          return;
+        }
+        t && clearTimeout(t), t = window.setTimeout(async () => {
+          if (!s.classList.contains("orca-hideable-hidden")) {
             if (this.isNavigating) {
               this.verboseLog("⏭️ 正在导航中，跳过聚焦检测");
               return;
             }
-            this.verboseLog("🎯 检测到 orca-hideable 元素聚焦变化"), c && (i = c), await this.checkCurrentPanelBlocks();
+            this.verboseLog("🎯 检测到 orca-hideable 元素聚焦变化"), d && (i = d), await this.checkCurrentPanelBlocks();
           }
           t = null;
         }, 0);
       }
     };
-    document.addEventListener("click", a), document.addEventListener("focusin", a), document.addEventListener("keydown", (n) => {
+    document.addEventListener("click", a), document.addEventListener("mousedown", a), document.addEventListener("focusin", a), document.addEventListener("keydown", (n) => {
       (n.key === "Tab" || n.key === "Enter" || n.key === " ") && (t && clearTimeout(t), t = window.setTimeout(a, 0));
     }), typeof window < "u" && (this.focusSyncInterval !== null && window.clearInterval(this.focusSyncInterval), this.focusSyncInterval = window.setInterval(async () => {
       var n;
@@ -9680,7 +9873,7 @@ class Vi {
       // 不能使用 passive，需要调用 preventDefault()
       capture: !0
       // 【关键】在捕获阶段处理，先于 Orca 原生处理
-    }), document.addEventListener("contextmenu", this.globalEventListener, { passive: !1 });
+    });
   }
   /**
    * 聚焦到上一个面板
@@ -9790,7 +9983,7 @@ class Vi {
       }
       const i = [...this.getPanelIds()], a = this.getPanelIds()[0] || null;
       await this.discoverPanels();
-      const n = this.getPanelIds()[0] || null, o = qi(i, this.getPanelIds());
+      const n = this.getPanelIds()[0] || null, o = ji(i, this.getPanelIds());
       o && (this.log(`📋 面板列表发生变化: ${i.length} -> ${this.getPanelIds().length}`), this.log(`📋 旧面板列表: [${i.join(", ")}]`), this.log(`📋 新面板列表: [${this.getPanelIds().join(", ")}]`), this.log(`📋 持久化面板变更: ${a} -> ${n}`), a !== n && (this.log(`🔄 持久化面板已变更: ${a} -> ${n}`), await this.handlePersistentPanelChange(a, n))), this.currentPanelId && !this.getPanelIds().includes(this.currentPanelId) && (this.log(`🔄 当前面板 ${this.currentPanelId || ""} 已关闭，切换到第一个面板`), this.getPanelIds().length > 0 ? (this.currentPanelIndex = 0, this.currentPanelId = this.getPanelIds()[0], this.log(`🔄 已切换到第一个面板: ${this.currentPanelId || ""}`), await this.scanCurrentPanelTabs(), this.debouncedUpdateTabsUI()) : (this.log("⚠️ 没有可用的面板"), this.currentPanelId = "", this.currentPanelIndex = -1, this.debouncedUpdateTabsUI()));
       const l = document.querySelector(".orca-panel.active");
       if (l) {
@@ -9903,8 +10096,41 @@ class Vi {
     this.panelTabsData[e] = [...s], this.log(`📋 合并后标签页总数: ${s.length} 个`);
   }
   /**
+   * 获取视图面板信息
+   * 
+   * 从面板 DOM 元素中提取视图面板的元数据（标题、图标、类型）。
+   * 用于识别自定义视图面板（如 AI Chat），这些面板没有传统的块编辑器。
+   * 
+   * @param panel - 面板 DOM 元素
+   * @returns ViewPanelInfo 对象（如果是视图面板）或 null（如果不是视图面板）
+   * 
+   * @example
+   * ```typescript
+   * const panel = document.querySelector('.orca-panel[data-panel-id="xxx"]');
+   * const viewInfo = this.getViewPanelInfo(panel);
+   * if (viewInfo) {
+   *   console.log(`视图面板: ${viewInfo.title}, 图标: ${viewInfo.icon}`);
+   * }
+   * ```
+   */
+  getViewPanelInfo(e) {
+    const t = e.getAttribute("data-panel-id"), i = e.getAttribute("data-panel-title"), a = e.getAttribute("data-panel-icon"), n = e.getAttribute("data-panel-type");
+    return !t || !i || n !== "view" ? null : {
+      panelId: t,
+      title: i,
+      icon: a || void 0,
+      type: "view"
+    };
+  }
+  /**
    * 扫描当前面板的标签页 - 重构为简化的数组操作
    * 按照用户思路：直接扫描当前面板并更新panelTabsData数组
+   * 
+   * 支持两种类型的面板：
+   * 1. 块编辑器面板 - 包含 .orca-block-editor 元素的传统面板
+   * 2. 视图面板 - 自定义视图面板（如 AI Chat），通过 data-panel-* 属性识别
+   * 
+   * Requirements: 3.2, 3.3, 4.1
    */
   async scanCurrentPanelTabs() {
     if (!this.currentPanelId || this.currentPanelIndex < 0) {
@@ -9916,19 +10142,38 @@ class Vi {
       this.warn(`❌ 未找到当前面板: ${this.currentPanelId || ""}`);
       return;
     }
-    const t = e.querySelectorAll(".orca-hideable"), i = [];
-    let a = 0;
-    for (const o of t) {
-      const l = o.querySelector(".orca-block-editor");
-      if (!l) continue;
-      const s = l.getAttribute("data-block-id");
-      if (!s) continue;
-      const c = await this.getTabInfo(s, this.currentPanelId || "", a++);
-      c && i.push(c);
+    const t = this.getViewPanelInfo(e);
+    if (t) {
+      const l = {
+        blockId: `view:${t.panelId}`,
+        // 使用 view:${panelId} 格式
+        panelId: t.panelId,
+        title: t.title,
+        icon: t.icon,
+        order: 0,
+        blockType: "view",
+        // 设置 blockType 为 'view'
+        isViewPanel: !0
+        // 标识为视图面板
+      };
+      this.panelTabsData[this.currentPanelIndex] = [l], this.log(`📋 面板 ${this.currentPanelId || ""} (索引: ${this.currentPanelIndex}) 是视图面板: ${t.title}`);
+      const s = this.currentPanelIndex === 0 ? C.FIRST_PANEL_TABS : `panel_${this.currentPanelIndex + 1}_tabs`;
+      await this.savePanelTabsByKey(s, [l]);
+      return;
     }
-    this.getCurrentPanelTabs(), this.panelTabsData[this.currentPanelIndex] = [...i], this.log(`📋 面板 ${this.currentPanelId || ""} (索引: ${this.currentPanelIndex}) 扫描了 ${i.length} 个标签页`);
-    const n = this.currentPanelIndex === 0 ? C.FIRST_PANEL_TABS : `panel_${this.currentPanelIndex + 1}_tabs`;
-    await this.savePanelTabsByKey(n, i);
+    const i = e.querySelectorAll(".orca-hideable"), a = [];
+    let n = 0;
+    for (const l of i) {
+      const s = l.querySelector(".orca-block-editor");
+      if (!s) continue;
+      const c = s.getAttribute("data-block-id");
+      if (!c) continue;
+      const d = await this.getTabInfo(c, this.currentPanelId || "", n++);
+      d && a.push(d);
+    }
+    this.getCurrentPanelTabs(), this.panelTabsData[this.currentPanelIndex] = [...a], this.log(`📋 面板 ${this.currentPanelId || ""} (索引: ${this.currentPanelIndex}) 扫描了 ${a.length} 个标签页`);
+    const o = this.currentPanelIndex === 0 ? C.FIRST_PANEL_TABS : `panel_${this.currentPanelIndex + 1}_tabs`;
+    await this.savePanelTabsByKey(o, a);
   }
   /**
    * 处理第一个面板变更（当原第一个面板被关闭时）
@@ -9964,7 +10209,7 @@ class Vi {
     }
     const t = e ? { x: e.clientX, y: e.clientY } : { x: 0, y: 0 }, i = this.recentlyClosedTabs.map((a, n) => ({
       label: `${a.title}`,
-      icon: a.icon || K(a.blockType || "default"),
+      icon: a.icon || Z(a.blockType || "default"),
       onClick: () => this.restoreRecentlyClosedTab(a, n)
     }));
     i.push({
@@ -9982,7 +10227,7 @@ class Vi {
     i && i.remove();
     const a = document.documentElement.classList.contains("dark") || ((m = (p = window.orca) == null ? void 0 : p.state) == null ? void 0 : m.themeMode) === "dark", n = document.createElement("div");
     n.className = "recently-closed-tabs-menu";
-    const o = 280, l = 350, { x: s, y: c } = J(t.x, t.y, o, l);
+    const o = 280, l = 350, { x: s, y: c } = Q(t.x, t.y, o, l);
     n.style.cssText = `
       position: fixed;
       left: ${s}px;
@@ -9998,7 +10243,7 @@ class Vi {
       padding: var(--orca-spacing-sm);
       overflow-y: auto;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    `, e.forEach((g, v) => {
+    `, e.forEach((g, f) => {
       if (g.label === "---") {
         const x = document.createElement("div");
         x.style.cssText = `
@@ -10062,10 +10307,26 @@ class Vi {
   }
   /**
    * 恢复最近关闭的标签页
+   * 
+   * 支持恢复普通块标签页和视图面板标签页（如 AI Chat 面板）。
+   * 视图面板的 blockId 以 'view:' 前缀开头，需要特殊处理。
+   * 
+   * Requirements: 4.3, 5.3
    */
   async restoreRecentlyClosedTab(e, t) {
     try {
-      this.recentlyClosedTabs.splice(t, 1), await this.saveRecentlyClosedTabs(), this.closedTabs.delete(e.blockId), await this.saveClosedTabs(), await this.addTabToPanel(e.blockId, "end", !0), this.log(`🔄 已恢复最近关闭的标签页: "${e.title}"`), orca.notify("success", `已恢复标签页: ${e.title}`);
+      if (this.recentlyClosedTabs.splice(t, 1), await this.saveRecentlyClosedTabs(), this.closedTabs.delete(e.blockId), await this.saveClosedTabs(), A(e)) {
+        this.verboseLog(`🖼️ 恢复视图面板标签页: ${e.title} (blockId: ${e.blockId})`);
+        const i = this.getCurrentPanelTabs(), a = i.find((n) => n.blockId === e.blockId);
+        a ? (this.log(`🔄 视图面板标签页已存在，切换到该标签: "${e.title}"`), await this.switchToTab(a)) : (i.push({
+          ...e,
+          order: i.length,
+          closedAt: void 0
+          // 清除关闭时间戳
+        }), this.syncCurrentTabsToStorage(i), await this.immediateUpdateTabsUI(), await this.saveCurrentPanelTabs(), await this.switchToTab(e)), this.log(`🔄 已恢复视图面板标签页: "${e.title}"`), orca.notify("success", `已恢复标签页: ${e.title}`);
+        return;
+      }
+      await this.addTabToPanel(e.blockId, "end", !0), this.log(`🔄 已恢复最近关闭的标签页: "${e.title}"`), orca.notify("success", `已恢复标签页: ${e.title}`);
     } catch (i) {
       this.error("恢复最近关闭标签页失败:", i), orca.notify("error", "恢复标签页失败");
     }
@@ -10155,7 +10416,7 @@ class Vi {
     i && i.remove();
     const a = document.documentElement.classList.contains("dark") || ((m = (p = window.orca) == null ? void 0 : p.state) == null ? void 0 : m.themeMode) === "dark", n = document.createElement("div");
     n.className = "multi-tab-saving-menu";
-    const o = 300, l = 400, { x: s, y: c } = J(t.x, t.y, o, l);
+    const o = 300, l = 400, { x: s, y: c } = Q(t.x, t.y, o, l);
     n.style.cssText = `
       position: fixed;
       left: ${s}px;
@@ -10171,7 +10432,7 @@ class Vi {
       padding: var(--orca-spacing-sm);
       overflow-y: auto;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    `, e.forEach((g, v) => {
+    `, e.forEach((g, f) => {
       if (g.label === "---") {
         const x = document.createElement("div");
         x.style.cssText = `
@@ -10354,10 +10615,10 @@ class Vi {
     }), g.addEventListener("blur", () => {
       g.style.borderColor = "#ddd";
     });
-    const v = document.createElement("option");
-    v.value = "", v.textContent = "请选择标签页集合...", g.appendChild(v), this.savedTabSets.forEach((k, L) => {
-      const O = document.createElement("option");
-      O.value = L.toString(), O.textContent = `${k.name} (${k.tabs.length}个标签)`, g.appendChild(O);
+    const f = document.createElement("option");
+    f.value = "", f.textContent = "请选择标签页集合...", g.appendChild(f), this.savedTabSets.forEach((k, L) => {
+      const F = document.createElement("option");
+      F.value = L.toString(), F.textContent = `${k.name} (${k.tabs.length}个标签)`, g.appendChild(F);
     }), p.appendChild(g), a.appendChild(u), a.appendChild(p), t.appendChild(a);
     const y = document.createElement("div");
     y.style.cssText = `
@@ -10608,12 +10869,12 @@ class Vi {
    */
   renderSortableTabs(e, t, i) {
     var o, l;
-    if (j(e)) {
+    if (X(e)) {
       this.verboseLog("⚠️ renderSortableTabs 容器被 content-visibility 隐藏，跳过渲染以避免渲染警告");
       return;
     }
     const a = document.documentElement.classList.contains("dark") || ((l = (o = window.orca) == null ? void 0 : o.state) == null ? void 0 : l.themeMode) === "dark";
-    A(e, () => {
+    N(e, () => {
       e.innerHTML = "";
     });
     let n = -1;
@@ -10656,8 +10917,8 @@ class Vi {
           justify-content: center;
           flex-shrink: 0;
         `, s.icon.startsWith("ti ti-")) {
-          const v = document.createElement("i");
-          v.className = s.icon, g.appendChild(v);
+          const f = document.createElement("i");
+          f.className = s.icon, g.appendChild(f);
         } else
           g.textContent = s.icon;
         d.appendChild(g);
@@ -10705,10 +10966,10 @@ class Vi {
         d.style.borderColor = "#e0e0e0", d.style.backgroundColor = "var(--orca-color-bg-1)";
       }), d.addEventListener("drop", (g) => {
         g.preventDefault(), g.stopPropagation();
-        const v = parseInt(g.dataTransfer.getData("text/plain")), y = c;
-        if (d.style.borderColor = "#e0e0e0", d.style.backgroundColor = "var(--orca-color-bg-1)", v !== y && v >= 0) {
-          const w = t[v];
-          t.splice(v, 1), t.splice(y, 0, w), this.renderSortableTabs(e, t);
+        const f = parseInt(g.dataTransfer.getData("text/plain")), y = c;
+        if (d.style.borderColor = "#e0e0e0", d.style.backgroundColor = "var(--orca-color-bg-1)", f !== y && f >= 0) {
+          const w = t[f];
+          t.splice(f, 1), t.splice(y, 0, w), this.renderSortableTabs(e, t);
           const x = this.savedTabSets.find((T) => T.tabs === t);
           x && (x.tabs = [...t], x.updatedAt = Date.now(), this.saveSavedTabSets(), orca.notify("success", "标签顺序已更新"));
         }
@@ -10991,7 +11252,7 @@ class Vi {
         orca.notify("warn", "请输入工作区名称");
         return;
       }
-      if (this.workspaces.some((v) => v.name === g)) {
+      if (this.workspaces.some((f) => f.name === g)) {
         orca.notify("warn", "工作区名称已存在");
         return;
       }
@@ -11036,7 +11297,7 @@ class Vi {
     t && t.remove();
     const i = document.documentElement.classList.contains("dark") || ((w = (y = window.orca) == null ? void 0 : y.state) == null ? void 0 : w.themeMode) === "dark", a = document.createElement("div");
     a.className = "workspace-menu";
-    const n = 280, o = 400, l = e ? { x: e.clientX, y: e.clientY } : { x: 20, y: 60 }, { x: s, y: c } = J(l.x, l.y, n, o);
+    const n = 280, o = 400, l = e ? { x: e.clientX, y: e.clientY } : { x: 20, y: 60 }, { x: s, y: c } = Q(l.x, l.y, n, o);
     a.style.cssText = `
       position: fixed;
       left: ${s}px;
@@ -11172,11 +11433,11 @@ class Vi {
       };
     }
     a.appendChild(d), a.appendChild(u), a.appendChild(b), a.appendChild(p), g && a.appendChild(g), document.body.appendChild(a);
-    const v = (x) => {
-      !x || !x.target || a.contains(x.target) || (a.remove(), document.removeEventListener("click", v));
+    const f = (x) => {
+      !x || !x.target || a.contains(x.target) || (a.remove(), document.removeEventListener("click", f));
     };
     setTimeout(() => {
-      document.addEventListener("click", v);
+      document.addEventListener("click", f);
     }, 100);
   }
   /**
@@ -11469,14 +11730,14 @@ class Vi {
         color: #666;
         font-weight: normal;
       `, g.textContent = "拖拽调整顺序", p.appendChild(g), b.appendChild(p);
-      const v = document.createElement("div");
-      v.className = "sortable-tabs-container", v.style.cssText = `
+      const f = document.createElement("div");
+      f.className = "sortable-tabs-container", f.style.cssText = `
         min-height: 100px;
         position: relative;
         border: 2px dashed transparent;
         border-radius: var(--orca-radius-md);
         transition: border-color 0.3s ease;
-      `, this.renderSortableTabs(v, [...e.tabs], e), b.appendChild(v), o.appendChild(b);
+      `, this.renderSortableTabs(f, [...e.tabs], e), b.appendChild(f), o.appendChild(b);
     }
     a.appendChild(o);
     const s = document.createElement("div");
@@ -11733,12 +11994,12 @@ class Vi {
         y.className = p.value, g.appendChild(y);
       } else
         g.textContent = p.icon;
-      const v = document.createElement("div");
-      v.style.cssText = `
+      const f = document.createElement("div");
+      f.style.cssText = `
         font-size: 12px;
         color: #666;
         text-align: center;
-      `, v.textContent = p.name, m.appendChild(g), m.appendChild(v), m.addEventListener("click", async (y) => {
+      `, f.textContent = p.name, m.appendChild(g), m.appendChild(f), m.addEventListener("click", async (y) => {
         y.stopPropagation(), e.icon = p.value, e.updatedAt = Date.now(), await this.saveSavedTabSets(), a(), o.remove(), n && n.focus(), orca.notify("success", "图标已更新");
       }), m.addEventListener("mouseenter", () => {
         m.style.backgroundColor = "#f5f5f5", m.style.borderColor = "var(--orca-color-primary-5)";
@@ -11842,7 +12103,7 @@ class Vi {
         cursor: pointer;
         border-radius: var(--orca-radius-md);
         transition: background-color 0.2s;
-      `, M(h, q("点击编辑图标"));
+      `, M(h, Y("点击编辑图标"));
       const b = () => {
         if (h.innerHTML = "", s.icon)
           if (s.icon.startsWith("ti ti-")) {
@@ -11879,7 +12140,7 @@ class Vi {
         min-height: 20px;
         display: flex;
         align-items: center;
-      `, m.textContent = s.name, M(m, q("点击编辑名称")), m.addEventListener("click", () => {
+      `, m.textContent = s.name, M(m, Y("点击编辑名称")), m.addEventListener("click", () => {
         this.editTabSetName(s, c, m, t);
       }), m.addEventListener("mouseenter", () => {
         m.style.backgroundColor = "rgba(59, 130, 246, 0.1)";
@@ -11891,8 +12152,8 @@ class Vi {
         font-size: 12px;
         color: #666;
       `, g.textContent = `${s.tabs.length}个标签 • ${new Date(s.updatedAt).toLocaleString()}`, p.appendChild(m), p.appendChild(g), u.appendChild(h), u.appendChild(p);
-      const v = document.createElement("div");
-      v.style.cssText = `
+      const f = document.createElement("div");
+      f.style.cssText = `
         display: flex;
         gap: 8px;
       `;
@@ -11907,7 +12168,7 @@ class Vi {
       const x = document.createElement("button");
       x.className = "orca-button", x.textContent = "删除", x.style.cssText = "", x.onclick = () => {
         confirm(`确定要删除标签页集合 "${s.name}" 吗？`) && (this.savedTabSets.splice(c, 1), this.saveSavedTabSets(), t.remove(), this.manageSavedTabSets());
-      }, v.appendChild(y), v.appendChild(w), v.appendChild(x), d.appendChild(u), d.appendChild(v), a.appendChild(d);
+      }, f.appendChild(y), f.appendChild(w), f.appendChild(x), d.appendChild(u), d.appendChild(f), a.appendChild(d);
     }), t.appendChild(a);
     const n = document.createElement("div");
     n.style.cssText = `
@@ -12005,17 +12266,17 @@ class Vi {
         this.error("销毁时保存数据失败:", t);
       }), this.saveDataDebounceTimer !== null && (clearTimeout(this.saveDataDebounceTimer), this.saveDataDebounceTimer = null), this.edgeHideDebounceTimer !== null && (clearTimeout(this.edgeHideDebounceTimer), this.edgeHideDebounceTimer = null), this.performanceOptimizer && (this.log("🧹 清理性能优化器..."), this.performanceOptimizer.destroy(), this.performanceOptimizer = null), this.tabContainer && (this.tabContainer.remove(), this.tabContainer = null), this.cycleSwitcher && (this.cycleSwitcher.remove(), this.cycleSwitcher = null), this.edgeHideTriggerElement && (this.edgeHideTriggerElement.remove(), this.edgeHideTriggerElement = null);
       const e = document.getElementById("orca-tabs-drag-styles");
-      e && e.remove(), this.focusSyncInterval !== null && (typeof window < "u" ? window.clearInterval(this.focusSyncInterval) : clearInterval(this.focusSyncInterval), this.focusSyncInterval = null), this.monitoringInterval && (clearInterval(this.monitoringInterval), this.monitoringInterval = null), this.updateDebounceTimer && (clearTimeout(this.updateDebounceTimer), this.updateDebounceTimer = null), this.swapDebounceTimer && (clearTimeout(this.swapDebounceTimer), this.swapDebounceTimer = null), this.settingsCheckInterval && (clearInterval(this.settingsCheckInterval), this.settingsCheckInterval = null), this.globalEventListener && (document.removeEventListener("click", this.globalEventListener, { capture: !0 }), document.removeEventListener("contextmenu", this.globalEventListener), this.globalEventListener = null), this.dragEndListener && (document.removeEventListener("dragend", this.dragEndListener), this.dragEndListener = null), this.dragOverListener && (document.removeEventListener("dragover", this.dragOverListener), this.dragOverListener = null), this.themeChangeListener && (this.themeChangeListener(), this.themeChangeListener = null), this.scrollListener && (this.scrollListener(), this.scrollListener = null), this.draggingTab = null, this.log("✅ 插件销毁完成");
+      e && e.remove(), this.focusSyncInterval !== null && (typeof window < "u" ? window.clearInterval(this.focusSyncInterval) : clearInterval(this.focusSyncInterval), this.focusSyncInterval = null), this.monitoringInterval && (clearInterval(this.monitoringInterval), this.monitoringInterval = null), this.updateDebounceTimer && (clearTimeout(this.updateDebounceTimer), this.updateDebounceTimer = null), this.swapDebounceTimer && (clearTimeout(this.swapDebounceTimer), this.swapDebounceTimer = null), this.settingsCheckInterval && (clearInterval(this.settingsCheckInterval), this.settingsCheckInterval = null), this.globalEventListener && (document.removeEventListener("click", this.globalEventListener, { capture: !0 }), this.globalEventListener = null), this.dragEndListener && (document.removeEventListener("dragend", this.dragEndListener), this.dragEndListener = null), this.dragOverListener && (document.removeEventListener("dragover", this.dragOverListener), this.dragOverListener = null), this.themeChangeListener && (this.themeChangeListener(), this.themeChangeListener = null), this.scrollListener && (this.scrollListener(), this.scrollListener = null), this.draggingTab = null, this.log("✅ 插件销毁完成");
     } catch (e) {
       this.error("❌ 插件销毁过程中发生错误:", e);
     }
   }
 }
-let I = null;
-async function ji(r) {
-  H = r, orca.state.locale, bi(!0), I = new Vi(H), document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", () => {
-    setTimeout(() => I == null ? void 0 : I.init(), 500);
-  }) : setTimeout(() => I == null ? void 0 : I.init(), 500);
+let S = null;
+async function Ki(r) {
+  H = r, orca.state.locale, wi(!0), S = new Gi(H), document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(() => S == null ? void 0 : S.init(), 500);
+  }) : setTimeout(() => S == null ? void 0 : S.init(), 500);
   try {
     orca.commands.unregisterCommand(`${H}.resetCache`);
   } catch {
@@ -12023,7 +12284,7 @@ async function ji(r) {
   orca.commands.registerCommand(
     `${H}.resetCache`,
     async () => {
-      I && await I.resetCache();
+      S && await S.resetCache();
     },
     "重置插件缓存"
   );
@@ -12034,15 +12295,15 @@ async function ji(r) {
   orca.commands.registerCommand(
     `${H}.toggleBlockIcons`,
     async () => {
-      I && await I.toggleBlockTypeIcons();
+      S && await S.toggleBlockTypeIcons();
     },
     "切换块类型图标显示"
   );
 }
-async function Gi() {
-  I && (I.unregisterBlockMenuCommands(), I.unregisterHeadbarButton(), I.cleanupDragResize(), I.destroy(), I = null);
+async function Ji() {
+  S && (S.unregisterBlockMenuCommands(), S.unregisterHeadbarButton(), S.cleanupDragResize(), S.destroy(), S = null);
   try {
-    ee();
+    ie();
   } catch (r) {
     console.warn("清理 tooltip 时出错:", r);
   }
@@ -12056,6 +12317,6 @@ async function Gi() {
   }
 }
 export {
-  ji as load,
-  Gi as unload
+  Ki as load,
+  Ji as unload
 };

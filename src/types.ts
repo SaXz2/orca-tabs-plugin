@@ -10,6 +10,26 @@
  */
 
 /**
+ * 视图面板信息接口
+ * 
+ * 定义自定义视图面板（如 AI Chat）的元数据结构。
+ * 用于从 DOM 元素中提取视图面板的显示信息。
+ */
+export interface ViewPanelInfo {
+  /** 面板ID - 面板的唯一标识符 */
+  panelId: string;
+  
+  /** 面板标题 - 显示在标签页上的文本内容 */
+  title: string;
+  
+  /** 面板图标 - 可选的图标，用于显示在标签页上 */
+  icon?: string;
+  
+  /** 面板类型 - 固定为 "view" 表示这是一个视图面板 */
+  type: 'view';
+}
+
+/**
  * 标签页信息接口
  * 
  * 定义单个标签页的完整信息结构，包含所有必要的元数据。
@@ -43,11 +63,23 @@ export interface TabInfo {
   /** 滚动位置 - 记录标签页内容的滚动位置，用于恢复用户查看状态 */
   scrollPosition?: { x: number; y: number };
   
-  /** 块类型 - 标识Orca中块的类型（如文本、标题、列表等） */
+  /** 
+   * 块类型 - 标识Orca中块的类型
+   * 可能的值包括：文本、标题、列表等块类型，以及 "view" 表示视图面板
+   * 当 blockType 为 "view" 时，表示这是一个自定义视图面板（如 AI Chat），
+   * 而非传统的块编辑器面板
+   */
   blockType?: string;
   
   /** 关闭时间戳 - 记录标签页关闭的时间，用于最近关闭标签页功能 */
   closedAt?: number;
+  
+  /** 
+   * 是否为视图面板 - 标识此标签页是否对应自定义视图面板
+   * 视图面板（如 AI Chat）没有真正的块ID，使用 "view:${panelId}" 格式的合成ID
+   * 当此字段为 true 时，应使用面板导航而非块导航
+   */
+  isViewPanel?: boolean;
 }
 
 /**
