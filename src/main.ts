@@ -150,6 +150,7 @@ import {
   cleanInvalidTabs as cleanInvalidTabsOperation,
   batchUpdateTabProperties as batchUpdateTabPropertiesOperation,
   generateTabId as generateTabIdOperation,
+  generateTabInstanceId,
   areTabsEqual as areTabsEqualOperation,
   isValidTab,
   getTabDisplayName,
@@ -926,6 +927,7 @@ class OrcaTabsPlugin {
   
   /** 最后激活的块ID - 记录最后激活的块，用于快捷键操作 */
   private lastActiveBlockId: string | null = null;
+  private lastActiveTabInstanceId: string | null = null;
   
   /** 是否正在导航中 - 用于避免导航时触发重复的聚焦检测 */
   private isNavigating: boolean = false;
@@ -1370,6 +1372,7 @@ class OrcaTabsPlugin {
         // 达到标签上限，替换最后一个标签页
         const lastIndex = currentTabs.length - 1;
         const oldTab = currentTabs[lastIndex];
+        newTabInfo.tabId = oldTab.tabId || newTabInfo.tabId;
         currentTabs[lastIndex] = newTabInfo;
         newTabInfo.order = lastIndex;
         
@@ -2742,6 +2745,7 @@ class OrcaTabsPlugin {
 
       return {
         blockId,
+        tabId: generateTabInstanceId(blockId),
         panelId,
         title: title || `块 ${blockId}`,
         color,
@@ -3788,7 +3792,7 @@ class OrcaTabsPlugin {
       // 调整标签页样式以适应顶部工具栏
       const tabs = this.tabContainer.querySelectorAll('.orca-tabs-plugin .orca-tab');
       tabs.forEach(tabElement => {
-        const tabId = tabElement.getAttribute('data-tab-id');
+        const tabId = tabElement.getAttribute('data-block-id');
         if (!tabId) return;
         
         // 查找对应的标签信息
@@ -4211,12 +4215,14 @@ class OrcaTabsPlugin {
    * 从标签元素获取标签信息
    */
   private getTabInfoFromElement(tabElement: HTMLElement): TabInfo | null {
-    const tabId = tabElement.getAttribute('data-tab-id');
-    if (!tabId) return null;
+    const tabInstanceId = tabElement.getAttribute('data-tab-id');
+    const blockId = tabElement.getAttribute('data-block-id');
+    if (!tabInstanceId && !blockId) return null;
     
-    // 从当前面板的标签列表中查找对应的标签信息
+    // ????????????????????
     const currentTabs = this.panelTabsData[this.currentPanelIndex] || [];
-    return currentTabs.find(tab => tab.blockId === tabId) || null;
+    return currentTabs.find(tab => tab.tabId === tabInstanceId) ||
+      currentTabs.find(tab => tab.blockId === blockId) || null;
   }
 
   /**
@@ -6732,7 +6738,11 @@ class OrcaTabsPlugin {
     this.verboseLog(`🔧 创建标签元素: ${tab.title} (ID: ${tab.blockId})`);
     const tabElement = document.createElement('div');
     tabElement.className = 'orca-tab';
-    tabElement.setAttribute('data-tab-id', tab.blockId); // 添加data属性用于重命名定位
+    if (!tab.tabId) {
+      tab.tabId = generateTabInstanceId(tab.blockId);
+    }
+    tabElement.setAttribute('data-tab-id', tab.tabId);
+    tabElement.setAttribute('data-block-id', tab.blockId);
     
     // 检查是否为当前激活的标签
     const isActive = this.isTabActive(tab);
@@ -7403,6 +7413,9 @@ class OrcaTabsPlugin {
       
       // 设置标记，防止在切换过程中错误替换标签
       this.isSwitchingTab = true;
+      if (tab.tabId) {
+        this.lastActiveTabInstanceId = tab.tabId;
+      }
       
       // 记录当前激活标签的滚动位置
       const currentActiveTab = this.getCurrentActiveTab();
@@ -7535,7 +7548,7 @@ class OrcaTabsPlugin {
         this.debugScrollPosition(tab);
       }, 500);
 
-      await this.focusTabElementById(tab.blockId);
+      await this.focusTabElementById(tab.tabId || tab.blockId, tab.blockId);
       
       // 【修复】切换标签页后，确保气泡模式下所有标签的透明度正常
       if (this.enableBubbleMode && this.isBubbleExpanded && this.tabContainer) {
@@ -7932,7 +7945,8 @@ class OrcaTabsPlugin {
         // 显示tooltip：重新添加tooltip
         const tabId = tabElement.getAttribute('data-tab-id');
         if (tabId) {
-          const tab = this.getCurrentPanelTabs().find(t => t.blockId === tabId);
+          const currentTabs = this.getCurrentPanelTabs();
+          const tab = currentTabs.find(t => t.tabId === tabId) || currentTabs.find(t => t.blockId === tabId);
           if (tab) {
             // 重新添加tooltip
             addTooltip(tabElement as HTMLElement, createCustomTabTooltip(tab));
@@ -8051,6 +8065,7 @@ class OrcaTabsPlugin {
       const currentTabs = this.getCurrentPanelTabs();
       const tabInfo: TabInfo = {
         blockId: newBlockId,
+        tabId: generateTabInstanceId(newBlockId),
         panelId: this.currentPanelId || '',
         title: tabTitle,
         isPinned: false,
@@ -8118,6 +8133,7 @@ class OrcaTabsPlugin {
       currentTabs.forEach((tab, index) => {
         tab.order = index;
       });
+      this.lastActiveTabInstanceId = tabInfo.tabId || null;
       this.log(`🔄 已重新计算标签顺序: ${currentTabs.map(t => `${t.title}(${t.order})`).join(', ')}`);
       
       // 同步更新存储数组
@@ -8202,7 +8218,7 @@ class OrcaTabsPlugin {
   /**
    * 强制让指定的标签元素呈聚焦状态，确保UI与数据同步
    */
-  private async focusTabElementById(blockId: string): Promise<void> {
+    private async focusTabElementById(tabId: string, blockIdFallback?: string): Promise<void> {
     if (!this.tabContainer) {
       await this.updateTabsUI();
     }
@@ -8211,20 +8227,27 @@ class OrcaTabsPlugin {
       const allTabs = this.tabContainer?.querySelectorAll('.orca-tabs-plugin .orca-tab');
       allTabs?.forEach(tab => tab.removeAttribute('data-focused'));
 
-      const targetTab = this.tabContainer?.querySelector(`[data-tab-id="${blockId}"]`) as HTMLElement | null;
+      let targetTab = this.tabContainer?.querySelector(`[data-tab-id="${tabId}"]`) as HTMLElement | null;
+      if (!targetTab && blockIdFallback) {
+        targetTab = this.tabContainer?.querySelector(`[data-block-id="${blockIdFallback}"]`) as HTMLElement | null;
+      }
       if (targetTab) {
         targetTab.setAttribute('data-focused', 'true');
+        const targetTabId = targetTab.getAttribute('data-tab-id');
+        if (targetTabId) {
+          this.lastActiveTabInstanceId = targetTabId;
+        }
         return true;
       }
       return false;
     };
 
-    if (applyFocus()) {
-      return;
+    if (!applyFocus()) {
+      // ?????tab UI?????????????
+      setTimeout(() => {
+        applyFocus();
+      }, 100);
     }
-
-    await this.updateTabsUI();
-    applyFocus();
   }
 
   /**
@@ -8258,7 +8281,7 @@ class OrcaTabsPlugin {
 
         this.verboseLog(`📋 [DEBUG] 切换到已存在标签: "${existingTab.title}"`);
         await this.switchToTab(existingTab);
-        await this.focusTabElementById(existingTab.blockId);
+        await this.focusTabElementById(existingTab.tabId || existingTab.blockId, existingTab.blockId);
 
         this.verboseLog(`📋 [DEBUG] ========== addTabToPanel 完成（已存在）==========`);
         return true;
@@ -9674,18 +9697,18 @@ class OrcaTabsPlugin {
   /**
    * 检查标签是否为当前激活状态
    */
-  private isTabActive(tab: TabInfo): boolean {
+    private isTabActive(tab: TabInfo): boolean {
     try {
-      // 【修复BUG2】检查标签所属的面板，而不是全局活动面板
-      // 这样可以确保每个面板独立维护自己的聚焦状态
+      // ???BUG2????????????????????
+      // ?????????????????????
       let targetPanel: Element | null = null;
       
-      // 首先尝试使用当前面板ID
+      // ??????????ID
       if (this.currentPanelId) {
         targetPanel = document.querySelector(`.orca-panel[data-panel-id="${this.currentPanelId}"]`);
       }
       
-      // 如果标签有明确的面板ID，使用标签的面板ID
+      // ??????????ID????????ID
       if (tab.panelId) {
         const tabPanel = document.querySelector(`.orca-panel[data-panel-id="${tab.panelId}"]`);
         if (tabPanel) {
@@ -9693,29 +9716,45 @@ class OrcaTabsPlugin {
         }
       }
       
-      // 如果都找不到，才回退到全局活动面板
-      if (!targetPanel) {
-        targetPanel = document.querySelector('.orca-panel.active');
-      }
-      
+      // ??????????false
       if (!targetPanel) return false;
 
-      // 获取目标面板中可见的块编辑器（没有 orca-hideable-hidden 类）
+      // ????????????????? orca-hideable-hidden ??
       const activeBlock = targetPanel.querySelector('.orca-hideable:not(.orca-hideable-hidden) .orca-block-editor[data-block-id]');
       if (!activeBlock) return false;
 
       const activeBlockId = activeBlock.getAttribute('data-block-id');
-      const isActive = activeBlockId === tab.blockId;
+      const isActiveBlock = activeBlockId === tab.blockId;
       
-      // 如果标签在已关闭列表中，不应该被认为是激活的
-      if (isActive && this.closedTabs.has(tab.blockId)) {
-        this.verboseLog(`🔍 标签 ${tab.title} 在已关闭列表中，不认为是激活状态`);
+      // ??????????????????????
+      if (isActiveBlock && this.closedTabs.has(tab.blockId)) {
+        this.verboseLog(`?? ?? ${tab.title} ????????????????`);
         return false;
       }
       
-      return isActive;
+      if (!isActiveBlock) {
+        return false;
+      }
+      
+      const currentTabs = this.getCurrentPanelTabs();
+      if (this.lastActiveTabInstanceId) {
+        const activeInstance = currentTabs.find(t => t.tabId === this.lastActiveTabInstanceId);
+        if (activeInstance && activeInstance.blockId === tab.blockId) {
+          return tab.tabId === this.lastActiveTabInstanceId;
+        }
+      }
+      
+      const firstMatch = currentTabs.find(t => t.blockId === tab.blockId);
+      if (firstMatch?.tabId) {
+        if (!this.lastActiveTabInstanceId) {
+          this.lastActiveTabInstanceId = firstMatch.tabId;
+        }
+        return tab.tabId === firstMatch.tabId;
+      }
+      
+      return true;
     } catch (error) {
-      this.warn('检查标签激活状态时出错:', error);
+      this.warn('???????????:', error);
       return false;
     }
   }
@@ -9724,77 +9763,74 @@ class OrcaTabsPlugin {
    * 获取当前激活的标签
    */
   getCurrentActiveTab(): TabInfo | null {
-    // 工作区功能启用时，总是使用第一个面板的数据
+    // ?????????????????????
     const currentTabs = this.enableWorkspaces ? this.getCurrentPanelTabs() : this.getCurrentPanelTabs();
     
     if (currentTabs.length === 0) return null;
     
-    // 【修复BUG1】优先检查UI中明确标记为聚焦的标签（用户点击选择的）
-    // 这是最可靠的方式，因为它反映了用户的明确意图
+    // ???BUG1?????UI????????????????????
+    // ??????????????????????
     const focusedTabElement = this.tabContainer?.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
     if (focusedTabElement) {
-      const focusedBlockId = focusedTabElement.getAttribute('data-tab-id');
-      if (focusedBlockId) {
-        const focusedTab = currentTabs.find(tab => tab.blockId === focusedBlockId);
-        if (focusedTab) {
-          this.verboseLog(`🎯 找到UI聚焦标签: ${focusedTab.title} (ID: ${focusedBlockId})`);
-          
-          // 如果启用了工作区功能且有当前工作区，实时更新最后激活标签页
-          if (this.enableWorkspaces && this.currentWorkspace) {
-            this.updateCurrentWorkspaceActiveIndex(focusedTab);
-          }
-          
-          return focusedTab;
+      const focusedTabId = focusedTabElement.getAttribute('data-tab-id');
+      const focusedBlockId = focusedTabElement.getAttribute('data-block-id');
+      const focusedTab = currentTabs.find(tab => tab.tabId === focusedTabId) ||
+        currentTabs.find(tab => tab.blockId === focusedBlockId);
+      if (focusedTab) {
+        this.verboseLog(`?? ??UI????: ${focusedTab.title} (ID: ${focusedTab.blockId})`);
+        
+        // ?????????????????????????????
+        if (focusedTab.tabId) {
+          this.lastActiveTabInstanceId = focusedTab.tabId;
         }
+
+        if (this.enableWorkspaces && this.currentWorkspace) {
+          this.updateCurrentWorkspaceActiveIndex(focusedTab);
+        }
+        
+        return focusedTab;
       }
     }
     
-    // 【修复BUG2】确保只检查当前面板，避免多面板切换时的混淆
-    // 获取当前面板ID对应的面板元素
+    // ???BUG2??????????????????????
+    // ??????ID???????
     let targetPanel: Element | null = null;
     if (this.currentPanelId) {
       targetPanel = document.querySelector(`.orca-panel[data-panel-id="${this.currentPanelId}"]`);
     }
     
-    // 如果找不到指定面板，回退到当前激活的面板
+    // ????????????????????
     if (!targetPanel) {
       targetPanel = document.querySelector('.orca-panel.active');
     }
     
     if (!targetPanel) {
-      this.verboseLog('⚠️ 无法找到目标面板');
+      this.verboseLog('?? ????????');
       return null;
     }
     
-    // 获取目标面板中可见的块编辑器（没有 orca-hideable-hidden 类）
+    // ????????????????? orca-hideable-hidden ??
     const activeBlockEditor = targetPanel.querySelector('.orca-hideable:not(.orca-hideable-hidden) .orca-block-editor[data-block-id]');
     
     if (!activeBlockEditor) {
-      this.verboseLog('⚠️ 目标面板中没有找到可见的块编辑器');
+      this.verboseLog('?? ????????????????');
       return null;
     }
     
     const blockId = activeBlockEditor.getAttribute('data-block-id');
     if (!blockId) {
-      this.verboseLog('⚠️ 块编辑器没有 data-block-id 属性');
+      this.verboseLog('?? ??????????blockId');
       return null;
     }
     
-    // 在当前面板标签中查找对应的标签
     const activeTab = currentTabs.find(tab => tab.blockId === blockId) || null;
-    
     if (activeTab) {
-      this.verboseLog(`🎯 根据DOM块编辑器找到激活标签: ${activeTab.title} (ID: ${blockId})`);
-    } else {
-      this.verboseLog(`⚠️ 在标签列表中找不到块ID ${blockId} 对应的标签`);
+      this.verboseLog(`?? ??DOM??????????: ${activeTab.title} (ID: ${blockId})`);
+      return activeTab;
     }
     
-    // 如果启用了工作区功能且有当前工作区，实时更新最后激活标签页
-    if (this.enableWorkspaces && this.currentWorkspace && activeTab) {
-      this.updateCurrentWorkspaceActiveIndex(activeTab);
-    }
-    
-    return activeTab;
+    this.verboseLog(`?? ??????????ID ${blockId} ?????`);
+    return null;
   }
 
   /**
@@ -9972,7 +10008,7 @@ class OrcaTabsPlugin {
       // 删除该标签的切换历史记录
       // 视图面板的 blockId 可能包含特殊字符，需要正确转义
       const escapedBlockId = CSS.escape(tab.blockId);
-      const tabElement = this.tabContainer?.querySelector(`[data-tab-id="${escapedBlockId}"]`) as HTMLElement;
+      const tabElement = this.tabContainer?.querySelector(`[data-block-id="${escapedBlockId}"]`) as HTMLElement;
       const tabHistoryId = tabElement?.getAttribute('data-tab-history-id');
       if (tabHistoryId) {
         await this.deleteTabSwitchHistory(tabHistoryId);
@@ -10134,7 +10170,7 @@ class OrcaTabsPlugin {
    */
   showInlineRenameInput(tab: TabInfo) {
     // 查找对应的标签元素
-    const tabElement = document.querySelector(`[data-tab-id="${tab.blockId}"]`) as HTMLElement;
+    const tabElement = document.querySelector(`[data-tab-id="${tab.tabId || tab.blockId}"]`) as HTMLElement;
     if (!tabElement) {
       this.warn("找不到对应的标签元素");
       return;
@@ -10274,7 +10310,7 @@ class OrcaTabsPlugin {
     document.body.appendChild(container);
 
     // 计算输入框位置（优化版：靠近边缘时往内定位）
-    const tabElement = document.querySelector(`[data-tab-id="${tab.blockId}"]`) as HTMLElement;
+    const tabElement = document.querySelector(`[data-tab-id="${tab.tabId || tab.blockId}"]`) as HTMLElement;
     let inputPosition = { x: '50%', y: '50%' };
     
     if (tabElement) {
@@ -10447,7 +10483,7 @@ class OrcaTabsPlugin {
     inputContainer.appendChild(buttonContainer);
 
     // 定位输入框
-    const tabElement = document.querySelector(`[data-tab-id="${tab.blockId}"]`) as HTMLElement;
+    const tabElement = document.querySelector(`[data-tab-id="${tab.tabId || tab.blockId}"]`) as HTMLElement;
     if (tabElement) {
       const rect = tabElement.getBoundingClientRect();
       inputContainer.style.left = `${rect.left}px`;
@@ -11555,22 +11591,38 @@ class OrcaTabsPlugin {
    * @param blockId - 要聚焦的块ID
    * @param title - 标签页标题（用于日志记录）
    */
-  private updateFocusState(blockId: string, title: string) {
-    // 步骤1: 清除所有标签页的聚焦状态
-    // 查找所有标签页元素，移除 data-focused 属性
+    private updateFocusState(blockId: string, title: string) {
+    // ??1: ????????????
+    // ???????????? data-focused ??
     const allTabs = this.tabContainer?.querySelectorAll('.orca-tabs-plugin .orca-tab');
     allTabs?.forEach(tab => tab.removeAttribute('data-focused'));
     
-    // 步骤2: 设置目标标签页为聚焦状态
-    // 根据 blockId 查找对应的标签页元素
-    const currentTabElement = this.tabContainer?.querySelector(`[data-tab-id="${blockId}"]`);
+    // ??2: ????????????
+    const currentTabs = this.getCurrentPanelTabs();
+    let targetTab = null as TabInfo | null;
+    if (this.lastActiveTabInstanceId) {
+      const byId = currentTabs.find(tab => tab.tabId === this.lastActiveTabInstanceId);
+      if (byId && byId.blockId === blockId) {
+        targetTab = byId;
+      }
+    }
+    if (!targetTab) {
+      targetTab = currentTabs.find(tab => tab.blockId === blockId) || null;
+    }
+    
+    const selector = targetTab?.tabId ? `[data-tab-id="${targetTab.tabId}"]` : `[data-block-id="${blockId}"]`;
+    const currentTabElement = this.tabContainer?.querySelector(selector);
     if (currentTabElement) {
-      // 设置聚焦状态，触发CSS样式变化
+      // ?????????CSS????
       currentTabElement.setAttribute('data-focused', 'true');
-      this.verboseLog(`🎯 更新聚焦状态到已存在的标签: "${title}"`);
+      const focusedTabId = currentTabElement.getAttribute('data-tab-id');
+      if (focusedTabId) {
+        this.lastActiveTabInstanceId = focusedTabId;
+      }
+      this.verboseLog(`?? ?????????????: "${title}"`);
     } else {
-      // 如果找不到标签页元素，记录警告日志
-      this.verboseLog(`⚠️ 未找到标签元素: ${blockId}`);
+      // ?????????????????
+      this.verboseLog(`?? ???????: ${blockId}`);
     }
   }
 
@@ -11814,6 +11866,7 @@ class OrcaTabsPlugin {
         // 记录标签切换历史 - 记录从当前标签切换到新标签
         this.recordTabSwitchHistory(currentActiveTab.blockId, newTabInfo);
         
+        newTabInfo.tabId = currentTabs[activeIndex].tabId || newTabInfo.tabId;
         currentTabs[activeIndex] = newTabInfo;
         this.updateFocusState(blockId, newTabInfo.title);
         this.setCurrentPanelTabs(currentTabs);
@@ -11845,6 +11898,7 @@ class OrcaTabsPlugin {
         // 记录标签切换历史 - 记录从上一个标签切换到新标签
         this.recordTabSwitchHistory(currentTabs[lastActiveIndex].blockId, newTabInfo);
         
+        newTabInfo.tabId = currentTabs[lastActiveIndex].tabId || newTabInfo.tabId;
         currentTabs[lastActiveIndex] = newTabInfo;
         this.updateFocusState(blockId, newTabInfo.title);
         this.setCurrentPanelTabs(currentTabs);
@@ -11858,7 +11912,11 @@ class OrcaTabsPlugin {
     const focusedTabElement = this.tabContainer?.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
     if (focusedTabElement) {
       const focusedTabId = focusedTabElement.getAttribute('data-tab-id');
-      targetIndex = currentTabs.findIndex(tab => tab.blockId === focusedTabId);
+      const focusedBlockId = focusedTabElement.getAttribute('data-block-id');
+      targetIndex = currentTabs.findIndex(tab => tab.tabId === focusedTabId);
+      if (targetIndex == -1 && focusedBlockId) {
+        targetIndex = currentTabs.findIndex(tab => tab.blockId === focusedBlockId);
+      }
     }
     
     // 如果还是没找到，查找有聚焦样式的标签页
@@ -11896,6 +11954,7 @@ class OrcaTabsPlugin {
         this.immediateUpdateTabsUI();
       } else {
         // 替换目标标签页的内容
+        newTabInfo.tabId = currentTabs[targetIndex].tabId || newTabInfo.tabId;
         currentTabs[targetIndex] = newTabInfo;
         this.updateFocusState(blockId, newTabInfo.title);
         this.setCurrentPanelTabs(currentTabs);
@@ -11978,6 +12037,7 @@ class OrcaTabsPlugin {
           // 创建视图面板的 TabInfo
           const viewTabInfo: TabInfo = {
             blockId: viewBlockId,
+            tabId: generateTabInstanceId(viewBlockId),
             panelId: viewPanelInfo.panelId,
             title: viewPanelInfo.title,
             icon: viewPanelInfo.icon,
@@ -12078,11 +12138,15 @@ class OrcaTabsPlugin {
       }
 
       const focusedTabId = focusedTabElement.getAttribute('data-tab-id');
-      if (!focusedTabId) {
+      const focusedBlockId = focusedTabElement.getAttribute('data-block-id');
+      if (!focusedTabId && !focusedBlockId) {
         return;
       }
 
-      const focusedIndex = currentTabs.findIndex(tab => tab.blockId === focusedTabId);
+      let focusedIndex = currentTabs.findIndex(tab => tab.tabId === focusedTabId);
+      if (focusedIndex === -1 && focusedBlockId) {
+        focusedIndex = currentTabs.findIndex(tab => tab.blockId === focusedBlockId);
+      }
       if (focusedIndex === -1) {
         return;
       }
@@ -12147,6 +12211,7 @@ class OrcaTabsPlugin {
         return;
       }
 
+      newTabInfo.tabId = currentTabs[focusedIndex].tabId || newTabInfo.tabId;
       currentTabs[focusedIndex] = newTabInfo;
       this.setCurrentPanelTabs(currentTabs);
       await this.immediateUpdateTabsUI();
@@ -12657,9 +12722,9 @@ class OrcaTabsPlugin {
                   this.lastFocusState = { blockId, hasFocusedTab };
                   
                   if (focusedTab) {
-                    const focusedTabId = focusedTab.getAttribute('data-tab-id');
-                    if (focusedTabId !== blockId) {
-                      this.verboseLog(`?? 焦点检测到变更: ${focusedTabId} -> ${blockId}`);
+                    const focusedBlockId = focusedTab.getAttribute('data-block-id');
+                    if (focusedBlockId !== blockId) {
+                      this.verboseLog(`?? 焦点检测到变更: ${focusedBlockId} -> ${blockId}`);
                       await this.checkCurrentPanelBlocks();
                     }
                   } else {
@@ -13328,6 +13393,7 @@ class OrcaTabsPlugin {
       // 创建视图面板的 TabInfo（Requirements: 3.3, 4.1）
       const viewTabInfo: TabInfo = {
         blockId: `view:${viewPanelInfo.panelId}`,  // 使用 view:${panelId} 格式
+        tabId: generateTabInstanceId(`view:${viewPanelInfo.panelId}`),
         panelId: viewPanelInfo.panelId,
         title: viewPanelInfo.title,
         icon: viewPanelInfo.icon,

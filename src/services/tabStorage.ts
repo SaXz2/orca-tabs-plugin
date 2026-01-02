@@ -248,7 +248,7 @@ export class TabStorageService {
    */
   async loadWorkspaces(): Promise<{ workspaces: Workspace[], enableWorkspaces: boolean }> {
     try {
-      const workspacesData = await this.storageService.getConfig(PLUGIN_STORAGE_KEYS.WORKSPACES);
+      const workspacesData = await this.storageService.getConfig(PLUGIN_STORAGE_KEYS.WORKSPACES, this.pluginName, []);
       let workspaces: Workspace[] = workspacesData && Array.isArray(workspacesData) ? workspacesData : [];
       
       // 规范化每个工作区中的标签数据
@@ -257,7 +257,7 @@ export class TabStorageService {
         tabs: normalizeTabInfoArray(workspace.tabs || [])
       }));
       
-      const enableWorkspaces = await this.storageService.getConfig(PLUGIN_STORAGE_KEYS.ENABLE_WORKSPACES);
+      const enableWorkspaces = await this.storageService.getConfig(PLUGIN_STORAGE_KEYS.ENABLE_WORKSPACES, this.pluginName, false);
       const enableWorkspacesValue = typeof enableWorkspaces === 'boolean' ? enableWorkspaces : false;
 
       this.log(`📁 已加载 ${workspaces.length} 个工作区`);
@@ -349,7 +349,7 @@ export class TabStorageService {
     horizontalPosition: TabPosition
   ): Promise<{ verticalPosition: TabPosition, horizontalPosition: TabPosition }> {
     try {
-      // 使用配置工具函数更新位置
+      // ????????????????????????????????????
       const updatedPositions = updatePositionConfig(
         position,
         isVerticalMode,
@@ -357,25 +357,18 @@ export class TabStorageService {
         horizontalPosition
       );
       
+      const currentLayout = await this.restoreLayoutMode();
       await this.saveLayoutMode({
+        ...currentLayout,
         isVerticalMode,
-        verticalWidth: 0, // 这个值需要从外部传入
         verticalPosition: updatedPositions.verticalPosition,
-        horizontalPosition: updatedPositions.horizontalPosition,
-        isSidebarAlignmentEnabled: false, // 这些值需要从外部传入
-        isFloatingWindowVisible: false,
-        showBlockTypeIcons: false,
-        showInHeadbar: false,
-        horizontalTabMaxWidth: 130,
-        horizontalTabMinWidth: 80,
-        enableEdgeHide: false,
-        enableBubbleMode: false
+        horizontalPosition: updatedPositions.horizontalPosition
       });
       
-      this.log(`💾 位置已保存: ${generatePositionLogMessage(position, isVerticalMode)}`);
+      this.log(`???? ??????????????? ${generatePositionLogMessage(position, isVerticalMode)}`);
       return updatedPositions;
     } catch (e) {
-      this.warn("无法保存标签位置");
+      this.warn("????????????????????????");
       return { verticalPosition, horizontalPosition };
     }
   }

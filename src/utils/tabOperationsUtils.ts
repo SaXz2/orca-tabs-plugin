@@ -72,6 +72,9 @@ export function normalizeTabInfo(tab: TabInfo): TabInfo {
   const hasViewBlockType = normalized.blockType === 'view';
   const hasViewPanelFlag = normalized.isViewPanel === true;
   
+  if (!normalized.tabId) {
+    normalized.tabId = generateTabInstanceId(normalized.blockId || 'tab');
+  }
   // If any view panel indicator is present, ensure all are set correctly
   if (hasViewPrefix || hasViewBlockType || hasViewPanelFlag) {
     normalized.isViewPanel = true;
@@ -579,6 +582,7 @@ export function createTab(
     // 创建新标签
     const newTab: TabInfo = {
       blockId,
+      tabId: generateTabInstanceId(blockId),
       title,
       panelId: '', // 将在后续设置
       order: tabs.length,
@@ -1015,10 +1019,19 @@ export function generateTabId(blockId: string, panelId: string): string {
   return `${panelId}-${blockId}`;
 }
 
+export function generateTabInstanceId(blockId: string): string {
+  const timePart = Date.now().toString(36);
+  const randomPart = Math.random().toString(36).slice(2, 8);
+  return `${blockId}-${timePart}-${randomPart}`;
+}
+
 /**
  * 比较两个标签是否相等
  */
 export function areTabsEqual(tab1: TabInfo, tab2: TabInfo): boolean {
+  if (tab1.tabId && tab2.tabId) {
+    return tab1.tabId === tab2.tabId;
+  }
   return tab1.blockId === tab2.blockId && tab1.panelId === tab2.panelId;
 }
 

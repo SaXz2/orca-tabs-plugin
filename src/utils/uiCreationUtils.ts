@@ -985,7 +985,7 @@ export function createHoverTabItem(
 ): HTMLElement {
   const item = document.createElement('div');
   item.className = 'hover-tab-item';
-  item.setAttribute('data-tab-id', tab.blockId);
+  item.setAttribute('data-tab-id', tab.tabId || tab.blockId);
   
   // 计算透明度和缩放比例
   const maxIndex = config.maxDisplayCount - 1;
