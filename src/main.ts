@@ -90,6 +90,7 @@ import {
   createTabIconContainer,
   createTabTextContainer,
   createPinIcon,
+  createTabCloseButton,
   createTabTooltip,
   calculateContextMenuPosition,
   createTabContainerStyle
@@ -3212,6 +3213,41 @@ class OrcaTabsPlugin {
         border: 1px solid var(--tab-color) !important;
         box-shadow: 0 0 0 1px color-mix(in srgb, var(--tab-color), transparent 70%), 0 2px 8px color-mix(in srgb, var(--tab-color), transparent 80%) !important;
         background: color-mix(in srgb, var(--tab-color), transparent 85%) !important;
+      }
+
+      /* 标签关闭按钮样式 */
+      .orca-tabs-plugin .orca-tab .tab-close-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        border-radius: 4px;
+        opacity: 0;
+        cursor: pointer;
+        transition: opacity 0.15s ease, background-color 0.15s ease;
+        color: var(--orca-color-text-2);
+        margin-left: auto;
+      }
+
+      .orca-tabs-plugin .orca-tab .tab-close-btn:hover {
+        background-color: var(--orca-color-menu-highlight);
+        color: var(--orca-color-text-1);
+      }
+
+      .orca-tabs-plugin .orca-tab .tab-close-btn:active {
+        background-color: color-mix(in srgb, var(--orca-color-menu-highlight), black 10%);
+      }
+
+      /* 悬浮标签时显示关闭按钮 */
+      .orca-tabs-plugin .orca-tab:hover .tab-close-btn {
+        opacity: 1;
+      }
+
+      /* 只有一个标签时隐藏关闭按钮 */
+      .orca-tabs-plugin .orca-tabs-container .orca-tab:only-child .tab-close-btn {
+        display: none;
       }
 
       /* 拖拽时的光标样式 */
@@ -6730,6 +6766,16 @@ class OrcaTabsPlugin {
       const pinIcon = createPinIcon();
       tabContent.appendChild(pinIcon);
     }
+
+    // 添加关闭按钮（悬浮时显示）
+    const closeBtn = createTabCloseButton();
+    closeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      this.closeTab(tab);
+    });
+    tabContent.appendChild(closeBtn);
 
     // 将内容容器添加到标签元素
     tabElement.appendChild(tabContent);
