@@ -41,6 +41,7 @@ try {
     { src: 'package.json', dest: 'package.json', required: true },
     { src: 'README.md', dest: 'README.md', required: true },
     { src: 'icon.png', dest: 'icon.png', required: true },
+    { src: 'LICENSE', dest: 'LICENSE', required: true },
     { src: 'dist/index.js.map', dest: 'dist/index.js.map', required: false }
   ];
 

@@ -1,11 +1,13 @@
 {
-  "name": "orca-plugin-template",
+  "name": "orca-tabs-plugin",
   "version": "2.9.0",
+  "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
   "files": [
     "dist/",
     "icon.png",
+    "LICENSE",
     "README.md"
   ],
   "scripts": {
