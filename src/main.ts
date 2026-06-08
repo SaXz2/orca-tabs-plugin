@@ -2950,7 +2950,7 @@ class OrcaTabsPlugin {
       pointer-events: auto;
       transition: opacity 0.2s ease;
     `;
-    dragHandle.innerHTML = '';
+    dragHandle.textContent = '';
     
     // 添加悬停效果
     dragHandle.addEventListener('mouseenter', () => {
@@ -4137,7 +4137,7 @@ class OrcaTabsPlugin {
     `;
     
     newTabButton.style.cssText = newButtonStyle;
-    newTabButton.innerHTML = '+';
+    newTabButton.textContent = '+';
       addTooltip(newTabButton, createButtonTooltip('新建标签页'));
 
     // 添加悬停效果
@@ -4403,7 +4403,7 @@ class OrcaTabsPlugin {
     const isEnabled = this.enableMiddleClickPin || this.enableDoubleClickClose;
     
     // 更新按钮内容
-    button.innerHTML = isEnabled ? '🔒' : '🔓';
+    button.textContent = isEnabled ? '🔒' : '🔓';
     button.title = isEnabled ? '中键固定/双击关闭 (已启用)' : '中键固定/双击关闭 (已禁用)';
     
     // 更新样式
@@ -4542,7 +4542,10 @@ class OrcaTabsPlugin {
     `;
     
     workspaceButton.style.cssText = workspaceButtonStyle;
-    workspaceButton.innerHTML = '<i class="ti ti-layout-grid" style="font-size: 14px;"></i>';
+    const workspaceIcon = document.createElement('i');
+    workspaceIcon.className = 'ti ti-layout-grid';
+    workspaceIcon.style.cssText = 'font-size: 14px;';
+    workspaceButton.replaceChildren(workspaceIcon);
       addTooltip(workspaceButton, createButtonTooltip(`工作区 (${this.workspaces?.length || 0})`));
 
     // 添加悬停效果
@@ -7903,7 +7906,7 @@ class OrcaTabsPlugin {
 
       if (currentSwap !== undefined && currentSwap !== this.lastSettings.enableMiddleClickPin) {
         const newValue = !!currentSwap;
-        this.enableMiddleClickPin = currentSettings.enableMiddleClickPin;
+        this.enableMiddleClickPin = newValue;
         this.enableDoubleClickClose = newValue; // 同步
         this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.ENABLE_MIDDLE_CLICK_PIN, newValue, this.pluginName).catch(err => this.error("保存中键固定设置失败:", err));
         this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.ENABLE_DOUBLE_CLICK_CLOSE, newValue, this.pluginName).catch(err => this.error("保存双击关闭设置失败:", err));
@@ -14798,7 +14801,7 @@ class OrcaTabsPlugin {
         width: 16px;
         height: 20px;
       `;
-      dragHandle.innerHTML = '⋮⋮';
+      dragHandle.textContent = '⋮⋮';
       tabItem.appendChild(dragHandle);
 
       // 添加图标
@@ -14837,13 +14840,25 @@ class OrcaTabsPlugin {
         min-height: 20px;
       `;
       
-      // 构建标签信息HTML
-      let tabInfoHTML = `
-        <div style="font-size: 14px; color: var(--orca-color-text-1); font-weight: 500; line-height: 1.2; margin-bottom: 2px;">${tab.title}</div>
-        <div style="font-size: 12px; color: #666; line-height: 1.2;">ID: ${tab.blockId}</div>
+      const tabTitle = document.createElement('div');
+      tabTitle.style.cssText = `
+        font-size: 14px;
+        color: var(--orca-color-text-1);
+        font-weight: 500;
+        line-height: 1.2;
+        margin-bottom: 2px;
       `;
-      
-      tabInfo.innerHTML = tabInfoHTML;
+      tabTitle.textContent = tab.title;
+      tabInfo.appendChild(tabTitle);
+
+      const tabBlockId = document.createElement('div');
+      tabBlockId.style.cssText = `
+        font-size: 12px;
+        color: #666;
+        line-height: 1.2;
+      `;
+      tabBlockId.textContent = `ID: ${tab.blockId}`;
+      tabInfo.appendChild(tabBlockId);
       tabItem.appendChild(tabInfo);
 
       // 添加操作按钮容器
@@ -15614,15 +15629,55 @@ class OrcaTabsPlugin {
         `;
         
         const icon = workspace.icon || 'ti ti-folder';
-        workspaceItem.innerHTML = `
-          <i class="${icon}" style="font-size: 14px; color: var(--orca-color-primary-5);"></i>
-          <div style="flex: 1;">
-            <div style="font-weight: 500; color: var(--orca-color-text-1);"">${workspace.name}</div>
-            ${workspace.description ? `<div style="font-size: 12px; color: ${isDarkMode ? '#999' : '#666'}; margin-top: 2px;">${workspace.description}</div>` : ''}
-            <div style="font-size: 11px; color: ${isDarkMode ? '#777' : '#999'}; margin-top: 2px;">${workspace.tabs.length}个标签</div>
-          </div>
-          ${this.currentWorkspace === workspace.id ? '<i class="ti ti-check" style="font-size: 14px; color: var(--orca-color-primary-5);"></i>' : ''}
+        const iconElement = document.createElement('i');
+        iconElement.className = icon;
+        iconElement.style.cssText = `
+          font-size: 14px;
+          color: var(--orca-color-primary-5);
         `;
+        workspaceItem.appendChild(iconElement);
+
+        const workspaceContent = document.createElement('div');
+        workspaceContent.style.cssText = 'flex: 1;';
+
+        const workspaceName = document.createElement('div');
+        workspaceName.style.cssText = `
+          font-weight: 500;
+          color: var(--orca-color-text-1);
+        `;
+        workspaceName.textContent = workspace.name;
+        workspaceContent.appendChild(workspaceName);
+
+        if (workspace.description) {
+          const workspaceDescription = document.createElement('div');
+          workspaceDescription.style.cssText = `
+            font-size: 12px;
+            color: ${isDarkMode ? '#999' : '#666'};
+            margin-top: 2px;
+          `;
+          workspaceDescription.textContent = workspace.description;
+          workspaceContent.appendChild(workspaceDescription);
+        }
+
+        const workspaceTabCount = document.createElement('div');
+        workspaceTabCount.style.cssText = `
+          font-size: 11px;
+          color: ${isDarkMode ? '#777' : '#999'};
+          margin-top: 2px;
+        `;
+        workspaceTabCount.textContent = `${workspace.tabs.length}个标签`;
+        workspaceContent.appendChild(workspaceTabCount);
+        workspaceItem.appendChild(workspaceContent);
+
+        if (this.currentWorkspace === workspace.id) {
+          const checkIcon = document.createElement('i');
+          checkIcon.className = 'ti ti-check';
+          checkIcon.style.cssText = `
+            font-size: 14px;
+            color: var(--orca-color-primary-5);
+          `;
+          workspaceItem.appendChild(checkIcon);
+        }
         
         // 添加悬浮效果
         workspaceItem.addEventListener('mouseenter', () => {
@@ -16010,26 +16065,79 @@ class OrcaTabsPlugin {
         `;
 
         const icon = workspace.icon || 'ti ti-folder';
-        workspaceItem.innerHTML = `
-          <i class="${icon}" style="font-size: 20px; color: var(--orca-color-primary-5); margin-right: 12px;"></i>
-          <div style="flex: 1;">
-            <div style="font-weight: 500; font-size: 14px; margin-bottom: 4px; color: ${isDarkMode ? '#ffffff' : '#333'};"">${workspace.name}</div>
-            ${workspace.description ? `<div style="font-size: 12px; color: ${isDarkMode ? '#999' : '#666'}; margin-bottom: 4px;">${workspace.description}</div>` : ''}
-            <div style="font-size: 11px; color: ${isDarkMode ? '#777' : '#999'};"">${workspace.tabs.length}个标签 • 创建于 ${new Date(workspace.createdAt).toLocaleString()}</div>
-          </div>
-          <div style="display: flex; gap: 8px;">
-            ${this.currentWorkspace === workspace.id ? '<span style="color: var(--orca-color-primary-5); font-size: 12px;">当前</span>' : ''}
-            <button class="delete-workspace-btn" data-workspace-id="${workspace.id}" style="
-              padding: 4px 8px;
-              border: 1px solid var(--orca-color-border);
-              border-radius: var(--orca-radius-md);
-              background: var(--orca-color-bg-1);
-              color: #ef4444;
-              cursor: pointer;
-              font-size: 12px;
-            ">删除</button>
-          </div>
+        const iconElement = document.createElement('i');
+        iconElement.className = icon;
+        iconElement.style.cssText = `
+          font-size: 20px;
+          color: var(--orca-color-primary-5);
+          margin-right: 12px;
         `;
+        workspaceItem.appendChild(iconElement);
+
+        const workspaceContent = document.createElement('div');
+        workspaceContent.style.cssText = 'flex: 1;';
+
+        const workspaceName = document.createElement('div');
+        workspaceName.style.cssText = `
+          font-weight: 500;
+          font-size: 14px;
+          margin-bottom: 4px;
+          color: ${isDarkMode ? '#ffffff' : '#333'};
+        `;
+        workspaceName.textContent = workspace.name;
+        workspaceContent.appendChild(workspaceName);
+
+        if (workspace.description) {
+          const workspaceDescription = document.createElement('div');
+          workspaceDescription.style.cssText = `
+            font-size: 12px;
+            color: ${isDarkMode ? '#999' : '#666'};
+            margin-bottom: 4px;
+          `;
+          workspaceDescription.textContent = workspace.description;
+          workspaceContent.appendChild(workspaceDescription);
+        }
+
+        const workspaceMeta = document.createElement('div');
+        workspaceMeta.style.cssText = `
+          font-size: 11px;
+          color: ${isDarkMode ? '#777' : '#999'};
+        `;
+        workspaceMeta.textContent = `${workspace.tabs.length}个标签 • 创建于 ${new Date(workspace.createdAt).toLocaleString()}`;
+        workspaceContent.appendChild(workspaceMeta);
+        workspaceItem.appendChild(workspaceContent);
+
+        const actionContainer = document.createElement('div');
+        actionContainer.style.cssText = `
+          display: flex;
+          gap: 8px;
+        `;
+
+        if (this.currentWorkspace === workspace.id) {
+          const currentLabel = document.createElement('span');
+          currentLabel.style.cssText = `
+            color: var(--orca-color-primary-5);
+            font-size: 12px;
+          `;
+          currentLabel.textContent = '当前';
+          actionContainer.appendChild(currentLabel);
+        }
+
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'delete-workspace-btn';
+        deleteButton.dataset.workspaceId = workspace.id;
+        deleteButton.style.cssText = `
+          padding: 4px 8px;
+          border: 1px solid var(--orca-color-border);
+          border-radius: var(--orca-radius-md);
+          background: var(--orca-color-bg-1);
+          color: #ef4444;
+          cursor: pointer;
+          font-size: 12px;
+        `;
+        deleteButton.textContent = '删除';
+        actionContainer.appendChild(deleteButton);
+        workspaceItem.appendChild(actionContainer);
 
         // 添加悬浮效果
         workspaceItem.addEventListener('mouseenter', () => {
@@ -16183,17 +16291,24 @@ class OrcaTabsPlugin {
       background-color: var(--orca-color-bg-1);
       border-radius: var(--orca-radius-md);
     `;
-    info.innerHTML = `
-      <div style="font-size: 14px; color: #666; margin-bottom: 8px;">
-        <strong>创建时间:</strong> ${new Date(tabSet.createdAt).toLocaleString()}
-      </div>
-      <div style="font-size: 14px; color: #666; margin-bottom: 8px;">
-        <strong>更新时间:</strong> ${new Date(tabSet.updatedAt).toLocaleString()}
-      </div>
-      <div style="font-size: 14px; color: #666;">
-        <strong>标签数量:</strong> ${tabSet.tabs.length}个
-      </div>
-    `;
+    const appendInfoRow = (label: string, value: string, hasMargin = true) => {
+      const row = document.createElement('div');
+      row.style.cssText = `
+        font-size: 14px;
+        color: #666;
+        ${hasMargin ? 'margin-bottom: 8px;' : ''}
+      `;
+
+      const labelElement = document.createElement('strong');
+      labelElement.textContent = `${label}:`;
+      row.appendChild(labelElement);
+      row.appendChild(document.createTextNode(` ${value}`));
+      info.appendChild(row);
+    };
+
+    appendInfoRow('创建时间', new Date(tabSet.createdAt).toLocaleString());
+    appendInfoRow('更新时间', new Date(tabSet.updatedAt).toLocaleString());
+    appendInfoRow('标签数量', `${tabSet.tabs.length}个`, false);
     content.appendChild(info);
 
     // 显示标签列表
@@ -16515,7 +16630,7 @@ class OrcaTabsPlugin {
 
     // 替换显示元素
     const originalText = nameDisplay.textContent;
-    nameDisplay.innerHTML = '';
+    nameDisplay.replaceChildren();
     nameDisplay.appendChild(input);
 
     // 阻止输入框的点击事件传播，避免触发外部关闭事件
@@ -16880,7 +16995,7 @@ class OrcaTabsPlugin {
       
       // 设置图标
       const updateIcon = () => {
-        iconContainer.innerHTML = '';
+        iconContainer.replaceChildren();
         if (tabSet.icon) {
           if (tabSet.icon.startsWith('ti ti-')) {
             const iElement = document.createElement('i');

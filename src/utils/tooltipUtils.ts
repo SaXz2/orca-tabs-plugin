@@ -67,11 +67,12 @@ export function addTooltip(element: HTMLElement, config: TooltipConfig): void {
         tooltip = document.createElement('div');
         tooltip.className = `orca-tooltip ${config.className || ''}`;
         const tooltipText = config.shortcut ? `${config.text} (${config.shortcut})` : config.text;
-        if (tooltipText.includes('\n')) {
-          tooltip.innerHTML = tooltipText.replace(/\n/g, '<br>');
-        } else {
-          tooltip.textContent = tooltipText;
-        }
+        tooltipText.split('\n').forEach((line, index) => {
+          if (index > 0) {
+            tooltip!.appendChild(document.createElement('br'));
+          }
+          tooltip!.appendChild(document.createTextNode(line));
+        });
         tooltip.style.cssText = `
           position: absolute;
           opacity: 0;
