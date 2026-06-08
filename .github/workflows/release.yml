@@ -57,6 +57,7 @@ jobs:
           cp package.json release-package/
           cp README.md release-package/
           cp icon.png release-package/
+          cp LICENSE release-package/
           
           # 如果存在 source map，也复制到 dist 目录
           if [ -f "dist/index.js.map" ]; then
