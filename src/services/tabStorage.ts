@@ -441,17 +441,105 @@ export class TabStorageService {
   async restoreFixedToTopMode(): Promise<boolean> {
     try {
       const saved = await this.storageService.getConfig<{ isFixedToTop: boolean }>(
-        PLUGIN_STORAGE_KEYS.FIXED_TO_TOP, 
-        this.pluginName, 
+        PLUGIN_STORAGE_KEYS.FIXED_TO_TOP,
+        this.pluginName,
         { isFixedToTop: false }
       );
-      
+
       const isFixedToTop = saved?.isFixedToTop || false;
       this.log(`📂 恢复固定到顶部状态: ${isFixedToTop ? '启用' : '禁用'}`);
       return isFixedToTop;
     } catch (e) {
       this.warn("恢复固定到顶部状态失败:", e);
       return false;
+    }
+  }
+
+  /**
+   * 保存固定到编辑器顶部状态到API配置
+   */
+  async saveFixedToEditorTopMode(isFixedToEditorTop: boolean): Promise<void> {
+    try {
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.FIXED_TO_EDITOR_TOP, { isFixedToEditorTop }, this.pluginName);
+      this.log(`💾 固定到编辑器顶部状态已保存: ${isFixedToEditorTop ? '启用' : '禁用'}`);
+    } catch (e) {
+      this.error("保存固定到编辑器顶部状态失败:", e);
+    }
+  }
+
+  /**
+   * 恢复固定到编辑器顶部状态
+   */
+  async restoreFixedToEditorTopMode(): Promise<boolean> {
+    try {
+      const saved = await this.storageService.getConfig<{ isFixedToEditorTop: boolean }>(
+        PLUGIN_STORAGE_KEYS.FIXED_TO_EDITOR_TOP,
+        this.pluginName,
+        { isFixedToEditorTop: false }
+      );
+
+      const isFixedToEditorTop = saved?.isFixedToEditorTop || false;
+      this.log(`📂 恢复固定到编辑器顶部状态: ${isFixedToEditorTop ? '启用' : '禁用'}`);
+      return isFixedToEditorTop;
+    } catch (e) {
+      this.warn("恢复固定到编辑器顶部状态失败:", e);
+      return false;
+    }
+  }
+
+  /**
+   * 保存合并模式固定条目（panelId → 固定 key 列表）
+   */
+  async saveMergedPinnedEntries(data: Record<string, string[]>): Promise<void> {
+    try {
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.MERGED_PINNED_ENTRIES, data, this.pluginName);
+    } catch (e) {
+      this.error("保存合并模式固定条目失败:", e);
+    }
+  }
+
+  /**
+   * 恢复合并模式固定条目
+   */
+  async restoreMergedPinnedEntries(): Promise<Record<string, string[]>> {
+    try {
+      const saved = await this.storageService.getConfig<Record<string, string[]>>(
+        PLUGIN_STORAGE_KEYS.MERGED_PINNED_ENTRIES,
+        this.pluginName,
+        {}
+      );
+      return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
+    } catch (e) {
+      this.warn("恢复合并模式固定条目失败:", e);
+      return {};
+    }
+  }
+
+  /**
+   * 保存合并模式标题覆盖（panelId|key → 自定义标题）
+   */
+  async saveMergedTitleOverrides(data: Record<string, string>): Promise<void> {
+    try {
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.MERGED_TITLE_OVERRIDES, data, this.pluginName);
+    } catch (e) {
+      this.error("保存合并模式标题覆盖失败:", e);
+    }
+  }
+
+  /**
+   * 恢复合并模式标题覆盖
+   */
+  async restoreMergedTitleOverrides(): Promise<Record<string, string>> {
+    try {
+      const saved = await this.storageService.getConfig<Record<string, string>>(
+        PLUGIN_STORAGE_KEYS.MERGED_TITLE_OVERRIDES,
+        this.pluginName,
+        {}
+      );
+      return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
+    } catch (e) {
+      this.warn("恢复合并模式标题覆盖失败:", e);
+      return {};
     }
   }
 

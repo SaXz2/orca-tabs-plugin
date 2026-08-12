@@ -38,7 +38,7 @@ import zhCN from "./translations/zhCN";
 // 常量定义 - 包含应用配置常量和存储键定义
 import { AppKeys, PropType, PLUGIN_STORAGE_KEYS, FEATURE_CONFIG } from './constants';
 // 类型定义 - 包含所有TypeScript接口和类型
-import { TabInfo, TabPosition, PanelTabsData, SavedTabSet, Workspace, HoverTabListConfig, ViewPanelInfo } from './types';
+import { TabInfo, TabPosition, PanelTabsData, SavedTabSet, Workspace, HoverTabListConfig, ViewPanelInfo, PanelHistoryEntry, DragPayload } from './types';
 // 存储服务 - 提供统一的数据存储接口，支持Orca API和localStorage降级
 import { OrcaStorageService } from './services/storage';
 // 标签页存储服务 - 提供标签页相关的数据存储操作
@@ -265,6 +265,9 @@ import {
 // ==================== 全局变量 ====================
 /** 插件名称 - 用于标识和调试 */
 let pluginName: string;
+
+/** 固定到编辑器顶部模式下标签栏高度（须与 createTabsUI 中的 height 保持一致） */
+const FIXED_EDITOR_TOP_HEIGHT = '32px';
 
 /* ———————————————————————————————————————————————————————————————————————————— */
 /* 主插件类 - Main Plugin Class */
@@ -683,7 +686,22 @@ class OrcaTabsPlugin {
   
   /** 是否固定到顶部 - 标识标签页容器是否固定到屏幕顶部 */
   private isFixedToTop: boolean = false;
-  
+
+  /** 是否固定到编辑器顶部 - 标签页容器覆盖在编辑器区域(#main)顶部（与固定到顶部互斥） */
+  private isFixedToEditorTop: boolean = false;
+
+  /** 编辑器顶部固定模式的观察器 - 跟随侧边栏开合/窗口变化更新标签栏位置 */
+  private editorTopObserver: ResizeObserver | null = null;
+
+  /** 编辑器顶部固定模式的body class观察器 - 侧边栏响应式折叠（body类名切换）时更新位置 */
+  private editorTopBodyObserver: MutationObserver | null = null;
+
+  /** 编辑器顶部固定模式的位置更新rAF节流标记 */
+  private editorTopRafPending: boolean = false;
+
+  /** 编辑器顶部固定模式的兜底轮询定时器 - 无论侧边栏以何种方式开合，1秒内修正位置 */
+  private editorTopGuardTimer: number | null = null;
+
   /** 调整大小手柄 - 用于调整标签页容器大小的拖拽手柄元素 */
   private resizeHandle: HTMLElement | null = null;
   
@@ -775,7 +793,65 @@ class OrcaTabsPlugin {
   
   /** 是否隐藏标签页提示 - 控制是否隐藏标签页的悬停提示 */
   public hideTabTooltips: boolean = false;
-  
+
+  // ==================== 合并标签栏模式 ====================
+  /** 合并显示所有面板标签是否启用 - 控制是否在一个标签栏中显示所有面板的标签组 */
+  private enableMergedTabBar: boolean = false;
+
+  /** 每面板LRU历史缓存 - 合并模式下每个面板的视图历史（key: panelId） */
+  private panelHistoryMap: Map<string, PanelHistoryEntry[]> = new Map();
+
+  /** 历史使用计数器 - LRU 淘汰依据，数值越大越新 */
+  private historyUseCounter: number = 0;
+
+  /** 跨面板拖拽载荷 - 拖拽标签到面板时的统一数据 */
+  private activeDragPayload: DragPayload | null = null;
+
+  /** 面板放置提示元素 - 拖拽标签到面板时显示的半区高亮（懒创建单例） */
+  private panelDropHint: HTMLElement | null = null;
+
+  /** 视图类型显示名 - 合并模式下无标题视图的回退名称 */
+  private viewTypeNames: Record<string, string> = {
+    journal: '日记',
+    search: '搜索',
+    tags: '标签',
+    graph: '关系图',
+    whiteboard: '白板'
+  };
+
+  /** 合并模式状态订阅取消函数 - valtio subscribe 返回的取消函数 */
+  private mergedModeUnsubscribe: (() => void) | null = null;
+
+  /** 合并模式DOM监听器 - 监听面板DOM变化以即时刷新标签栏 */
+  private mergedModeObserver: MutationObserver | null = null;
+
+  /** 合并模式刷新定时器 - 防抖合并频繁触发的刷新请求 */
+  private mergedRefreshTimer: number | null = null;
+
+  /** 合并模式渲染签名 - 与上次渲染对比，相同则跳过DOM重建 */
+  private mergedRenderSignature: string = '';
+
+  /** 合并模式渲染进行中标志 - 防止并发渲染导致DOM重复 */
+  private mergedRenderInProgress: boolean = false;
+
+  /** 历史同步进行中标志 - 防止并发同步（异步获取块数据时） */
+  private syncPanelHistoryInProgress: boolean = false;
+
+  /** 块数据缓存 - 合并模式下未打开块的异步获取缓存（30秒TTL） */
+  private blockDataCache: Map<number, { data: any; time: number }> = new Map();
+
+  /** 合并模式固定条目 - panelId → 固定历史 key 列表（持久化） */
+  private mergedPinnedMap: Record<string, string[]> = {};
+
+  /** 合并模式固定条目是否已从存储加载 */
+  private mergedPinnedLoaded: boolean = false;
+
+  /** 合并模式标题覆盖 - panelId|key → 自定义标题（持久化） */
+  private mergedTitleOverrides: Record<string, string> = {};
+
+  /** 合并模式标题覆盖是否已从存储加载 */
+  private mergedTitleOverridesLoaded: boolean = false;
+
   /** 贴边隐藏检测防抖定时器 - 避免面板切换时的频繁检测 */
   private edgeHideDebounceTimer: number | null = null;
   
@@ -1016,13 +1092,20 @@ class OrcaTabsPlugin {
       _position,
       _layoutMode,
       _fixedToTop,
+      _fixedToEditorTop,
       _floatingVisibility
     ] = await Promise.all([
       this.restorePosition(),
       this.restoreLayoutMode(),
       this.restoreFixedToTopMode(),
+      this.restoreFixedToEditorTopMode(),
       this.restoreFloatingWindowVisibility()
     ]);
+
+    // 固定到顶部与固定到编辑器顶部互斥，以固定到顶部优先
+    if (this.isFixedToEditorTop && this.isFixedToTop) {
+      this.isFixedToEditorTop = false;
+    }
     
     // 注意：页面刷新后不自动加载当前工作区，用户需要手动切换工作区
     
@@ -1657,7 +1740,7 @@ class OrcaTabsPlugin {
           if (targetTab && targetTab.blockId !== this.draggingTab!.blockId) {
             // 计算位置
             const rect = tabElement.getBoundingClientRect();
-            const isVertical = this.isVerticalMode && !this.isFixedToTop;
+            const isVertical = this.isVerticalMode && !this.isFixedToTop && !this.isFixedToEditorTop;
             let position: 'before' | 'after';
             
             if (isVertical) {
@@ -2623,6 +2706,28 @@ class OrcaTabsPlugin {
     return datePatterns.some(pattern => pattern.test(str));
   }
 
+  /**
+   * 去掉文本尾部的 #标签 后缀（如 "标题 #标签1 #标签2" -> "标题"）
+   */
+  private stripTrailingHashTags(text: string): string {
+    return text.replace(/(\s*#[^\s#]+)+$/u, '').trim();
+  }
+
+  /**
+   * 从块属性中提取标题级别（用于 h1-h6 图标显示）
+   */
+  private extractBlockLevel(block: any): number | undefined {
+    try {
+      const reprProp = this.findProperty(block, '_repr');
+      if (!reprProp || !reprProp.value) return undefined;
+      const reprData = typeof reprProp.value === 'string' ? JSON.parse(reprProp.value) : reprProp.value;
+      const level = reprData?.level;
+      return typeof level === 'number' && level >= 1 && level <= 6 ? level : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
   async getTabInfo(blockId: string, panelId: string, order: number): Promise<TabInfo | null> {
     try {
       // 检查是否为视图面板（如 AI Chat 面板）
@@ -2661,16 +2766,21 @@ class OrcaTabsPlugin {
           title = formattedDate; // 移除文字中的图标，图标会通过icon属性单独显示
         } else if (block.aliases && block.aliases.length > 0) {
           // 第二优先级：检查是否有别名
-          title = block.aliases[0];
+          // 别名以 / 结尾时取最后一段（如 "项目/子项目/" -> "子项目"）
+          const alias = String(block.aliases[0]);
+          const aliasSegments = alias.split('/').filter(Boolean);
+          title = alias.endsWith('/') && aliasSegments.length > 0
+            ? (aliasSegments.pop() as string)
+            : alias;
         } else if (block.content && block.content.length > 0) {
           // 第三优先级：检查content是否需要拼接多段
           const needsConcatenation = this.needsContentConcatenation(block.content);
           if (needsConcatenation && block.text) {
             // 如果需要拼接多段，优先使用block.text
-            title = block.text.substring(0, 50);
+            title = this.stripTrailingHashTags(block.text.substring(0, 50));
           } else {
             // 否则使用content内容解析
-            title = (await this.extractTextFromContent(block.content)).substring(0, 50);
+            title = this.stripTrailingHashTags((await this.extractTextFromContent(block.content)).substring(0, 50));
           }
         } else if (block.text) {
           // 第三优先级：使用text内容作为备选
@@ -2709,7 +2819,7 @@ class OrcaTabsPlugin {
             }
           }
           
-          title = textTitle;
+          title = this.stripTrailingHashTags(textTitle);
         } else {
           // 最低优先级：使用块ID作为备选
           title = `块 ${blockId}`;
@@ -2734,13 +2844,13 @@ class OrcaTabsPlugin {
           this.verboseLog(`🎨 使用用户自定义图标: ${icon} (块ID: ${blockId})`);
         } else if (this.showBlockTypeIcons || blockType === 'journal') {
           // 使用块类型对应的图标，日期块始终显示图标
-          icon = getBlockTypeIcon(blockType);
+          icon = getBlockTypeIcon(blockType, this.extractBlockLevel(block));
           this.verboseLog(`🎨 使用块类型图标: ${icon} (块类型: ${blockType}, 块ID: ${blockId})`);
         }
       } catch (e) {
         this.warn("获取属性失败:", e);
         // 如果获取属性失败，使用块类型图标作为备选
-        icon = getBlockTypeIcon(blockType);
+        icon = getBlockTypeIcon(blockType, this.extractBlockLevel(block));
       }
 
       return {
@@ -2783,6 +2893,8 @@ class OrcaTabsPlugin {
       }
       this.tabContainer.remove();
     }
+    // 清理编辑器顶部固定的位置跟随监听（重建容器前）
+    this.teardownEditorTopWatchers();
     if (this.cycleSwitcher) {
       this.cycleSwitcher.remove();
     }
@@ -2805,8 +2917,8 @@ class OrcaTabsPlugin {
     let isVertical: boolean;
     let width: number;
     
-    if (this.isFixedToTop) {
-      // 固定到顶部模式：强制水平布局，位置在顶部
+    if (this.isFixedToTop || this.isFixedToEditorTop) {
+      // 固定到顶部/编辑器顶部模式：强制水平布局，位置在顶部
       currentPosition = { x: 0, y: 0 };
       isVertical = false; // 强制水平布局
       width = window.innerWidth;
@@ -2829,8 +2941,50 @@ class OrcaTabsPlugin {
       shouldUseBubbleMode ? this.isBubbleExpanded : false
     );
     
-    // 如果是固定到顶部模式，将标签页直接添加到顶部工具栏
-    if (this.isFixedToTop) {
+    // 固定到编辑器顶部模式：对齐参考插件的实现
+    // 标签栏 fixed 定位在 headbar 下方，左右对齐编辑器区域(#main)；
+    // 同时推移 #main 的 margin-top 把内容下移，避免遮挡编辑器
+    if (this.isFixedToEditorTop) {
+      // 挂载到 headbar 之后（参考插件同款挂载点），失败时回退到 body
+      const editorTopHeadbar = document.getElementById('headbar');
+      safeRenderOperation(document.body, () => {
+        if (editorTopHeadbar && editorTopHeadbar.parentElement) {
+          editorTopHeadbar.insertAdjacentElement('afterend', this.tabContainer!);
+        } else {
+          document.body.appendChild(this.tabContainer!);
+        }
+      });
+
+      safeRenderOperation(this.tabContainer, () => {
+        this.tabContainer!.style.cssText += `
+          position: fixed;
+          left: var(--orca-tabs-editor-left, 0px);
+          right: var(--orca-tabs-editor-right, 0px);
+          top: var(--orca-height-headbar, 38px);
+          width: auto;
+          max-width: none;
+          height: ${FIXED_EDITOR_TOP_HEIGHT};
+          z-index: calc(var(--orca-zindex-headbar, 1000) - 1);
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          flex-wrap: nowrap;
+          background-color: var(--orca-color-bg-1);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border-bottom: 2px solid rgba(0, 0, 0, 0.15);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        `;
+      });
+
+      // 添加特殊类名
+      this.tabContainer.classList.add('fixed-to-editor-top');
+
+      // 启用位置跟随监听（侧边栏开合/窗口缩放）
+      this.setupEditorTopWatchers();
+
+      this.log(`📐 标签页已固定到编辑器顶部`);
+    } else if (this.isFixedToTop) {
       // 查找顶部工具栏 - 使用精确的Orca侧边栏工具选择器
       const headbar = document.querySelector('.orca-headbar-sidebar-tools') || 
                      document.body;
@@ -2966,8 +3120,8 @@ class OrcaTabsPlugin {
 
     this.tabContainer.appendChild(dragHandle);
     
-    // 只有在非固定到顶部模式下才添加到body
-    if (!this.isFixedToTop) {
+    // 只有在非固定到顶部/编辑器顶部模式下才添加到body（这两种模式已在前面挂载）
+    if (!this.isFixedToTop && !this.isFixedToEditorTop) {
       document.body.appendChild(this.tabContainer);
     }
 
@@ -2979,7 +3133,9 @@ class OrcaTabsPlugin {
       this.enableDragResize();
     }
 
-    await this.updateTabsUI();
+    // 【修复】容器已整体重建，强制渲染并重置合并模式签名，避免防抖跳过或签名 diff 导致空标签栏
+    this.mergedRenderSignature = '';
+    await this.updateTabsUI(true);
     
     // 如果启用气泡模式，添加气泡模式的事件处理
     if (shouldUseBubbleMode) {
@@ -3249,8 +3405,8 @@ class OrcaTabsPlugin {
         opacity: 1;
       }
 
-      /* 只有一个标签时隐藏关闭按钮 */
-      .orca-tabs-plugin .orca-tabs-container .orca-tab:only-child .tab-close-btn {
+      /* 只有一个标签时隐藏关闭按钮（容器同时含两个类名，需复合选择器匹配同一元素） */
+      .orca-tabs-plugin.orca-tabs-container .orca-tab:only-child .tab-close-btn {
         display: none;
       }
 
@@ -3560,6 +3716,151 @@ class OrcaTabsPlugin {
         vertical-align: middle;
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z'%3E%3C/path%3E%3C/svg%3E");
       }
+
+      /* ========== 合并标签栏模式样式 ========== */
+      /* 面板组之间的分隔条（2px宽、左右各1px间距，节省空间） */
+      .orca-tabs-plugin .orca-tab-sep {
+        flex-shrink: 0;
+        width: 2px;
+        height: 16px;
+        margin: 0 1px;
+        align-self: center;
+        background: color-mix(in srgb, var(--orca-color-text-1), transparent 75%);
+        pointer-events: none;
+      }
+
+      /* 垂直布局：分隔条为横向（容器类名含vertical，选择器需匹配同一元素） */
+      .orca-tabs-plugin.vertical .orca-tab-sep {
+        width: 70%;
+        height: 2px;
+        margin: 1px auto;
+      }
+
+      /* 合并模式标签：去掉常驻边框，避免与组间分隔条混淆 */
+      .orca-tabs-plugin .orca-tab.orca-tab-merged {
+        border: 1px solid transparent !important;
+      }
+
+      /* 合并模式标签：当前面板+当前视图高亮 */
+      .orca-tabs-plugin .orca-tab-merged.orca-tab-active {
+        box-shadow: inset 0 -2px 0 var(--orca-color-primary-5, #5B8DEF);
+      }
+
+      .orca-tabs-container.vertical .orca-tab-merged.orca-tab-active {
+        box-shadow: inset 2px 0 0 var(--orca-color-primary-5, #5B8DEF);
+      }
+
+      .orca-tabs-plugin .orca-tab-merged.orca-tab-current {
+        font-weight: 600;
+      }
+
+      /* 合并模式标签关闭按钮 */
+      .orca-tabs-plugin .orca-tab-merged .orca-tab-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 14px;
+        height: 14px;
+        margin-left: 4px;
+        border-radius: 50%;
+        font-size: 12px;
+        line-height: 1;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+
+      .orca-tabs-plugin .orca-tab-merged:hover .orca-tab-close {
+        opacity: 1;
+      }
+
+      .orca-tabs-plugin .orca-tab-merged .orca-tab-close:hover {
+        background: var(--orca-color-menu-highlight);
+      }
+
+      /* 合并模式组内拖拽插入标记 */
+      .orca-tabs-plugin .orca-tab-merged.orca-tab-insert {
+        box-shadow: inset 2px 0 0 var(--orca-color-primary-5, #5B8DEF);
+      }
+
+      .orca-tabs-container.vertical .orca-tab-merged.orca-tab-insert {
+        box-shadow: inset 0 2px 0 var(--orca-color-primary-5, #5B8DEF);
+      }
+
+      /* 拖拽标签到面板的放置提示（半区/中心高亮） */
+      .orca-tabs-panel-drophint {
+        position: fixed;
+        z-index: 100000;
+        pointer-events: none;
+        border: 2px dashed var(--orca-color-primary-5, #5B8DEF);
+        background: color-mix(in srgb, var(--orca-color-primary-5, #5B8DEF), transparent 70%);
+        border-radius: 6px;
+      }
+
+      /* 合并模式标签基础布局（无内联样式，需要完整CSS定义） */
+      .orca-tabs-plugin .orca-tab-merged {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: var(--orca-tab-bg);
+        color: var(--orca-color-text-1);
+        padding: 2px 8px;
+        border-radius: var(--orca-radius-md);
+        height: 24px;
+        max-height: 24px;
+        line-height: 20px;
+        cursor: pointer;
+        font-size: 12px;
+        max-width: 130px;
+        min-width: 0;
+        -webkit-app-region: no-drag;
+        app-region: no-drag;
+        pointer-events: auto;
+      }
+
+      .orca-tabs-plugin .orca-tab-merged .orca-tab-icon {
+        font-size: 14px;
+        flex-shrink: 0;
+        line-height: 1;
+      }
+
+      .orca-tabs-plugin .orca-tab-merged .orca-tab-label {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+        min-width: 0;
+      }
+
+      /* 合并模式标签拖拽中的视觉反馈 */
+      .orca-tabs-plugin .orca-tab-merged.orca-tab-dragging {
+        opacity: 0.5;
+      }
+
+      /* ========== 固定到编辑器顶部模式 ========== */
+      /* 推移 #main 使内容不被标签栏遮挡（纯CSS，参考插件 body.neo-browser-tabs 实现） */
+      body.orca-tabs-fixed-editor-top {
+        --orca-tabs-editor-top-h: 32px;
+      }
+      body.orca-tabs-fixed-editor-top #main {
+        margin-top: calc(var(--orca-height-headbar, 38px) + var(--orca-tabs-editor-top-h, 32px));
+      }
+
+      /* 固定定位使用 !important 类规则，任何内联样式重置（气泡/贴边等路径）都不会破坏定位 */
+      .orca-tabs-plugin.fixed-to-editor-top {
+        position: fixed !important;
+        top: var(--orca-height-headbar, 38px) !important;
+        left: var(--orca-tabs-editor-left, 0px) !important;
+        right: var(--orca-tabs-editor-right, 0px) !important;
+        width: auto !important;
+        max-width: none !important;
+        height: var(--orca-tabs-editor-top-h, 32px) !important;
+        z-index: calc(var(--orca-zindex-headbar, 1000) - 1) !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        flex-wrap: nowrap !important;
+      }
     `;
     
     document.head.appendChild(style);
@@ -3667,6 +3968,15 @@ class OrcaTabsPlugin {
         this.verboseLog('🔄 强制更新UI（跳过防抖检查）');
       }
 
+    // 合并标签栏模式：一个标签栏分组显示所有面板的标签
+    if (this.enableMergedTabBar) {
+      await this.syncPanelHistory();
+      this.renderMergedTabBar();
+      this.isUpdating = false;
+      this.isUpdatingDOM = false;
+      return;
+    }
+
     // 清除现有标签（保留拖拽手柄、新建按钮和工作区按钮）
     const dragHandle = this.tabContainer.querySelector('.drag-handle');
     const newTabButton = this.tabContainer.querySelector('.new-tab-button');
@@ -3682,7 +3992,7 @@ class OrcaTabsPlugin {
     
     // 临时回退到稳定的全量重建方式，避免增量更新引入的bug
     // TODO: 后续优化增量更新逻辑
-    const tabsToRemove = this.tabContainer.querySelectorAll('.orca-tab');
+    const tabsToRemove = this.tabContainer.querySelectorAll('.orca-tab, .orca-tab-sep');
     tabsToRemove.forEach(tab => tab.remove());
     
     // 保留拖拽手柄在最前面
@@ -3893,7 +4203,7 @@ class OrcaTabsPlugin {
     }
     
     // 如果启用了贴边隐藏，重新应用尺寸约束
-    if (this.enableEdgeHide && this.currentEdgeSide && !this.isFixedToTop) {
+    if (this.enableEdgeHide && this.currentEdgeSide && !this.isFixedToTop && !this.isFixedToEditorTop) {
       // 延迟一帧以确保DOM更新完成
       requestAnimationFrame(() => {
         this.applyEdgeConstraints();
@@ -3926,7 +4236,7 @@ class OrcaTabsPlugin {
     }
     
     // 【修复】多个面板时贴边隐藏失效问题：在UI更新后重新检测贴边隐藏（使用防抖避免频繁检测）
-    if (this.enableEdgeHide && !this.isFixedToTop) {
+    if (this.enableEdgeHide && !this.isFixedToTop && !this.isFixedToEditorTop) {
       this.debouncedApplyEdgeHideStyle(100); // 100ms防抖，等待DOM更新完成
     }
     
@@ -4160,16 +4470,15 @@ class OrcaTabsPlugin {
     });
 
     this.tabContainer.appendChild(newTabButton);
-    
+
     // 为新建标签页按钮添加右键菜单
     this.addNewTabButtonContextMenu(newTabButton);
-    
+
     // 添加工作区按钮（如果启用）
     if (this.enableWorkspaces) {
       this.addWorkspaceButton();
     }
   }
-
 
   /**
    * 优化后的标签宽度更新方法 - 避免完全重建UI
@@ -4188,7 +4497,7 @@ class OrcaTabsPlugin {
           // 重新应用标签样式，只更新宽度相关部分
           const tabInfo = this.getTabInfoFromElement(tabElement);
           if (tabInfo) {
-            const useVerticalStyle = this.isVerticalMode && !this.isFixedToTop;
+            const useVerticalStyle = this.isVerticalMode && !this.isFixedToTop && !this.isFixedToEditorTop;
             const tabStyle = createTabBaseStyle(tabInfo, useVerticalStyle, () => '', maxWidth, minWidth);
             tabElement.style.cssText = tabStyle;
           }
@@ -4647,8 +4956,24 @@ class OrcaTabsPlugin {
       );
     }
 
-    // 只有在非固定到顶部模式下才显示布局切换选项
-    if (!this.isFixedToTop) {
+    // 如果当前是固定到编辑器顶部模式，添加取消固定选项
+    if (this.isFixedToEditorTop) {
+      menuItems.push(
+        {
+          text: '---',
+          action: () => {},
+          separator: true
+        },
+        {
+          text: '取消固定到编辑器顶部',
+          action: () => this.toggleFixedToEditorTop(),
+          icon: '📐'
+        }
+      );
+    }
+
+    // 只有在非固定模式下才显示布局切换选项
+    if (!this.isFixedToTop && !this.isFixedToEditorTop) {
       menuItems.push(
         {
           text: '---',
@@ -4663,8 +4988,8 @@ class OrcaTabsPlugin {
       );
     }
 
-    // 只有在水平布局且非固定到顶部模式下才显示固定到顶部选项
-    if (!this.isVerticalMode && !this.isFixedToTop) {
+    // 只有在水平布局且非固定模式下才显示固定到顶部选项
+    if (!this.isVerticalMode && !this.isFixedToTop && !this.isFixedToEditorTop) {
       menuItems.push(
         {
           text: '---',
@@ -4679,10 +5004,26 @@ class OrcaTabsPlugin {
       );
     }
 
+    // 非固定模式下显示固定到编辑器顶部选项（覆盖在编辑器区域顶部，与固定到顶部互斥）
+    if (!this.isFixedToTop && !this.isFixedToEditorTop) {
+      menuItems.push(
+        {
+          text: '---',
+          action: () => {},
+          separator: true
+        },
+        {
+          text: '固定到编辑器顶部',
+          action: () => this.toggleFixedToEditorTop(),
+          icon: '📐'
+        }
+      );
+    }
+
     // 垂直模式下通过拖动右侧调整手柄来调整面板宽度，无需菜单项
 
-    // 在水平布局下添加标签宽度调整选项
-    if (!this.isVerticalMode) {
+    // 在水平布局下添加标签宽度调整选项（编辑器顶部固定时标签栏为水平布局）
+    if (!this.isVerticalMode || this.isFixedToEditorTop) {
       menuItems.push(
         {
           text: '---',
@@ -4697,8 +5038,8 @@ class OrcaTabsPlugin {
       );
     }
 
-    // 在非固定到顶部模式下添加贴边隐藏选项
-    if (!this.isFixedToTop) {
+    // 在非固定模式下添加贴边隐藏选项
+    if (!this.isFixedToTop && !this.isFixedToEditorTop) {
       menuItems.push(
         {
           text: '---',
@@ -4713,8 +5054,8 @@ class OrcaTabsPlugin {
       );
     }
 
-    // 在垂直模式且非固定到顶部模式下添加气泡模式选项
-    if (this.isVerticalMode && !this.isFixedToTop) {
+    // 在垂直模式且非固定模式下添加气泡模式选项
+    if (this.isVerticalMode && !this.isFixedToTop && !this.isFixedToEditorTop) {
       menuItems.push(
         {
           text: '---',
@@ -4729,8 +5070,8 @@ class OrcaTabsPlugin {
       );
     }
 
-    // 只有在非固定到顶部模式下才添加侧边栏对齐选项
-    if (!this.isFixedToTop) {
+    // 只有在非固定模式下才添加侧边栏对齐选项
+    if (!this.isFixedToTop && !this.isFixedToEditorTop) {
       menuItems.push(
         {
           text: '---',
@@ -4894,10 +5235,15 @@ class OrcaTabsPlugin {
       
       // 切换固定状态
       this.isFixedToTop = !this.isFixedToTop;
-      
+      if (this.isFixedToTop) {
+        // 与固定到编辑器顶部互斥
+        this.isFixedToEditorTop = false;
+        await this.saveFixedToEditorTopMode();
+      }
+
       // 保存固定状态到API配置
       await this.saveFixedToTopMode();
-      
+
       // 重新创建UI
       await this.createTabsUI();
       
@@ -6755,7 +7101,7 @@ class OrcaTabsPlugin {
     
     // 设置样式 - 移除JS主题检测，让CSS变量自动处理
     // 固定到顶部模式使用水平布局样式
-    const useVerticalStyle = this.isVerticalMode && !this.isFixedToTop;
+    const useVerticalStyle = this.isVerticalMode && !this.isFixedToTop && !this.isFixedToEditorTop;
     const tabStyle = createTabBaseStyle(tab, useVerticalStyle, () => '', this.horizontalTabMaxWidth, this.horizontalTabMinWidth);
     tabElement.style.cssText = tabStyle;
 
@@ -6961,6 +7307,10 @@ class OrcaTabsPlugin {
       this.draggingTab = tab;
       this.dragOverTab = null; // 重置悬停标签
       this.lastSwapKey = ''; // 重置交换键
+
+      // 跨面板拖拽：记录拖拽载荷并懒加载面板放置监听
+      this.activeDragPayload = { kind: 'tab', panelId: tab.panelId, key: tab.blockId, tab };
+      this.setupPanelDropListeners();
       
       // 优化：懒加载拖拽监听器
       if (!this.isDragListenersInitialized) {
@@ -7030,6 +7380,10 @@ class OrcaTabsPlugin {
       this.draggingTab = null;
       this.dragOverTab = null;
       this.lastSwapKey = '';
+
+      // 清理跨面板拖拽状态
+      this.activeDragPayload = null;
+      this.hidePanelDropHint();
       
       // 拖拽结束后立即更新UI
       this.debouncedUpdateTabsUI();
@@ -7073,7 +7427,7 @@ class OrcaTabsPlugin {
         
         // 根据布局模式判断位置
         const rect = tabElement.getBoundingClientRect();
-        const isVertical = this.isVerticalMode && !this.isFixedToTop;
+        const isVertical = this.isVerticalMode && !this.isFixedToTop && !this.isFixedToEditorTop;
         let position: 'before' | 'after';
         
         if (isVertical) {
@@ -7739,6 +8093,12 @@ class OrcaTabsPlugin {
           defaultValue: false,
           description: "开启后将隐藏标签页的悬停提示（tooltip），减少视觉干扰"
         },
+        enableMergedTabBar: {
+          label: "合并显示所有面板标签",
+          type: "boolean" as const,
+          defaultValue: false,
+          description: "开启后在一个标签栏中分组显示所有面板的标签（含每个面板最近的视图历史），不再随面板切换而变化"
+        },
       };
 
       await orca.plugins.setSettingsSchema(this.pluginName, settingsSchema);
@@ -7807,7 +8167,16 @@ class OrcaTabsPlugin {
         this.hideTabTooltips = settings.hideTabTooltips;
         this.log(`💬 标签页提示: ${settings.hideTabTooltips ? '隐藏' : '显示'}`);
       }
-      
+
+      if (settings?.enableMergedTabBar !== undefined) {
+        this.enableMergedTabBar = settings.enableMergedTabBar;
+        await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.ENABLE_MERGED_TAB_BAR, settings.enableMergedTabBar, this.pluginName);
+        this.log(`🔀 合并显示所有面板标签: ${this.enableMergedTabBar ? '开启' : '关闭'}`);
+        if (this.enableMergedTabBar) {
+          this.enableMergedModeWatchers();
+        }
+      }
+
       this.log("✅ 插件设置已注册");
     } catch (error) {
       this.error("注册插件设置失败:", error);
@@ -7826,7 +8195,8 @@ class OrcaTabsPlugin {
       debugMode: this.currentLogLevel === LogLevel.VERBOSE,
       restoreFocusedTab: this.restoreFocusedTab,
       enableMiddleClickPin: this.enableMiddleClickPin,
-      hideTabTooltips: this.hideTabTooltips
+      hideTabTooltips: this.hideTabTooltips,
+      enableMergedTabBar: this.enableMergedTabBar
     };
     
     // 每2秒检查一次设置变化
@@ -7923,6 +8293,22 @@ class OrcaTabsPlugin {
         // 立即更新所有现有标签页的tooltip状态
         this.updateAllTabTooltips();
         this.lastSettings.hideTabTooltips = this.hideTabTooltips;
+      }
+
+      // 监听合并标签栏设置变化
+      if (currentSettings.enableMergedTabBar !== undefined && currentSettings.enableMergedTabBar !== this.lastSettings.enableMergedTabBar) {
+        const oldValue = this.enableMergedTabBar;
+        this.enableMergedTabBar = !!currentSettings.enableMergedTabBar;
+        this.log(`🔀 设置变化：合并显示所有面板标签 ${oldValue ? '开启' : '关闭'} -> ${this.enableMergedTabBar ? '开启' : '关闭'}`);
+        this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.ENABLE_MERGED_TAB_BAR, this.enableMergedTabBar, this.pluginName).catch(err => this.error("保存合并标签栏设置失败:", err));
+        this.lastSettings.enableMergedTabBar = this.enableMergedTabBar;
+        // 切换模式时启用/停用实时监听并重建标签栏
+        if (this.enableMergedTabBar) {
+          this.enableMergedModeWatchers();
+        } else {
+          this.disableMergedModeWatchers();
+        }
+        this.debouncedUpdateTabsUI();
       }
     } catch (error) {
       this.error("检查设置变化失败:", error);
@@ -8683,6 +9069,70 @@ class OrcaTabsPlugin {
     this.verboseLog(`🔗 [DEBUG] creatingTabs 当前包含: ${Array.from(this.creatingTabs).join(', ') || '(空)'}`);
     
     try {
+      // 合并标签栏模式：标签栏显示面板LRU历史，没有"后台标签"概念。
+      // 后台打开实现：打开目标块使其进入面板LRU缓存，然后立即切回原视图（焦点不动）。
+      // 打开与切回在同一同步任务内，React批处理只渲染最终视图，无闪烁。
+      if (this.enableMergedTabBar) {
+        if (blockId.startsWith('view:')) {
+          this.verboseLog(`🔗 [DEBUG] 合并模式：跳过视图面板 ${blockId}`);
+          return;
+        }
+        const mergedPanelId = (orca.state?.activePanel as string | undefined) || this.currentPanelId || '';
+        this.verboseLog(`🔗 [DEBUG] 合并模式：在面板 ${mergedPanelId} 后台打开块 ${blockId}`);
+        if (!mergedPanelId) {
+          return;
+        }
+
+        const targetBlockId = parseInt(blockId, 10);
+        const panel = orca.nav.findViewPanel(mergedPanelId, orca.state.panels);
+        const prevView = (panel?.view as string | undefined) ?? null;
+        const prevViewArgs = panel?.viewArgs ? { ...panel.viewArgs } : null;
+
+        // 预先异步解析块数据（此阶段无UI变化）
+        const blockData = await this.fetchBlockData(targetBlockId);
+
+        // 同一步内：打开目标块 → 写入面板LRU历史 → 切回原视图
+        orca.nav.goTo('block', { blockId: targetBlockId }, mergedPanelId as any);
+        const key = this.makeHistoryKey('block', { blockId: targetBlockId });
+        let list = this.panelHistoryMap.get(mergedPanelId);
+        if (!list) {
+          list = [];
+          this.panelHistoryMap.set(mergedPanelId, list);
+        }
+        if (!list.some((e) => e.key === key)) {
+          list.push({
+            panelId: mergedPanelId,
+            key,
+            view: 'block',
+            viewArgs: { blockId: targetBlockId },
+            title: blockData ? this.resolveBlockTitle(blockData, 0) : `块 ${targetBlockId}`,
+            icon: this.resolveHistoryEntryIcon('block', { blockId: targetBlockId }, blockData),
+            color: this.resolveBlockColor(blockData),
+            used: ++this.historyUseCounter
+          });
+          // 超出上限时淘汰最久未使用的条目（保留当前视图键与固定条目）
+          while (list.length > this.maxTabs) {
+            let minIdx = -1;
+            let minUsed = Infinity;
+            for (let i = 0; i < list.length; i++) {
+              if (list[i].key !== key && !list[i].isPinned && list[i].used < minUsed) {
+                minUsed = list[i].used;
+                minIdx = i;
+              }
+            }
+            if (minIdx < 0) break;
+            list.splice(minIdx, 1);
+          }
+          this.sortMergedListByPin(list);
+        }
+        if (prevView && prevViewArgs) {
+          orca.nav.goTo(prevView as any, prevViewArgs, mergedPanelId as any);
+        }
+        this.debouncedUpdateTabsUI();
+        this.verboseLog(`🔗 [DEBUG] ========== openInNewTab 完成（合并模式后台打开）==========`);
+        return;
+      }
+
       // 步骤1: 获取当前标签页列表
       const currentTabs = this.getCurrentPanelTabs();
       this.verboseLog(`🔗 [DEBUG] 当前标签页数量: ${currentTabs.length}`);
@@ -9101,7 +9551,30 @@ class OrcaTabsPlugin {
     let hoverTabListContainer: HTMLElement | null = null;
     let scrollOffset = 0;
     let isLongPressing = false;
-    
+    let pressStart: { x: number; y: number } | null = null;
+
+    // 取消长按：清除定时器并移除移动监听
+    const handlePressMove = (e: MouseEvent) => {
+      if (!isLongPressing || !pressStart) return;
+      const dx = e.clientX - pressStart.x;
+      const dy = e.clientY - pressStart.y;
+      // 移动超过阈值视为拖拽意图，取消长按（HTML5拖拽期间mouseup/mouseleave不会触发）
+      if (dx * dx + dy * dy > 25) {
+        this.verboseLog(`🚫 检测到移动，取消长按: ${tab.title}`);
+        cancelLongPress();
+      }
+    };
+
+    const cancelLongPress = () => {
+      if (longPressTimeout) {
+        clearTimeout(longPressTimeout);
+        longPressTimeout = null;
+      }
+      isLongPressing = false;
+      pressStart = null;
+      document.removeEventListener('mousemove', handlePressMove);
+    };
+
     // 悬浮配置
     const hoverConfig: HoverTabListConfig = {
       maxDisplayCount: 5,
@@ -9131,12 +9604,20 @@ class OrcaTabsPlugin {
       }
       
       isLongPressing = true;
+      pressStart = { x: e.clientX, y: e.clientY };
+      document.addEventListener('mousemove', handlePressMove);
       this.verboseLog(`🖱️ 开始长按标签: ${tab.title}`);
-      
+
       // 设置长按延迟（500ms）
       longPressTimeout = window.setTimeout(async () => {
         if (!isLongPressing) return;
-        
+
+        // 如果正在拖拽标签（HTML5拖拽或容器拖拽），不显示长按列表
+        if (this.draggingTab || this.isDragging) {
+          this.verboseLog(`🚫 正在拖拽标签，取消长按列表: ${tab.title}`);
+          return;
+        }
+
         // 如果标签被置顶，不显示长按列表
         if (tab.isPinned) {
           this.verboseLog(`📌 标签 ${tab.title} 已置顶，不显示长按列表`);
@@ -9263,20 +9744,22 @@ class OrcaTabsPlugin {
 
     // 鼠标释放事件
     tabElement.addEventListener('mouseup', () => {
-      if (longPressTimeout) {
-        clearTimeout(longPressTimeout);
-        longPressTimeout = null;
-      }
-      isLongPressing = false;
+      cancelLongPress();
     });
 
     // 鼠标离开事件
     tabElement.addEventListener('mouseleave', () => {
-      if (longPressTimeout) {
-        clearTimeout(longPressTimeout);
-        longPressTimeout = null;
-      }
-      isLongPressing = false;
+      cancelLongPress();
+    });
+
+    // 拖拽开始时取消长按，避免拖动标签换位置时弹出最近切换列表
+    tabElement.addEventListener('dragstart', () => {
+      this.verboseLog(`🚫 拖拽开始，取消长按并隐藏悬浮列表: ${tab.title}`);
+      cancelLongPress();
+      // 清除长按标记，避免拖拽结束后第一次点击被吞掉
+      tabElement.removeAttribute('data-long-pressed');
+      // 如果已有悬浮列表显示，隐藏它
+      hideHoverTabList();
     });
 
     // 悬浮列表的鼠标事件
@@ -9954,17 +10437,18 @@ class OrcaTabsPlugin {
    */
   async closeTab(tab: TabInfo) {
     const currentTabs = this.getCurrentPanelTabs();
-    
+
     // 检查是否只有一个标签
     if (currentTabs.length <= 1) {
       this.log("⚠️ 只有一个标签，无法关闭");
       return;
     }
-    
-    // 检查是否是固定标签
+
+    // 固定标签不可直接关闭，需先取消固定（浏览器式语义）
     if (tab.isPinned) {
-      this.log("⚠️ 固定标签默认不可关闭，需要强制关闭");
-      // 这里可以添加确认对话框，暂时直接关闭
+      this.log(`⚠️ 固定标签 "${tab.title}" 不可关闭，请先取消固定`);
+      orca.notify('info', `标签 "${tab.title}" 已固定，请先取消固定再关闭`);
+      return;
     }
     
     // 检查是否为视图面板（如 AI Chat 面板）
@@ -10912,6 +11396,437 @@ class OrcaTabsPlugin {
     }, 100);
   }
 
+  /**
+   * 构建标签右键菜单（合并模式通用，复用 .tab-context-menu 样式）
+   */
+  private buildContextMenu(
+    e: MouseEvent,
+    items: Array<{ text: string; icon: string; action: () => void; disabled?: boolean }>
+  ): void {
+    const existingMenu = document.querySelector('.tab-context-menu');
+    if (existingMenu) {
+      existingMenu.remove();
+    }
+
+    const isDarkMode = document.documentElement.classList.contains('dark') ||
+      (window as any).orca?.state?.themeMode === 'dark';
+
+    const menu = document.createElement('div');
+    menu.className = 'tab-context-menu';
+    const menuWidth = 220;
+    const menuHeight = 240;
+    const { x: menuLeft, y: menuTop } = calculateContextMenuPosition(e.clientX, e.clientY, menuWidth, menuHeight);
+
+    menu.style.cssText = `
+      position: fixed;
+      left: ${menuLeft}px;
+      top: ${menuTop}px;
+      background: var(--orca-color-bg-1);
+      border: 1px solid var(--sakura-dark-surface0);
+      border-radius: var(--orca-radius-md);
+      box-shadow: var(--orca-shadow-menu);
+      z-index: 1000;
+      min-width: 180px;
+      padding: var(--orca-spacing-sm);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    `;
+
+    items.forEach((item) => {
+      const menuItem = document.createElement('div');
+      menuItem.className = 'tab-context-menu-item';
+      menuItem.style.cssText = `
+        padding: var(--orca-spacing-sm);
+        cursor: pointer;
+        font-family: var(--orca-fontfamily-ui);
+        font-size: var(--orca-fontsize-sm);
+        color: ${item.disabled ? (isDarkMode ? '#666' : '#999') : 'var(--orca-color-text-1)'};
+        border-radius: var(--orca-radius-md);
+        transition: background-color 0.2s;
+      `;
+
+      const iconElement = document.createElement('i');
+      iconElement.className = `tab-context-menu-icon ${item.icon}`;
+      iconElement.style.cssText = `
+        flex: 0 0 auto;
+        font-size: var(--orca-fontsize-lg);
+        margin-top: var(--orca-spacing-xs);
+        margin-right: var(--orca-spacing-md);
+        color: var(--orca-tab-colored-text);
+        width: 16px;
+        text-align: center;
+      `;
+      menuItem.appendChild(iconElement);
+
+      const textElement = document.createElement('span');
+      textElement.textContent = item.text;
+      menuItem.appendChild(textElement);
+
+      if (!item.disabled) {
+        menuItem.addEventListener('mouseenter', () => {
+          menuItem.style.backgroundColor = 'var(--orca-color-menu-highlight)';
+        });
+        menuItem.addEventListener('mouseleave', () => {
+          menuItem.style.backgroundColor = 'transparent';
+        });
+        menuItem.addEventListener('click', () => {
+          item.action();
+          menu.remove();
+        });
+      }
+
+      menu.appendChild(menuItem);
+    });
+
+    document.body.appendChild(menu);
+
+    const closeMenu = (event: MouseEvent) => {
+      if (!event || !event.target) {
+        return;
+      }
+      if (!menu.contains(event.target as Node)) {
+        menu.remove();
+        document.removeEventListener('click', closeMenu);
+        document.removeEventListener('contextmenu', closeMenu);
+      }
+    };
+
+    setTimeout(() => {
+      document.addEventListener('click', closeMenu);
+      document.addEventListener('contextmenu', closeMenu);
+    }, 0);
+  }
+
+  /**
+   * 显示合并模式历史条目右键菜单
+   */
+  private showMergedTabContextMenu(e: MouseEvent, entry: PanelHistoryEntry, panelId: string): void {
+    e.preventDefault();
+    e.stopPropagation();
+    const list = this.panelHistoryMap.get(panelId) ?? [];
+    const overrideKey = `${panelId}|${entry.key}`;
+    const hasOverride = this.mergedTitleOverrides[overrideKey] !== undefined;
+    const othersCount = list.filter((x) => x.key !== entry.key && !x.isPinned).length;
+    const closableCount = list.filter((x) => !x.isPinned).length;
+    this.buildContextMenu(e, [
+      {
+        text: '重命名标签',
+        icon: 'ti ti-edit',
+        action: () => {
+          const el = this.tabContainer?.querySelector(
+            `[data-key="${CSS.escape(entry.key)}"][data-panel-id="${CSS.escape(panelId)}"]`
+          ) as HTMLElement | null;
+          if (el) {
+            this.showMergedInlineRenameInput(el, entry.title, entry.color, (newTitle) => {
+              this.mergedTitleOverrides[overrideKey] = newTitle;
+              entry.title = newTitle;
+              void this.tabStorageService.saveMergedTitleOverrides(this.mergedTitleOverrides);
+            });
+          }
+        }
+      },
+      ...(hasOverride ? [{
+        text: '恢复默认标题',
+        icon: 'ti ti-refresh',
+        action: () => {
+          void (async () => {
+            delete this.mergedTitleOverrides[overrideKey];
+            const blockData = entry.view === 'block' || entry.view === 'bgraph'
+              ? await this.resolveBlockData(entry.viewArgs)
+              : null;
+            entry.title = this.resolveHistoryEntryTitle(entry, blockData);
+            void this.tabStorageService.saveMergedTitleOverrides(this.mergedTitleOverrides);
+            this.renderMergedTabBar();
+          })();
+        }
+      }] : []),
+      {
+        text: entry.isPinned ? '取消固定' : '固定标签',
+        icon: entry.isPinned ? 'ti ti-pin-off' : 'ti ti-pin',
+        action: () => {
+          void this.toggleMergedEntryPin(panelId, entry);
+        }
+      },
+      ...(this.savedTabSets.length > 0 ? [{
+        text: '添加到已有标签组',
+        icon: 'ti ti-bookmark-plus',
+        action: () => {
+          const tabInfo: TabInfo = {
+            blockId: entry.view === 'block'
+              ? String(entry.viewArgs?.blockId ?? '')
+              : (entry.view.startsWith('view:') ? `view:${entry.panelId}` : entry.key),
+            panelId: entry.panelId,
+            title: entry.title,
+            order: 0,
+            blockType: entry.view,
+            ...(entry.icon ? { icon: entry.icon } : {}),
+            ...(entry.color ? { color: entry.color } : {}),
+            ...(entry.view.startsWith('view:') ? { isViewPanel: true } : {})
+          };
+          this.showAddToTabGroupDialog(tabInfo);
+        }
+      }] : []),
+      {
+        text: '关闭其他标签',
+        icon: 'ti ti-x',
+        action: () => this.removeOtherHistoryEntries(panelId, entry.key),
+        disabled: othersCount === 0
+      },
+      {
+        text: '关闭全部标签',
+        icon: 'ti ti-layout-list',
+        action: () => this.closeAllHistoryEntries(panelId),
+        disabled: closableCount === 0 || list.length <= 1
+      },
+      {
+        text: '关闭标签',
+        icon: 'ti ti-trash',
+        action: () => this.removeHistoryEntry(panelId, entry.key),
+        disabled: !!entry.isPinned || list.length <= 1
+      }
+    ]);
+  }
+
+  /**
+   * 显示工作区标签右键菜单
+   */
+  private showWorkspaceTabContextMenu(e: MouseEvent, tab: TabInfo): void {
+    e.preventDefault();
+    e.stopPropagation();
+    this.buildContextMenu(e, [
+      {
+        text: '重命名标签',
+        icon: 'ti ti-edit',
+        action: () => {
+          const el = this.tabContainer?.querySelector(
+            `[data-block-id="${CSS.escape(tab.blockId)}"].orca-tab-merged`
+          ) as HTMLElement | null;
+          if (el) {
+            this.showMergedInlineRenameInput(el, tab.title, tab.color, (newTitle) => {
+              tab.title = newTitle;
+              const ws = this.workspaces.find((w) => w.id === this.currentWorkspace);
+              if (ws) {
+                ws.updatedAt = Date.now();
+                void this.saveWorkspaces();
+              }
+            });
+          }
+        }
+      },
+      {
+        text: tab.isPinned ? '取消固定' : '固定标签',
+        icon: tab.isPinned ? 'ti ti-pin-off' : 'ti ti-pin',
+        action: () => {
+          void this.toggleWorkspaceTabPin(tab);
+        }
+      },
+      {
+        text: '从工作区移除',
+        icon: 'ti ti-x',
+        action: () => {
+          void this.removeTabFromActiveWorkspace(tab);
+        },
+        disabled: !!tab.isPinned
+      }
+    ]);
+  }
+
+  /**
+   * 合并模式标签内联重命名输入框（历史条目与工作区标签通用）
+   * @param el 标签元素
+   * @param initialTitle 当前标题
+   * @param color 标签颜色
+   * @param onConfirm 确认回调（仅在标题有变更时调用）
+   */
+  private showMergedInlineRenameInput(
+    el: HTMLElement,
+    initialTitle: string,
+    color: string | undefined,
+    onConfirm: (newTitle: string) => void
+  ): void {
+    const existingInput = el.querySelector('.inline-rename-input');
+    if (existingInput) existingInput.remove();
+    const label = el.querySelector('.orca-tab-label') as HTMLElement | null;
+    if (!label) return;
+    const originalDraggable = el.draggable;
+    el.draggable = false;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = initialTitle;
+    input.className = 'inline-rename-input';
+    let textColor = 'var(--orca-color-text-1)';
+    if (color) {
+      const colorHex = color.startsWith('#') ? color : `#${color}`;
+      input.style.setProperty('--tab-color', colorHex);
+      textColor = 'var(--orca-tab-colored-text)';
+    }
+    input.style.cssText = `
+      background: transparent;
+      color: ${textColor};
+      border: none;
+      border-radius: var(--orca-radius-md);
+      font-size: 14px;
+      font-weight: 600;
+      outline: none;
+      flex: 1;
+      min-width: 40px;
+      max-width: 100%;
+      box-sizing: border-box;
+      -webkit-app-region: no-drag;
+      app-region: no-drag;
+    `;
+    label.style.display = 'none';
+    label.insertAdjacentElement('afterend', input);
+    input.focus();
+    input.select();
+
+    let finished = false;
+    const cleanup = () => {
+      input.remove();
+      label.style.display = '';
+      el.draggable = originalDraggable;
+    };
+
+    const confirmRename = () => {
+      if (finished) return;
+      finished = true;
+      const newTitle = input.value.trim();
+      if (newTitle && newTitle !== initialTitle) {
+        onConfirm(newTitle);
+      }
+      cleanup();
+      this.renderMergedTabBar();
+    };
+
+    const cancelRename = () => {
+      if (finished) return;
+      finished = true;
+      cleanup();
+      this.renderMergedTabBar();
+    };
+
+    input.addEventListener('blur', confirmRename);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        confirmRename();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        cancelRename();
+      }
+    });
+    input.addEventListener('click', (e) => e.stopPropagation());
+  }
+
+  /**
+   * 关闭组内全部历史条目（固定条目保留）
+   */
+  private closeAllHistoryEntries(panelId: string): void {
+    const list = this.panelHistoryMap.get(panelId);
+    if (!list) return;
+    const panel = orca.nav.findViewPanel(panelId, orca.state.panels);
+    const currentKey = panel ? this.makeHistoryKey(panel.view ?? '', panel.viewArgs) : '';
+    const removed = list.filter((x) => !x.isPinned);
+    if (!removed.length) return;
+    let titlesChanged = false;
+    for (const target of removed) {
+      this.pushHistoryEntryToRecentlyClosed(target);
+      const overrideKey = `${panelId}|${target.key}`;
+      if (this.mergedTitleOverrides[overrideKey] !== undefined) {
+        delete this.mergedTitleOverrides[overrideKey];
+        titlesChanged = true;
+      }
+    }
+    if (titlesChanged) {
+      void this.tabStorageService.saveMergedTitleOverrides(this.mergedTitleOverrides);
+    }
+    const remaining = list.filter((x) => x.isPinned);
+    this.panelHistoryMap.set(panelId, remaining);
+    if (currentKey && !remaining.some((x) => x.key === currentKey)) {
+      if (remaining.length) {
+        this.navigateToHistoryEntry(remaining[0]);
+      } else {
+        try {
+          orca.nav.close(panelId);
+        } catch (err) {
+          this.warn('关闭面板失败:', err);
+        }
+        this.panelHistoryMap.delete(panelId);
+      }
+    }
+    this.renderMergedTabBar();
+  }
+
+  /**
+   * 关闭组内其他历史条目（固定条目与当前视图保留）
+   */
+  private removeOtherHistoryEntries(panelId: string, keepKey: string): void {
+    const list = this.panelHistoryMap.get(panelId);
+    if (!list) return;
+    const panel = orca.nav.findViewPanel(panelId, orca.state.panels);
+    const currentKey = panel ? this.makeHistoryKey(panel.view ?? '', panel.viewArgs) : '';
+    const keep = new Set<string>([keepKey]);
+    if (currentKey) keep.add(currentKey);
+    const removed = list.filter((x) => !x.isPinned && !keep.has(x.key));
+    if (!removed.length) return;
+    let titlesChanged = false;
+    for (const target of removed) {
+      this.pushHistoryEntryToRecentlyClosed(target);
+      const overrideKey = `${panelId}|${target.key}`;
+      if (this.mergedTitleOverrides[overrideKey] !== undefined) {
+        delete this.mergedTitleOverrides[overrideKey];
+        titlesChanged = true;
+      }
+    }
+    if (titlesChanged) {
+      void this.tabStorageService.saveMergedTitleOverrides(this.mergedTitleOverrides);
+    }
+    this.panelHistoryMap.set(panelId, list.filter((x) => !removed.includes(x)));
+    // 直接同步渲染（updateTabsUI 有200ms防抖，会延迟响应）
+    this.renderMergedTabBar();
+  }
+
+  /**
+   * 将历史条目推入最近关闭列表（仅可恢复的视图类型：块/日志/视图面板）
+   */
+  private pushHistoryEntryToRecentlyClosed(target: PanelHistoryEntry): void {
+    if (!this.enableRecentlyClosedTabs
+      || (target.view !== 'block' && target.view !== 'journal' && !target.view.startsWith('view:'))) {
+      return;
+    }
+    // 日志条目在 blockId 中存日期，保证重命名标题后仍可恢复
+    let journalDateTag = '';
+    if (target.view === 'journal') {
+      try {
+        const d = target.viewArgs?.date instanceof Date ? target.viewArgs.date : new Date(target.viewArgs?.date);
+        if (!isNaN(d.getTime())) journalDateTag = `journal:${d.toISOString()}`;
+      } catch {
+        // 忽略解析错误
+      }
+    }
+    const closedTab: TabInfo = {
+      blockId: target.view === 'block'
+        ? String(target.viewArgs?.blockId ?? '')
+        : (target.view.startsWith('view:') ? `view:${target.panelId}` : (journalDateTag || target.key)),
+      panelId: target.panelId,
+      title: target.title,
+      order: 0,
+      closedAt: Date.now(),
+      blockType: target.view,
+      ...(target.icon ? { icon: target.icon } : {}),
+      ...(target.color ? { color: target.color } : {}),
+      ...(target.view.startsWith('view:') ? { isViewPanel: true } : {})
+    };
+    const existingIndex = this.recentlyClosedTabs.findIndex((t) => t.blockId === closedTab.blockId);
+    if (existingIndex !== -1) this.recentlyClosedTabs.splice(existingIndex, 1);
+    this.recentlyClosedTabs.unshift(closedTab);
+    if (this.recentlyClosedTabs.length > 10) {
+      this.recentlyClosedTabs = this.recentlyClosedTabs.slice(0, 10);
+    }
+    void this.saveRecentlyClosedTabs();
+  }
+
 
 
   /**
@@ -11090,6 +12005,1195 @@ class OrcaTabsPlugin {
 
 
   /* ———————————————————————————————————————————————————————————————————————————— */
+  /* 合并标签栏模式 - Merged Tab Bar Mode */
+  /* ———————————————————————————————————————————————————————————————————————————— */
+
+  /**
+   * 递归收集面板树中的所有视图面板（跳过 id 以 _ 开头的布局容器）
+   */
+  private collectViewPanels(node: any, result: any[] = []): any[] {
+    if (!node) return result;
+    if (Array.isArray(node.children)) {
+      for (const child of node.children) {
+        this.collectViewPanels(child, result);
+      }
+    }
+    if (typeof node.id === 'string' && node.id && !node.id.startsWith('_') && node.view) {
+      result.push(node);
+    }
+    return result;
+  }
+
+  /**
+   * 生成视图历史键：view + 排序后的 viewArgs 序列化
+   */
+  private makeHistoryKey(view: string, viewArgs: any): string {
+    let sorted = '';
+    try {
+      const args = viewArgs ?? {};
+      sorted = Object.keys(args).sort().map((k) => `${k}=${String(args[k])}`).join('&');
+    } catch {
+      // 忽略序列化错误
+    }
+    return `${view}|${sorted}`;
+  }
+
+  /**
+   * 从块数据同步解析标题（别名 / text / _repr，支持 mirror 递归）
+   */
+  private resolveBlockTitle(block: any, depth: number = 0): string {
+    if (!block || depth > 3) return '';
+    try {
+      const reprProp = this.findProperty(block, '_repr');
+      let repr: any = null;
+      if (reprProp?.value) {
+        repr = typeof reprProp.value === 'string' ? JSON.parse(reprProp.value) : reprProp.value;
+      }
+      if (repr?.type === 'mirror' && repr?.mirroredId != null) {
+        const mirrored = orca.state.blocks?.[this.normalizeBlockId(repr.mirroredId) ?? -1];
+        const mirroredTitle = this.resolveBlockTitle(mirrored, depth + 1);
+        if (mirroredTitle) return mirroredTitle;
+      }
+      if (repr?.type === 'journal' && repr?.date) {
+        const d = repr.date instanceof Date ? repr.date : new Date(repr.date);
+        if (!isNaN(d.getTime())) return formatJournalDate(d);
+      }
+      if (block.aliases?.length) {
+        const alias = String(block.aliases[0]);
+        const segments = alias.split('/').filter(Boolean);
+        return alias.endsWith('/') && segments.length > 0 ? (segments.pop() as string) : alias;
+      }
+      if (block.text != null) {
+        const t = this.stripTrailingHashTags(String(block.text).substring(0, 50));
+        if (t) return t;
+      }
+      if (repr?.cap != null) return String(repr.cap);
+      if (repr?.type) return `(${repr.type})`;
+    } catch {
+      // 忽略解析错误
+    }
+    return '';
+  }
+
+  /**
+   * 解析视图面板当前视图的显示标题
+   * @param panel 视图面板状态
+   * @param blockData 已解析的块数据（可选，缺省时尝试从 state.blocks 读取）
+   */
+  private resolveHistoryEntryTitle(panel: any, blockData?: any): string {
+    try {
+      const view = panel?.view;
+      const viewArgs = panel?.viewArgs ?? {};
+      if (view === 'journal') {
+        const d = viewArgs.date instanceof Date ? viewArgs.date : new Date(viewArgs.date);
+        if (!isNaN(d.getTime())) return formatJournalDate(d);
+      }
+      if (view === 'block' || view === 'bgraph') {
+        const block = blockData ?? orca.state.blocks?.[this.normalizeBlockId(viewArgs.blockId) ?? -1];
+        const title = this.resolveBlockTitle(block);
+        if (title) return view === 'bgraph' ? `关系图：${title}` : title;
+      }
+      if (viewArgs.title != null) return String(viewArgs.title);
+    } catch {
+      // 忽略解析错误
+    }
+    return this.viewTypeNames[panel?.view] || panel?.view || '未命名';
+  }
+
+  /**
+   * 解析视图面板当前视图的显示图标（用户自定义 _icon 优先）
+   * @param blockData 已解析的块数据（可选，缺省时尝试从 state.blocks 读取）
+   */
+  private resolveHistoryEntryIcon(view: string, viewArgs: any, blockData?: any): string {
+    if (view === 'journal') return 'ti ti-calendar';
+    if (view === 'block' || view === 'bgraph') {
+      const block = blockData ?? orca.state.blocks?.[this.normalizeBlockId(viewArgs?.blockId) ?? -1];
+      if (!block) return 'ti ti-file-text';
+      try {
+        // 优先使用用户自定义图标
+        const iconProp = this.findProperty(block, '_icon');
+        if (iconProp && iconProp.type === 1 && iconProp.value && String(iconProp.value).trim()) {
+          return String(iconProp.value).trim();
+        }
+        const reprProp = this.findProperty(block, '_repr');
+        let repr: any = null;
+        if (reprProp?.value) {
+          repr = typeof reprProp.value === 'string' ? JSON.parse(reprProp.value) : reprProp.value;
+        }
+        if (repr?.type === 'heading') {
+          const level = Number(repr.level);
+          return level >= 1 && level <= 6 ? `ti ti-h-${level}` : 'ti ti-heading';
+        }
+        if (repr?.type) return getBlockTypeIcon(repr.type, repr?.level);
+        if (block.aliases?.length) {
+          const hideProp = this.findProperty(block, '_hide');
+          return hideProp?.value ? 'ti ti-file' : 'ti ti-hash';
+        }
+      } catch {
+        // 忽略解析错误
+      }
+      return 'ti ti-cube';
+    }
+    return 'ti ti-file-text';
+  }
+
+  /**
+   * 从块数据解析标签颜色（_color 属性）
+   */
+  private resolveBlockColor(block: any): string | undefined {
+    try {
+      const colorProp = this.findProperty(block, '_color');
+      if (colorProp && colorProp.type === 1 && colorProp.value) {
+        return String(colorProp.value);
+      }
+    } catch {
+      // 忽略解析错误
+    }
+    return undefined;
+  }
+
+  /**
+   * 规范化块ID（viewArgs 中可能是数字或字符串）
+   */
+  private normalizeBlockId(raw: any): number | null {
+    const n = typeof raw === 'number' ? raw : parseInt(String(raw ?? ''), 10);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  /**
+   * 异步获取块数据（带30秒TTL缓存）- 用于 state.blocks 中未加载的块
+   */
+  private async fetchBlockData(blockId: number): Promise<any | null> {
+    const cached = this.blockDataCache.get(blockId);
+    if (cached && Date.now() - cached.time < 30000) return cached.data;
+    try {
+      const block = await orca.invokeBackend("get-block", blockId);
+      if (block) {
+        this.blockDataCache.set(blockId, { data: block, time: Date.now() });
+      }
+      return block ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * 解析视图的块数据：优先 state.blocks（已打开），缺失时异步从后端获取
+   */
+  private async resolveBlockData(viewArgs: any): Promise<any | null> {
+    const blockId = this.normalizeBlockId(viewArgs?.blockId);
+    if (blockId == null) return null;
+    return orca.state.blocks?.[blockId] ?? await this.fetchBlockData(blockId);
+  }
+
+  /**
+   * 同步每面板 LRU 视图历史（仅合并模式调用）
+   * 数据源为 orca.state.panels，包含未打开的视图；上限复用 maxTabs
+   */
+  private async syncPanelHistory(): Promise<void> {
+    if (this.syncPanelHistoryInProgress) return;
+    this.syncPanelHistoryInProgress = true;
+    try {
+      // 懒加载持久化的固定条目与标题覆盖
+      if (!this.mergedPinnedLoaded) {
+        this.mergedPinnedMap = await this.tabStorageService.restoreMergedPinnedEntries();
+        this.mergedPinnedLoaded = true;
+      }
+      if (!this.mergedTitleOverridesLoaded) {
+        this.mergedTitleOverrides = await this.tabStorageService.restoreMergedTitleOverrides();
+        this.mergedTitleOverridesLoaded = true;
+      }
+      const panels = this.collectViewPanels(orca.state?.panels);
+      const liveIds = new Set<string>();
+      for (const p of panels) {
+        const id = p.id as string;
+        const view = p.view as string;
+        if (!id || !view) continue;
+        liveIds.add(id);
+        const key = this.makeHistoryKey(view, p.viewArgs);
+        let list = this.panelHistoryMap.get(id);
+        if (!list) {
+          list = [];
+          this.panelHistoryMap.set(id, list);
+        }
+        let entry = list.find((e) => e.key === key);
+        if (!entry) {
+          entry = {
+            panelId: id,
+            key,
+            view,
+            viewArgs: { ...(p.viewArgs ?? {}) },
+            title: '',
+            icon: 'ti ti-file-text',
+            used: 0,
+            isPinned: (this.mergedPinnedMap[id] ?? []).includes(key)
+          };
+          list.push(entry);
+        }
+        // 块数据：优先 state.blocks（已打开），缺失时异步从后端获取（未打开的块）
+        const blockData = view === 'block' || view === 'bgraph'
+          ? await this.resolveBlockData(p.viewArgs)
+          : null;
+        entry.used = ++this.historyUseCounter;
+        entry.title = this.resolveHistoryEntryTitle(p, blockData);
+        entry.icon = this.resolveHistoryEntryIcon(view, p.viewArgs, blockData);
+        entry.color = this.resolveBlockColor(blockData);
+        // 应用用户重命名的自定义标题（优先级最高）
+        const overrideTitle = this.mergedTitleOverrides[`${id}|${key}`];
+        if (overrideTitle) {
+          entry.title = overrideTitle;
+        }
+        // 超上限时淘汰最久未使用的条目（保留当前视图与固定条目）
+        while (list.length > this.maxTabs) {
+          let minIdx = -1;
+          let minUsed = Infinity;
+          for (let i = 0; i < list.length; i++) {
+            if (list[i].key !== key && !list[i].isPinned && list[i].used < minUsed) {
+              minUsed = list[i].used;
+              minIdx = i;
+            }
+          }
+          if (minIdx < 0) break;
+          list.splice(minIdx, 1);
+        }
+        this.sortMergedListByPin(list);
+      }
+      // 删除已关闭面板的历史与固定记录
+      let pinnedChanged = false;
+      let titlesChanged = false;
+      for (const id of Array.from(this.panelHistoryMap.keys())) {
+        if (!liveIds.has(id)) {
+          this.panelHistoryMap.delete(id);
+          if (this.mergedPinnedMap[id]) {
+            delete this.mergedPinnedMap[id];
+            pinnedChanged = true;
+          }
+          const prefix = `${id}|`;
+          for (const k of Object.keys(this.mergedTitleOverrides)) {
+            if (k.startsWith(prefix)) {
+              delete this.mergedTitleOverrides[k];
+              titlesChanged = true;
+            }
+          }
+        }
+      }
+      if (pinnedChanged) {
+        void this.tabStorageService.saveMergedPinnedEntries(this.mergedPinnedMap);
+      }
+      if (titlesChanged) {
+        void this.tabStorageService.saveMergedTitleOverrides(this.mergedTitleOverrides);
+      }
+    } finally {
+      this.syncPanelHistoryInProgress = false;
+    }
+  }
+
+  /**
+   * 按固定状态排序合并模式历史列表（固定在前，其余保持原有相对顺序）
+   */
+  private sortMergedListByPin(list: PanelHistoryEntry[]): void {
+    list.sort((a, b) => {
+      const ap = a.isPinned ? 1 : 0;
+      const bp = b.isPinned ? 1 : 0;
+      return bp - ap;
+    });
+  }
+
+  /**
+   * 切换合并模式历史条目的固定状态并持久化
+   */
+  private async toggleMergedEntryPin(panelId: string, entry: PanelHistoryEntry): Promise<void> {
+    entry.isPinned = !entry.isPinned;
+    const keys = this.mergedPinnedMap[panelId] ?? [];
+    if (entry.isPinned) {
+      if (!keys.includes(entry.key)) keys.push(entry.key);
+    } else {
+      this.mergedPinnedMap[panelId] = keys.filter((k) => k !== entry.key);
+    }
+    await this.tabStorageService.saveMergedPinnedEntries(this.mergedPinnedMap);
+    const list = this.panelHistoryMap.get(panelId);
+    if (list) this.sortMergedListByPin(list);
+    this.log(`📌 合并模式标签固定状态: ${entry.title} ${entry.isPinned ? '已固定' : '已取消固定'}`);
+    // 直接同步渲染（updateTabsUI 有200ms防抖，会延迟响应）
+    this.renderMergedTabBar();
+  }
+
+  /**
+   * 渲染合并标签栏：每面板一组，组间分隔条
+   * 使用渲染签名对比，状态无变化时跳过DOM重建（避免监听器频繁触发时闪烁）
+   */
+  private renderMergedTabBar(): void {
+    if (!this.tabContainer || this.mergedRenderInProgress) return;
+
+    const panels = this.collectViewPanels(orca.state?.panels);
+    const activePanelId = orca.state?.activePanel;
+
+    // 激活的工作区：合并模式下标签栏第一组显示工作区标签组（未打开的标签也显示，点击才打开）
+    let activeWorkspace: Workspace | null = this.currentWorkspace
+      ? this.workspaces.find((w) => w.id === this.currentWorkspace) ?? null
+      : null;
+
+    // 计算渲染签名：工作区ID与标签组 + 面板ID + 聚焦标记 + 当前视图键 + 各条目键与标题
+    const signatureParts: string[] = [];
+    for (const p of panels) {
+      const id = p.id as string;
+      const view = p.view as string;
+      if (!id || id.startsWith('_') || !view) continue;
+      const list = this.panelHistoryMap.get(id);
+      if (!list || list.length === 0) continue;
+      const currentKey = this.makeHistoryKey(view, p.viewArgs);
+      signatureParts.push(`${id}${id === activePanelId ? '*' : ''}@${currentKey}#${list.map((e) => `${e.key}~${e.title}~${e.color ?? ''}~${e.icon}~${e.isPinned ? 1 : 0}`).join(',')}`);
+    }
+    const wsSig = activeWorkspace
+      ? `ws:${activeWorkspace.id}#${activeWorkspace.tabs.map((t) => `${t.blockId}~${t.title}~${t.color ?? ''}~${t.icon ?? ''}~${t.isPinned ? 1 : 0}`).join(',')}`
+      : '';
+    const signature = `${this.enableWorkspaces ? 1 : 0}|${wsSig}|${signatureParts.join('||')}`;
+    if (signature === this.mergedRenderSignature) return;
+    this.mergedRenderSignature = signature;
+
+    this.mergedRenderInProgress = true;
+    try {
+      const dragHandle = this.tabContainer.querySelector('.drag-handle');
+
+      // 全量重建标签与分隔条（保留拖拽手柄、新建按钮和工作区按钮）
+      this.tabContainer.querySelectorAll('.orca-tab, .orca-tab-sep').forEach((el) => el.remove());
+      if (dragHandle && dragHandle.parentElement !== this.tabContainer) {
+        this.tabContainer.insertBefore(dragHandle, this.tabContainer.firstChild);
+      }
+
+      const fragment = document.createDocumentFragment();
+      let firstGroup = true;
+      for (const p of panels) {
+        const id = p.id as string;
+        const view = p.view as string;
+        if (!id || id.startsWith('_') || !view) continue;
+        const list = this.panelHistoryMap.get(id);
+        // 工作区激活时，第一个面板组用工作区标签组替换（普通模式语义：工作区标签属于第一个面板）
+        const isWorkspaceGroup = activeWorkspace !== null;
+        if (!isWorkspaceGroup && (!list || list.length === 0)) continue;
+        if (!firstGroup) {
+          const sep = document.createElement('div');
+          sep.className = 'orca-tab-sep';
+          fragment.appendChild(sep);
+        }
+        firstGroup = false;
+        if (isWorkspaceGroup) {
+          const ws = activeWorkspace!;
+          for (const tab of ws.tabs) {
+            fragment.appendChild(this.createWorkspaceTabElement(tab, id));
+          }
+          activeWorkspace = null; // 仅第一个面板组被替换
+          continue;
+        }
+        const currentKey = this.makeHistoryKey(view, p.viewArgs);
+        for (const entry of list!) {
+          fragment.appendChild(this.createMergedTabElement(entry, currentKey, id, id === activePanelId));
+        }
+      }
+
+      const newTabBtn = this.tabContainer.querySelector('.new-tab-button');
+      if (newTabBtn) {
+        this.tabContainer.insertBefore(fragment, newTabBtn);
+      } else {
+        this.tabContainer.appendChild(fragment);
+      }
+
+      this.addNewTabButton();
+      if (this.enableWorkspaces) {
+        this.addWorkspaceButton();
+      }
+    } finally {
+      this.mergedRenderInProgress = false;
+    }
+  }
+
+  /**
+   * 合并模式状态变化处理 - 防抖后刷新历史与标签栏
+   * 由 valtio 订阅 / DOM监听 / 聚焦事件触发，保证任何面板变化即时反映
+   */
+  private handleMergedStateChange(): void {
+    if (!this.enableMergedTabBar) return;
+    if (this.mergedRefreshTimer !== null) return;
+    this.mergedRefreshTimer = window.setTimeout(() => {
+      this.mergedRefreshTimer = null;
+      if (!this.enableMergedTabBar) return;
+      // 同步历史（可能异步获取未打开的块数据），完成后渲染
+      this.syncPanelHistory()
+        .then(() => {
+          if (this.enableMergedTabBar) this.renderMergedTabBar();
+        })
+        .catch((err) => {
+          this.warn('合并模式刷新失败:', err);
+        });
+    }, 50);
+  }
+
+  /** 合并模式聚焦事件处理器（引用保存以便卸载） */
+  private mergedFocusInHandler = (): void => {
+    this.handleMergedStateChange();
+  };
+
+  /** 合并模式状态订阅回调（引用保存以便卸载） */
+  private mergedStateSubscriber = (): void => {
+    this.handleMergedStateChange();
+  };
+
+  /**
+   * 启用合并模式实时监听：
+   * 1. valtio 订阅 orca.state（面板树/视图变化即时通知）
+   * 2. MutationObserver 监听 #main（面板增删/焦点类名变化）
+   * 3. focusin 事件（用户点击切换面板）
+   */
+  private enableMergedModeWatchers(): void {
+    if (this.mergedModeObserver || this.mergedModeUnsubscribe) return;
+    try {
+      const Valtio = (window as any).Valtio;
+      if (Valtio?.subscribe && orca.state) {
+        this.mergedModeUnsubscribe = Valtio.subscribe(orca.state, this.mergedStateSubscriber);
+      }
+    } catch (err) {
+      this.warn('valtio 订阅失败:', err);
+    }
+    this.mergedModeObserver = new MutationObserver(() => {
+      this.handleMergedStateChange();
+    });
+    const main = document.getElementById('main');
+    this.mergedModeObserver.observe(main || document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['class', 'data-panel-id']
+    });
+    document.addEventListener('focusin', this.mergedFocusInHandler);
+    this.mergedRenderSignature = '';
+    this.log('🔀 合并模式实时监听已启用');
+  }
+
+  /**
+   * 停用合并模式实时监听
+   */
+  private disableMergedModeWatchers(): void {
+    if (this.mergedModeUnsubscribe) {
+      try {
+        this.mergedModeUnsubscribe();
+      } catch {
+        // 忽略卸载错误
+      }
+      this.mergedModeUnsubscribe = null;
+    }
+    if (this.mergedModeObserver) {
+      this.mergedModeObserver.disconnect();
+      this.mergedModeObserver = null;
+    }
+    document.removeEventListener('focusin', this.mergedFocusInHandler);
+    if (this.mergedRefreshTimer !== null) {
+      clearTimeout(this.mergedRefreshTimer);
+      this.mergedRefreshTimer = null;
+    }
+    this.mergedRenderSignature = '';
+    this.log('🔀 合并模式实时监听已停用');
+  }
+
+  /**
+   * 创建合并模式标签元素（不复用 createTabElement，避免长按/右键/双击等事件体系冲突）
+   */
+  private createMergedTabElement(entry: PanelHistoryEntry, currentKey: string, panelId: string, isActivePanel: boolean): HTMLElement {
+    const el = document.createElement('div');
+    const isCurrent = entry.key === currentKey;
+    el.className = 'orca-tab orca-tab-merged' + (isCurrent ? (isActivePanel ? ' orca-tab-active' : ' orca-tab-current') : '');
+    el.setAttribute('data-key', entry.key);
+    el.setAttribute('data-panel-id', panelId);
+    el.draggable = true;
+    el.title = entry.title;
+
+    // 应用标签颜色（_color 属性），与普通模式标签一致
+    if (entry.color) {
+      const colorHex = entry.color.startsWith('#') ? entry.color : `#${entry.color}`;
+      el.style.setProperty('--tab-color', colorHex);
+      el.style.background = 'var(--orca-tab-colored-bg)';
+      el.style.color = 'var(--orca-tab-colored-text)';
+      el.style.fontWeight = '600';
+    }
+
+    // 图标显示尊重块类型图标设置（journal 恒显，与普通模式一致）
+    if (entry.icon && (this.showBlockTypeIcons || entry.view === 'journal')) {
+      const icon = document.createElement('i');
+      icon.className = `orca-tab-icon ${entry.icon}`;
+      el.appendChild(icon);
+    }
+
+    const label = document.createElement('span');
+    label.className = 'orca-tab-label';
+    label.textContent = entry.title;
+    el.appendChild(label);
+
+    // 固定条目显示图钉图标（与普通模式一致）
+    if (entry.isPinned) {
+      el.appendChild(createPinIcon());
+    }
+
+    // 固定条目与组内唯一标签不显示关闭按钮（浏览器式语义）
+    const groupSize = this.panelHistoryMap.get(panelId)?.length ?? 1;
+    if (!entry.isPinned && groupSize > 1) {
+      const closeBtn = document.createElement('span');
+      closeBtn.className = 'orca-tab-close';
+      closeBtn.textContent = '×';
+      closeBtn.title = '移出缓存';
+      closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.removeHistoryEntry(panelId, entry.key);
+      });
+      el.appendChild(closeBtn);
+    }
+
+    // 点击导航到该视图
+    el.addEventListener('click', () => {
+      // 长按刚触发时吞掉本次点击（与普通模式一致）
+      if (el.getAttribute('data-long-pressed') === 'true') {
+        el.removeAttribute('data-long-pressed');
+        return;
+      }
+      this.navigateToHistoryEntry(entry);
+    });
+
+    // 中键：启用中键固定时切换固定状态，否则移出缓存
+    el.addEventListener('auxclick', (e) => {
+      if (e.button === 1) {
+        e.preventDefault();
+        if (this.enableMiddleClickPin) {
+          void this.toggleMergedEntryPin(panelId, entry);
+        } else {
+          this.removeHistoryEntry(panelId, entry.key);
+        }
+      }
+    });
+
+    // 双击：启用双击关闭时移出缓存，否则切换固定状态（与普通模式逻辑一致）
+    el.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (this.enableDoubleClickClose) {
+        this.removeHistoryEntry(panelId, entry.key);
+      } else {
+        void this.toggleMergedEntryPin(panelId, entry);
+      }
+    });
+
+    // 右键菜单（固定/关闭其他/关闭）
+    el.addEventListener('contextmenu', (e) => {
+      this.showMergedTabContextMenu(e, entry, panelId);
+    });
+
+    // 长按显示最近切换历史列表（与普通模式一致）
+    this.addMergedLongPressEvents(el, entry, panelId);
+
+    // 组内拖拽重排
+    el.addEventListener('dragstart', (e) => {
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'copyMove';
+        try {
+          e.dataTransfer.setData('text/plain', entry.title);
+        } catch {
+          // 忽略
+        }
+      }
+      this.activeDragPayload = { kind: 'history', panelId, key: entry.key, entry };
+      this.setupPanelDropListeners();
+      el.classList.add('orca-tab-dragging');
+    });
+    el.addEventListener('dragend', () => {
+      this.activeDragPayload = null;
+      this.hidePanelDropHint();
+      this.tabContainer?.querySelectorAll('.orca-tab-insert').forEach((n) => n.classList.remove('orca-tab-insert'));
+      el.classList.remove('orca-tab-dragging');
+      this.debouncedUpdateTabsUI();
+    });
+    el.addEventListener('dragover', (e) => {
+      const payload = this.activeDragPayload;
+      if (!payload || payload.panelId !== panelId) return;
+      e.preventDefault();
+      e.stopPropagation();
+      el.classList.add('orca-tab-insert');
+    });
+    el.addEventListener('dragleave', () => {
+      el.classList.remove('orca-tab-insert');
+    });
+    el.addEventListener('drop', (e) => {
+      const payload = this.activeDragPayload;
+      if (!payload || payload.panelId !== panelId) return;
+      e.preventDefault();
+      e.stopPropagation();
+      el.classList.remove('orca-tab-insert');
+      const list = this.panelHistoryMap.get(panelId);
+      if (!list) return;
+      const from = list.findIndex((x) => x.key === payload.key);
+      const to = list.findIndex((x) => x.key === entry.key);
+      if (from < 0 || to < 0 || from === to) return;
+      const [moved] = list.splice(from, 1);
+      list.splice(to, 0, moved);
+      this.sortMergedListByPin(list);
+      this.activeDragPayload = null;
+      this.debouncedUpdateTabsUI();
+    });
+
+    return el;
+  }
+
+  /**
+   * 合并模式标签长按事件：长按显示全局最近切换历史悬浮列表
+   * 适配历史条目数据模型（entry.key/view/viewArgs 而非 TabInfo）
+   */
+  private addMergedLongPressEvents(el: HTMLElement, entry: PanelHistoryEntry, panelId: string) {
+    let longPressTimeout: number | null = null;
+    let isLongPressing = false;
+    let pressStart: { x: number; y: number } | null = null;
+
+    const handlePressMove = (e: MouseEvent) => {
+      if (!isLongPressing || !pressStart) return;
+      const dx = e.clientX - pressStart.x;
+      const dy = e.clientY - pressStart.y;
+      // 移动超过阈值视为拖拽意图，取消长按
+      if (dx * dx + dy * dy > 25) {
+        cancelLongPress();
+      }
+    };
+
+    const cancelLongPress = () => {
+      if (longPressTimeout) {
+        clearTimeout(longPressTimeout);
+        longPressTimeout = null;
+      }
+      isLongPressing = false;
+      pressStart = null;
+      document.removeEventListener('mousemove', handlePressMove);
+    };
+
+    const hoverConfig: HoverTabListConfig = {
+      maxDisplayCount: 5,
+      scrollStep: 1,
+      animationDuration: 200,
+      minOpacity: 0.3,
+      minScale: 0.8,
+      enableScroll: true,
+      maxWidth: 150
+    };
+
+    el.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      isLongPressing = true;
+      pressStart = { x: e.clientX, y: e.clientY };
+      document.addEventListener('mousemove', handlePressMove);
+
+      longPressTimeout = window.setTimeout(async () => {
+        if (!isLongPressing) return;
+        if (this.draggingTab || this.isDragging) return;
+        // 固定标签不显示长按列表（与普通模式一致）
+        if (entry.isPinned) {
+          this.verboseLog(`📌 合并标签 ${entry.title} 已固定，不显示长按列表`);
+          return;
+        }
+        el.setAttribute('data-long-pressed', 'true');
+
+        try {
+          const allHistory = await this.tabStorageService.restoreRecentTabSwitchHistory();
+          const globalHistory = allHistory['global_tab_history'];
+          if (!globalHistory || globalHistory.recentTabs.length === 0) {
+            this.verboseLog(`⚠️ 没有全局切换历史记录，不显示悬浮列表`);
+            return;
+          }
+
+          // 过滤掉当前面板历史中已有的条目（块视图与视图面板）
+          const list = this.panelHistoryMap.get(panelId) ?? [];
+          const openedBlockIds = new Set<string>();
+          const openedViewPanels = new Set<string>();
+          for (const hist of list) {
+            if (hist.view === 'block' && hist.viewArgs?.blockId != null) {
+              openedBlockIds.add(String(hist.viewArgs.blockId));
+            } else if (hist.view.startsWith('view:')) {
+              openedViewPanels.add(hist.view.slice(5));
+            }
+          }
+          const filteredTabs = globalHistory.recentTabs.filter((t) => {
+            if (openedBlockIds.has(t.blockId)) return false;
+            if ((t.isViewPanel || t.blockId.startsWith('view:')) && openedViewPanels.has(t.panelId)) return false;
+            return true;
+          });
+          if (filteredTabs.length === 0) return;
+
+          const rect = el.getBoundingClientRect();
+          const position = { x: rect.left, y: rect.bottom + 4 };
+
+          const handleTabClickLongPress = (clickedTab: TabInfo) => {
+            hideHoverTabList();
+            // 视图面板：仅切换焦点
+            if (clickedTab.isViewPanel || clickedTab.blockId.startsWith('view:')) {
+              orca.nav.switchFocusTo(clickedTab.panelId);
+              return;
+            }
+            // 日志标签：按标题提取日期导航到日志视图
+            if (clickedTab.isJournal) {
+              const date = this.extractDateFromTitle(clickedTab.title);
+              if (date) {
+                this.recordTabSwitchHistory(entry.key, clickedTab);
+                try {
+                  orca.nav.goTo('journal' as any, { date }, panelId);
+                  orca.nav.switchFocusTo(panelId);
+                } catch (err) {
+                  this.warn('长按列表导航到日志失败:', err);
+                }
+                this.debouncedUpdateTabsUI();
+                return;
+              }
+            }
+            const blockId = parseInt(clickedTab.blockId, 10);
+            if (Number.isNaN(blockId)) return;
+            this.recordTabSwitchHistory(entry.key, clickedTab);
+            try {
+              orca.nav.goTo('block' as any, { blockId }, panelId);
+              orca.nav.switchFocusTo(panelId);
+            } catch (err) {
+              this.warn('长按列表导航失败:', err);
+            }
+            this.debouncedUpdateTabsUI();
+          };
+
+          const hoverTabListContainer = showHoverTabList(
+            filteredTabs,
+            position,
+            hoverConfig,
+            handleTabClickLongPress,
+            this.isVerticalMode
+          );
+
+          if (hoverConfig.enableScroll && filteredTabs.length > hoverConfig.maxDisplayCount) {
+            this.addScrollEvents(hoverTabListContainer, filteredTabs, hoverConfig, 0, handleTabClickLongPress);
+          }
+
+          const handleGlobalClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (!this.safeClosest(target, '.hover-tab-list-container')) {
+              hideHoverTabList();
+              document.removeEventListener('click', handleGlobalClick);
+            }
+          };
+          setTimeout(() => {
+            document.addEventListener('click', handleGlobalClick);
+          }, 100);
+        } catch (error) {
+          this.warn('合并模式长按悬浮列表失败:', error);
+        }
+      }, 500);
+    });
+
+    el.addEventListener('mouseup', () => {
+      cancelLongPress();
+    });
+    el.addEventListener('mouseleave', () => {
+      cancelLongPress();
+    });
+    el.addEventListener('dragstart', () => {
+      cancelLongPress();
+      el.removeAttribute('data-long-pressed');
+      hideHoverTabList();
+    });
+  }
+
+  /**
+   * 创建合并模式下的工作区标签元素
+   * 工作区标签与普通标签语义一致：未打开的也显示，点击才导航打开
+   * 关闭（×/中键）= 从工作区标签组移除（不关闭实际视图）
+   */
+  private createWorkspaceTabElement(tab: TabInfo, panelId: string): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'orca-tab orca-tab-merged';
+    el.setAttribute('data-block-id', tab.blockId);
+    el.title = tab.title;
+
+    if (tab.color) {
+      const colorHex = tab.color.startsWith('#') ? tab.color : `#${tab.color}`;
+      el.style.setProperty('--tab-color', colorHex);
+      el.style.background = 'var(--orca-tab-colored-bg)';
+      el.style.color = 'var(--orca-tab-colored-text)';
+      el.style.fontWeight = '600';
+    }
+
+    if (tab.icon && this.showBlockTypeIcons) {
+      const icon = document.createElement('i');
+      icon.className = `orca-tab-icon ${tab.icon}`;
+      el.appendChild(icon);
+    }
+
+    const label = document.createElement('span');
+    label.className = 'orca-tab-label';
+    label.textContent = tab.title;
+    el.appendChild(label);
+
+    // 固定标签显示图钉图标（与普通模式一致）
+    if (tab.isPinned) {
+      el.appendChild(createPinIcon());
+    }
+
+    // 固定标签不显示关闭按钮（浏览器式语义）
+    if (!tab.isPinned) {
+      const closeBtn = document.createElement('span');
+      closeBtn.className = 'orca-tab-close';
+      closeBtn.textContent = '×';
+      closeBtn.title = '从工作区移除';
+      closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        void this.removeTabFromActiveWorkspace(tab);
+      });
+      el.appendChild(closeBtn);
+    }
+
+    // 点击导航打开该标签（复用普通模式的导航语义：视图面板/日志/普通块）
+    el.addEventListener('click', () => {
+      void this.safeNavigate(tab.blockId, panelId, tab);
+    });
+
+    // 中键：启用中键固定时切换固定状态，否则从工作区移除
+    el.addEventListener('auxclick', (e) => {
+      if (e.button === 1) {
+        e.preventDefault();
+        if (this.enableMiddleClickPin) {
+          void this.toggleWorkspaceTabPin(tab);
+        } else {
+          void this.removeTabFromActiveWorkspace(tab);
+        }
+      }
+    });
+
+    // 双击：启用双击关闭时从工作区移除，否则切换固定状态（与普通模式逻辑一致）
+    el.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (this.enableDoubleClickClose) {
+        void this.removeTabFromActiveWorkspace(tab);
+      } else {
+        void this.toggleWorkspaceTabPin(tab);
+      }
+    });
+
+    // 右键菜单（固定/从工作区移除）
+    el.addEventListener('contextmenu', (e) => {
+      this.showWorkspaceTabContextMenu(e, tab);
+    });
+
+    return el;
+  }
+
+  /**
+   * 从激活的工作区移除标签并保存
+   */
+  private async removeTabFromActiveWorkspace(tab: TabInfo): Promise<void> {
+    const ws = this.workspaces.find((w) => w.id === this.currentWorkspace);
+    if (!ws) return;
+    // 固定标签不可直接移除（与普通模式一致）
+    if (tab.isPinned) {
+      orca.notify('info', `标签 "${tab.title}" 已固定，请先取消固定再移除`);
+      return;
+    }
+    ws.tabs = ws.tabs.filter((t) => t.blockId !== tab.blockId);
+    ws.updatedAt = Date.now();
+    await this.saveWorkspaces();
+    this.log(`📁 已从工作区 "${ws.name}" 移除标签: ${tab.title}`);
+    this.debouncedUpdateTabsUI();
+  }
+
+  /**
+   * 切换工作区标签的固定状态（固定标签排最前）并保存
+   */
+  private async toggleWorkspaceTabPin(tab: TabInfo): Promise<void> {
+    const ws = this.workspaces.find((w) => w.id === this.currentWorkspace);
+    if (!ws) return;
+    tab.isPinned = !tab.isPinned;
+    ws.tabs = [...ws.tabs.filter((t) => t.isPinned), ...ws.tabs.filter((t) => !t.isPinned)];
+    ws.updatedAt = Date.now();
+    await this.saveWorkspaces();
+    this.log(`📌 工作区标签固定状态: ${tab.title} ${tab.isPinned ? '已固定' : '已取消固定'}`);
+    // 直接同步渲染（updateTabsUI 有200ms防抖，会延迟响应）
+    this.renderMergedTabBar();
+  }
+
+  /**
+   * 导航到历史条目对应的视图
+   */
+  private navigateToHistoryEntry(entry: PanelHistoryEntry): void {
+    try {
+      if (entry.view.startsWith('view:')) {
+        orca.nav.switchFocusTo(entry.panelId);
+      } else {
+        // 运行时支持 journal/block 之外的更多视图类型（search/tags/graph 等）
+        orca.nav.goTo(entry.view as any, entry.viewArgs, entry.panelId);
+        orca.nav.switchFocusTo(entry.panelId);
+      }
+    } catch (err) {
+      this.warn('导航到历史条目失败:', err);
+    }
+    // 块条目记录全局切换历史，供长按最近列表使用（与普通模式语义一致）
+    if (entry.view === 'block' && entry.viewArgs?.blockId != null) {
+      const tabInfo: TabInfo = {
+        blockId: String(entry.viewArgs.blockId),
+        panelId: entry.panelId,
+        title: entry.title,
+        order: 0,
+        ...(entry.icon ? { icon: entry.icon } : {}),
+        ...(entry.color ? { color: entry.color } : {})
+      };
+      void this.recordTabSwitchHistory(entry.key, tabInfo);
+    }
+    this.debouncedUpdateTabsUI();
+  }
+
+  /**
+   * 从历史缓存移除条目（可恢复的视图类型进入最近关闭列表）
+   */
+  private removeHistoryEntry(panelId: string, key: string): void {
+    const list = this.panelHistoryMap.get(panelId);
+    if (!list) return;
+    const idx = list.findIndex((x) => x.key === key);
+    if (idx < 0) return;
+    const target = list[idx];
+    // 组内只有一个标签时不可关闭（与普通模式一致）
+    if (list.length <= 1) {
+      this.log('⚠️ 组内只有一个标签，无法关闭');
+      return;
+    }
+    // 固定条目不可直接移除（浏览器式语义）
+    if (target.isPinned) {
+      this.log(`⚠️ 固定标签 "${target.title}" 不可移除，请先取消固定`);
+      orca.notify('info', `标签 "${target.title}" 已固定，请先取消固定再移出`);
+      return;
+    }
+    // 若移除的是当前视图，需要先导航到相邻条目，否则面板状态不会变化
+    const panel = orca.nav.findViewPanel(panelId, orca.state.panels);
+    const isCurrent = panel ? this.makeHistoryKey(panel.view ?? '', panel.viewArgs) === key : false;
+    list.splice(idx, 1);
+    // 同步清除持久化的固定记录
+    const pinnedKeys = this.mergedPinnedMap[panelId];
+    if (pinnedKeys && pinnedKeys.includes(key)) {
+      this.mergedPinnedMap[panelId] = pinnedKeys.filter((k) => k !== key);
+      void this.tabStorageService.saveMergedPinnedEntries(this.mergedPinnedMap);
+    }
+    // 同步清除标题覆盖
+    const overrideKey = `${panelId}|${key}`;
+    if (this.mergedTitleOverrides[overrideKey] !== undefined) {
+      delete this.mergedTitleOverrides[overrideKey];
+      void this.tabStorageService.saveMergedTitleOverrides(this.mergedTitleOverrides);
+    }
+    // 可恢复的视图类型（块/日志/视图面板）进入最近关闭列表
+    this.pushHistoryEntryToRecentlyClosed(target);
+    if (!list.length) {
+      try {
+        orca.nav.close(panelId);
+      } catch (err) {
+        this.warn('关闭面板失败:', err);
+      }
+      this.panelHistoryMap.delete(panelId);
+    } else if (isCurrent) {
+      const next = list[Math.min(idx, list.length - 1)];
+      if (next) this.navigateToHistoryEntry(next);
+    }
+    // 直接同步渲染（updateTabsUI 有200ms防抖，会延迟响应）
+    this.renderMergedTabBar();
+  }
+
+  /* ———————————————————————————————————————————————————————————————————————————— */
+  /* 跨面板拖拽分屏 - Cross-panel Drag & Drop */
+  /* ———————————————————————————————————————————————————————————————————————————— */
+
+  /** 面板放置监听器是否已安装 */
+  private panelDropHandlersReady: boolean = false;
+
+  /**
+   * 根据鼠标位置计算面板放置方向（四边距离比例 ≤0.25 判定边缘，否则中心）
+   */
+  private computeDropDirection(rect: DOMRect, x: number, y: number): string {
+    const leftRatio = (x - rect.left) / Math.max(1, rect.width);
+    const topRatio = (y - rect.top) / Math.max(1, rect.height);
+    const candidates: Array<[string, number]> = [
+      ['left', leftRatio],
+      ['right', 1 - leftRatio],
+      ['top', topRatio],
+      ['bottom', 1 - topRatio]
+    ];
+    candidates.sort((a, b) => a[1] - b[1]);
+    return candidates[0][1] <= 0.25 ? candidates[0][0] : 'center';
+  }
+
+  /**
+   * 显示面板放置提示（覆盖目标面板的对应半边或中心）
+   */
+  private showPanelDropHint(panelEl: HTMLElement, dir: string): void {
+    let hint = this.panelDropHint;
+    if (!hint) {
+      hint = document.createElement('div');
+      hint.className = 'orca-tabs-panel-drophint';
+      document.body.appendChild(hint);
+      this.panelDropHint = hint;
+    }
+    const rect = panelEl.getBoundingClientRect();
+    let left = rect.left;
+    let top = rect.top;
+    let width = rect.width;
+    let height = rect.height;
+    if (dir === 'left') {
+      width = rect.width / 2;
+    } else if (dir === 'right') {
+      left = rect.left + rect.width / 2;
+      width = rect.width / 2;
+    } else if (dir === 'top') {
+      height = rect.height / 2;
+    } else if (dir === 'bottom') {
+      top = rect.top + rect.height / 2;
+      height = rect.height / 2;
+    }
+    hint.style.display = 'block';
+    hint.style.left = `${left}px`;
+    hint.style.top = `${top}px`;
+    hint.style.width = `${width}px`;
+    hint.style.height = `${height}px`;
+  }
+
+  /**
+   * 隐藏面板放置提示
+   */
+  private hidePanelDropHint(): void {
+    if (this.panelDropHint) {
+      this.panelDropHint.style.display = 'none';
+    }
+  }
+
+  /**
+   * 文档级 dragover（捕获阶段）：定位并显示面板放置提示
+   */
+  private panelDropDragOverHandler = (e: DragEvent): void => {
+    const payload = this.activeDragPayload;
+    if (!payload) return;
+    const target = e.target as HTMLElement | null;
+    if (!target || !target.closest) return;
+    // 在标签栏内：保持原有排序逻辑，仅隐藏面板提示
+    if (this.tabContainer && this.tabContainer.contains(target)) {
+      e.preventDefault();
+      this.hidePanelDropHint();
+      return;
+    }
+    const panelEl = target.closest('.orca-panel') as HTMLElement | null;
+    if (!panelEl) {
+      this.hidePanelDropHint();
+      return;
+    }
+    if (payload.kind === 'tab' && !payload.tab) return;
+    if (payload.kind === 'history' && !payload.entry) return;
+    let dir: string;
+    if (payload.kind === 'tab' && (payload.tab!.isViewPanel || payload.tab!.blockId.startsWith('view:'))) {
+      // 视图面板标签无法分屏，仅允许中心放置（切换焦点）
+      dir = 'center';
+    } else {
+      const rect = panelEl.getBoundingClientRect();
+      dir = this.computeDropDirection(rect, e.clientX, e.clientY);
+    }
+    e.preventDefault();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'move';
+    }
+    this.showPanelDropHint(panelEl, dir);
+  };
+
+  /**
+   * 文档级 drop（捕获阶段）：处理放置到面板（中心打开/边缘分屏）
+   */
+  private panelDropDropHandler = (e: DragEvent): void => {
+    const payload = this.activeDragPayload;
+    if (!payload) return;
+    const target = e.target as HTMLElement | null;
+    if (!target || !target.closest) return;
+    // 标签栏内的放置由标签自身的 drop 处理器负责
+    if (this.tabContainer && this.tabContainer.contains(target)) {
+      return;
+    }
+    const panelEl = target.closest('.orca-panel') as HTMLElement | null;
+    this.hidePanelDropHint();
+    if (!panelEl) return;
+    const targetPanelId = panelEl.dataset.panelId;
+    if (!targetPanelId) return;
+
+    let view = '';
+    let viewArgs: Record<string, any> = {};
+    let switchFocusTarget = '';
+    if (payload.kind === 'history' && payload.entry) {
+      view = payload.entry.view;
+      viewArgs = { ...payload.entry.viewArgs };
+    } else if (payload.kind === 'tab') {
+      const nav = this.resolveTabNavigate(payload);
+      if (!nav) return;
+      view = nav.view;
+      viewArgs = nav.viewArgs;
+      switchFocusTarget = nav.switchFocusTarget;
+    } else {
+      return;
+    }
+
+    const rect = panelEl.getBoundingClientRect();
+    const dir = view.startsWith('view:') ? 'center' : this.computeDropDirection(rect, e.clientX, e.clientY);
+    e.preventDefault();
+    try {
+      if (dir === 'center') {
+        if (view.startsWith('view:')) {
+          orca.nav.switchFocusTo(switchFocusTarget || payload.panelId);
+        } else {
+          // 运行时支持 journal/block 之外的更多视图类型（search/tags/graph 等）
+          orca.nav.goTo(view as any, viewArgs, targetPanelId);
+          orca.nav.switchFocusTo(targetPanelId);
+        }
+      } else {
+        const newPanelId = orca.nav.addTo(targetPanelId, dir as any, {
+          view: view as any,
+          viewArgs,
+          viewState: {}
+        });
+        if (newPanelId) orca.nav.switchFocusTo(newPanelId);
+      }
+    } catch (err) {
+      this.warn('拖拽放置到面板失败:', err);
+    }
+    this.activeDragPayload = null;
+  };
+
+  /**
+   * 懒加载文档级拖拽监听（跨面板拖拽分屏，两种模式通用）
+   */
+  private setupPanelDropListeners(): void {
+    if (this.panelDropHandlersReady) return;
+    this.panelDropHandlersReady = true;
+    document.addEventListener('dragover', this.panelDropDragOverHandler, true);
+    document.addEventListener('drop', this.panelDropDropHandler, true);
+  }
+
+  /**
+   * 解析普通标签的导航目标
+   */
+  private resolveTabNavigate(payload: DragPayload): { view: string; viewArgs: Record<string, any>; switchFocusTarget: string } | null {
+    const tab = payload.tab;
+    if (!tab) return null;
+    // 视图面板（如 AI Chat）：只能切换焦点，禁止分屏
+    if (tab.isViewPanel || tab.blockId.startsWith('view:')) {
+      const viewPanelId = tab.blockId.startsWith('view:') ? tab.blockId.substring(5) : tab.panelId;
+      return { view: `view:${viewPanelId}`, viewArgs: {}, switchFocusTarget: viewPanelId };
+    }
+    // 日期块：使用 journal 导航
+    if (tab.isJournal) {
+      const date = this.extractDateFromTitle(tab.title);
+      if (date) return { view: 'journal', viewArgs: { date }, switchFocusTarget: '' };
+      return null;
+    }
+    // 普通块：使用 block 导航
+    const blockId = parseInt(tab.blockId, 10);
+    if (Number.isNaN(blockId)) return null;
+    return { view: 'block', viewArgs: { blockId }, switchFocusTarget: '' };
+  }
+
+  /* ———————————————————————————————————————————————————————————————————————————— */
   /* 拖拽功能 - Drag Functionality */
   /* ———————————————————————————————————————————————————————————————————————————— */
 
@@ -11260,7 +13364,7 @@ class OrcaTabsPlugin {
       }
       
       // 如果启用了贴边隐藏，在拖拽结束后重新检测贴边状态
-      if (this.enableEdgeHide && !this.isFixedToTop) {
+      if (this.enableEdgeHide && !this.isFixedToTop && !this.isFixedToEditorTop) {
         // 先清理旧的触发区域和监听器
         if (this.edgeHideTriggerElement) {
           this.edgeHideTriggerElement.remove();
@@ -11373,6 +13477,144 @@ class OrcaTabsPlugin {
    */
   async saveFixedToTopMode() {
     await this.tabStorageService.saveFixedToTopMode(this.isFixedToTop);
+  }
+
+  /**
+   * 保存固定到编辑器顶部状态到API配置
+   */
+  async saveFixedToEditorTopMode() {
+    await this.tabStorageService.saveFixedToEditorTopMode(this.isFixedToEditorTop);
+  }
+
+  /**
+   * 从API配置恢复固定到编辑器顶部状态
+   */
+  async restoreFixedToEditorTopMode() {
+    try {
+      this.isFixedToEditorTop = await this.tabStorageService.restoreFixedToEditorTopMode();
+      this.log(`📐 固定到编辑器顶部状态已恢复: ${this.isFixedToEditorTop ? '启用' : '禁用'}`);
+    } catch (e) {
+      this.error("恢复固定到编辑器顶部状态失败:", e);
+      this.isFixedToEditorTop = false;
+    }
+  }
+
+  /**
+   * 切换固定到编辑器顶部模式
+   * 与固定到顶部(headbar内嵌)互斥：开启本模式时自动关闭固定到顶部
+   */
+  async toggleFixedToEditorTop() {
+    try {
+      this.log(`🔄 切换固定到编辑器顶部: ${this.isFixedToEditorTop ? '取消固定' : '固定'}`);
+
+      this.isFixedToEditorTop = !this.isFixedToEditorTop;
+      if (this.isFixedToEditorTop) {
+        // 与固定到顶部互斥
+        this.isFixedToTop = false;
+        await this.saveFixedToTopMode();
+      }
+
+      await this.saveFixedToEditorTopMode();
+
+      // 重新创建UI
+      await this.createTabsUI();
+
+      this.log(`✅ 固定到编辑器顶部已${this.isFixedToEditorTop ? '启用' : '禁用'}`);
+    } catch (error) {
+      this.error("切换固定到编辑器顶部失败:", error);
+    }
+  }
+
+  /**
+   * 更新固定到编辑器顶部的位置（对齐参考插件的实现方式）：
+   * 1. CSS变量设置在 body 上（容器重建也不会丢失，参考插件同款做法）
+   * 2. 左右对齐编辑器区域(#main)的边界
+   * 3. 推移 #main 由样式表中的 body 类规则完成（纯CSS，无JS时序问题）
+   */
+  private updateEditorTopPosition() {
+    if (!this.isFixedToEditorTop || !this.tabContainer) return;
+    const main = document.getElementById('main');
+    if (!main) return;
+    const rect = main.getBoundingClientRect();
+    const style = document.body.style;
+    style.setProperty('--orca-tabs-editor-left', `${Math.max(0, Math.round(rect.left))}px`);
+    style.setProperty('--orca-tabs-editor-right', `${Math.max(0, Math.round(window.innerWidth - rect.right))}px`);
+    style.setProperty('--orca-tabs-editor-top', `${Math.max(0, Math.round(rect.top))}px`);
+    style.setProperty('--orca-tabs-editor-bottom', `${Math.max(0, Math.round(window.innerHeight - rect.bottom))}px`);
+  }
+
+  /**
+   * 启用固定到编辑器顶部的位置跟随监听
+   * 侧边栏开合、窗口缩放时实时更新标签栏位置；
+   * 额外提供1秒兜底轮询，无论侧边栏以何种方式开合都能及时修正
+   */
+  private setupEditorTopWatchers() {
+    this.teardownEditorTopWatchers();
+    if (!this.isFixedToEditorTop) return;
+
+    document.body.classList.add('orca-tabs-fixed-editor-top');
+    this.updateEditorTopPosition();
+
+    this.editorTopObserver = new ResizeObserver(() => this.updateEditorTopPosition());
+    const targets: Array<Element | null> = [
+      document.getElementById('main'),
+      document.getElementById('sidebar'),
+      document.querySelector('.orca-sidebar'),
+      document.body
+    ];
+    for (const target of targets) {
+      if (target) this.editorTopObserver.observe(target);
+    }
+
+    // body类名切换（Orca侧边栏响应式折叠等）也会改变编辑器边界
+    this.editorTopBodyObserver = new MutationObserver(() => this.handleEditorTopResize());
+    this.editorTopBodyObserver.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+    window.addEventListener('resize', this.handleEditorTopResize);
+    document.addEventListener('transitionend', this.handleEditorTopResize);
+
+    // 兜底轮询：每秒重新读取 #main 边界（getBoundingClientRect开销可忽略）
+    this.editorTopGuardTimer = window.setInterval(() => {
+      this.updateEditorTopPosition();
+    }, 1000);
+  }
+
+  private handleEditorTopResize = () => {
+    // rAF节流：等布局稳定后再读取位置，避免窗口调整过程中的中间值造成偏移
+    if (this.editorTopRafPending) return;
+    this.editorTopRafPending = true;
+    requestAnimationFrame(() => {
+      this.editorTopRafPending = false;
+      this.updateEditorTopPosition();
+    });
+  };
+
+  /**
+   * 关闭固定到编辑器顶部的位置跟随监听（移除body类即恢复 #main 原始布局）
+   */
+  private teardownEditorTopWatchers() {
+    window.removeEventListener('resize', this.handleEditorTopResize);
+    document.removeEventListener('transitionend', this.handleEditorTopResize);
+    if (this.editorTopObserver) {
+      this.editorTopObserver.disconnect();
+      this.editorTopObserver = null;
+    }
+    if (this.editorTopBodyObserver) {
+      this.editorTopBodyObserver.disconnect();
+      this.editorTopBodyObserver = null;
+    }
+    if (this.editorTopGuardTimer !== null) {
+      clearInterval(this.editorTopGuardTimer);
+      this.editorTopGuardTimer = null;
+    }
+    document.body.classList.remove('orca-tabs-fixed-editor-top');
+    const style = document.body.style;
+    style.removeProperty('--orca-tabs-editor-left');
+    style.removeProperty('--orca-tabs-editor-right');
+    style.removeProperty('--orca-tabs-editor-top');
+    style.removeProperty('--orca-tabs-editor-bottom');
   }
 
   /**
@@ -12827,7 +15069,7 @@ class OrcaTabsPlugin {
             this.debouncedUpdateTabsUI();
             
             // 【修复】多个面板时贴边隐藏失效问题：面板切换后重新检测贴边隐藏（使用防抖避免频繁检测）
-            if (this.enableEdgeHide && !this.isFixedToTop) {
+            if (this.enableEdgeHide && !this.isFixedToTop && !this.isFixedToEditorTop) {
               this.debouncedApplyEdgeHideStyle(300); // 300ms防抖，等待面板切换动画完成
             }
           }
@@ -13723,6 +15965,41 @@ class OrcaTabsPlugin {
       // 从最近关闭列表中移除
       this.recentlyClosedTabs.splice(index, 1);
       await this.saveRecentlyClosedTabs();
+
+      // 合并模式下直接导航恢复（历史缓存由 syncPanelHistory 自愈）
+      if (this.enableMergedTabBar) {
+        const panelExists = orca.nav.findViewPanel(tab.panelId, orca.state.panels);
+        const pid = panelExists ? tab.panelId : ((orca.state?.activePanel as string | undefined) || tab.panelId);
+        if (tab.isViewPanel || tab.blockType?.startsWith('view:')) {
+          orca.nav.switchFocusTo(pid);
+        } else if (tab.blockType === 'journal') {
+          // 优先从 blockId 中解析日期（重命名标题后仍可恢复），失败则回退标题解析
+          let date: Date | null = null;
+          const journalTag = /^journal:(.+)$/.exec(tab.blockId);
+          if (journalTag) {
+            const parsed = new Date(journalTag[1]);
+            if (!isNaN(parsed.getTime())) date = parsed;
+          }
+          if (!date) date = this.extractDateFromTitle(tab.title);
+          if (!date) {
+            orca.notify('error', '无法解析日志日期，恢复失败');
+            return;
+          }
+          orca.nav.goTo('journal' as any, { date }, pid);
+          orca.nav.switchFocusTo(pid);
+        } else {
+          const blockId = parseInt(tab.blockId, 10);
+          if (Number.isNaN(blockId)) {
+            orca.notify('error', '无效的块ID，恢复失败');
+            return;
+          }
+          orca.nav.goTo('block' as any, { blockId }, pid);
+          orca.nav.switchFocusTo(pid);
+        }
+        this.log(`🔄 已恢复最近关闭的标签页: "${tab.title}"`);
+        orca.notify('success', `已恢复标签页: ${tab.title}`);
+        return;
+      }
 
       // 从已关闭列表中移除（如果存在）
       // 视图面板的 blockId 以 'view:' 前缀开头，可以安全地从 closedTabs 集合中删除
@@ -15061,9 +17338,10 @@ class OrcaTabsPlugin {
 
       // 设置到第一个面板
       this.panelTabsData[0] = updatedTabs;
-      
-      // 更新UI显示，但不保存到持久化存储
-      await this.updateTabsUI();
+
+      // 更新UI显示，但不保存到持久化存储（强制更新：合并模式下工作区组需要立即刷新）
+      this.mergedRenderSignature = '';
+      await this.updateTabsUI(true);
       
       this.log(`📋 已恢复标签页组，共 ${updatedTabs.length} 个标签（未保存到持久化存储）`);
     } catch (error) {
@@ -15116,6 +17394,9 @@ class OrcaTabsPlugin {
         orca.notify('success', '已退出工作区并恢复之前的标签页组');
       } else {
         orca.notify('success', '已退出工作区');
+        // 无恢复标签组时也要刷新UI（合并模式下工作区组需要移除）
+        this.mergedRenderSignature = '';
+        await this.updateTabsUI(true);
       }
 
       this.log(`🚪 已退出工作区`);
@@ -15904,7 +18185,8 @@ class OrcaTabsPlugin {
       }
 
       // 更新UI显示（工作区切换需要立即更新，不使用防抖）
-      await this.updateTabsUI();
+      this.mergedRenderSignature = '';
+      await this.updateTabsUI(true);
 
       // 延迟导航，确保UI更新完成后再导航
       const lastActiveTabId = workspace.lastActiveTabId;

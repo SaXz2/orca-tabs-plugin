@@ -302,7 +302,12 @@ export async function detectBlockType(block: any): Promise<string> {
  * - 支持自定义图标
  * - 提供降级处理
  */
-export function getBlockTypeIcon(blockType: string): string {
+export function getBlockTypeIcon(blockType: string, level?: number): string {
+  // 标题块按级别细分图标（h1-h6）
+  if (blockType === 'heading' && typeof level === 'number' && level >= 1 && level <= 6) {
+    return `ti ti-h-${level}`;
+  }
+
   const iconMap: { [key: string]: string } = {
     // 基础块类型
     'journal': '📅',              // 日期块 - 保持emoji
@@ -315,11 +320,21 @@ export function getBlockTypeIcon(blockType: string): string {
     'image': 'ti ti-photo',       // 图片
     'link': 'ti ti-link',         // 链接
     'list': 'ti ti-list',         // 列表
+    'ol': 'ti ti-list-numbers',   // 有序列表
+    'ul': 'ti ti-list',           // 无序列表
     'quote': 'ti ti-quote',       // 引用
+    'quote2': 'ti ti-blockquote', // 引用（嵌套）
     'text': 'ti ti-cube',    // 普通文本
     'block': 'ti ti-square',      // 块
     'task': 'ti ti-checkbox',     // 任务
     'math': 'ti ti-math',         // 数学公式
+    'query': 'ti ti-zoom-question',   // 查询
+    'query2': 'ti ti-zoom-question',  // 查询（嵌套）
+    'mermaid': 'ti ti-chart-bar',     // Mermaid 图表
+    'whiteboard': 'ti ti-chalkboard', // 白板
+    'pdf': 'ti ti-pdf',           // PDF
+    'epub': 'ti ti-book',         // EPUB
+    'hr': 'ti ti-separator',      // 分隔线
     
     // 扩展块类型
     'idea': 'ti ti-bulb',         // 想法
@@ -343,10 +358,11 @@ export function getBlockTypeIcon(blockType: string): string {
     'habit': 'ti ti-repeat',             // 习惯
     'bookmark': 'ti ti-bookmark',        // 书签
     'attachment': 'ti ti-paperclip',     // 附件
-    'video': 'ti ti-video',              // 视频
-    'audio': 'ti ti-headphones',         // 音频
+    'video': 'ti ti-movie',              // 视频
+    'movie': 'ti ti-movie',              // 视频（别名）
+    'audio': 'ti ti-volume',             // 音频
     'document': 'ti ti-file',            // 文档
-    'spreadsheet': 'ti ti-table',        // 电子表格
+    'spreadsheet': 'ti ti-file-spreadsheet', // 电子表格
     'presentation': 'ti ti-presentation', // 演示文稿
     'database': 'ti ti-database',        // 数据库
     'api': 'ti ti-plug',                 // API

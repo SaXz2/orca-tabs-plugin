@@ -89,6 +89,9 @@ export const PLUGIN_STORAGE_KEYS = {
   
   /** 固定到顶部状态 - 存储标签页容器是否固定到顶部的状态 */
   FIXED_TO_TOP: 'fixed-to-top',
+
+  /** 固定到编辑器顶部状态 - 存储标签页容器是否覆盖在编辑器区域顶部的状态 */
+  FIXED_TO_EDITOR_TOP: 'fixed-to-editor-top',
   
   /** 调试模式 - 存储是否启用详细日志输出 */
   DEBUG_MODE: 'debug-mode',
@@ -119,6 +122,15 @@ export const PLUGIN_STORAGE_KEYS = {
   
   /** 气泡模式开关 - 存储是否启用气泡模式（仅垂直模式可用） */
   ENABLE_BUBBLE_MODE: 'enable-bubble-mode',
+
+  /** 合并显示所有面板标签开关 - 存储是否启用合并标签栏模式 */
+  ENABLE_MERGED_TAB_BAR: 'enable-merged-tab-bar',
+
+  /** 合并模式固定条目 - 存储各面板固定历史条目的 key 列表（panelId → keys） */
+  MERGED_PINNED_ENTRIES: 'merged-pinned-entries',
+
+  /** 合并模式标题覆盖 - 存储各面板历史条目的自定义标题（panelId|key → title） */
+  MERGED_TITLE_OVERRIDES: 'merged-title-overrides',
 } as const;
 
 // ==================== 功能配置常量 ====================

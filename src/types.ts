@@ -192,8 +192,66 @@ export interface RecentTabSwitchHistory {
 }
 
 /**
+ * 面板历史条目接口
+ *
+ * 定义合并显示模式下每个面板的 LRU 视图历史条目。
+ * 数据来源于 orca.state.panels 的 view/viewArgs，包含未打开的视图。
+ */
+export interface PanelHistoryEntry {
+  /** 面板ID - 该历史条目所属面板的唯一标识符 */
+  panelId: string;
+
+  /** 历史键 - view 与排序后 viewArgs 序列化的唯一标识 */
+  key: string;
+
+  /** 视图类型 - 如 journal、block、search、tags、graph、whiteboard 等 */
+  view: string;
+
+  /** 视图参数 - 如 blockId、date、title 等 */
+  viewArgs: Record<string, any>;
+
+  /** 标题 - 解析后的显示标题 */
+  title: string;
+
+  /** 图标 - 解析后的显示图标（ti ti-* 或 emoji） */
+  icon: string;
+
+  /** 标签颜色 - 块 _color 属性值，用于标签背景色 */
+  color?: string;
+
+  /** 最近使用计数 - LRU 淘汰依据，数值越大越新 */
+  used: number;
+
+  /** 是否已固定 - 固定条目排组内最前且不参与 LRU 淘汰 */
+  isPinned?: boolean;
+}
+
+/**
+ * 跨面板拖拽载荷接口
+ *
+ * 统一普通标签与合并模式历史条目的拖拽数据，
+ * 用于拖拽标签到面板实现打开/分屏。
+ */
+export interface DragPayload {
+  /** 载荷类型 - tab 为普通标签，history 为合并模式历史条目 */
+  kind: 'tab' | 'history';
+
+  /** 来源面板ID */
+  panelId: string;
+
+  /** 来源键 - 普通标签为 blockId，历史条目为 history key */
+  key: string;
+
+  /** 普通标签信息（kind === 'tab' 时存在） */
+  tab?: TabInfo;
+
+  /** 历史条目信息（kind === 'history' 时存在） */
+  entry?: PanelHistoryEntry;
+}
+
+/**
  * 悬浮标签列表配置接口
- * 
+ *
  * 定义悬浮显示标签列表的配置选项，控制显示效果和交互行为。
  */
 export interface HoverTabListConfig {
