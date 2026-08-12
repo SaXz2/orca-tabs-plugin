@@ -1720,7 +1720,7 @@ class OrcaTabsPlugin {
           // 必须是标签元素
           if (!el.classList.contains('orca-tab')) return false;
           // 必须有blockId
-          if (!el.hasAttribute('data-block-id')) return false;
+          if (!el.hasAttribute('data-orca-tabs-block-id')) return false;
           // 排除被拖拽的标签（通过opacity判断）
           const style = (el as HTMLElement).style;
           if (style.opacity === '0' && style.pointerEvents === 'none') return false;
@@ -1733,7 +1733,7 @@ class OrcaTabsPlugin {
         }) as HTMLElement;
         
         if (tabElement) {
-          const blockId = tabElement.getAttribute('data-block-id');
+          const blockId = tabElement.getAttribute('data-orca-tabs-block-id');
           const currentTabs = this.getCurrentPanelTabs();
           const targetTab = currentTabs.find(t => t.blockId === blockId);
           
@@ -1936,8 +1936,8 @@ class OrcaTabsPlugin {
     await this.setCurrentPanelTabs(currentTabs);
     
     // DOM级别的移动 - 直接操作DOM顺序，触发CSS过渡
-    const draggedElement = this.tabContainer.querySelector(`[data-block-id="${draggingTab.blockId}"]`);
-    const targetElement = this.tabContainer.querySelector(`[data-block-id="${targetTab.blockId}"]`);
+    const draggedElement = this.tabContainer.querySelector(`[data-orca-tabs-block-id="${draggingTab.blockId}"]`);
+    const targetElement = this.tabContainer.querySelector(`[data-orca-tabs-block-id="${targetTab.blockId}"]`);
     
     if (draggedElement && targetElement) {
       // 使用DOM操作而不是重新渲染，这样CSS transition才能生效
@@ -3984,7 +3984,7 @@ class OrcaTabsPlugin {
     
     // 获取当前显示的标签ID列表，用于后续比较
     const currentDisplayedTabIds = Array.from(this.tabContainer.querySelectorAll('.orca-tab'))
-      .map(el => el.getAttribute('data-tab-id'))
+      .map(el => el.getAttribute('data-orca-tabs-tab-id'))
       .filter(id => id !== null) as string[];
     
     // 获取当前标签数据
@@ -4102,7 +4102,7 @@ class OrcaTabsPlugin {
       // 调整标签页样式以适应顶部工具栏
       const tabs = this.tabContainer.querySelectorAll('.orca-tabs-plugin .orca-tab');
       tabs.forEach(tabElement => {
-        const tabId = tabElement.getAttribute('data-block-id');
+        const tabId = tabElement.getAttribute('data-orca-tabs-block-id');
         if (!tabId) return;
         
         // 查找对应的标签信息
@@ -4524,8 +4524,8 @@ class OrcaTabsPlugin {
    * 从标签元素获取标签信息
    */
   private getTabInfoFromElement(tabElement: HTMLElement): TabInfo | null {
-    const tabInstanceId = tabElement.getAttribute('data-tab-id');
-    const blockId = tabElement.getAttribute('data-block-id');
+    const tabInstanceId = tabElement.getAttribute('data-orca-tabs-tab-id');
+    const blockId = tabElement.getAttribute('data-orca-tabs-block-id');
     if (!tabInstanceId && !blockId) return null;
     
     // ????????????????????
@@ -7090,8 +7090,8 @@ class OrcaTabsPlugin {
     if (!tab.tabId) {
       tab.tabId = generateTabInstanceId(tab.blockId);
     }
-    tabElement.setAttribute('data-tab-id', tab.tabId);
-    tabElement.setAttribute('data-block-id', tab.blockId);
+    tabElement.setAttribute('data-orca-tabs-tab-id', tab.tabId);
+    tabElement.setAttribute('data-orca-tabs-block-id', tab.blockId);
     
     // 检查是否为当前激活的标签
     const isActive = this.isTabActive(tab);
@@ -7138,12 +7138,12 @@ class OrcaTabsPlugin {
 
     // 将内容容器添加到标签元素
     tabElement.appendChild(tabContent);
-    
+
     // 如果是垂直模式且没有拖拽手柄，自动添加
     if (this.isVerticalMode && !this.resizeHandle) {
       this.enableDragResize();
     }
-    
+
       // 设置悬停提示（根据设置决定是否显示）
       if (!this.hideTabTooltips) {
         addTooltip(tabElement, createCustomTabTooltip(tab));
@@ -7177,7 +7177,7 @@ class OrcaTabsPlugin {
       // e.stopImmediatePropagation();
       
       this.verboseLog(`🖱️ 点击标签: ${tab.title} (ID: ${tab.blockId})`);
-      
+
       // 如果标签在已关闭列表中，先从列表中移除
       if (this.closedTabs.has(tab.blockId)) {
         this.closedTabs.delete(tab.blockId);
@@ -8011,7 +8011,7 @@ class OrcaTabsPlugin {
     if (result.success) {
       // 同步更新对应的存储数组
       this.syncCurrentTabsToStorage(currentTabs);
-      
+
       // 更新UI和保存数据（修复同步问题）
       await this.immediateUpdateTabsUI();
        await this.saveCurrentPanelTabs();
@@ -8332,7 +8332,7 @@ class OrcaTabsPlugin {
         }
       } else {
         // 显示tooltip：重新添加tooltip
-        const tabId = tabElement.getAttribute('data-tab-id');
+        const tabId = tabElement.getAttribute('data-orca-tabs-tab-id');
         if (tabId) {
           const currentTabs = this.getCurrentPanelTabs();
           const tab = currentTabs.find(t => t.tabId === tabId) || currentTabs.find(t => t.blockId === tabId);
@@ -8616,13 +8616,13 @@ class OrcaTabsPlugin {
       const allTabs = this.tabContainer?.querySelectorAll('.orca-tabs-plugin .orca-tab');
       allTabs?.forEach(tab => tab.removeAttribute('data-focused'));
 
-      let targetTab = this.tabContainer?.querySelector(`[data-tab-id="${tabId}"]`) as HTMLElement | null;
+      let targetTab = this.tabContainer?.querySelector(`[data-orca-tabs-tab-id="${tabId}"]`) as HTMLElement | null;
       if (!targetTab && blockIdFallback) {
-        targetTab = this.tabContainer?.querySelector(`[data-block-id="${blockIdFallback}"]`) as HTMLElement | null;
+        targetTab = this.tabContainer?.querySelector(`[data-orca-tabs-block-id="${blockIdFallback}"]`) as HTMLElement | null;
       }
       if (targetTab) {
         targetTab.setAttribute('data-focused', 'true');
-        const targetTabId = targetTab.getAttribute('data-tab-id');
+        const targetTabId = targetTab.getAttribute('data-orca-tabs-tab-id');
         if (targetTabId) {
           this.lastActiveTabInstanceId = targetTabId;
         }
@@ -10258,8 +10258,8 @@ class OrcaTabsPlugin {
     // ??????????????????????
     const focusedTabElement = this.tabContainer?.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
     if (focusedTabElement) {
-      const focusedTabId = focusedTabElement.getAttribute('data-tab-id');
-      const focusedBlockId = focusedTabElement.getAttribute('data-block-id');
+      const focusedTabId = focusedTabElement.getAttribute('data-orca-tabs-tab-id');
+      const focusedBlockId = focusedTabElement.getAttribute('data-orca-tabs-block-id');
       const focusedTab = currentTabs.find(tab => tab.tabId === focusedTabId) ||
         currentTabs.find(tab => tab.blockId === focusedBlockId);
       if (focusedTab) {
@@ -10450,13 +10450,13 @@ class OrcaTabsPlugin {
       orca.notify('info', `标签 "${tab.title}" 已固定，请先取消固定再关闭`);
       return;
     }
-    
+
     // 检查是否为视图面板（如 AI Chat 面板）
     const isViewPanelTab = isViewPanel(tab);
     if (isViewPanelTab) {
       this.verboseLog(`🖼️ 检测到视图面板标签页关闭: ${tab.title} (blockId: ${tab.blockId})`);
     }
-    
+
     const tabIndex = currentTabs.findIndex(t => t.blockId === tab.blockId);
     if (tabIndex !== -1) {
       // 检查当前关闭的标签是否是激活的标签
@@ -10495,7 +10495,7 @@ class OrcaTabsPlugin {
       // 删除该标签的切换历史记录
       // 视图面板的 blockId 可能包含特殊字符，需要正确转义
       const escapedBlockId = CSS.escape(tab.blockId);
-      const tabElement = this.tabContainer?.querySelector(`[data-block-id="${escapedBlockId}"]`) as HTMLElement;
+      const tabElement = this.tabContainer?.querySelector(`[data-orca-tabs-block-id="${escapedBlockId}"]`) as HTMLElement;
       const tabHistoryId = tabElement?.getAttribute('data-tab-history-id');
       if (tabHistoryId) {
         await this.deleteTabSwitchHistory(tabHistoryId);
@@ -10657,7 +10657,7 @@ class OrcaTabsPlugin {
    */
   showInlineRenameInput(tab: TabInfo) {
     // 查找对应的标签元素
-    const tabElement = document.querySelector(`[data-tab-id="${tab.tabId || tab.blockId}"]`) as HTMLElement;
+    const tabElement = document.querySelector(`[data-orca-tabs-tab-id="${tab.tabId || tab.blockId}"]`) as HTMLElement;
     if (!tabElement) {
       this.warn("找不到对应的标签元素");
       return;
@@ -10797,7 +10797,7 @@ class OrcaTabsPlugin {
     document.body.appendChild(container);
 
     // 计算输入框位置（优化版：靠近边缘时往内定位）
-    const tabElement = document.querySelector(`[data-tab-id="${tab.tabId || tab.blockId}"]`) as HTMLElement;
+    const tabElement = document.querySelector(`[data-orca-tabs-tab-id="${tab.tabId || tab.blockId}"]`) as HTMLElement;
     let inputPosition = { x: '50%', y: '50%' };
     
     if (tabElement) {
@@ -10970,7 +10970,7 @@ class OrcaTabsPlugin {
     inputContainer.appendChild(buttonContainer);
 
     // 定位输入框
-    const tabElement = document.querySelector(`[data-tab-id="${tab.tabId || tab.blockId}"]`) as HTMLElement;
+    const tabElement = document.querySelector(`[data-orca-tabs-tab-id="${tab.tabId || tab.blockId}"]`) as HTMLElement;
     if (tabElement) {
       const rect = tabElement.getBoundingClientRect();
       inputContainer.style.left = `${rect.left}px`;
@@ -11508,13 +11508,16 @@ class OrcaTabsPlugin {
     const hasOverride = this.mergedTitleOverrides[overrideKey] !== undefined;
     const othersCount = list.filter((x) => x.key !== entry.key && !x.isPinned).length;
     const closableCount = list.filter((x) => !x.isPinned).length;
+    // 双面板时允许关闭面板的最后一个标签（空出面板），仅唯一面板的唯一标签受保护
+    const totalPanels = this.collectViewPanels(orca.state.panels).length;
+    const lastTabProtected = list.length <= 1 && totalPanels <= 1;
     this.buildContextMenu(e, [
       {
         text: '重命名标签',
         icon: 'ti ti-edit',
         action: () => {
           const el = this.tabContainer?.querySelector(
-            `[data-key="${CSS.escape(entry.key)}"][data-panel-id="${CSS.escape(panelId)}"]`
+            `[data-orca-tabs-key="${CSS.escape(entry.key)}"][data-orca-tabs-panel-id="${CSS.escape(panelId)}"]`
           ) as HTMLElement | null;
           if (el) {
             this.showMergedInlineRenameInput(el, entry.title, entry.color, (newTitle) => {
@@ -11576,13 +11579,13 @@ class OrcaTabsPlugin {
         text: '关闭全部标签',
         icon: 'ti ti-layout-list',
         action: () => this.closeAllHistoryEntries(panelId),
-        disabled: closableCount === 0 || list.length <= 1
+        disabled: closableCount === 0 || lastTabProtected
       },
       {
         text: '关闭标签',
         icon: 'ti ti-trash',
         action: () => this.removeHistoryEntry(panelId, entry.key),
-        disabled: !!entry.isPinned || list.length <= 1
+        disabled: !!entry.isPinned || lastTabProtected
       }
     ]);
   }
@@ -11599,7 +11602,7 @@ class OrcaTabsPlugin {
         icon: 'ti ti-edit',
         action: () => {
           const el = this.tabContainer?.querySelector(
-            `[data-block-id="${CSS.escape(tab.blockId)}"].orca-tab-merged`
+            `[data-orca-tabs-block-id="${CSS.escape(tab.blockId)}"].orca-tab-merged`
           ) as HTMLElement | null;
           if (el) {
             this.showMergedInlineRenameInput(el, tab.title, tab.color, (newTitle) => {
@@ -11725,6 +11728,11 @@ class OrcaTabsPlugin {
   private closeAllHistoryEntries(panelId: string): void {
     const list = this.panelHistoryMap.get(panelId);
     if (!list) return;
+    // 唯一面板的唯一标签受保护（双面板时允许关闭空出面板）
+    if (list.length <= 1 && this.collectViewPanels(orca.state.panels).length <= 1) {
+      orca.notify('info', '至少保留一个标签页');
+      return;
+    }
     const panel = orca.nav.findViewPanel(panelId, orca.state.panels);
     const currentKey = panel ? this.makeHistoryKey(panel.view ?? '', panel.viewArgs) : '';
     const removed = list.filter((x) => !x.isPinned);
@@ -12387,7 +12395,8 @@ class OrcaTabsPlugin {
         }
         const currentKey = this.makeHistoryKey(view, p.viewArgs);
         for (const entry of list!) {
-          fragment.appendChild(this.createMergedTabElement(entry, currentKey, id, id === activePanelId));
+          const mergedEl = this.createMergedTabElement(entry, currentKey, id, id === activePanelId);
+          fragment.appendChild(mergedEl);
         }
       }
 
@@ -12501,8 +12510,8 @@ class OrcaTabsPlugin {
     const el = document.createElement('div');
     const isCurrent = entry.key === currentKey;
     el.className = 'orca-tab orca-tab-merged' + (isCurrent ? (isActivePanel ? ' orca-tab-active' : ' orca-tab-current') : '');
-    el.setAttribute('data-key', entry.key);
-    el.setAttribute('data-panel-id', panelId);
+    el.setAttribute('data-orca-tabs-key', entry.key);
+    el.setAttribute('data-orca-tabs-panel-id', panelId);
     el.draggable = true;
     el.title = entry.title;
 
@@ -12532,9 +12541,10 @@ class OrcaTabsPlugin {
       el.appendChild(createPinIcon());
     }
 
-    // 固定条目与组内唯一标签不显示关闭按钮（浏览器式语义）
+    // 固定条目不显示关闭按钮；唯一视图面板的唯一标签也不显示（双面板时允许关闭空出面板）
     const groupSize = this.panelHistoryMap.get(panelId)?.length ?? 1;
-    if (!entry.isPinned && groupSize > 1) {
+    const totalPanels = this.collectViewPanels(orca.state.panels).length;
+    if (!entry.isPinned && (groupSize > 1 || totalPanels > 1)) {
       const closeBtn = document.createElement('span');
       closeBtn.className = 'orca-tab-close';
       closeBtn.textContent = '×';
@@ -12806,7 +12816,7 @@ class OrcaTabsPlugin {
   private createWorkspaceTabElement(tab: TabInfo, panelId: string): HTMLElement {
     const el = document.createElement('div');
     el.className = 'orca-tab orca-tab-merged';
-    el.setAttribute('data-block-id', tab.blockId);
+    el.setAttribute('data-orca-tabs-block-id', tab.blockId);
     el.title = tab.title;
 
     if (tab.color) {
@@ -12954,9 +12964,11 @@ class OrcaTabsPlugin {
     const idx = list.findIndex((x) => x.key === key);
     if (idx < 0) return;
     const target = list[idx];
-    // 组内只有一个标签时不可关闭（与普通模式一致）
-    if (list.length <= 1) {
-      this.log('⚠️ 组内只有一个标签，无法关闭');
+    // 仅当面板是唯一视图面板时，最后一个标签不可关闭（双面板时允许关闭空出该面板）
+    const totalPanels = this.collectViewPanels(orca.state.panels).length;
+    if (list.length <= 1 && totalPanels <= 1) {
+      this.log('⚠️ 唯一的标签页无法关闭');
+      orca.notify('info', '至少保留一个标签页');
       return;
     }
     // 固定条目不可直接移除（浏览器式语义）
@@ -12965,6 +12977,18 @@ class OrcaTabsPlugin {
       orca.notify('info', `标签 "${target.title}" 已固定，请先取消固定再移出`);
       return;
     }
+    this.removeHistoryEntryCore(panelId, key);
+  }
+
+  /**
+   * removeHistoryEntry 的核心移除逻辑
+   */
+  private removeHistoryEntryCore(panelId: string, key: string): void {
+    const list = this.panelHistoryMap.get(panelId);
+    if (!list) return;
+    const idx = list.findIndex((x) => x.key === key);
+    if (idx < 0) return;
+    const target = list[idx];
     // 若移除的是当前视图，需要先导航到相邻条目，否则面板状态不会变化
     const panel = orca.nav.findViewPanel(panelId, orca.state.panels);
     const isCurrent = panel ? this.makeHistoryKey(panel.view ?? '', panel.viewArgs) === key : false;
@@ -13855,12 +13879,12 @@ class OrcaTabsPlugin {
       targetTab = currentTabs.find(tab => tab.blockId === blockId) || null;
     }
     
-    const selector = targetTab?.tabId ? `[data-tab-id="${targetTab.tabId}"]` : `[data-block-id="${blockId}"]`;
+    const selector = targetTab?.tabId ? `[data-orca-tabs-tab-id="${targetTab.tabId}"]` : `[data-orca-tabs-block-id="${blockId}"]`;
     const currentTabElement = this.tabContainer?.querySelector(selector);
     if (currentTabElement) {
       // ?????????CSS????
       currentTabElement.setAttribute('data-focused', 'true');
-      const focusedTabId = currentTabElement.getAttribute('data-tab-id');
+      const focusedTabId = currentTabElement.getAttribute('data-orca-tabs-tab-id');
       if (focusedTabId) {
         this.lastActiveTabInstanceId = focusedTabId;
       }
@@ -14156,8 +14180,8 @@ class OrcaTabsPlugin {
     let targetIndex = -1;
     const focusedTabElement = this.tabContainer?.querySelector('.orca-tabs-plugin .orca-tab[data-focused="true"]');
     if (focusedTabElement) {
-      const focusedTabId = focusedTabElement.getAttribute('data-tab-id');
-      const focusedBlockId = focusedTabElement.getAttribute('data-block-id');
+      const focusedTabId = focusedTabElement.getAttribute('data-orca-tabs-tab-id');
+      const focusedBlockId = focusedTabElement.getAttribute('data-orca-tabs-block-id');
       targetIndex = currentTabs.findIndex(tab => tab.tabId === focusedTabId);
       if (targetIndex == -1 && focusedBlockId) {
         targetIndex = currentTabs.findIndex(tab => tab.blockId === focusedBlockId);
@@ -14382,8 +14406,8 @@ class OrcaTabsPlugin {
         return;
       }
 
-      const focusedTabId = focusedTabElement.getAttribute('data-tab-id');
-      const focusedBlockId = focusedTabElement.getAttribute('data-block-id');
+      const focusedTabId = focusedTabElement.getAttribute('data-orca-tabs-tab-id');
+      const focusedBlockId = focusedTabElement.getAttribute('data-orca-tabs-block-id');
       if (!focusedTabId && !focusedBlockId) {
         return;
       }
@@ -14967,7 +14991,7 @@ class OrcaTabsPlugin {
                   this.lastFocusState = { blockId, hasFocusedTab };
                   
                   if (focusedTab) {
-                    const focusedBlockId = focusedTab.getAttribute('data-block-id');
+                    const focusedBlockId = focusedTab.getAttribute('data-orca-tabs-block-id');
                     if (focusedBlockId !== blockId) {
                       this.verboseLog(`?? 焦点检测到变更: ${focusedBlockId} -> ${blockId}`);
                       await this.checkCurrentPanelBlocks();

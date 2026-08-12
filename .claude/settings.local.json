@@ -2,7 +2,19 @@
   "permissions": {
     "allow": [
       "Bash(npx tsc *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(node -e ' *)",
+      "Read(//d/orca-plugins/A/orca-tana-tag-color-plugin/plugin-docs/**)",
+      "Read(//d/orca-plugins/A/orca-tana-tag-color-plugin/dist/**)",
+      "Bash(git -C \"D:\\\\orca-plugins\\\\A\\\\orca-tana-tag-color-plugin\" log --oneline -8)",
+      "Bash(git -C \"D:\\\\orca-plugins\\\\A\\\\orca-tana-tag-color-plugin\" status --short)",
+      "Read(//c/Program Files/Orca Note/resources/**)",
+      "Read(//c/Program Files/Orca Note/resources/app.asar.unpacked/**)",
+      "Bash(cd /tmp)",
+      "Bash(npx --yes @electron/asar list \"C:/Program Files/Orca Note/resources/app.asar\")",
+      "Bash(rm -rf orca-asar)",
+      "Bash(mkdir orca-asar *)",
+      "Bash(npx --yes @electron/asar extract \"C:/Program Files/Orca Note/resources/app.asar\" orca-asar)"
     ]
   }
 }
