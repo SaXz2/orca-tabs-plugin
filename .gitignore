@@ -22,3 +22,7 @@ dist-ssr
 *.sln
 *.sw?
 plugin-docs
+
+# Release packaging
+release-package/
+*.zip

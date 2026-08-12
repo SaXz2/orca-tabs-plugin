@@ -2969,9 +2969,6 @@ class OrcaTabsPlugin {
           flex-direction: row;
           align-items: center;
           flex-wrap: nowrap;
-          background-color: var(--orca-color-bg-1);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
           border-bottom: 2px solid rgba(0, 0, 0, 0.15);
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         `;
