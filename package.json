@@ -1,6 +1,6 @@
 {
   "name": "orca-tabs-plugin",
-  "version": "2.9.3",
+  "version": "2.9.4",
   "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
