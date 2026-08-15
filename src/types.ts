@@ -169,6 +169,46 @@ export interface Workspace {
   
   /** 最后激活的标签页ID - 记录工作区中最后激活的标签页，用于恢复状态 */
   lastActiveTabId?: string;
+
+  /** 面板布局 - 保存工作区时的面板树与激活面板，用于恢复多面板布局 */
+  layout?: SavedPanelLayout;
+}
+
+/**
+ * 保存的面板布局
+ *
+ * 序列化 Orca 的面板树（RowPanel/ColumnPanel/ViewPanel），
+ * 使工作区进出时能恢复多面板布局（面板数量与各面板的视图）。
+ */
+export interface SavedPanelLayout {
+  /** 序列化的面板树根节点 */
+  panels: SavedPanelNode;
+
+  /** 激活面板在叶子（视图面板）DFS 顺序中的索引 */
+  activeIndex: number;
+}
+
+/**
+ * 序列化的面板节点
+ *
+ * 容器节点（行/列）携带 direction 与 children；
+ * 叶子节点（视图面板）携带 view/viewArgs/viewState。
+ */
+export interface SavedPanelNode {
+  /** 面板方向：row 为水平排列，column 为垂直排列（仅容器节点） */
+  direction?: 'row' | 'column';
+
+  /** 子面板（仅容器节点） */
+  children?: SavedPanelNode[];
+
+  /** 视图类型（仅叶子节点，如 block / journal / view:xxx 等） */
+  view?: string;
+
+  /** 视图参数（仅叶子节点） */
+  viewArgs?: Record<string, any>;
+
+  /** 视图状态（仅叶子节点） */
+  viewState?: Record<string, any>;
 }
 
 /**

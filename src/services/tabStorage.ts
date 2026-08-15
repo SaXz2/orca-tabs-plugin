@@ -13,7 +13,7 @@
  * @since 2024
  */
 
-import { TabInfo, SavedTabSet, Workspace, TabPosition, RecentTabSwitchHistory } from '../types';
+import { TabInfo, SavedTabSet, Workspace, TabPosition, RecentTabSwitchHistory, SavedPanelLayout } from '../types';
 import { PLUGIN_STORAGE_KEYS, FEATURE_CONFIG } from '../constants';
 import { OrcaStorageService } from './storage';
 import { 
@@ -334,6 +334,49 @@ export class TabStorageService {
       this.log(`📁 已清除进入工作区前的标签页组`);
     } catch (error) {
       this.error("清除进入工作区前的标签页组失败:", error);
+    }
+  }
+
+  /**
+   * 保存进入工作区前的面板布局
+   */
+  async saveLayoutBeforeWorkspace(layout: SavedPanelLayout | null): Promise<void> {
+    try {
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.LAYOUT_BEFORE_WORKSPACE, layout, this.pluginName);
+      this.log(`📁 已保存进入工作区前的面板布局`);
+    } catch (error) {
+      this.error("保存进入工作区前的面板布局失败:", error);
+    }
+  }
+
+  /**
+   * 加载进入工作区前的面板布局
+   */
+  async loadLayoutBeforeWorkspace(): Promise<SavedPanelLayout | null> {
+    try {
+      const layout = await this.storageService.getConfig<SavedPanelLayout | null>(
+        PLUGIN_STORAGE_KEYS.LAYOUT_BEFORE_WORKSPACE, this.pluginName
+      );
+      if (layout && layout.panels) {
+        this.log(`📁 已加载进入工作区前的面板布局`);
+        return layout;
+      }
+      return null;
+    } catch (error) {
+      this.error("加载进入工作区前的面板布局失败:", error);
+      return null;
+    }
+  }
+
+  /**
+   * 清除进入工作区前的面板布局
+   */
+  async clearLayoutBeforeWorkspace(): Promise<void> {
+    try {
+      await this.storageService.saveConfig(PLUGIN_STORAGE_KEYS.LAYOUT_BEFORE_WORKSPACE, null, this.pluginName);
+      this.log(`📁 已清除进入工作区前的面板布局`);
+    } catch (error) {
+      this.error("清除进入工作区前的面板布局失败:", error);
     }
   }
 

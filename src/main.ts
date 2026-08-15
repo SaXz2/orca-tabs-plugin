@@ -1,4 +1,4 @@
-﻿/* ———————————————————————————————————————————————————————————————————————————— */
+/* ———————————————————————————————————————————————————————————————————————————— */
 /* 导入模块 - Module Imports */
 /* ———————————————————————————————————————————————————————————————————————————— */
 
@@ -38,7 +38,7 @@ import zhCN from "./translations/zhCN";
 // 常量定义 - 包含应用配置常量和存储键定义
 import { AppKeys, PropType, PLUGIN_STORAGE_KEYS, FEATURE_CONFIG } from './constants';
 // 类型定义 - 包含所有TypeScript接口和类型
-import { TabInfo, TabPosition, PanelTabsData, SavedTabSet, Workspace, HoverTabListConfig, ViewPanelInfo, PanelHistoryEntry, DragPayload } from './types';
+import { TabInfo, TabPosition, PanelTabsData, SavedTabSet, Workspace, HoverTabListConfig, ViewPanelInfo, PanelHistoryEntry, DragPayload, SavedPanelLayout, SavedPanelNode } from './types';
 // 存储服务 - 提供统一的数据存储接口，支持Orca API和localStorage降级
 import { OrcaStorageService } from './services/storage';
 // 标签页存储服务 - 提供标签页相关的数据存储操作
@@ -852,6 +852,12 @@ class OrcaTabsPlugin {
   /** 合并模式标题覆盖是否已从存储加载 */
   private mergedTitleOverridesLoaded: boolean = false;
 
+  /** 合并模式进入工作区前的面板历史快照 - 退出工作区时恢复，避免工作区打开的块泄漏到非工作区标签栏 */
+  private mergedHistorySnapshot: Map<string, PanelHistoryEntry[]> | null = null;
+
+  /** 合并模式进入工作区前的激活视图条目 - 退出工作区时导航回去，使标签栏恢复到进入前状态 */
+  private mergedActiveEntryBeforeWorkspace: PanelHistoryEntry | null = null;
+
   /** 贴边隐藏检测防抖定时器 - 避免面板切换时的频繁检测 */
   private edgeHideDebounceTimer: number | null = null;
   
@@ -977,12 +983,21 @@ class OrcaTabsPlugin {
   
   /** 当前工作区ID - 标识当前激活的工作区 */
   private currentWorkspace: string | null = null;
+
+  /** 工作区标签组中已移除（但视图仍打开）的块ID - 防止同步时被重新加回 */
+  private removedWorkspaceBlockIds: Set<string> = new Set();
   
   /** 是否启用工作区功能 - 控制工作区功能的开关 */
   private enableWorkspaces: boolean = true;
   
   /** 进入工作区之前的标签页组 - 用于退出工作区时恢复到原始标签页组 */
   private tabsBeforeWorkspace: TabInfo[] | null = null;
+  
+  /** 进入工作区之前的面板布局 - 用于退出工作区时恢复多面板布局 */
+  private layoutBeforeWorkspace: SavedPanelLayout | null = null;
+
+  /** 是否正在恢复面板布局 - 用于抑制合并模式监听器在重建期间触发，避免竞态 */
+  private restoringPanelLayout = false;
   
   /** 是否需要在初始化后恢复标签页组 - 用于处理在工作区状态下关闭软件的情况 */
   private shouldRestoreTabsBeforeWorkspace: boolean = false;
@@ -1140,6 +1155,13 @@ class OrcaTabsPlugin {
         this.panelTabsData.push([]);
       }
       this.panelTabsData[0] = [...this.tabsBeforeWorkspace];
+      
+      // 恢复进入工作区前的面板布局（若存在）
+      if (this.layoutBeforeWorkspace) {
+        await this.restorePanelLayout(this.layoutBeforeWorkspace);
+        this.layoutBeforeWorkspace = null;
+        await this.tabStorageService.clearLayoutBeforeWorkspace();
+      }
       
       // 清除恢复标记和保存的数据
       this.shouldRestoreTabsBeforeWorkspace = false;
@@ -2976,6 +2998,14 @@ class OrcaTabsPlugin {
 
       // 添加特殊类名
       this.tabContainer.classList.add('fixed-to-editor-top');
+
+      // 【合并模式】固定到编辑器顶部时去掉容器上的毛玻璃与半透明背景
+      // （backdrop-filter / background 由 createTabContainerStyle 写入内联样式，合并模式下不需要）
+      if (this.enableMergedTabBar) {
+        this.tabContainer.style.removeProperty('backdrop-filter');
+        this.tabContainer.style.removeProperty('-webkit-backdrop-filter');
+        this.tabContainer.style.removeProperty('background');
+      }
 
       // 启用位置跟随监听（侧边栏开合/窗口缩放）
       this.setupEditorTopWatchers();
@@ -7699,6 +7729,12 @@ class OrcaTabsPlugin {
    * - 确保最终数据的一致性
    */
   private saveCurrentPanelTabs() {
+    // 工作区状态下不保存普通面板标签数据，避免工作区标签污染普通标签存储
+    if (this.currentWorkspace) {
+      this.log('🚫 在工作区状态下，跳过保存普通面板标签数据');
+      return;
+    }
+
     // 清除之前的定时器
     if (this.saveDataDebounceTimer !== null) {
       clearTimeout(this.saveDataDebounceTimer);
@@ -7733,6 +7769,12 @@ class OrcaTabsPlugin {
    * - 面板关闭时
    */
   private async saveCurrentPanelTabsImmediately() {
+    // 工作区状态下不保存普通面板标签数据，避免工作区标签污染普通标签存储
+    if (this.currentWorkspace) {
+      this.log('🚫 在工作区状态下，跳过保存普通面板标签数据');
+      return;
+    }
+
     // 取消防抖定时器
     if (this.saveDataDebounceTimer !== null) {
       clearTimeout(this.saveDataDebounceTimer);
@@ -12288,6 +12330,9 @@ class OrcaTabsPlugin {
       if (titlesChanged) {
         void this.tabStorageService.saveMergedTitleOverrides(this.mergedTitleOverrides);
       }
+
+      // 工作区激活时：把当前打开的面板历史同步进工作区标签组（自动记录打开/关闭）
+      this.syncWorkspaceTabsFromMergedHistory(panels);
     } finally {
       this.syncPanelHistoryInProgress = false;
     }
@@ -12302,6 +12347,374 @@ class OrcaTabsPlugin {
       const bp = b.isPinned ? 1 : 0;
       return bp - ap;
     });
+  }
+
+  /* ———————————————————————————————————————————————————————————————————————————— */
+  /* 面板布局序列化与恢复 - Panel Layout Serialization & Restore */
+  /* ———————————————————————————————————————————————————————————————————————————— */
+
+  /**
+   * 序列化当前面板布局（面板树 + 激活面板）
+   * 返回 null 表示无法读取面板树。
+   */
+  private serializePanelLayout(): SavedPanelLayout | null {
+    const root = orca.state?.panels;
+    if (!root) return null;
+    const activeId = orca.state?.activePanel ?? '';
+    const leafIds: string[] = [];
+    const panels = this.serializePanelNode(root, leafIds);
+    const activeIndex = activeId ? leafIds.indexOf(activeId) : -1;
+    return { panels, activeIndex };
+  }
+
+  /**
+   * 递归序列化面板树节点
+   * @param leafIds 收集叶子（视图面板）ID，用于确定激活面板索引
+   */
+  private serializePanelNode(node: any, leafIds: string[]): SavedPanelNode {
+    if (node?.direction === 'row' || node?.direction === 'column') {
+      return {
+        direction: node.direction,
+        children: (node.children ?? []).map((c: any) => this.serializePanelNode(c, leafIds))
+      };
+    }
+    // 叶子（视图面板）
+    if (typeof node?.id === 'string' && node.id) leafIds.push(node.id);
+    return {
+      view: node?.view ?? 'block',
+      viewArgs: this.cloneForStorage(node?.viewArgs),
+      viewState: this.cloneForStorage(node?.viewState)
+    };
+  }
+
+  /**
+   * 深度拷贝并处理 Date（转为可 JSON 序列化的标记对象）
+   */
+  private cloneForStorage(v: any): any {
+    if (v instanceof Date) return { __orcaDate: v.toISOString() };
+    if (Array.isArray(v)) return v.map((x) => this.cloneForStorage(x));
+    if (v && typeof v === 'object') {
+      const out: Record<string, any> = {};
+      for (const [k, val] of Object.entries(v)) {
+        out[k] = this.cloneForStorage(val);
+      }
+      return out;
+    }
+    return v;
+  }
+
+  /**
+   * 从存储反序列化（还原 Date）
+   */
+  private reviveFromStorage(v: any): any {
+    if (Array.isArray(v)) return v.map((x) => this.reviveFromStorage(x));
+    if (v && typeof v === 'object') {
+      if (typeof (v as any).__orcaDate === 'string') return new Date((v as any).__orcaDate);
+      const out: Record<string, any> = {};
+      for (const [k, val] of Object.entries(v)) {
+        out[k] = this.reviveFromStorage(val);
+      }
+      return out;
+    }
+    return v;
+  }
+
+  /**
+   * 恢复面板布局：关闭现有面板并按保存的面板树重建，最后聚焦目标面板。
+   * @param layout 保存的面板布局
+   * @param preferBlockId 优先聚焦的块ID（工作区最后激活标签），可选
+   */
+  private async restorePanelLayout(layout: SavedPanelLayout | null | undefined, preferBlockId?: string): Promise<boolean> {
+    if (!layout?.panels) return false;
+
+    // 扁平化目标布局为有序叶子列表（view/viewArgs/viewState）
+    const targetLeaves = this.collectLayoutLeaves(layout.panels);
+    if (targetLeaves.length === 0) return false;
+
+    this.restoringPanelLayout = true;
+    try {
+      // 1. 关闭多余面板（从末尾逐个 close，轮询直到数量达标，兼容异步生效）
+      await this.closePanelsTo(targetLeaves.length);
+
+      // 2. 面板不足时补充（addTo 携带 src）
+      await this.addPanelsTo(targetLeaves.length, targetLeaves);
+
+      // 3. 按顺序导航每个面板到目标视图（每次重读面板ID，避免失效）
+      const panels = this.collectViewPanels(orca.state?.panels);
+      const leaves: Array<{ panelId: string; view: string; viewArgs: Record<string, any> }> = [];
+      for (let i = 0; i < targetLeaves.length && i < panels.length; i++) {
+        const t = targetLeaves[i];
+        const pid = panels[i].id;
+        const viewArgs = this.reviveFromStorage(t.viewArgs ?? {});
+        await this.navigatePanelToView(pid, t.view, viewArgs);
+        leaves.push({ panelId: pid, view: t.view, viewArgs });
+      }
+      await this.waitForLayoutSettle();
+
+      // 4. 聚焦目标面板：优先按最后激活块ID，其次按保存的激活面板索引
+      let targetId = '';
+      if (preferBlockId) {
+        const hit = leaves.find((l) => l.view === 'block' && l.viewArgs?.blockId != null && String(l.viewArgs.blockId) === String(preferBlockId));
+        if (hit) targetId = hit.panelId;
+      }
+      if (!targetId) {
+        const idx = layout.activeIndex;
+        targetId = (idx >= 0 && idx < leaves.length) ? leaves[idx].panelId : (leaves[0]?.panelId ?? '');
+      }
+      if (targetId) {
+        try { orca.nav.switchFocusTo(targetId); } catch { /* 忽略 */ }
+      }
+    } finally {
+      this.restoringPanelLayout = false;
+    }
+
+    // 重建后刷新标签栏（合并模式会从 orca.state.panels 重新同步历史）
+    this.mergedRenderSignature = '';
+    await this.updateTabsUI(true);
+    return true;
+  }
+
+  /**
+   * 等待面板树稳定（让关闭/新增面板的状态变更生效后再继续）
+   */
+  private async waitForLayoutSettle(): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 60));
+  }
+
+  /**
+   * 关闭多余面板，直到面板数量等于目标值（轮询，兼容 orca.nav.close 异步生效）
+   */
+  private async closePanelsTo(targetCount: number): Promise<void> {
+    const deadline = Date.now() + 2000;
+    while (Date.now() < deadline) {
+      const panels = this.collectViewPanels(orca.state?.panels);
+      if (panels.length <= targetCount) return;
+      // 从最后一个开始关闭，保留前面的
+      const victim = panels[panels.length - 1];
+      try { orca.nav.close(victim.id); } catch (err) { /* 忽略 */ }
+      await this.waitForLayoutSettle();
+    }
+  }
+
+  /**
+   * 补充面板，直到面板数量等于目标值（addTo 携带 src 创建新面板）
+   */
+  private async addPanelsTo(targetCount: number, targetLeaves: Array<{ view: string; viewArgs: Record<string, any>; viewState: Record<string, any> }>): Promise<void> {
+    const deadline = Date.now() + 2000;
+    while (Date.now() < deadline) {
+      const panels = this.collectViewPanels(orca.state?.panels);
+      if (panels.length >= targetCount) return;
+      const anchor = panels[panels.length - 1]?.id;
+      if (!anchor) return;
+      const t = targetLeaves[panels.length];
+      if (!t) return;
+      const newId = orca.nav.addTo(anchor, 'right', {
+        view: t.view as any,
+        viewArgs: this.reviveFromStorage(t.viewArgs ?? {}),
+        viewState: this.reviveFromStorage(t.viewState ?? {})
+      });
+      if (!newId) return;
+      await this.waitForLayoutSettle();
+    }
+  }
+
+  /**
+   * 扁平化布局树为有序叶子列表（DFS 顺序，与面板树从左到右/从上到下一致）
+   */
+  private collectLayoutLeaves(node: SavedPanelNode, out: Array<{ view: string; viewArgs: Record<string, any>; viewState: Record<string, any> }> = []): Array<{ view: string; viewArgs: Record<string, any>; viewState: Record<string, any> }> {
+    if (!node) return out;
+    if (node.view != null) {
+      out.push({ view: node.view, viewArgs: node.viewArgs ?? {}, viewState: node.viewState ?? {} });
+      return out;
+    }
+    for (const child of node.children ?? []) {
+      this.collectLayoutLeaves(child, out);
+    }
+    return out;
+  }
+
+  /**
+   * 将面板导航到指定视图
+   */
+  private async navigatePanelToView(panelId: string, view: string, viewArgs: Record<string, any>): Promise<void> {
+    try {
+      if (view.startsWith('view:')) {
+        orca.nav.switchFocusTo(panelId);
+      } else if (view === 'journal') {
+        let date = viewArgs?.date;
+        if (!(date instanceof Date)) date = date ? new Date(date) : new Date();
+        orca.nav.goTo('journal' as any, { date }, panelId);
+      } else {
+        orca.nav.goTo(view as any, viewArgs ?? {}, panelId);
+      }
+    } catch (err) {
+      this.warn(`恢复面板视图失败 (${view}):`, err);
+    }
+  }
+
+  /**
+   * 获取面板当前视图对应的块ID（用于工作区标签聚焦高亮）
+   * - block/bgraph：取 viewArgs.blockId
+   * - journal：无独立块ID，返回 null（日志标签不做聚焦高亮）
+   */
+  private getPanelCurrentBlockId(panel: any): string | null {
+    const view = panel?.view as string | undefined;
+    const args = panel?.viewArgs ?? {};
+    if ((view === 'block' || view === 'bgraph') && args.blockId != null) {
+      return String(args.blockId);
+    }
+    return null;
+  }
+
+  /**
+   * 把当前打开的面板历史同步进激活工作区的标签组（自动记录打开/关闭）
+   * 工作区标签组对应合并标签栏的第一组（第一个面板），因此以第一个面板的历史为数据源。
+   * 采用增量合并：保留已有标签，仅把「本工作区中新打开」的块加进来；
+   * 移除仍由标签的 × / 中键显式触发（removeTabFromActiveWorkspace），避免历史变化误删未打开标签。
+   */
+  private syncWorkspaceTabsFromMergedHistory(panels: any[]): void {
+    if (!this.enableMergedTabBar || !this.currentWorkspace) return;
+    const ws = this.workspaces.find((w) => w.id === this.currentWorkspace);
+    if (!ws) return;
+
+    // 找到第一个有效面板（工作区组所替换的分组）
+    let firstPanel: any = null;
+    for (const p of panels) {
+      const id = p.id as string;
+      const view = p.view as string;
+      if (id && !id.startsWith('_') && view) {
+        firstPanel = p;
+        break;
+      }
+    }
+    if (!firstPanel) return;
+
+    const firstPanelId = firstPanel.id as string;
+    const history = this.panelHistoryMap.get(firstPanelId) ?? [];
+
+    // 进入工作区前的块ID：这些是「进入工作区前」打开的历史，不应被算作本工作区新打开
+    const preWorkspaceBlockIds = new Set<string>();
+    if (this.mergedHistorySnapshot) {
+      for (const list of this.mergedHistorySnapshot.values()) {
+        for (const e of list) {
+          if ((e.view === 'block' || e.view === 'bgraph') && e.viewArgs?.blockId != null) {
+            preWorkspaceBlockIds.add(String(e.viewArgs.blockId));
+          }
+        }
+      }
+    }
+
+    let changed = false;
+    const existing = new Set(ws.tabs.map((t) => t.blockId));
+    for (const entry of history) {
+      if (entry.view !== 'block' && entry.view !== 'bgraph') continue;
+      const blockId = entry.viewArgs?.blockId;
+      if (blockId == null) continue;
+      const bid = String(blockId);
+      if (existing.has(bid)) continue;
+      if (this.removedWorkspaceBlockIds.has(bid)) continue;
+      if (preWorkspaceBlockIds.has(bid)) continue;
+      ws.tabs.push({
+        blockId: bid,
+        panelId: firstPanelId,
+        title: entry.title,
+        order: ws.tabs.length,
+        ...(entry.icon ? { icon: entry.icon } : {}),
+        ...(entry.color ? { color: entry.color } : {}),
+        isPinned: entry.isPinned ?? false,
+      });
+      existing.add(bid);
+      changed = true;
+    }
+
+    if (!changed) return;
+    // 固定标签排最前（与普通模式一致）
+    ws.tabs = [...ws.tabs.filter((t) => t.isPinned), ...ws.tabs.filter((t) => !t.isPinned)];
+    ws.updatedAt = Date.now();
+    void this.saveWorkspaces();
+    this.log(`📁 工作区标签组已同步: ${ws.tabs.length} 个标签`);
+  }
+
+  /**
+   * 深拷贝合并模式面板历史（快照用于工作区进出时恢复）
+   */
+  private cloneMergedHistory(): Map<string, PanelHistoryEntry[]> {
+    const snapshot = new Map<string, PanelHistoryEntry[]>();
+    for (const [id, list] of this.panelHistoryMap) {
+      snapshot.set(id, list.map((e) => ({ ...e, viewArgs: { ...(e.viewArgs ?? {}) } })));
+    }
+    return snapshot;
+  }
+
+  /**
+   * 快照合并模式进入工作区前的面板历史与激活视图
+   * 退出工作区时据此恢复，避免工作区打开的块泄漏到非工作区标签栏
+   */
+  private snapshotMergedHistoryBeforeWorkspace(): void {
+    this.mergedHistorySnapshot = this.cloneMergedHistory();
+    this.mergedActiveEntryBeforeWorkspace = this.getCurrentActiveHistoryEntry();
+    this.log('🔀 已快照合并模式进入工作区前的历史');
+  }
+
+  /**
+   * 恢复合并模式进入工作区前的面板历史快照
+   */
+  private restoreMergedHistorySnapshot(): void {
+    if (!this.mergedHistorySnapshot) return;
+    this.panelHistoryMap.clear();
+    for (const [id, list] of this.mergedHistorySnapshot) {
+      this.panelHistoryMap.set(id, list.map((e) => ({ ...e, viewArgs: { ...(e.viewArgs ?? {}) } })));
+    }
+    this.mergedHistorySnapshot = null;
+    this.mergedRenderSignature = '';
+    this.log('🔀 已恢复合并模式进入工作区前的历史快照');
+  }
+
+  /**
+   * 获取合并模式下当前激活面板的当前视图历史条目
+   */
+  private getCurrentActiveHistoryEntry(): PanelHistoryEntry | null {
+    if (!this.enableMergedTabBar) return null;
+    const panels = this.collectViewPanels(orca.state?.panels);
+    const activePanelId = orca.state?.activePanel;
+    for (const p of panels) {
+      const id = p.id as string;
+      const view = p.view as string;
+      if (!id || id.startsWith('_') || !view) continue;
+      if (id !== activePanelId) continue;
+      const currentKey = this.makeHistoryKey(view, p.viewArgs);
+      const list = this.panelHistoryMap.get(id);
+      const existing = list?.find((e) => e.key === currentKey);
+      if (existing) return existing;
+      // 历史缓存中尚无该条目时，基于当前视图状态构造，确保退出工作区时仍能导航回进入前视图
+      return {
+        panelId: id,
+        key: currentKey,
+        view,
+        viewArgs: { ...(p.viewArgs ?? {}) },
+        title: '',
+        icon: 'ti ti-file-text',
+        used: 0
+      };
+    }
+    return null;
+  }
+
+  /**
+   * 合并模式退出工作区时导航回进入前的激活视图
+   * 让 orca.state.panels 与历史快照一致，syncPanelHistory 不会重新加入工作区打开的块
+   */
+  private async navigateBackToMergedEntry(entry: PanelHistoryEntry): Promise<void> {
+    try {
+      if (entry.view.startsWith('view:')) {
+        orca.nav.switchFocusTo(entry.panelId);
+      } else {
+        await orca.nav.goTo(entry.view as any, entry.viewArgs ?? {}, entry.panelId);
+        orca.nav.switchFocusTo(entry.panelId);
+      }
+    } catch (e) {
+      this.warn('退出工作区后恢复视图失败:', e);
+    }
   }
 
   /**
@@ -12384,8 +12797,12 @@ class OrcaTabsPlugin {
         firstGroup = false;
         if (isWorkspaceGroup) {
           const ws = activeWorkspace!;
+          const currentBlockId = this.getPanelCurrentBlockId(p);
+          const isActivePanel = id === activePanelId;
           for (const tab of ws.tabs) {
-            fragment.appendChild(this.createWorkspaceTabElement(tab, id));
+            const isCurrent = currentBlockId != null && tab.blockId === currentBlockId;
+            const activeClass = isCurrent ? (isActivePanel ? 'orca-tab-active' : 'orca-tab-current') : '';
+            fragment.appendChild(this.createWorkspaceTabElement(tab, id, activeClass));
           }
           activeWorkspace = null; // 仅第一个面板组被替换
           continue;
@@ -12419,10 +12836,12 @@ class OrcaTabsPlugin {
    */
   private handleMergedStateChange(): void {
     if (!this.enableMergedTabBar) return;
+    // 恢复面板布局期间抑制监听器，避免重建过程中历史被中途同步导致错乱
+    if (this.restoringPanelLayout) return;
     if (this.mergedRefreshTimer !== null) return;
     this.mergedRefreshTimer = window.setTimeout(() => {
       this.mergedRefreshTimer = null;
-      if (!this.enableMergedTabBar) return;
+      if (!this.enableMergedTabBar || this.restoringPanelLayout) return;
       // 同步历史（可能异步获取未打开的块数据），完成后渲染
       this.syncPanelHistory()
         .then(() => {
@@ -12501,6 +12920,23 @@ class OrcaTabsPlugin {
   }
 
   /**
+   * 创建标签图标元素（兼容 Tabler 图标与 emoji 图标）
+   * - 以 "ti ti-" 开头视为 Tabler 图标，用 <i class> 渲染
+   * - 其余（emoji / 用户自定义 _icon 值）用 <span textContent> 渲染
+   */
+  private createMergedTabIcon(icon: string, className: string): HTMLElement {
+    if (icon.startsWith('ti ti-')) {
+      const i = document.createElement('i');
+      i.className = `${className} ${icon}`;
+      return i;
+    }
+    const span = document.createElement('span');
+    span.className = className;
+    span.textContent = icon;
+    return span;
+  }
+
+  /**
    * 创建合并模式标签元素（不复用 createTabElement，避免长按/右键/双击等事件体系冲突）
    */
   private createMergedTabElement(entry: PanelHistoryEntry, currentKey: string, panelId: string, isActivePanel: boolean): HTMLElement {
@@ -12523,9 +12959,7 @@ class OrcaTabsPlugin {
 
     // 图标显示尊重块类型图标设置（journal 恒显，与普通模式一致）
     if (entry.icon && (this.showBlockTypeIcons || entry.view === 'journal')) {
-      const icon = document.createElement('i');
-      icon.className = `orca-tab-icon ${entry.icon}`;
-      el.appendChild(icon);
+      el.appendChild(this.createMergedTabIcon(entry.icon, 'orca-tab-icon'));
     }
 
     const label = document.createElement('span');
@@ -12810,10 +13244,11 @@ class OrcaTabsPlugin {
    * 工作区标签与普通标签语义一致：未打开的也显示，点击才导航打开
    * 关闭（×/中键）= 从工作区标签组移除（不关闭实际视图）
    */
-  private createWorkspaceTabElement(tab: TabInfo, panelId: string): HTMLElement {
+  private createWorkspaceTabElement(tab: TabInfo, panelId: string, activeClass: string = ''): HTMLElement {
     const el = document.createElement('div');
-    el.className = 'orca-tab orca-tab-merged';
+    el.className = 'orca-tab orca-tab-merged' + (activeClass ? ` ${activeClass}` : '');
     el.setAttribute('data-orca-tabs-block-id', tab.blockId);
+    el.draggable = true;
     el.title = tab.title;
 
     if (tab.color) {
@@ -12825,9 +13260,7 @@ class OrcaTabsPlugin {
     }
 
     if (tab.icon && this.showBlockTypeIcons) {
-      const icon = document.createElement('i');
-      icon.className = `orca-tab-icon ${tab.icon}`;
-      el.appendChild(icon);
+      el.appendChild(this.createMergedTabIcon(tab.icon, 'orca-tab-icon'));
     }
 
     const label = document.createElement('span');
@@ -12855,7 +13288,18 @@ class OrcaTabsPlugin {
 
     // 点击导航打开该标签（复用普通模式的导航语义：视图面板/日志/普通块）
     el.addEventListener('click', () => {
+      // 先聚焦目标面板，确保块在正确面板中打开（与普通模式 switchToTab 一致）
+      try {
+        orca.nav.switchFocusTo(panelId);
+      } catch {
+        // 忽略聚焦失败，继续导航
+      }
       void this.safeNavigate(tab.blockId, panelId, tab);
+      // 记录最后激活标签到工作区（与普通模式 switchToTab 末尾行为一致）
+      if (this.currentWorkspace) {
+        this.lastActiveBlockId = tab.blockId;
+        void this.updateCurrentWorkspaceActiveIndex(tab);
+      }
     });
 
     // 中键：启用中键固定时切换固定状态，否则从工作区移除
@@ -12886,6 +13330,26 @@ class OrcaTabsPlugin {
       this.showWorkspaceTabContextMenu(e, tab);
     });
 
+    // 跨面板拖拽：记录拖拽载荷并懒加载面板放置监听（拖到面板实现分屏/中心打开）
+    el.addEventListener('dragstart', (e) => {
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'copyMove';
+        try {
+          e.dataTransfer.setData('text/plain', tab.blockId);
+        } catch {
+          // 忽略
+        }
+      }
+      this.activeDragPayload = { kind: 'tab', panelId: tab.panelId, key: tab.blockId, tab };
+      this.setupPanelDropListeners();
+      el.classList.add('orca-tab-dragging');
+    });
+    el.addEventListener('dragend', () => {
+      this.activeDragPayload = null;
+      this.hidePanelDropHint();
+      el.classList.remove('orca-tab-dragging');
+    });
+
     return el;
   }
 
@@ -12901,6 +13365,8 @@ class OrcaTabsPlugin {
       return;
     }
     ws.tabs = ws.tabs.filter((t) => t.blockId !== tab.blockId);
+    // 记录为「已移除」：该块视图可能仍打开，同步历史时不要把它重新加回工作区
+    this.removedWorkspaceBlockIds.add(tab.blockId);
     ws.updatedAt = Date.now();
     await this.saveWorkspaces();
     this.log(`📁 已从工作区 "${ws.name}" 移除标签: ${tab.title}`);
@@ -15542,6 +16008,11 @@ class OrcaTabsPlugin {
    * 基于存储键保存面板标签页数据
    */
   private async savePanelTabsByKey(storageKey: string, tabs: TabInfo[]) {
+    // 工作区状态下不保存普通面板标签数据，避免工作区标签污染普通标签存储
+    if (this.currentWorkspace) {
+      this.log('🚫 在工作区状态下，跳过保存普通面板标签数据');
+      return;
+    }
     await this.tabStorageService.savePanelTabsByKey(storageKey, tabs);
   }
   
@@ -17315,6 +17786,9 @@ class OrcaTabsPlugin {
       // 标记需要恢复标签页组
       this.shouldRestoreTabsBeforeWorkspace = true;
     }
+
+    // 加载进入工作区前的面板布局（配合标签页组恢复多面板布局）
+    this.layoutBeforeWorkspace = await this.tabStorageService.loadLayoutBeforeWorkspace();
   }
 
   /**
@@ -17395,11 +17869,37 @@ class OrcaTabsPlugin {
         return;
       }
 
+      // 退出前保存当前工作区的最终状态（含标签与面板布局）
+      if (this.currentWorkspace) {
+        await this.saveCurrentTabsToWorkspace();
+      }
+
       // 清除当前工作区状态
       await this.clearCurrentWorkspace();
+      this.removedWorkspaceBlockIds.clear();
       
       // 保存工作区配置
       await this.saveWorkspaces();
+
+      // 恢复进入工作区前的面板布局（关闭工作区面板、恢复进入前的多面板与内容）
+      if (this.layoutBeforeWorkspace) {
+        await this.restorePanelLayout(this.layoutBeforeWorkspace);
+        this.layoutBeforeWorkspace = null;
+        await this.tabStorageService.clearLayoutBeforeWorkspace();
+      } else if (this.enableMergedTabBar) {
+        // 无布局快照时回退：仅导航回进入工作区前的激活视图
+        const entry = this.mergedActiveEntryBeforeWorkspace;
+        this.mergedActiveEntryBeforeWorkspace = null;
+        if (entry) {
+          await this.navigateBackToMergedEntry(entry);
+        }
+      }
+
+      // 合并模式：恢复进入工作区前的历史快照（标签栏数据）
+      if (this.enableMergedTabBar) {
+        this.mergedActiveEntryBeforeWorkspace = null;
+        this.restoreMergedHistorySnapshot();
+      }
 
       // 如果有保存的标签页组，恢复到进入工作区之前的状态
       if (this.tabsBeforeWorkspace && this.tabsBeforeWorkspace.length > 0) {
@@ -17793,7 +18293,8 @@ class OrcaTabsPlugin {
         createdAt: Date.now(),
         updatedAt: Date.now(),
         description: description || undefined,
-        lastActiveTabId: currentActiveTab ? currentActiveTab.blockId : undefined
+        lastActiveTabId: currentActiveTab ? currentActiveTab.blockId : undefined,
+        layout: this.serializePanelLayout() ?? undefined
       };
 
       this.workspaces.push(workspace);
@@ -18118,7 +18619,7 @@ class OrcaTabsPlugin {
         return;
       }
       
-      // 如果之前不在任何工作区中，保存当前标签页组以便退出时恢复
+      // 如果之前不在任何工作区中，保存当前标签页组与面板布局以便退出时恢复
       if (!this.currentWorkspace && !this.tabsBeforeWorkspace) {
         const currentTabs = this.getCurrentPanelTabs();
         this.tabsBeforeWorkspace = [...currentTabs];
@@ -18127,6 +18628,15 @@ class OrcaTabsPlugin {
         await this.tabStorageService.saveTabsBeforeWorkspace(this.tabsBeforeWorkspace);
         
         this.log(`💾 保存了进入工作区前的标签页组: ${this.tabsBeforeWorkspace.length}个标签页`);
+
+        // 快照进入工作区前的面板布局（退出工作区时恢复多面板）
+        this.layoutBeforeWorkspace = this.serializePanelLayout();
+        await this.tabStorageService.saveLayoutBeforeWorkspace(this.layoutBeforeWorkspace);
+
+        // 合并模式：快照进入工作区前的面板历史与激活视图，退出工作区时恢复
+        if (this.enableMergedTabBar) {
+          this.snapshotMergedHistoryBeforeWorkspace();
+        }
       }
 
       // 保存当前工作区（如果存在）
@@ -18136,13 +18646,19 @@ class OrcaTabsPlugin {
 
       // 切换到新工作区
       this.currentWorkspace = workspaceId;
+      // 清空「已移除」记录，让新工作区重新根据打开的历史同步标签组
+      this.removedWorkspaceBlockIds.clear();
       await this.saveWorkspaces();
       
       // 保存当前工作区ID到存储
       await this.tabStorageService.saveWorkspaces(this.workspaces, workspaceId, this.enableWorkspaces);
 
-      // 完全替换当前标签页集合
-      await this.replaceCurrentTabsWithWorkspace(workspace.tabs, workspace);
+      // 恢复工作区保存的面板布局（多面板 + 定位到最后浏览的标签）
+      const layoutRestored = await this.restorePanelLayout(workspace.layout, workspace.lastActiveTabId);
+
+      // 完全替换当前标签页集合（合并模式下主要用于同步标签组数据，普通模式用于重建标签栏）
+      // 已恢复布局时跳过其内部的延迟导航，避免把第一个面板再导航到 lastActiveTabId 造成重复/错位
+      await this.replaceCurrentTabsWithWorkspace(workspace.tabs, workspace, layoutRestored);
 
       this.log(`🔄 已切换到工作区: "${workspace.name}"`);
       orca.notify('success', `已切换到工作区: ${workspace.name}`);
@@ -18155,7 +18671,7 @@ class OrcaTabsPlugin {
   /**
    * 用工作区的标签页完全替换当前标签页
    */
-  private async replaceCurrentTabsWithWorkspace(workspaceTabs: TabInfo[], workspace: Workspace) {
+  private async replaceCurrentTabsWithWorkspace(workspaceTabs: TabInfo[], workspace: Workspace, skipDelayedNavigation: boolean = false) {
     try {
       // 清空当前标签页数据
       this.panelTabsData[0] = [];
@@ -18208,6 +18724,12 @@ class OrcaTabsPlugin {
       // 更新UI显示（工作区切换需要立即更新，不使用防抖）
       this.mergedRenderSignature = '';
       await this.updateTabsUI(true);
+
+      // 已通过 restorePanelLayout 恢复布局并定位时，跳过这里的延迟导航（避免重复/错位）
+      if (skipDelayedNavigation) {
+        this.log(`📋 已替换标签页数据（布局已恢复，跳过延迟导航），共 ${updatedTabs.length} 个标签`);
+        return;
+      }
 
       // 延迟导航，确保UI更新完成后再导航
       const lastActiveTabId = workspace.lastActiveTabId;
@@ -18282,6 +18804,9 @@ class OrcaTabsPlugin {
       
       workspace.tabs = currentTabs;
       workspace.lastActiveTabId = currentActiveTab ? currentActiveTab.blockId : undefined;
+      // 同时保存当前面板布局（多面板工作区）
+      const layout = this.serializePanelLayout();
+      if (layout) workspace.layout = layout;
       workspace.updatedAt = Date.now();
       await this.saveWorkspaces();
     }
